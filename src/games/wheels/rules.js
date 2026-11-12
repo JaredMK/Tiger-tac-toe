@@ -24,7 +24,7 @@ export const wheelsOf = x => { const w = x && x.wheels ? x.wheels : x; return WH
 export const WHEEL_SEGS = 10;
 export const SKULL = -1;
 export const WHEEL_LIMITS = { target: [10, 100], lowSkulls: [0, 4], highSkulls: [1, 7], lowLo: [1, 3], lowHi: [2, 6], highLo: [1, 8], tensMin: [1, 3], tensMax: [1, 3], gap: [0, 2], evSpread: [1, 100] };
-export const WHEELT = { spin: 1900, hold: 300, bank: 250, fill: 500, settle: 250, won: 600 };   // the spin, then the result held; a bank: the pot lands on the tally (bank), its gauge and score fill to the new total (fill), then a moment (settle); a square won: the win shows only after that (won)
+export const WHEELT = { spin: 1900, fly: 280, hold: 450, bank: 250, fill: 500, settle: 250, won: 600 };   // the spin (its wind-up, run and settle: ui/spin.js), then the result held while its points fly from the pointer into the pot (fly); a bank: the pot lands on the tally (bank), its gauge and score fill to the new total (fill), then a moment (settle); a square won: the win shows only after that (won)
 export const WHEEL_CFG = { cfg: null };
 export function wheelsNorm(raw) {
   const out = {};

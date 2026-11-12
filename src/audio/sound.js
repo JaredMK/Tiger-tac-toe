@@ -145,6 +145,7 @@ def('pathNote', 0.3, (c, d, t) => sfxTone(c, d, t, 523, .25, { vol: .4, type: 't
 def('hiloBlip', 0.1, (c, d, t) => sfxTone(c, d, t, 880, .08, { vol: .4 }), { level: .4, vary: true });
 def('higher', 0.34, (c, d, t) => sfxTone(c, d, t, 500, .3, { to: 900, vol: .4, type: 'triangle' }), { level: .5 });
 def('lower', 0.34, (c, d, t) => sfxTone(c, d, t, 900, .3, { to: 500, vol: .4, type: 'triangle' }), { level: .5 });
+def('diceTap', 0.07, (c, d, t) => { sfxNoise(c, d, t, .03, { f: 2600, q: 4, vol: .6, att: .001 }); sfxTone(c, d, t, 1100, .035, { to: 800, vol: .25, type: 'triangle', att: .001 }); }, { level: .32, vary: true });   // a thrown die's first touch of the table, before it lands (the thunk): a light, bright click
 def('rattle', 0.5, (c, d, t) => { for (let k = 0; k < 9; k++) sfxNoise(c, d, t + k * .05, .04, { f: 2500, q: 2, vol: .5 }); }, { level: .5 });
 def('thunk', 0.2, (c, d, t) => { sfxTone(c, d, t, 220, .15, { to: 110, vol: .6, type: 'triangle' }); sfxNoise(c, d, t, .06, { f: 700, filter: 'lowpass', vol: .5 }); }, { level: .6 });
 def('hop', 0.1, (c, d, t) => sfxTone(c, d, t, 520, .07, { to: 760, vol: .35, type: 'triangle' }), { level: .35, vary: true });
@@ -446,7 +447,7 @@ export function moveSounds(f) {
   if (f.timeout) { add('buzz', 0); add('randomMove', 380); }
   const game = viewOf(f.type);
   if (game.sounds) game.sounds(f, add, won, mini, last);
-  const CASINO = ['wtiles', 'claw', 'duck', 'pusher', 'poker', 't31', 'rummy', 'rps', 'shut', 'combo', 'bglite', 'scc', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'apple', 'muncher', 'swarm', 'bricks', 'snake', 'dominoes', 'war', 'scratch', 'bingo'];
+  const CASINO = ['wtiles', 'claw', 'duck', 'pusher', 'poker', 't31', 'rummy', 'rps', 'shut', 'combo', 'bglite', 'scc', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'apple', 'muncher', 'swarm', 'bricks', 'snake', 'dominoes', 'war', 'scratch', 'bingo', 'snakes', 'candy', 'bump'];   // (the race tracks: as the piece jumps on its last space)
   if (won && CASINO.includes(f.type)) add('won', total - 600);   // the card games and the wheel: the chime once the result shows
   else if (won && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the game is won: a chime (the square's stamp, and a match's end, follow on the board)
   if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game

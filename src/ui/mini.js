@@ -123,8 +123,7 @@ export function flashLine(f) {
   if (f.kind === 'claim' || f.kind === 'match' || f.kind === 'draw') return squareEnd(f);   // the square's end: "Won by" and the mark, or "Draw"
   const note = f.timeout ? `${who} ran out of time` : '';
   let say = '';
-  if (f.type === 'pig' && f.note === 'bust') say = `Bust! ${who} rolled ${f.roll} again · ${f.pot} point${f.pot === 1 ? '' : 's'} lost`;
-  else if (LINE_TYPES.includes(f.type) || (f.type === 'pig' && (f.note === 'bank' || f.kind === 'again'))) say = '';
+  if (LINE_TYPES.includes(f.type) || f.type === 'pig') say = '';   // (Risky Rolls: a roll, a bank and a bust are said in its own line, under the tray)
   else if (f.kind === 'again') say = f.type === 'bs' ? `${who} hit! · fire again` : `${who} found ${f.letter ? esc(f.letter) : 'a letter'} · guess again`;
   else say = summary(f);
   return [note, say].filter(Boolean).join(' · ');

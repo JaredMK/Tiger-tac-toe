@@ -53,7 +53,8 @@ export function randomMove(mini, p, rng, from, empties) {
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
   const l = mini.last;
   if (l.pending) { flash.rl = { bet: Array.isArray(l.bet) ? l.bet.slice() : l.bet, pending: true, n: null, hit: false, hits: { X: mini.hits.X, O: mini.hits.O } }; return; }   // (Super Chaos: the bet is down; the spin comes at the round's end)
-  flash.rl = { bet: Array.isArray(l.bet) ? l.bet.slice() : l.bet, n: l.n, hit: l.hit, hits: { X: mini.hits.X, O: mini.hits.O } }; return;
+  const before = (mini.spins || []).slice(-2, -1)[0], from = before == null ? null : typeof before === 'number' ? before : before.n;   // the pocket the wheel rested on: the spin turns on from there (the view's alone: no outcome reads it)
+  flash.rl = { bet: Array.isArray(l.bet) ? l.bet.slice() : l.bet, n: l.n, hit: l.hit, hits: { X: mini.hits.X, O: mini.hits.O }, from: Number.isInteger(from) ? from : null }; return;
 }
 export function flashMs(f, winLen, won) {
   if (f.rl && f.rl.pending) return RLT.bet;

@@ -2,6 +2,7 @@
 import { needRng, randInt } from '../../core/random.js';
 import { PLAY } from '../../core/timer.js';
 import { tuneLive } from '../../core/tune.js';
+import { HOPS, hopAt } from '../shared/hops.js';
 
 export const CANDY = { len: 12, colors: ['red', 'yellow', 'green', 'blue'], gap: 3 };   // same colour at least 3 spaces apart
 // Candy race track: 12 random colours where any three consecutive spaces differ, so the same colour
@@ -52,7 +53,7 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
 }
 export function flashMs(f, winLen, won) {
   const hops = f.scr && f.scr.moves ? Math.max(...Object.values(f.scr.moves).map(mv => Math.max(1, mv.to - mv.from))) : Math.max(1, f.to - f.from);
-  return PLAY.spin + hops * PLAY.hop + 250;
+  return PLAY.spin + hopAt(hops) + 250 + (won && !f.scr ? HOPS.win : 0);   // the wheel, the hops (a long move's quicker: shared/hops.js), the landing; a square won: the piece's jump
 }
 // Super Chaos: both spun in this square in one round. The recap plays both spins together, from where the
 // round began (the flash carries both moves: scr.moves), and the square settles to both pieces' new spaces.

@@ -2,6 +2,7 @@
 import { needRng, randInt } from '../../core/random.js';
 import { PLAY } from '../../core/timer.js';
 import { tune, tuneLive } from '../../core/tune.js';
+import { HOPS, hopAt } from '../shared/hops.js';
 
 // Snakes and Ladders: 20 spaces in 4 rows of 5, numbered from the bottom; the pieces start before space 1
 // and space 20 is the top. Each board has 2 ladders and 2 snakes, each crossing rows and at least 3 long.
@@ -89,7 +90,7 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
 }
 export function flashMs(f, winLen, won) {
   const mvs = f.scr && f.scr.moves ? Object.values(f.scr.moves) : [f];   // (Super Chaos's round end: both pieces at once; the longer of the two)
-  return PLAY.die + Math.max(...mvs.map(mv => Math.max(1, mv.land - mv.from))) * PLAY.hop + (mvs.some(mv => mv.via) ? PLAY.slide : 0) + 250;
+  return PLAY.die + hopAt(Math.max(...mvs.map(mv => Math.max(1, mv.land - mv.from)))) + (mvs.some(mv => mv.via) ? PLAY.slide : 0) + 250 + (won && !f.scr ? HOPS.win : 0);   // the die, the hops (a long move's quicker: shared/hops.js), the ladder or snake, the landing; a square won: the piece's jump
 }
 // Super Chaos: both rolled in this square in one round. The recap plays both rolls together, from where the
 // round began (scr.moves: each piece's hops, then its ladder or snake), and the square settles to both.

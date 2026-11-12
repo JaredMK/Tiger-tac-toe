@@ -153,7 +153,7 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .thex .hr i::before { content: ''; position: absolute; inset: 1.3px; background: var(--hf, var(--panel-2)); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
 .thex .hr i.X { --hf: var(--x); }
 .thex .hr i.O { --hf: var(--o); }
-.thumb .track { width: 86cqw; }
+.thumb .track { width: 86cqw; } .thumb .track.cdy { width: 96cqw; } .thumb .track.bmp { width: 88cqw; }   /* (Candy Race's and Bump's miniatures fold the track into three rows: ui/track.js) */
 .thilo { text-align: center; }
 .thilo b { display: block; font-size: 16cqw; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .tdice { display: flex; flex-direction: column; gap: 4cqw; width: 84cqw; }
@@ -175,10 +175,9 @@ svg text { text-rendering: geometricPrecision; }   /* laid out at its true size,
 .track .pill { fill: #1d2130; stroke: #3a4058; stroke-width: .6; }
 .track .lbl { font-size: 2.5px; font-weight: 800; letter-spacing: .25px; fill: #fff; text-anchor: middle; dominant-baseline: central; }
 .track .tok { transform-box: fill-box; transform-origin: center; }
-.track .tok circle { stroke: rgba(0, 0, 0, .6); stroke-width: .7; }
-.track .tok.X circle { fill: var(--x); } .track .tok.O circle { fill: var(--o); }
-.track .tok text { fill: #fff; font-weight: 900; font-size: 4.2px; text-anchor: middle; dominant-baseline: central; }
-.track.small .tok text { font-size: 5.4px; }
+.track .tsh, .track .tburst > g, .track .trl, .track .space.hit, .track .snake.hot > g { transform-box: fill-box; transform-origin: center; }
+.track .tkl { fill: var(--ink); } .track .tkd { fill: var(--paper); stroke: var(--ink); stroke-width: .8; }   /* a piece: a round counter (its ink edge below it) with its player's drawn mark */
+.track .tsh ellipse { fill: rgba(22, 18, 16, .22); }                                                              /* and its shadow on the board, which stays down while it hops */
 .track .tok.moved { animation: pop .3s 1s both; }   /* fallback only: with the Web Animations API the piece hops instead */
 .tg.tmem i { background: repeating-linear-gradient(45deg, #2a2f44 0 3px, #232737 3px 6px); color: var(--muted); font-size: 9cqw; }
 .tcoin { display: flex; gap: 1.5cqw; }
@@ -583,19 +582,69 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .g-snakes, .g-bump { width: var(--g); display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .g-snakes .track { width: min(100%, calc((100dvh - 400px) * 1.2)); }   /* the tall board shrinks on a short phone, the die and button still in view */
 .g-snakes .die { width: 76px; height: 76px; }
-.track .space.goal { fill: var(--cy); }
+.g-snakes .big, .g-bump .big { align-self: stretch; }
+/* the race tracks' picture (ui/track.js): raised tiles (an ink lip under each), a move's trail, a burst, the spaces that matter tinted */
+.track .lip { fill: var(--ink); }
+.track .gl { fill: none; stroke: rgba(255, 248, 232, .75); stroke-width: .9; stroke-linecap: round; }
+.track .sym { fill: rgba(255, 248, 232, .9); stroke: rgba(22, 18, 16, .5); stroke-width: .3; stroke-linejoin: round; }
+.track .roof { fill: var(--ink); stroke: var(--ink); stroke-width: 1; stroke-linejoin: round; }
+.track .fring { fill: none; stroke: var(--ink); stroke-width: .7; }
+.track .space.goal { fill: var(--ink); } .track .gstar { fill: var(--gold); }
+.track .space.plain.lad { fill: color-mix(in srgb, #e0a45a 38%, var(--paper)); }
+.track .s0 { --sn: var(--cg); } .track .s1 { --sn: var(--sea); } .track .s2 { --sn: var(--mc5); }
+.track .space.plain.snk { fill: color-mix(in srgb, var(--sn) 32%, var(--paper)); }
+.track .space.reach.X { fill: var(--x-soft); } .track .space.reach.O { fill: var(--o-soft); }
+.track .space.hit { animation: sphit .5s 1s cubic-bezier(.2, .9, .3, 1.2) both; }
+@keyframes sphit { 40% { transform: scale(1.24); stroke-width: 1.3; } }
+.track .trl { stroke: var(--ink); stroke-width: .35; opacity: .6; } .track .trl.X { fill: var(--x); } .track .trl.O { fill: var(--o); }
+.track .trl.go { opacity: 1; animation: trlpop .22s var(--d, 0ms) cubic-bezier(.2, .9, .3, 1.3) both; }
+@keyframes trlpop { from { transform: scale(0); opacity: 0; } }
+.track .tburst > g { opacity: 0; animation: tburst .55s var(--d, 0ms) cubic-bezier(.2, .8, .3, 1) both; }
+.track .tburst .ray { fill: none; stroke: var(--ink); stroke-width: 1; stroke-linecap: round; }
+.track .tburst .bst { fill: var(--gold); stroke: var(--ink); stroke-width: .45; stroke-linejoin: round; }
+.track .tburst.hit .bst { fill: var(--paper); }
+@keyframes tburst { 0% { transform: scale(.2); opacity: 0; } 25%, 65% { opacity: 1; } 100% { transform: scale(1.45); opacity: 0; } }
 .track.snl .numc { paint-order: stroke; stroke: var(--paper); stroke-width: 1.1px; stroke-linejoin: round; fill: var(--ink); }
-.track .ladder .lo { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; }
-.track .ladder .lw { fill: none; stroke: #e0a45a; stroke-width: .85; stroke-linecap: round; }
-.track.small .ladder .lo { stroke-width: 2.4; } .track.small .ladder .lw { stroke-width: 1.2; }
-.track .snake .so { fill: none; stroke: var(--ink); stroke-width: 3.7; stroke-linecap: round; }
-.track .snake .sb { fill: none; stroke: #4fb35a; stroke-width: 2.3; stroke-linecap: round; }
-.track .snake .ss { fill: none; stroke: #c7f0b0; stroke-width: .8; stroke-dasharray: .9 1.9; stroke-linecap: round; }
-.track .snake .sh { fill: #4fb35a; stroke: var(--ink); stroke-width: .75; }
+.track .ladder path { fill: none; stroke-linecap: round; }
+.track .ladder .lsh { stroke: rgba(22, 18, 16, .2); stroke-width: 2; }
+.track .ladder .lo { stroke: var(--ink); stroke-width: 2.1; }
+.track .ladder .lw { stroke: #e0a45a; stroke-width: 1.05; }
+.track.small .ladder .lo { stroke-width: 2.6; } .track.small .ladder .lw { stroke-width: 1.3; }
+.track .ladder.hot .lw { animation: ladhot .75s var(--d, 0ms) ease-in-out both; }
+@keyframes ladhot { 30%, 60% { stroke: var(--paper); } }
+.track .snake path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.track .snake .ssh { stroke: rgba(22, 18, 16, .2); }
+.track .snake .so { stroke: var(--ink); }
+.track .snake .sb { stroke: var(--sn); }
+.track .snake .ss { stroke: color-mix(in srgb, var(--sn) 35%, var(--paper)); stroke-width: .95; stroke-dasharray: .1 2.5; }
+.track .snake .sh { fill: var(--sn); stroke: var(--ink); stroke-width: .8; }
+.track .snake .sw { fill: #fff; stroke: var(--ink); stroke-width: .3; }
 .track .snake .se { fill: var(--ink); }
+.track .snake .st { stroke: var(--cr); stroke-width: .7; }
+.track .snake.hot > g { animation: snkgulp .45s var(--d, 0ms) cubic-bezier(.2, .9, .3, 1.2) both; }
+@keyframes snkgulp { 40% { scale: 1.4; } }
 .track .tok.knocked { animation: none; }
-.wheel.w3 { position: relative; background: conic-gradient(#4fb35a 0 120deg, var(--cy) 120deg 240deg, var(--cb) 240deg 360deg); }
-.wheel.w3 b { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; display: grid; place-items: center; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 22px; color: var(--ink); transform: rotate(var(--a)) translateY(-118%); }
+.track .tok.turn { animation: tokbob 1.1s ease-in-out infinite; }   /* the piece of the player to move bobs on its space (its own `translate`: the piece's place is its transform) */
+@keyframes tokbob { 50% { translate: 0 -1.3px; } }
+/* the result line's second part (the ladder, the snake, the bump): it pops in as the piece gets there */
+.dielab .rl2 { display: inline-block; }
+.dielab.late .rl2 { animation: rlpop .28s var(--d, 0ms) cubic-bezier(.2, .9, .3, 1.3) both; }
+@keyframes rlpop { from { transform: scale(.6); opacity: 0; } }
+.dielab .snlv.lad { color: color-mix(in srgb, #e0a45a 55%, var(--ink)); } .dielab .snlv.snk { color: var(--green); } .dielab .bmpw { color: var(--ink); }
+.dielab .cchip { display: inline-block; width: .82em; height: .82em; margin-left: .35em; border-radius: 28%; border: 2px solid var(--ink); vertical-align: -.08em; }
+.cchip.red { background: var(--cr); } .cchip.yellow { background: var(--cy); } .cchip.green { background: var(--cg); } .cchip.blue { background: var(--cb); }
+.wheel.w3 { position: relative; background: conic-gradient(var(--ink) 0 1.6deg, var(--cg) 1.6deg 118.4deg, var(--ink) 118.4deg 121.6deg, var(--mc5) 121.6deg 238.4deg, var(--ink) 238.4deg 241.6deg, var(--cb) 241.6deg 358.4deg, var(--ink) 358.4deg 360deg); }   /* (no player's colour on it) */
+.wheel.w3 .whub { position: absolute; left: 50%; top: 50%; width: 18%; height: 18%; margin: -9% 0 0 -9%; box-sizing: border-box; border-radius: 50%; background: var(--paper); border: 3px solid var(--ink); }
+.wheel.cw svg { display: block; width: 100%; height: 100%; }
+.wheel.cw .sym { fill: rgba(255, 248, 232, .92); stroke: rgba(22, 18, 16, .5); stroke-width: .25; }
+.wheel .wsp { fill: none; stroke: var(--ink); stroke-width: 2.6; } .wheel svg .whub { fill: var(--paper); stroke: var(--ink); stroke-width: 3; }
+.pointer.tick { transform-origin: 50% 0; animation: ptick .32s 1s ease-out both; } .pointer.tick.t3 { animation-delay: .7s; }
+@keyframes ptick { 30% { transform: rotate(-18deg); } 65% { transform: rotate(9deg); } }
+.wheelbox { border-radius: 50%; box-shadow: 0 6px 0 var(--ink); line-height: 0; } .wheelbox .wheel { box-shadow: none; }   /* the wheel's shadow stays under it as it turns */
+.wheelbox.pop { animation: wpop .3s 1s cubic-bezier(.2, .9, .3, 1.2) both; } .g-bump .wheelbox.pop { animation-delay: .7s; }
+@keyframes wpop { 40% { transform: scale(1.07); } }
+.wheel.w3 { container-type: size; }   /* its numbers size with it */
+.wheel.w3 b { position: absolute; left: 50%; top: 50%; width: 32cqw; height: 32cqw; margin: -16cqw 0 0 -16cqw; display: grid; place-items: center; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 25cqw; line-height: 1; color: var(--ink); transform: rotate(var(--a)) translateY(-96%); }
 .wheel.w3.spin { animation-duration: .7s; }
 .g-bump .wheelwrap .dielab.late { animation-delay: .7s; }
 .coin.mk { outline: 3px solid var(--mk); outline-offset: 1px; animation: mkpulse 1.1s ease-in-out infinite; }   /* two marked neighbours never overlap */
@@ -605,7 +654,7 @@ main.scr.mini:has(.fing), main.scr.mini:has(.fing) * { touch-action: none; -webk
 .wheelwrap { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .pointer { width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-top: 14px solid var(--text); }
 .wheel {
-  width: min(120px, calc(var(--g) * .3)); aspect-ratio: 1; border-radius: 50%; border: 4px solid var(--text);
+  width: clamp(86px, calc((100dvh - 470px) * .6), min(170px, calc(var(--g) * .42))); aspect-ratio: 1; border-radius: 50%; border: 4px solid var(--text);   /* as big as the phone's height leaves room for under the track */
   background: conic-gradient(var(--cr) 0 90deg, var(--cy) 90deg 180deg, var(--cg) 180deg 270deg, var(--cb) 270deg 360deg);
   transform: rotate(var(--to, 0deg)); box-shadow: 0 6px 16px rgba(0, 0, 0, .4);
 }
@@ -1202,23 +1251,110 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .risk.bank { animation: riskin .55s .15s ease-in both; }
 .risk.lost { animation: lostmark 0s .65s both, riskout .55s .8s ease-in both; }   /* a bust: red and struck through only once the die has landed */
 @keyframes lostmark { from { color: var(--green); text-decoration-line: none; } to { color: var(--x); text-decoration-line: line-through; } }
-.rrrolls { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; flex-wrap: wrap; }
-.rrrolls small { color: var(--muted); font-size: 15px; margin-right: 2px; }
-.sdie { width: 34px; height: 34px; border-radius: 9px 7px 9px 8px; background: #fff; border: 2.5px solid var(--ink); box-shadow: 0 2px 0 var(--ink); display: grid; place-items: center; }
-.sdie svg { width: 84%; height: 84%; }
-.sdie.fresh { animation: pop .3s .6s ease-out both; }
-.sdie.dup { background: var(--x); animation: pop .3s .65s ease-out both, shake .4s .95s both; }   /* hidden until the die has landed */
-.rrrolls.bust .sdie:not(.dup) { animation: vanish .5s 1.1s ease-in both; }
 .rrbtns.one { grid-template-columns: 1fr; }
 @keyframes riskin { 40% { opacity: 0; } to { transform: translateX(-160%) scale(.5); opacity: 0; } }   /* (gone before it reaches the score: never over its numbers) */
 @keyframes riskbump { 0% { transform: scale(1); } 50% { transform: scale(1.22); } 100% { transform: scale(1); } }
 @keyframes riskout { to { transform: translateY(40%); opacity: 0; } }
+/* Risky Rolls (November 2026): scores, the die's numbers, the tray (the die and the pot), the move's line, the buttons:
+   every row a fixed height but the tray, which takes what is left. Its times (--land, --pot, --bank, --lose) are the
+   view's PIG_T, set on .g-risky. */
+.g-risky { width: min(var(--gw), 440px); height: min(var(--gh), 540px); gap: 8px; }
+.g-risky > * { flex: none; }
+.g-risky .pscore { padding: 7px 12px 9px; gap: 5px; min-width: 0; }
+.g-risky .pscore .val { font-size: 28px; flex-wrap: nowrap; }
+.g-risky .pscore .bar { position: relative; height: 13px; border-radius: 999px; }
+.g-risky .pscore .bar i { position: relative; z-index: 1; border-radius: 999px 0 0 999px; box-shadow: 2px 0 0 var(--ink); min-width: 0; }
+.g-risky .pscore .bar i[style^="width:0.00"] { box-shadow: none; }
+.g-risky .pscore.gain .bar i { animation: fill .5s var(--bank) cubic-bezier(.4, 0, .2, 1) both; }
+.rrgh { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(-45deg, var(--x) 0 3px, var(--x-soft) 3px 7px); }   /* this turn's points on the roller's bar: striped, not banked yet */
+.pscore.O .rrgh { background: repeating-linear-gradient(-45deg, #d9a400 0 3px, var(--o-soft) 3px 7px); }
+.rrgh.grow { animation: rrghgrow .25s var(--pot) cubic-bezier(.4, 0, .2, 1) both; }
+.rrgh.lost { animation: rrghlost .4s var(--lose) cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes rrghgrow { from { width: var(--w0); } }
+@keyframes rrghlost { to { width: 0; opacity: 0; } }
+.rrnums { display: grid; grid-template-columns: repeat(var(--n, 8), minmax(0, 1fr)); gap: 5px; height: 34px; }
+.rrnums i { font: 400 19px/1 'Luckiest Guy', 'Arial Black', sans-serif; font-style: normal; display: grid; place-items: center; padding-top: 3px; border: 2.5px solid var(--ink); border-radius: 10px 7px 11px 8px; background: var(--paper); color: var(--ink); }
+.rrnums i.on { background: var(--ink); color: #fff; }
+.rrnums i.new { animation: rrtake .32s var(--land) cubic-bezier(.3, 1.5, .5, 1) both; }
+.rrnums i.dup { background: var(--x); animation: rrdup .5s var(--land) both; }
+.rrnums.clear i.on { animation: rrclear .3s var(--bank) ease-out both; }
+@keyframes rrtake { 0% { background: var(--paper); color: var(--ink); transform: none; } 1% { background: var(--ink); color: #fff; transform: scale(.6); } 60% { transform: scale(1.2); } }
+@keyframes rrdup { 0% { background: var(--ink); transform: none; } 1% { background: var(--x); } 15%, 55% { transform: translateX(-5px) scale(1.15); } 35%, 75% { transform: translateX(5px) scale(1.15); } }
+@keyframes rrclear { to { background: var(--paper); color: var(--ink); } }
+.g-risky .rrtray { flex: 1 1 0; min-height: 0; position: relative; z-index: 2; container-type: size; }
+.rrfelt { position: absolute; inset: 0; overflow: hidden; border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 18px; background: radial-gradient(circle at 34% 46%, var(--sea-2), var(--sea) 70%); box-shadow: 0 4px 0 var(--ink), inset 0 0 0 5px rgba(255, 255, 255, .16), inset 0 10px 0 rgba(22, 18, 16, .1); }
+.rrdie { position: absolute; left: 34%; top: 48%; transform: translate(-50%, -50%); line-height: 0; }
+.rrdie .d3 { --ds: clamp(64px, 60cqh, 118px); --fx: -180%; }
+.rrdie.bust .d3hop { animation: d3hop var(--dur, 560ms) var(--t, 0ms) linear both, rrbustdie .4s var(--land) both; }
+@keyframes rrbustdie { 20%, 60% { transform: translateX(-7px) rotate(-5deg); } 40%, 80% { transform: translateX(7px) rotate(5deg); } }
+.rrpotw { position: absolute; right: 7%; top: 48%; width: clamp(64px, 52cqh, 96px); aspect-ratio: 1; transform: translateY(-50%); }
+.rrpot0 { position: absolute; inset: 0; border-radius: 50%; border: 3px dashed rgba(255, 255, 255, .6); }
+.rrpot, .rrsh { position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center; padding-top: 4px; background: var(--green); color: #fff; border: 3.5px solid var(--ink); box-shadow: 0 5px 0 var(--ink), inset 0 0 0 4px rgba(255, 255, 255, .3); font: 400 clamp(22px, 19cqh, 32px)/1 'Luckiest Guy', 'Arial Black', sans-serif; font-style: normal; font-variant-numeric: tabular-nums; text-shadow: 0 2px 0 rgba(22, 18, 16, .35); --by: calc(-50cqh - 92px); }
+.rrpot.first { animation: rrpotin .3s var(--pot) cubic-bezier(.3, 1.5, .5, 1) both; }
+.rrpot.bump { animation: rrpotbump .3s var(--pot) cubic-bezier(.4, 0, .2, 1) both; }
+.rrpot.bank { animation: rrpotbank var(--bank) cubic-bezier(.5, 0, .3, 1) both; } .rrpot.toX { --bx: -62cqw; } .rrpot.toO { --bx: -12cqw; }
+.rrpot.lost { animation: rrpotshake .14s var(--land) both, tuntil 1ms var(--lose) both; }
+.rrsh { opacity: 0; } .rrsh.l { clip-path: polygon(-10% -10%, 56% -10%, 44% 30%, 58% 52%, 42% 74%, 52% 120%, -10% 120%); } .rrsh.r { clip-path: polygon(56% -10%, 110% -10%, 110% 120%, 52% 120%, 42% 74%, 58% 52%, 44% 30%); }
+.rrsh.l { animation: rrshl .5s var(--lose) cubic-bezier(.5, 0, .9, .6) both; } .rrsh.r { animation: rrshr .5s var(--lose) cubic-bezier(.5, 0, .9, .6) both; }
+.rrfly { position: absolute; left: 34%; top: 48%; z-index: 3; opacity: 0; min-width: 44px; height: 34px; padding: 5px 9px 0; border-radius: 999px; border: 3px solid var(--ink); background: #fff; color: var(--green); font: 400 21px/1 'Luckiest Guy', 'Arial Black', sans-serif; text-align: center; animation: rrfly calc(var(--pot) - var(--land)) var(--land) cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes rrpotin { from { transform: scale(.2); opacity: 0; } }
+@keyframes rrpotbump { 40% { transform: scale(1.22); } }
+@keyframes rrpotbank { 0% { transform: none; opacity: 1; } 22% { transform: scale(1.18); } 82% { opacity: 1; } 100% { transform: translate(var(--bx), var(--by)) scale(.3); opacity: 0; } }
+@keyframes rrpotshake { 25% { transform: translateX(-6px) rotate(-6deg); } 75% { transform: translateX(6px) rotate(6deg); } }
+@keyframes rrshl { 0% { opacity: 0; } 1% { opacity: 1; transform: none; } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-26px, 78px) rotate(-42deg); } }
+@keyframes rrshr { 0% { opacity: 0; } 1% { opacity: 1; transform: none; } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(26px, 84px) rotate(38deg); } }
+@keyframes rrfly { 0% { transform: translate(-50%, -50%) scale(.4); opacity: 0; } 25% { transform: translate(-30%, -130%) scale(1.15); opacity: 1; } 85% { opacity: 1; } 100% { transform: translate(calc(-50% + 41cqw), -50%) scale(.6); opacity: 0; } }
+.rrline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.rrline.ok { color: var(--green); } .rrline.no { color: var(--x); }
+.g-risky .rrb { height: 62px; display: block; padding: 6px 4px 0; line-height: 24px; min-width: 0; white-space: nowrap; overflow: hidden; }
+.g-risky .rrb small { display: block; height: 17px; font: 15px/17px 'Patrick Hand', 'Comic Sans MS', cursive; letter-spacing: 0; }   /* what a roll puts at risk, what a bank makes: always its line, so the label never moves */
+.g-risky .rrb .bpot { animation: markpop .3s var(--pot) ease-out both; }
+@media (prefers-reduced-motion: reduce) { .rrfly, .rrsh, .rrpot.bank, .rrpot.lost, .rrgh.lost { display: none; } }   /* (what only an animation takes away) */
 .face.hit { background: var(--x-soft); color: var(--ink); box-shadow: none; }
 @keyframes facehit { from { background: #fff; color: var(--muted); } }
 @keyframes bustflash { 0%, 100% { background: var(--paper); } 20%, 60% { background: var(--x); } }
 .pot span { color: var(--muted); }
 .die { background: #fff; border: 4px solid var(--ink); box-shadow: 0 6px 0 var(--ink); border-radius: 22px 16px 20px 18px; }
 .die .q { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; color: var(--muted); }
+/* The shared 3-D die (ui/dice.js die3d): a cube (.d3cube) or an octahedron (.d3octa) of flat faces, the face towards the
+   player its number, resting tilted over a soft shadow; .roll throws it in from the side (--fx), turning through its
+   faces (--sx/--sy/--sz), one bounce (46% of --dur: DIE_BOUNCE), landed at --t + --dur. Its size is --ds. */
+.d3 { --ds: 64px; --rx: 21deg; --ry: -14deg; --rz: -4deg; --fx: -150%; --sx: 720deg; --sy: -540deg; --sz: 180deg; position: relative; display: inline-block; width: var(--ds); height: var(--ds); flex: none; }
+.d3.v1 { --fx: 150%; --ry: 14deg; --rz: 5deg; --sx: 540deg; --sy: 720deg; --sz: -180deg; }
+.d3.v2 { --fx: -120%; --rz: 6deg; --sx: 900deg; --sy: 360deg; --sz: 90deg; }
+.d3.v3 { --fx: 120%; --ry: 12deg; --rz: -7deg; --sx: 720deg; --sy: -360deg; --sz: -270deg; }
+.d3octa { --rx: 15deg; --ry: -9deg; --rz: 0deg; } .d3octa.v1 { --ry: 9deg; --rz: 0deg; }
+.d3sh { position: absolute; left: -6%; right: -16%; top: 58%; height: 60%; border-radius: 50%; background: radial-gradient(closest-side, rgba(22, 18, 16, .46), rgba(22, 18, 16, .22) 62%, rgba(22, 18, 16, 0)); }
+.d3hop { position: absolute; inset: 0; perspective: calc(var(--ds) * 5.5); }
+.d3body, .d3solid { position: absolute; inset: 0; transform-style: preserve-3d; }
+.d3body { transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(var(--rz)); }
+.d3f { position: absolute; inset: 0; display: grid; place-items: center; background: #f1e7cf; border: calc(var(--ds) * .055) solid var(--ink); border-radius: 15%; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.d3f svg { width: 86%; height: 86%; display: block; }
+.d3f .d3q { font: 400 calc(var(--ds) * .56)/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--muted); padding-top: .12em; }
+.d3a { background: #fff; transform: translateZ(calc(var(--ds) / 2)); }
+.d3b { transform: rotateY(180deg) translateZ(calc(var(--ds) / 2)); }
+.d3c { transform: rotateY(90deg) translateZ(calc(var(--ds) / 2)); }
+.d3d { transform: rotateY(-90deg) translateZ(calc(var(--ds) / 2)); }
+.d3e { transform: rotateX(90deg) translateZ(calc(var(--ds) / 2)); }
+.d3g { background: #e4d6b4; transform: rotateX(-90deg) translateZ(calc(var(--ds) / 2)); }
+.d3octa .d3solid { transform: rotateX(-35.264deg) rotateY(-45deg); }   /* the octahedron turned so its first face looks at the player, point up */
+.d3t { position: absolute; left: 10.15%; width: 79.7%; height: 69.02%; backface-visibility: hidden; -webkit-backface-visibility: hidden; }   /* a triangular face, its middle on the die's middle */
+.d3t svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.d3t path { fill: #eadcbb; stroke: var(--ink); stroke-width: 6.5; stroke-linejoin: round; } .d3t.on path { fill: #fff; } .d3t.l path { fill: #e0d0aa; }
+.d3t text { font: 400 40px 'Luckiest Guy', 'Arial Black', sans-serif; fill: var(--ink); }
+.d3t.u { top: 3.99%; transform-origin: 50% 66.667%; } .d3t.l { top: 26.99%; transform-origin: 50% 33.333%; }
+.d3t.u.k0 { transform: rotateY(45deg) rotateX(35.264deg) translateZ(calc(var(--ds) * .3253)); } .d3t.l.k0 { transform: rotateY(45deg) rotateX(-35.264deg) translateZ(calc(var(--ds) * .3253)); }
+.d3t.u.k1 { transform: rotateY(135deg) rotateX(35.264deg) translateZ(calc(var(--ds) * .3253)); } .d3t.l.k1 { transform: rotateY(135deg) rotateX(-35.264deg) translateZ(calc(var(--ds) * .3253)); }
+.d3t.u.k2 { transform: rotateY(225deg) rotateX(35.264deg) translateZ(calc(var(--ds) * .3253)); } .d3t.l.k2 { transform: rotateY(225deg) rotateX(-35.264deg) translateZ(calc(var(--ds) * .3253)); }
+.d3t.u.k3 { transform: rotateY(315deg) rotateX(35.264deg) translateZ(calc(var(--ds) * .3253)); } .d3t.l.k3 { transform: rotateY(315deg) rotateX(-35.264deg) translateZ(calc(var(--ds) * .3253)); }
+.d3.roll { animation: d3slide var(--dur, 560ms) var(--t, 0ms) cubic-bezier(.25, .6, .45, 1) both; }
+.d3.roll .d3hop { animation: d3hop var(--dur, 560ms) var(--t, 0ms) linear both; }
+.d3.roll .d3body { animation: d3spin var(--dur, 560ms) var(--t, 0ms) cubic-bezier(.3, .55, .4, 1) both; }
+.d3.roll .d3sh { animation: d3shade var(--dur, 560ms) var(--t, 0ms) linear both; }
+@keyframes d3slide { 0% { transform: translateX(var(--fx)); opacity: 0; } 7% { opacity: 1; } 100% { transform: none; opacity: 1; } }
+@keyframes d3hop { 0% { transform: translateY(-135%); animation-timing-function: cubic-bezier(.45, 0, .85, .55); } 46% { transform: translateY(0); animation-timing-function: cubic-bezier(.15, .55, .5, 1); } 71% { transform: translateY(-24%); animation-timing-function: cubic-bezier(.5, 0, .9, .6); } 100% { transform: none; } }
+@keyframes d3spin { from { transform: rotateX(calc(var(--rx) + var(--sx))) rotateY(calc(var(--ry) + var(--sy))) rotateZ(calc(var(--rz) + var(--sz))); } }
+@keyframes d3shade { 0% { transform: scale(.4); opacity: .2; } 46% { transform: scale(1); opacity: 1; } 71% { transform: scale(.8); opacity: .65; } 100% { transform: none; opacity: 1; } }
 .dielab { color: var(--muted); font-size: 17px; }
 .dig { background: #fff; border: 2.5px solid var(--ink); border-radius: 10px 7px 11px 8px; box-shadow: 0 3px 0 var(--ink); padding-top: 3px; position: relative; }
 @keyframes digopen {
@@ -1728,6 +1864,49 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .bjres.none { font: 700 14px 'Patrick Hand', sans-serif; background: rgba(255, 248, 232, .85); border-color: transparent; }
 .bjres.bj, .bjres.win { background: var(--o); }
 .bjres.bust, .bjres.lose { background: #f1c8bf; }
+/* 21's table (the polish sweep, November 2026): a railed felt with a painted arc under the dealer and a box for the hand in play, the shoe a stack
+   in the corner; totals in pills that count on as each card turns (bj/view.js bjTots: .tin from --f, .tout until --u, stacked in one place); the
+   result pops in the middle line in its player's colour (a loss or a bust in ink) as the last card lands; a hand swept off as the next is dealt
+   (.bjout); the pressed button stays lit while its move plays. */
+.bjfelt { position: relative; padding: 13px 14px 12px; background: radial-gradient(ellipse at 50% 30%, #4a9a55, #2f7039 62%, #245a2e); box-shadow: 0 5px 0 var(--ink), inset 0 0 0 5px #a06a35, inset 0 0 0 7.5px var(--ink), inset 0 16px 20px -10px rgba(0, 0, 0, .4); }
+.bjfelt::before { content: ''; position: absolute; left: 6%; right: 6%; top: 0; height: 50%; border: 2.5px solid rgba(255, 248, 232, .2); border-top: 0; border-radius: 0 0 50% 50% / 0 0 100% 100%; pointer-events: none; }
+.bjfelt > .bjstack { position: relative; z-index: 1; }   /* (over the arc and the shoe: a long hand's last card lies on the shoe's corner, never under it) */
+.bjfelt .bjrow { --cw: clamp(40px, min(calc((var(--gh) - 275px) / 2.8), calc((min(var(--gw), 440px) - 62px) / 3.9)), 88px); }   /* (two hands, their labels and the result line in the felt's height, with the tallies above and the buttons below) */
+.bjfelt .bjlab { font-size: 15px; align-items: center; min-height: 24px; }
+.bjfelt .bjlab b.X, .bjfelt .bjlab b.O { border: 2px solid var(--ink); padding: 0 7px; max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bjtots { display: inline-grid; justify-items: start; align-items: center; min-height: 24px; }
+.bjtots > .bjtot { grid-area: 1 / 1; }
+.bjfelt .bjtot { font: 400 16px/1 'Luckiest Guy', 'Arial Black', sans-serif; padding: 5px 10px 2px; white-space: nowrap; letter-spacing: .02em; }
+.bjfelt .bjtot.over { background: #d6301e; }
+.bjfelt .bjtot.top { background: var(--gold); color: var(--ink); }
+.bjtot.tin { animation: bjtotin .26s var(--f, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }
+.bjtot.tout { animation: tuntil 1ms var(--u, 0ms) both; }
+.bjtot.tin.tout { animation: bjtotin .26s var(--f, 0ms) cubic-bezier(.3, 1.5, .5, 1) both, tuntil 1ms var(--u, 0ms) both; }
+@keyframes bjtotin { from { visibility: hidden; opacity: 0; transform: scale(.5); } to { opacity: 1; transform: none; } }
+.bjfelt .bjrow.player .bjcards { position: relative; }
+.bjfelt .bjrow.player .bjcards::before { content: ''; position: absolute; inset: -5px -7px -4px; border-radius: 12px; border: 2px dashed rgba(255, 248, 232, .3); background: rgba(0, 0, 0, .1); pointer-events: none; }
+.bjcards.hop { animation: bjhop .5s var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+.bjcards.shk { animation: cardshake .4s var(--t, 0ms) both; }
+@keyframes bjhop { 0%, 100% { transform: none; } 35% { transform: translateY(-9px) scale(1.04); } 70% { transform: translateY(2px); } }
+.bjset.bjout { animation: bjclear .2s var(--u, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes bjclear { from { transform: none; opacity: 1; } to { transform: translate(-34px, -8px) rotate(-4deg); opacity: 0; visibility: hidden; } }
+.bjfelt .bjres { min-height: 36px; font-size: 19px; padding: 4px 16px 1px 6px; box-shadow: 0 3px 0 var(--ink); letter-spacing: .02em; }
+.bjfelt .bjres .pc { width: 26px; height: 26px; padding: 2px; background: var(--paper); border: 2px solid var(--ink); border-radius: 50%; }
+.bjfelt .bjres.none { visibility: hidden; }
+.bjfelt .bjres.push { background: var(--paper); color: var(--ink); }
+.bjfelt .bjres.win.X, .bjfelt .bjres.bj.X { background: var(--x); color: var(--paper); }
+.bjfelt .bjres.win.O, .bjfelt .bjres.bj.O { background: var(--o); color: var(--ink); }
+.bjfelt .bjres.bj { box-shadow: 0 3px 0 var(--ink), 0 0 0 4px var(--gold); }
+.bjfelt .bjres.bust, .bjfelt .bjres.lose { background: var(--ink); color: var(--paper); }
+.bjfelt .bjres.appear { animation: bjpop .42s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }
+@keyframes bjpop { from { opacity: 0; transform: scale(.4) rotate(-5deg); } 55% { opacity: 1; transform: scale(1.14) rotate(1.5deg); } to { opacity: 1; transform: none; } }
+.bjbtns .big { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.bjbtns .big svg, .bjbtns .big.chosen svg { width: 28px; height: 28px; flex: none; fill: none; }
+.bjbtns .big:disabled:not(.chosen) { opacity: .4; }
+.g-bj .plc.flip .pcin, .g-bus .plc.flip .pcin { animation-name: pcflip3; }   /* the turn with a lift: the card comes up off the table as it goes over */
+@keyframes pcflip3 { from { transform: rotateY(180deg); } 50% { transform: rotateY(90deg) scale(1.12); } to { transform: rotateY(0); } }
+@media (max-height: 640px) { .bjfelt .bjres { min-height: 32px; font-size: 17px; } }
+@media (prefers-reduced-motion: reduce) { .bjtot.tout, .bjset.bjout { display: none; } }
 
 /* Ride the Bus: each player's four slots, the deck and the card drawn, the question */
 .g-bus { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
@@ -1936,16 +2115,6 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .trun.bscore .tr b { font: 400 9cqw/1 'Luckiest Guy', sans-serif; text-align: center; } .trun.bscore .tr i { height: 7cqw; border-width: 1.4cqw; }
 .trun.bscore .tr span { font: 400 9cqw/1 'Luckiest Guy', sans-serif; font-variant-numeric: tabular-nums; min-width: 17cqw; text-align: right; } .trun.bscore .tr small { font-size: 6cqw; color: var(--muted); }
 /* Craps: the point strip with its puck, the felt where the dice tumble, the rolls so far */
-.craps { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; justify-content: center; }
-.cpts { position: relative; display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; width: min(100%, 360px); margin: 0 auto; }
-.cpts > i { font-style: normal; height: 40px; display: grid; place-items: center; border: 3px solid var(--ink); border-radius: 10px; background: #2f7a3a; color: #fff; font-family: 'Luckiest Guy', sans-serif; font-size: 18px; padding-top: 3px; }
-.cpts > i.off { background: transparent; border-style: dashed; border-color: var(--muted); }
-.cpuck { position: absolute; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; border: 3px solid var(--ink); background: #1b1b1b; color: #fff; display: grid; place-items: center; font: 800 10px Nunito, sans-serif; box-shadow: 0 3px 0 var(--ink); z-index: 1; }
-.cpuck.on { background: #fff; color: var(--ink); }
-.cpuck.move { animation: puckon .25s var(--t, 0ms) cubic-bezier(.3, 1.4, .5, 1) both; }
-.cpuck.moveoff { animation: puckoff .25s var(--t, 0ms) cubic-bezier(.3, 1.4, .5, 1) both; }
-@keyframes puckoff { from { left: var(--from); background: #fff; color: var(--ink); } 60% { background: #fff; color: var(--ink); } to { left: var(--to); background: #1b1b1b; color: #fff; } }
-@keyframes puckon { from { left: var(--from); background: #1b1b1b; color: #fff; } 60% { background: #1b1b1b; color: #fff; } to { left: var(--to); background: #fff; color: var(--ink); } }
 .cfelt { position: relative; height: 150px; width: min(100%, 360px); margin: 0 auto; border: 3px solid var(--ink); border-radius: 18px; background: radial-gradient(circle at 50% 45%, #3b9a4b, #2a7238); overflow: hidden; display: grid; place-items: center; }
 .cpair { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 18px; }
 .cpair .cdie { width: 64px; height: 64px; border-radius: 16px; border-width: 3px; box-shadow: 0 5px 0 var(--ink); }
@@ -1959,6 +2128,54 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .crolls { display: flex; flex-wrap: nowrap; gap: 6px; justify-content: center; height: 26px; overflow: hidden; }   /* one row, always this tall: the round's last eight rolls */
 .crolls.long { justify-content: flex-end; }   /* a long round: the latest rolls on show, the first ones off the left */
 .crolls span { min-width: 26px; height: 26px; padding: 0 6px; border-radius: 13px; background: var(--panel-2); border: 2px solid var(--ink); display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+/* Krabs (November 2026): the strip of totals with what wins and what is out, the marker on the number to roll again,
+   the felt with the 3-D dice and each roll's total, the round's rolls, the result's line (craps/view.js). */
+.krabs { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 7px; min-height: 0; width: min(100%, 400px); margin: 0 auto; }
+.krabs > * { flex: none; }
+.kstrip { display: flex; flex-direction: column; gap: 2px; }
+.krow, .krail { position: relative; }
+.krow { display: grid; grid-template-columns: minmax(0, 1fr); height: 44px; } .krail { height: 24px; }
+.kcells { grid-area: 1 / 1; display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 3px; }
+.kcells i { font: 400 17px/1 'Luckiest Guy', 'Arial Black', sans-serif; font-style: normal; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding-top: 4px; border: 2.5px solid var(--ink); border-radius: 9px 7px 10px 8px; background: var(--paper); color: var(--ink); min-width: 0; }
+.kcells i svg { width: 12px; height: 12px; flex: none; }
+.kcells i.w { background: var(--green); color: #fff; } .kcells i.o { background: var(--ink); color: #fff; }
+.kcells i.x { opacity: .38; }
+.khit { position: absolute; top: -3px; bottom: -3px; width: calc(100% / 11 + 3px); margin-left: calc(-50% / 11 - 1.5px); border: 3.5px solid var(--x); border-radius: 12px 9px 13px 10px; box-shadow: 0 0 0 2px var(--paper); pointer-events: none; }
+.khit.O { border-color: #d9a400; }
+.khit.late { animation: khit .28s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }
+.khit.late.gone { animation: khit .28s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both, tuntil 1ms var(--t2, 0ms) both; }
+@keyframes khit { from { transform: scale(1.7); opacity: 0; } }
+.kpuck { position: absolute; top: 0; width: 24px; height: 24px; margin-left: -12px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--x); box-shadow: 0 2px 0 var(--ink); display: grid; place-items: center; z-index: 2; }
+.kpuck.O { background: var(--o); } .kpuck svg { width: 14px; height: 14px; fill: #fff; stroke: var(--ink); stroke-width: 2.2; stroke-linejoin: round; paint-order: stroke; }
+.kpuck::before { content: ''; position: absolute; left: 50%; top: -7px; margin-left: -5px; border: 5px solid transparent; border-top: 0; border-bottom: 6px solid var(--ink); }   /* (its pointer, up at its number) */
+.kpuck.fly { animation: kpuck var(--d, 420ms) var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes kpuck { 0% { left: 50%; transform: translateY(96px) scale(.4); opacity: 0; } 25% { opacity: 1; transform: translateY(60px) scale(1.5); } 85% { transform: translateY(-3px) scale(1.1); } 100% { left: var(--to); transform: none; opacity: 1; } }
+.krabs .kfelt { flex: 1 1 0; min-height: 0; max-height: 250px; position: relative; container-type: size; overflow: hidden; border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 18px; background: radial-gradient(circle at 50% 45%, #3f9f50, #2a7238 75%); box-shadow: 0 4px 0 var(--ink), inset 0 0 0 5px rgba(255, 255, 255, .14), inset 0 10px 0 rgba(22, 18, 16, .1); }
+.kfelt::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; }
+.kfelt.win::after { opacity: 1; box-shadow: inset 0 0 0 5px #ffe066, inset 0 0 34px 6px rgba(255, 224, 102, .55); }
+.kfelt.lose::after { opacity: 1; background: rgba(22, 18, 16, .3); }
+.kfelt.late::after { animation: appear .3s var(--d, 0ms) ease-out both; }
+.kpair { position: absolute; inset: 0; --ds: clamp(48px, 40cqh, 72px); }
+.kpair.gone { animation: kpairout .12s var(--t2, 0ms) ease-in forwards; }
+@keyframes kpairout { to { opacity: 0; transform: scale(.9); } }
+.kdice { position: absolute; left: 50%; top: 47%; transform: translate(-50%, -50%); display: flex; gap: calc(var(--ds) * .34); margin-left: calc(var(--ds) * -.36); line-height: 0; }
+.kd { display: block; } .kd .d3 { --ds: inherit; }
+.kpair.idle .kd { opacity: .92; }
+.kpair.cheer .kd { animation: khop .9s var(--d, 0ms) cubic-bezier(.3, .6, .4, 1); } .kpair.cheer .kd.b { animation-delay: calc(var(--d, 0ms) + .14s); }
+.kpair.cheer .kdice::before, .kpair.cheer .kdice::after { content: '\2726'; position: absolute; top: -18px; font-size: 24px; line-height: 1; color: #ffe066; text-shadow: var(--ol1); opacity: 0; animation: csparkle 1.1s var(--d, 0ms) both; }
+.kpair.cheer .kdice::before { left: -14px; } .kpair.cheer .kdice::after { right: -14px; animation-delay: calc(var(--d, 0ms) + .15s); }
+.kpair.sad .kd { animation: ksad .5s var(--d, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes khop { 0%, 100% { transform: none; } 22% { transform: translateY(-38%) rotate(-8deg); } 44% { transform: none; } 66% { transform: translateY(-20%) rotate(6deg); } 88% { transform: none; } }
+@keyframes ksad { 0% { filter: none; transform: none; } 25% { transform: translateX(-4px); } 50% { transform: translateX(4px); } 100% { filter: grayscale(1) brightness(.72); transform: translateY(4px); } }
+.kpair.sad .kd { filter: grayscale(1) brightness(.72); transform: translateY(4px); }
+.ktot { position: absolute; left: calc(50% + var(--ds) * 1.1); top: 47%; width: calc(var(--ds) * .82); height: calc(var(--ds) * .82); margin-top: calc(var(--ds) * -.41); border-radius: 50%; display: grid; place-items: center; padding-top: 4px; border: 3px solid var(--ink); background: var(--paper); color: var(--ink); box-shadow: 0 3px 0 var(--ink); font: 400 calc(var(--ds) * .44)/1 'Luckiest Guy', 'Arial Black', sans-serif; font-variant-numeric: tabular-nums; }
+.ktot.w { background: var(--green); color: #fff; } .ktot.o { background: var(--ink); color: #fff; }
+.ktot.p.X { box-shadow: 0 3px 0 var(--ink), 0 0 0 3px var(--paper), 0 0 0 7px var(--x); } .ktot.p.O { box-shadow: 0 3px 0 var(--ink), 0 0 0 3px var(--paper), 0 0 0 7px var(--o); }
+.ktot.x { opacity: .8; }
+.krabs .crolls { gap: 5px; } .krabs .crolls span { font: 400 14px/1 'Luckiest Guy', 'Arial Black', sans-serif; padding-top: 2px; background: var(--paper); }
+.krabs .crolls span.w { background: var(--green); color: #fff; } .krabs .crolls span.o { background: var(--ink); color: #fff; } .krabs .crolls span.p { box-shadow: 0 0 0 2px var(--muted); }
+.krabs .arcres { font-size: 18px; line-height: 1.1; }   /* (its 40px holds two lines: a long name before "7 on the first roll: a winner!") */
+@media (prefers-reduced-motion: reduce) { .kpair.cheer .kdice::before, .kpair.cheer .kdice::after, .kpair.gone, .khit.gone { display: none; } }   /* (what only an animation takes away) */
 .tpong { width: 100%; display: grid; place-items: center; } .tpong svg { width: 92%; height: auto; overflow: visible; }   /* Cup Pong's miniature: the table, a triangle of cups at each end */
 .tpong .tbl { fill: #3b8a4f; stroke: var(--ink); stroke-width: 2.4; } .tpong .mid { stroke: rgba(255,255,255,.55); stroke-width: 1.4; stroke-dasharray: 3 3; }
 .tpong .c { fill: var(--paper); stroke: var(--ink); stroke-width: 2.2; } .tpong .c.X.in { fill: var(--x); } .tpong .c.O.in { fill: var(--o); }   /* a cup sunk: filled in the thrower's colour */
@@ -2175,7 +2392,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 /* Risky Spins: two wheels (a square dealt before November 2026 has three: .n3), each segment the size of its chance; the pointer on top */
 .wheels { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 0; container-type: size; }
 .rwrow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.rwrow.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; width: min(100%, max(200px, calc(200cqh - 326px))); margin: 0 auto; }   /* two wheels as big as the room allows: the row's height left by the pot, the result and Bank (a wheel is its width and a little more tall), never wider than the game */
+.rwrow.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; width: min(100%, max(200px, calc(200cqh - 374px))); margin: 0 auto; }   /* two wheels as big as the room allows: the row's height left by the pot, the result and Bank (a wheel is its width and a little more tall), never wider than the game */
 .rwrow.n2 .rwheel { padding: 10px 8px 8px; border-radius: 18px; }
 .rwrow.n2 .wptr { top: -8px; width: 22px; height: 18px; margin-left: -11px; }
 .rwheel { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 6px; border: 3px solid var(--ink); border-radius: 14px; background: #fff; box-shadow: 0 3px 0 var(--ink); min-width: 0; }
@@ -2435,6 +2652,56 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .big.bus-down, .big.bus-out { background: var(--o); color: var(--ink); }
 .big[class*="bus-suit"] svg { width: 30px; height: 30px; fill: var(--ink); }
 .big[class*="bus-suit"].red svg { fill: #d6301e; }
+/* Ride the Bus (the polish sweep, November 2026): each player's row is a route: four stops (the kept card, or the round's picture) over a road, their bus
+   (.busbus, --k its stop) riding to the next stop as a right card flies there (.go, from --fl) and a flag at the end; the stage a felt with the deck, the
+   drawn card's spot and the result line (.busline); every answer's button carries its picture and keeps its own look when chosen (ringed in its player's colour). */
+.g-bus .busrow { --cw: clamp(32px, calc(var(--gh) / 11.6), 46px); --gap: 5px; padding: 5px 8px 4px; }
+.busway { position: relative; display: flex; flex-direction: column; gap: 2px; padding-right: 22px; }   /* (the flag's room past the last stop) */
+.g-bus .busslots { gap: var(--gap); }
+.g-bus .bsl-ico { width: 72%; height: 72%; }
+.g-bus .bsl-ico svg.bi { display: block; }
+.g-bus .busrow.X .bsl.next { background: color-mix(in srgb, var(--x) 18%, var(--paper)); box-shadow: 0 0 0 3px var(--x); }
+.g-bus .busrow.O .bsl.next { background: color-mix(in srgb, var(--o) 30%, var(--paper)); box-shadow: 0 0 0 3px var(--o); }
+.busroad { position: relative; display: block; height: 21px; margin-right: -22px; }
+.busroad::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 8px; border-radius: 4px; background: var(--ink); }
+.busroad::after { content: ''; position: absolute; left: 6px; right: 6px; bottom: 3.25px; border-top: 1.5px dashed var(--paper); opacity: .75; }
+.busbus { position: absolute; z-index: 1; left: calc(var(--k, 0) * (var(--cw) + var(--gap)) + var(--cw) / 2 - 16px); bottom: 2px; width: 32px; height: 19px; --step: calc(var(--cw) + var(--gap)); }
+.busrow.done .busbus { left: auto; right: -2px; --step: calc(var(--cw) / 2 + 8px); }   /* all four: parked at the flag */
+.busbus svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.busbus .bb { stroke: var(--ink); stroke-width: 2; } .busbus.X .bb { fill: var(--x); } .busbus.O .bb { fill: var(--o); }
+.busbus .bw { fill: var(--paper); stroke: var(--ink); stroke-width: 1; } .busbus .bt { fill: var(--ink); stroke: var(--paper); stroke-width: 1; }
+.busbus.go { animation: busgo .48s var(--fl, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes busgo { from { transform: translateX(calc(-1 * var(--step))); } 45% { transform: translate(calc(-.5 * var(--step)), -7px) rotate(-7deg); } to { transform: none; } }
+.busbus.jolt { animation: cardshake .4s var(--t, 0ms) both; }
+.busflag { position: absolute; right: 1px; top: calc(-1 * (var(--cw) * .7 + 13px)); width: 18px; height: 22px; color: var(--ink); }   /* (beside the stops, half way up them) */
+.busflag svg { display: block; width: 100%; height: 100%; overflow: visible; } .busflag .ff { fill: var(--paper); stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; }
+.busflag.on .ff { fill: var(--green); }
+.busflag.wave { transform-origin: 25% 90%; animation: busflag .55s var(--ld, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }
+.busflag.wave .ff { animation: busflagon 1ms var(--ld, 0ms) both; }
+@keyframes busflag { from { transform: none; } 35% { transform: scale(1.5) rotate(-14deg); } 70% { transform: scale(1.15) rotate(8deg); } to { transform: none; } }
+@keyframes busflagon { from { fill: var(--paper); } }
+.busrow.fresh .busslot { animation: buswave .42s calc(var(--ld, 0ms) + var(--i, 0) * 50ms) cubic-bezier(.4, 0, .2, 1) both; }   /* the fourth card home: the whole hand hops, stop by stop */
+@keyframes buswave { 0%, 100% { transform: none; } 40% { transform: translateY(-9px); } }
+.g-bus .busstage { flex-direction: column; gap: 2px; padding: 8px 10px 5px; container-type: size; border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 14px; background: radial-gradient(ellipse at 50% 32%, #43a09b, #2b7370 64%, #235e5c); box-shadow: 0 5px 0 var(--ink), inset 0 0 0 4px rgba(255, 248, 232, .14), inset 0 16px 18px -10px rgba(0, 0, 0, .35); }
+.bustable { display: flex; align-items: center; justify-content: center; gap: 22px; padding-top: 7px; --cw: clamp(30px, calc((100cqh - 50px) / 1.4), 96px); }   /* (the cards as tall as the felt leaves over its result line: .busstage is their size container) */
+.g-bus .busdeck::before { content: ''; position: absolute; inset: 6px -4px -7px 4px; border-radius: 8px; background: rgba(0, 0, 0, .28); }   /* (the deck's shadow on the felt) */
+.g-bus .busdeck .plc:nth-child(2) { left: 3px; top: -3px; } .g-bus .busdeck .plc:nth-child(3) { left: 6px; top: -6px; }
+.g-bus .busspot::before { content: ''; position: absolute; inset: 0; border-radius: calc(var(--cw) * .14); border: 2.5px dashed rgba(255, 248, 232, .35); background: rgba(0, 0, 0, .08); }
+.g-bus .busdrawn { --sx: calc(-1 * var(--cw) - 16px); --sy: -6px; }
+.g-bus .busmark.no { background: var(--ink); }
+.busline { display: grid; place-items: center; flex: none; height: 32px; }
+.busres { font: 400 17px/1 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; padding: 6px 14px 3px; border: 3px solid var(--ink); border-radius: 999px; box-shadow: 0 3px 0 var(--ink); white-space: nowrap; }
+.busres.ok { background: var(--green); color: #fff; } .busres.no { background: var(--ink); color: var(--paper); }
+.busres.appear { animation: bjpop .42s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }
+.busask .big { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.busask .big svg.bi { width: 30px; height: 30px; flex: none; fill: none; }
+.busask .big .bpair { display: inline-flex; gap: 1px; flex: none; } .busask .big .bpair svg { width: 21px; height: 21px; fill: currentColor; }
+.busask .big.bus-up, .busask .big.bus-in, .busask .big.chosen.bus-up, .busask .big.chosen.bus-in { background: var(--sky); color: var(--ink); }
+.busask .big.bus-down, .busask .big.bus-out, .busask .big.chosen.bus-down, .busask .big.chosen.bus-out { background: var(--sea); color: var(--paper); }
+.busask .big.chosen.bus-red { background: #d6301e; color: var(--paper); } .busask .big.chosen.bus-black { background: var(--ink); color: var(--paper); }
+.busask .big.chosen[class*="bus-suit"] { background: var(--paper); color: var(--ink); }
+.busask .big.chosen.X { box-shadow: 0 0 0 3px var(--paper), 0 0 0 7px var(--x); } .busask .big.chosen.O { box-shadow: 0 0 0 3px var(--paper), 0 0 0 7px var(--o); }
+@media (max-height: 600px) { .g-bus .busrow { --cw: clamp(28px, calc(var(--gh) / 13.5), 46px); } .g-bus .busask p { font-size: 17px; } .g-bus .busask .big { height: 54px; } .g-bus .busline { height: 28px; } .g-bus .busres { font-size: 15px; padding: 5px 12px 2px; } .g-bus .bustable { --cw: clamp(30px, calc((100cqh - 40px) / 1.4), 72px); } }   /* (a short phone: the route, the question and the buttons give the felt its room) */
 
 /* Roulette: the wheel (25 pockets), the hits, the betting board */
 .g-rl { width: min(var(--gw), 440px); height: var(--gh); display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
@@ -2459,16 +2726,27 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .rlwheel .hub { fill: #a8703f; stroke: var(--ink); stroke-width: 2.5; }
 .rlwheel .spoke { stroke: #e9d7b0; stroke-width: 5; stroke-linecap: round; }
 .rlwheel .cap { fill: var(--o); stroke: var(--ink); stroke-width: 2.5; }
-.rlwheel .ball { fill: #fff; stroke: var(--ink); stroke-width: 2; }
+.rlwheel .ball .bb { fill: #fff; stroke: var(--ink); stroke-width: 2; } .rlwheel .ball .bsh { fill: rgba(22, 18, 16, .32); } .rlwheel .ball .bhl { fill: #e2dacb; }
+.rlwheel .shd { fill: rgba(22, 18, 16, .2); } .rlwheel .rin { fill: none; stroke: var(--ink); stroke-width: 1.6; } .rlwheel .cone { fill: #b98250; stroke: rgba(22, 18, 16, .3); stroke-width: 1.2; } .rlwheel .caph { fill: rgba(255, 255, 255, .55); }
+/* the picks on the wheel: each picked pocket's stretch of the rim in its picker's colour; with a whole pick, the pockets nobody picked washed out; the pocket that came up ringed if it is a hit */
+.rlwheel .rlpk { fill: none; stroke-width: 5.6; } .rlwheel .rlpk.X { stroke: var(--x); } .rlwheel .rlpk.O { stroke: var(--o); }
+.rlwheel .rloff { fill: rgba(244, 230, 200, .62); }
+.rlwheel .rlhit { fill: none; stroke: #fff; stroke-width: 4; stroke-linejoin: round; transform-box: fill-box; transform-origin: center; }
 .rlwheel .ptr { fill: var(--o); stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; }
 .rlw, .rlb { transform-box: fill-box; transform-origin: center; }
 .rlw { transform: rotate(var(--w)); }
-.rlwheel.spin .rlw { animation: rlwheel 2.7s cubic-bezier(.2, .62, .3, 1) both; }
-.rlwheel.spin .rlb { animation: rlball 2.7s cubic-bezier(.15, .55, .25, 1) both; }
-.rlwheel.spin .ball { animation: rldrop 3.15s linear both; }
-@keyframes rlwheel { from { transform: rotate(calc(var(--w) - 540deg)); } to { transform: rotate(var(--w)); } }
+/* the spin (rl/view.js RLV holds the same figures: the ball's clicks are timed from them; tests/ui/wheel-spin.test.mjs): the wheel
+   winds back a touch and turns on from the pocket it rested on (--w0) to the new one under the pointer (--w), slowing all the way
+   (--sp: RLT.spin); the ball leaves its pocket for the track, runs the other way, drops in as the wheel stops, hops once and lies
+   still (--st: RLT.spin + RLT.settle, the moment of the result) */
+.rlwheel.spin .rlw { animation: rlwheel var(--sp, 2.7s) linear both; }
+.rlwheel.spin .rlb { animation: rlball var(--sp, 2.7s) cubic-bezier(.15, .55, .25, 1) both; }
+.rlwheel.spin .ball { animation: rldrop var(--st, 3s) linear both; }
+.rlwheel.spin.fresh .ball { animation-name: rldrop0; }
+@keyframes rlwheel { 0% { transform: rotate(var(--w0)); animation-timing-function: cubic-bezier(.45, 0, .55, 1); } 6% { transform: rotate(calc(var(--w0) - 10deg)); animation-timing-function: cubic-bezier(.16, .6, .25, 1); } 100% { transform: rotate(var(--w)); } }
 @keyframes rlball { from { transform: rotate(1080deg); } to { transform: rotate(0); } }
-@keyframes rldrop { 0%, 76% { transform: translateY(-21px); } 86% { transform: translateY(-3px); } 92% { transform: translateY(-9px); } 100% { transform: none; } }
+@keyframes rldrop { 0% { transform: none; animation-timing-function: cubic-bezier(.3, 0, .2, 1); } 5% { transform: translateY(-21px); } 78% { transform: translateY(-21px); animation-timing-function: cubic-bezier(.5, 0, .9, .6); } 88% { transform: translateY(1.5px); animation-timing-function: cubic-bezier(.2, .6, .4, 1); } 94% { transform: translateY(-6px); animation-timing-function: cubic-bezier(.6, 0, .9, .6); } 100% { transform: none; } }
+@keyframes rldrop0 { 0% { transform: translateY(-21px); opacity: 0; } 3% { opacity: 1; } 78% { transform: translateY(-21px); animation-timing-function: cubic-bezier(.5, 0, .9, .6); } 88% { transform: translateY(1.5px); animation-timing-function: cubic-bezier(.2, .6, .4, 1); } 94% { transform: translateY(-6px); animation-timing-function: cubic-bezier(.6, 0, .9, .6); } 100% { transform: none; } }
 .rlres { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted); height: 36px; flex: none; }
 .rlres b { color: var(--ink); }
 .rlres > span:not(.rlnum) { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 16px; }   /* the spin's bets: two lines at most, inside the tallies' column (never under the wheel) */
@@ -2502,6 +2780,42 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .rlrow.top .rlsay { grid-column: 2 / -1; align-self: center; text-align: left; padding-left: 6px; }
 .rln:disabled, .rlg:disabled, .rlz:disabled { opacity: 1; filter: saturate(.75); }
 .rlsay { margin: 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--muted); flex: none; }
+/* Little Wheel, the polish pass (November 2026). --pc: the picker's colour (the mover's; a shared spin's cells carry their own,
+   .mX / .mO). --rc: a cell's height, from the room (30px on the shortest phones to 38px); the wheel takes what the board leaves. */
+.g-rl { --pc: var(--x); --pct: #fff; --rlw: min(calc(min(var(--gw), 440px) * .54), 250px); --rc: clamp(30px, calc((var(--gh) - 150px - var(--rlw) * 1.04) / 4), 40px); } .g-rl.pc-O { --pc: var(--o); --pct: var(--ink); }
+.g-rl .mX { --pc: var(--x); --pct: #fff; } .g-rl .mO { --pc: var(--o); --pct: var(--ink); }
+.g-rl .rlwrap { width: clamp(84px, min(calc((var(--gh) - 150px - 4 * var(--rc)) / 1.04), var(--rlw)), 250px); }   /* (--rlw: a little over half the width, so a name keeps its room beside it) */
+.g-rl .rlwheel .ptr { fill: var(--pc); } .g-rl .rlwheel .cap { fill: #f0e2bd; }   /* the pointer in the mover's colour; the cap plain (never a player's colour) */
+.g-rl .ctals.col { row-gap: 6px; }
+.g-rl .rlspins { justify-items: start; padding-left: 2px; }
+.g-rl .rln, .g-rl .rlg, .g-rl .rlz { height: var(--rc); font-size: clamp(14px, calc(var(--rc) * .48), 18px); }
+.g-rl .rlg { font-size: 13px; }
+/* a picked number: a white chip ringed in the picker's colour, its number in its pocket's colour, lifted off the board;
+   a picked group: the picker's colour; the one just tapped pops (its own moment: view.js rlDraft.pop) */
+.g-rl .rln.on, .g-rl .rlz.on { background: #fff; border-color: var(--pc); box-shadow: 0 0 0 2px var(--pc), 0 3.5px 0 2px var(--ink); transform: translateY(-2px); z-index: 1; }
+.g-rl .rln.r.on { color: #d6301e; } .g-rl .rln.b.on { color: var(--ink); } .g-rl .rlz.on { color: #2f8a3c; }
+.g-rl .rlg.on { background: var(--pc); color: var(--pct); box-shadow: 0 0 0 2.5px var(--pc); }
+.g-rl .rln.mX.mO { border-color: var(--x); box-shadow: 0 0 0 3px var(--o), 0 3.5px 0 3px var(--ink); }
+.g-rl .rln.pop, .g-rl .rlz.pop { animation: rlpick .26s cubic-bezier(.4, 0, .2, 1) both; } .g-rl .rlg.pop { animation: rlpickg .26s cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes rlpick { 0% { transform: translateY(0) scale(.86); } 55% { transform: translateY(-4px) scale(1.14); } 100% { transform: translateY(-2px) scale(1); } }
+@keyframes rlpickg { 0% { transform: scale(.9); } 55% { transform: scale(1.1); } 100% { transform: none; } }
+.g-rl .rln.landing, .g-rl .rlz.landing { animation: rlland .5s calc(var(--t, 0ms) + 400ms) cubic-bezier(.4, 0, .2, 1) both; }
+/* what cannot be tapped, and what nobody picked once a pick is whole: dimmed (a pick always at full strength) */
+.g-rl .rln:disabled, .g-rl .rlg:disabled, .g-rl .rlz:disabled { filter: none; }
+.g-rl.dim .rln:not(.on):not(.landing), .g-rl.dim .rlg:not(.on), .g-rl.dim .rlz:not(.on):not(.landing) { opacity: .45; }
+/* the result: the number's chip and the word beside the tallies; HIT in the hitter's colour with a burst, MISS plain */
+.g-rl .rlres.hit, .g-rl .rlres.miss { font: 400 18px/1 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.g-rl .rlres.hit > span:not(.rlnum), .g-rl .rlres.miss > span:not(.rlnum) { display: block; padding-top: 3px; line-height: 1; }
+.g-rl .rlres.hit > span:not(.rlnum) { color: var(--ink); }
+.g-rl .rlbigslot { position: relative; }
+.g-rl .rlbig.hit, .g-rl .rlbig.zero { position: relative; animation: rlhitpop .5s var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+.g-rl .rlbig.hit { background: var(--pc); color: var(--pct); } .g-rl .rlbig.hit.X { background: var(--x); color: #fff; } .g-rl .rlbig.hit.O { background: var(--o); color: var(--ink); }
+.g-rl .rlbig.hit::after, .g-rl .rlbig.zero::after { content: ''; position: absolute; inset: -5px; border-radius: inherit; border: 3.5px solid var(--pc); opacity: 0; pointer-events: none; animation: rlring .55s calc(var(--t, 0ms) + 80ms) cubic-bezier(.4, 0, .2, 1) both; }
+.g-rl .rlbig.zero::after { border-color: #2f8a3c; }
+.g-rl .rlbig.miss { box-shadow: 0 2px 0 var(--muted); border-color: var(--muted); animation: rlmiss .3s var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes rlhitpop { 0% { opacity: 0; transform: scale(.3) rotate(-8deg); } 45% { opacity: 1; transform: scale(1.28) rotate(3deg); } 70% { transform: scale(.94) rotate(-1deg); } 100% { opacity: 1; transform: none; } }
+@keyframes rlring { 0% { opacity: .9; transform: scale(.8); } 100% { opacity: 0; transform: scale(1.7, 2.1); } }
+@keyframes rlmiss { 0% { opacity: 0; transform: translateY(-6px); } 100% { opacity: 1; transform: none; } }
 
 /* miniatures: both tallies as pips (Blackjack, Roulette with its last number), the Ride the Bus tracks */
 .tpip { display: flex; flex-direction: column; gap: 5cqw; width: 84cqw; }
@@ -2522,9 +2836,9 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tpip .bus i { border-radius: 3cqw; width: 12cqw; height: 16cqw; }
 .tpip .last { align-self: center; font: 400 11cqw 'Luckiest Guy', sans-serif; color: #fff; min-width: 20cqw; height: 20cqw; border-radius: 50%; display: grid; place-items: center; border: 1.6cqw solid var(--ink); padding-top: 1cqw; }
 .tpip .last.r { background: #d6301e; } .tpip .last.b { background: var(--ink); } .tpip .last.g { background: #2f8a3c; }
-.tpip.rlmini .rlrow { display: flex; align-items: center; gap: 3cqw; }
-.tpip.rlmini .rlcol { display: flex; flex-direction: column; gap: 5cqw; min-width: 0; flex: 1; }
-.tmwheel { flex: none; width: 24cqw; height: 24cqw; }   /* the miniature's wheel, right of the bet pips */
+.tpip.rlmini .rlmrow { display: flex; align-items: center; justify-content: center; gap: 4cqw; }   /* (its own classes: .rlrow is the board's row of numbers) */
+.tpip.rlmini .rlmcol { display: flex; flex-direction: column; gap: 5cqw; min-width: 0; }
+.tmwheel { flex: none; width: 31cqw; height: 33.5cqw; }   /* the miniature's wheel (its pointer, its ball), left of the hits */
 .tdice .tmd8 { align-self: center; width: 22cqw; height: 22cqw; } .tdice .tmd8 svg { width: 100%; height: 100%; display: block; }   /* Risky Rolls' d8, above the trackers */
 .tspins { display: flex; gap: 2cqw; justify-content: center; }
 .tpip .tspins i.sp { width: 12cqw; height: 12cqw; border-radius: 50%; border: 1.2cqw solid var(--ink); display: grid; place-items: center; font: 400 6.4cqw 'Luckiest Guy', sans-serif; padding-top: .8cqw; background: var(--paper); }
@@ -2571,8 +2885,8 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tbus .tcd.tnil { background: var(--paper); border-style: dashed; border-color: var(--muted); }
 /* Krabs: the felt with the two dice (the last roll's faces; blank before one), the rounds won as pips under it */
 .tcr { display: flex; flex-direction: column; align-items: center; gap: 3cqw; width: 88cqw; }
-.tcr .tfelt { width: 70cqw; height: 26cqw; border-radius: 6cqw; border: 1.2cqw solid var(--ink); background: radial-gradient(circle at 50% 40%, #3b9a4b, #2a7238); display: grid; place-items: center; }
-.tcr .tcdice span { width: 14cqw; height: 14cqw; } .tcr .tcdice.l span { opacity: .55; filter: grayscale(1); }
+.tcr .tfelt { width: 72cqw; height: 29cqw; border-radius: 6cqw; border: 1.2cqw solid var(--ink); background: radial-gradient(circle at 50% 40%, #3b9a4b, #2a7238); display: grid; place-items: center; }
+.tcr .tcdice { gap: 4cqw; } .tcr .tcdice span { width: 18cqw; height: 18cqw; border-radius: 4cqw; box-shadow: 0 1.2cqw 0 rgba(22, 18, 16, .4); } .tcr .tcdice.w span { box-shadow: 0 0 0 1.2cqw #ffe066; } .tcr .tcdice.l span { opacity: .55; filter: grayscale(1); }
 .tcr .tpip { width: 84cqw; gap: 2.5cqw; } .tcr .tpip .tr { --pw: min(9cqw, calc(44cqw / var(--n, 3))); } .tcr .tpip i { width: var(--pw); height: var(--pw); border-width: 1.3cqw; }
 /* Echo: the four pads */
 .tepads { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6cqw; width: 30cqw; aspect-ratio: 1; }
@@ -2622,7 +2936,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .twh .trun { padding: 0 2cqw; gap: 2cqw; } .twh .trun .tr { grid-template-columns: 8cqw 1fr auto; gap: 2.5cqw; } .twh .trun .tr b { font-size: 9cqw; } .twh .trun .tr i { height: 6cqw; border-width: 1.3cqw; }
 .twh .trun .tr span { font: 400 10.5cqw/1 'Luckiest Guy', 'Arial Black', sans-serif; min-width: 13cqw; text-align: right; font-variant-numeric: tabular-nums; }   /* each player's points, after their bar */
 .twh .wseg { stroke-width: 1.4; } .twh .wrim { stroke-width: 4; } .twh .wptr { fill: var(--ink); }
-@media (max-height: 640px) { .rln, .rlg, .rlz { height: 28px; font-size: 13px; } .bjres { min-height: 28px; font-size: 15px; } }
+@media (max-height: 640px) { .bjres { min-height: 28px; font-size: 15px; } }   /* (Little Wheel's cells size from the room now: .g-rl --rc) */
 
 /* ---- Super Chaos: the mode's switch on the setup screen, Sea Battle's 5x5 sea, the recap's label and resets ---- */
 .scmode > span { display: flex; align-items: center; gap: 8px; }
@@ -2653,17 +2967,11 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .spot-lab.scv.both { background: linear-gradient(90deg, var(--x) 50%, var(--o) 50%); color: #fff; text-shadow: 0 1px 0 var(--ink), 0 0 3px var(--ink); }
 @media (prefers-reduced-motion: reduce) { .sq.scwin, .sq.scclash-on, .scclash .cx, .scclash .co { animation: none; } }
 
-/* ---- Risky Rolls' eight-sided die: its own outline (no square die behind it), the number on its face ---- */
-.die.d8, .sdie.d8 { background: none; border: 0; box-shadow: none; border-radius: 0; }
-.die.d8 svg, .sdie.d8 svg { width: 100%; height: 100%; overflow: visible; }
+/* ---- Risky Rolls' eight-sided die, flat (its miniature's): its own outline, a triangle face and the facets beside it ---- */
 svg.d8 .d8o { fill: var(--panel-2); stroke: var(--ink); stroke-width: 5; stroke-linejoin: round; }
 svg.d8 .d8f { fill: #fff; stroke: var(--ink); stroke-width: 3.5; stroke-linejoin: round; }
 svg.d8 .d8l { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linejoin: round; }
 svg.d8 text { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 30px; fill: var(--ink); }
-.sdie.d8 svg.d8 text { font-size: 34px; }
-.sdie.d8.dup svg.d8 .d8f { fill: var(--x); }
-.sdie.d8.dup { background: none; }
-.die.d8 { filter: drop-shadow(0 5px 0 var(--ink)); }
 
 /* ---- Higher/Lower: 1 to 30, each player's guesses left as pips ---- */
 .g-hilo.t30 { gap: 10px; }
@@ -2734,8 +3042,6 @@ main.scr.mini.screplay * { cursor: pointer; }   /* (a tap anywhere skips to the 
 .rlbigslot { height: 40px; display: grid; place-items: center; flex: none; }
 .rlbigslot .rlbig { position: static; translate: none; font-size: clamp(18px, 5.6vw, 24px); padding: 4px 12px 0; }
 /* Craps: the puck in its own row under the point numbers (never over a number) */
-.cpts { padding-bottom: 34px; }
-.cpts > .cpuck { top: auto; bottom: 0; width: 30px; height: 30px; margin: 0 0 0 -15px; }
 /* Peg Drop: a bonus peg's own "+N" goes as its "+N" pops up from it (one at a time) */
 .pbonus.hit b { animation: tuntil 1ms var(--t, 0ms) both; }
 .rskip.until { animation: skipin .25s ease-out 2s both, tuntil 1ms var(--u, 0ms) both; }   /* gone as the move's animation ends */
@@ -2804,16 +3110,9 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .g-hilo .pad button, .g-hilo.t30 .pad button { height: auto; min-height: 0; min-width: 0; padding: 0; font-size: clamp(13px, 4.2vw, 18px); }
 .g-hilo .pad button, .g-hilo.t30 .pad button { max-height: 64px; align-self: start; height: 100%; }
 
-/* Craps: the round's last pair, once landed: the point made, a hop-spin-sparkle dance; a crap-out, a droop-slump-fade (each 1.2 s) */
+/* (Shut the Box's pair of dice; Krabs' own are .kpair, above) */
 .cdice { display: flex; align-items: center; justify-content: center; gap: 18px; position: relative; }
-.cdice.cheer { animation: cdance 1.2s var(--d, 0ms) both; }
-.cdice.cheer::before, .cdice.cheer::after { content: '\2726'; position: absolute; top: 4px; font-size: 22px; color: #ffe066; opacity: 0; animation: csparkle 1.2s var(--d, 0ms) both; }
-.cdice.cheer::before { left: 6px; } .cdice.cheer::after { right: 6px; animation-delay: calc(var(--d, 0ms) + .15s); }
-.cdice.sad { animation: cslump 1.2s var(--d, 0ms) both; }
-@keyframes cdance { 0% { transform: none; } 20% { transform: translateY(-26px) rotate(0); } 40% { transform: translateY(0) rotate(180deg); } 60% { transform: translateY(-20px) rotate(360deg); } 80% { transform: translateY(0) rotate(360deg) scale(1.08); } 100% { transform: rotate(360deg) scale(1); } }
-@keyframes csparkle { 0% { opacity: 0; transform: scale(.3); } 30% { opacity: 1; transform: scale(1.3) rotate(30deg); } 70% { opacity: 1; transform: scale(.9) rotate(-20deg); } 100% { opacity: 0; transform: scale(.4); } }
-@keyframes cslump { 0% { transform: none; opacity: 1; } 30% { transform: translateY(6px) rotate(-6deg) scaleY(.92); } 65% { transform: translateY(18px) rotate(8deg) scaleY(.75); opacity: .85; } 100% { transform: translateY(22px) rotate(4deg) scaleY(.7); opacity: .45; } }
-@media (prefers-reduced-motion: reduce) { .cdice.cheer, .cdice.sad, .cdice.cheer::before, .cdice.cheer::after { animation: none; } }
+@keyframes csparkle { 0% { opacity: 0; transform: scale(.3); } 30% { opacity: 1; transform: scale(1.3) rotate(30deg); } 70% { opacity: 1; transform: scale(.9) rotate(-20deg); } 100% { opacity: 0; transform: scale(.4); } }   /* (a won round's sparkles: Krabs' .kpair.cheer) */
 .exline.wide { grid-template-columns: 116px 1fr; } .exline.wide b { font-size: 14px; }   /* the Mode "?": a mode name in each pill */
 
 /* The growth loop (ui/sharecard.js): the win screen's Share result, its note in a reserved line (nothing moves), and the main menu's Challenge a friend */
@@ -2874,7 +3173,6 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .spd .netbar,
 .spd .notice,
 .spd .rmbub,
-.spd .sdie.fresh,
 .spd .spot-lab,
 .spd .timeout-note,
 .spd .toast,
@@ -2918,6 +3216,60 @@ main.scr.mini > .wband { left: 0; right: 0; }   /* Super Chaos: waiting in the s
 .wbank { display: flex; justify-content: center; flex: none; }
 .wbank .big { min-width: min(220px, 70%); }
 .g-wheels .arcres, .g-wheels .arcnote { min-height: 1.4em; }
+/* Risky Spins, the polish pass (November 2026). --pc: the mover's colour (the pointers, Bank). The spin has weight: a
+   wind-up, the long run, a crawl just past the stop and the settle back (the figures are ui/spin.js SPIN's: the view
+   times the pointer's flicks and the tick sounds from the same curve; tests/ui/wheel-spin.test.mjs holds them together). */
+.g-wheels { --pc: var(--x); --pct: var(--paper); } .g-wheels.pc-O { --pc: var(--o); --pct: var(--ink); }
+.g-wheels .wspin.go { animation: wspinw var(--d, 1900ms) linear both; }
+@keyframes wspinw { 0% { transform: rotate(var(--from, 0deg)); animation-timing-function: cubic-bezier(.45, 0, .55, 1); } 7% { transform: rotate(calc(var(--from, 0deg) - 12deg)); animation-timing-function: cubic-bezier(.14, .55, .2, 1); } 88% { transform: rotate(calc(var(--end, 0deg) + 3deg)); animation-timing-function: cubic-bezier(.4, 0, .6, 1); } 100% { transform: rotate(var(--end, 0deg)); } }
+.g-wheels .wshd { fill: rgba(22, 18, 16, .2); }                            /* the wheel's shadow on its card (it does not turn) */
+.g-wheels .wpeg { fill: var(--paper); stroke: var(--ink); stroke-width: 1.1; }   /* a peg between every two segments */
+.g-wheels .whubl { fill: rgba(255, 255, 255, .5); }
+/* the pointer: a flap in the mover's colour, flicked by every peg that passes (its flicks are set by the view, one per tick) */
+.g-wheels .rwrow .wptr { top: -9px; width: 24px; height: 21px; margin-left: -12px; background: var(--ink); transform-origin: 50% 10%; z-index: 2; }
+.g-wheels .rwrow .wptr::after { content: ''; position: absolute; left: 4.5px; right: 4.5px; top: 2.5px; height: 12.5px; background: var(--pc); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.g-wheels .rwrow.n3 .wptr { top: -7px; width: 18px; height: 16px; margin-left: -9px; } .g-wheels .rwrow.n3 .wptr::after { left: 3.5px; right: 3.5px; top: 2px; height: 9.5px; }
+@keyframes wflick { 0% { transform: none; } 35% { transform: rotate(-26deg); } 100% { transform: none; } }
+/* the stop: points swell the wheel a moment; a skull jolts it and its badge pops over the hub */
+.g-wheels .wbox.pay { animation: wpay .3s var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes wpay { 0%, 100% { transform: none; } 40% { transform: scale(1.05); } }
+.g-wheels .wbox.bust { animation: wjolt .5s var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes wjolt { 0%, 100% { transform: none; } 12% { transform: translate(-6px, 1px) rotate(-3deg); } 30% { transform: translate(5px, -1px) rotate(2.6deg); } 48% { transform: translate(-4px, 0) rotate(-1.8deg); } 66% { transform: translate(3px, 0) rotate(1deg); } 84% { transform: translate(-1px, 0); } }
+.wboo { position: absolute; left: 50%; top: 50%; width: 46%; aspect-ratio: 1; margin: -23% 0 0 -23%; border-radius: 50%; background: #261f2e; border: 3px solid var(--ink); box-shadow: 0 0 0 3px var(--x); display: grid; place-items: center; pointer-events: none; opacity: 0; z-index: 2; animation: wboo .8s var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+.wboo svg { width: 78%; height: 78%; }
+@keyframes wboo { 0% { opacity: 0; transform: scale(.3); } 22% { opacity: 1; transform: scale(1.18); } 38% { opacity: 1; transform: scale(1); } 80% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.12); } }
+/* each wheel at a glance, under it: how many skulls, which values */
+.wleg { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; height: 20px; padding: 0 3px; flex: none; font: 400 15px/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); }
+.wlk { display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 2px 8px 0 5px; border-radius: 999px; background: #261f2e; color: #fff; }
+.wlk .wlsk { width: 14px; height: 14px; margin-top: -2px; flex: none; } .wlk b { font-weight: 400; font-size: 15px; color: #fff; box-shadow: none; background: none; }
+.wlv { padding-top: 3px; white-space: nowrap; }
+.rwrow.n3 .wleg { font-size: 13px; padding: 0; gap: 2px; } .rwrow.n3 .wlk { padding: 2px 5px 0 3px; gap: 2px; } .rwrow.n3 .wlk b { font-size: 12px; }
+/* a spin's points pop out at the pointer as the wheel stops and fly up into the pot, which takes them as they arrive */
+.wpotrow { position: relative; --rw: min(100cqw, max(200px, calc(200cqh - 374px))); }
+.wfly { position: absolute; left: 50%; top: 50%; z-index: 3; min-width: 46px; height: 30px; margin: -15px 0 0 -23px; padding: 3px 8px 0; display: grid; place-items: center; border: 2.5px solid var(--ink); border-radius: 999px; background: #fff; color: var(--green); font: 400 20px/1 'Luckiest Guy', 'Arial Black', sans-serif; pointer-events: none; opacity: 0; --dx: 0px; --dy: 58px; animation: wfly var(--d, 280ms) var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+.wfly.ten { background: var(--gold); color: var(--ink); }
+.wfly.l { --dx: calc(-1 * (var(--rw) / 4 + 3.5px)); } .wfly.r { --dx: calc(var(--rw) / 4 + 3.5px); }
+.wfly.l3 { --dx: calc(-1 * (100cqw + 8px) / 3); } .wfly.r3 { --dx: calc((100cqw + 8px) / 3); }
+@keyframes wfly { 0% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.4); } 28% { opacity: 1; transform: translate(var(--dx), var(--dy)) scale(1.2); animation-timing-function: cubic-bezier(.4, 0, .2, 1); } 90% { opacity: 1; } 100% { opacity: 0; transform: translate(0, 0) scale(.85); } }
+/* Bank: the pot flies to the mover's own gauge (X's on the left, O's on the right) and is gone as the gauge starts to fill */
+.g-wheels .risk.bank { animation: wbankX var(--bk, 250ms) cubic-bezier(.4, 0, .2, 1) both; --up: calc(-1 * ((100cqh - 205px - var(--rw) / 2) / 2 + 44px)); }
+.g-wheels .risk.bank.O { animation-name: wbankO; }
+@keyframes wbankX { 0% { transform: none; opacity: 1; } 75% { opacity: 1; } 100% { transform: translate(-24cqw, var(--up)) scale(.6); opacity: 0; } }
+@keyframes wbankO { 0% { transform: none; opacity: 1; } 75% { opacity: 1; } 100% { transform: translate(24cqw, var(--up)) scale(.6); opacity: 0; } }
+/* the turn's pot: a pill in the mover's colour (struck out near black as a skull takes it); the wheels a mover may spin stand on their colour */
+.g-wheels .wpot { background: var(--pc); color: var(--pct); font-size: 22px; padding: 4px 13px 1px; }
+.g-wheels .wpot.X { color: var(--paper); } .g-wheels .wpot.O { color: var(--ink); }
+.g-wheels .risk.lost { animation: wlost 0s var(--t, .65s) both, riskout .55s calc(var(--t, .65s) + .2s) ease-in both; }
+@keyframes wlost { from { background: var(--pc); text-decoration-line: none; } to { background: #261f2e; color: #fff; text-decoration-line: line-through; } }
+.g-wheels .rwheel:not(:disabled) { box-shadow: 0 4px 0 var(--pc), 0 6.5px 0 var(--ink); }
+/* enough in the pot to win: the wheels are done, only Bank is left */
+.g-wheels.enough .rwheel { opacity: .5; }
+/* a wheel under the finger goes down onto its lip; the wheel just spun is ringed in its spinner's colour */
+.g-wheels .rwheel:not(:disabled):active { transform: translateY(3px); box-shadow: 0 1px 0 var(--pc), 0 3.5px 0 var(--ink); }
+.g-wheels .rwheel.spun { box-shadow: 0 0 0 3.5px var(--pc); }
+.g-rl .rln:not(:disabled):not(.on):active, .g-rl .rlg:not(:disabled):active, .g-rl .rlz:not(:disabled):not(.on):active { transform: scale(.93); }
+.g-wheels.enough .wbank .big { animation: wnudge 1.2s ease-in-out infinite; }
+@keyframes wnudge { 0%, 100% { transform: none; } 50% { transform: scale(1.04); } }
 
 /* A phone on its side (the web: the app keeps an iPhone upright itself): the whole page asks to be turned back. Only a
    touch phone in landscape (short and wide, no hover); never a tablet, a desktop or a phone held upright. */
@@ -3336,12 +3688,22 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .trun.bscore .tr { grid-template-columns: auto 1fr auto; gap: 2cqw; } .trun.bscore .tr b { font-size: calc(var(--mt) * .8); }
 .trun.bscore .tr span { font-size: var(--mt); min-width: 1.4em; padding-top: .12em; }
 .tbus .tbusi { width: 30cqw; height: 18cqw; } .tbus .tr b { width: 10cqw; } .tbus .tcd { width: 13cqw; height: 17cqw; } .tbus .tcd.tsuit svg { width: 9cqw; height: 9cqw; }   /* Ride the Bus: a kept card's suit alone, the slots larger */
+.tbus { gap: 3.5cqw; } .tbus .tr { gap: 2cqw; } .tbus .tr b.X, .tbus .tr b.O { width: max(16px, 12cqw); height: max(16px, 12cqw); font-size: max(16px, 12cqw); margin-right: 1cqw; }   /* (the polish sweep: no bus on top; each player's own bus stands at the stop they are on, the stops larger) */
+.tbus .tcd { width: 16cqw; height: 22cqw; border-radius: 2.4cqw; } .tbus .tcd.tsuit svg { width: 11cqw; height: 11cqw; }
+.tbus .tcd.tbat { border-style: solid; border-color: var(--ink); } .tbus .tcd.tbat svg { width: 14cqw; height: 8.4cqw; overflow: visible; }
+.tbus .tbat.X { background: color-mix(in srgb, var(--x) 18%, var(--paper)); } .tbus .tbat.O { background: color-mix(in srgb, var(--o) 30%, var(--paper)); }
+.tbat .bb { stroke: var(--ink); stroke-width: 2.4; } .tbat.X .bb { fill: var(--x); } .tbat.O .bb { fill: var(--o); } .tbat .bw { fill: var(--paper); stroke: var(--ink); stroke-width: 1; } .tbat .bt { fill: var(--ink); }
 .tseq.tnums { justify-content: center; }   /* Patterns: the gap and the two numbers by it */
 .tseq.tnums span { flex: none; aspect-ratio: auto; min-width: 1.6em; height: 1.6em; padding: .14em .18em 0; font: 400 var(--mt)/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); }
 .tseq span.q { border-style: dashed; background: var(--panel-2); }
 .tart.twarm .tpic { width: auto; }   /* War: the two cards, ranks at the floor */
 .twar .tcd { width: calc(var(--mtn) * 1.4); height: calc(var(--mtn) * 1.95); } .twar .tcd b { font-size: var(--mtn); } .twar .tcd svg { width: calc(var(--mtn) * .8); height: calc(var(--mtn) * .8); }
 .tdice { gap: 3cqw; } .tdice .tmd8 { width: 20cqw; height: 20cqw; }   /* Risky Rolls */
+.tdice .tmtray { align-self: center; display: flex; align-items: center; justify-content: center; gap: 7cqw; width: 64cqw; height: 26cqw; border: 1.2cqw solid var(--ink); border-radius: 6cqw; background: radial-gradient(circle at 36% 40%, var(--sea-2), var(--sea)); }   /* its tray: the die and the pot (a token while a turn has points in it) */
+.tdice .tmtray .tmd8 { display: block; flex: none; filter: drop-shadow(0 1.2cqw 0 rgba(22, 18, 16, .4)); }
+.tdice .tmtray .tmd8.d6 { width: 17cqw; height: 17cqw; background: #fff; border: 1.2cqw solid var(--ink); border-radius: 4cqw; }
+.tdice .tmpot { flex: none; width: 15cqw; height: 15cqw; border-radius: 50%; border: 1cqw dashed rgba(255, 255, 255, .7); }
+.tdice .tmpot.on { background: var(--green); border: 1.2cqw solid var(--ink); }
 .tdice .tr { grid-template-columns: auto 1fr auto; font-size: var(--mt); } .tdice .tr b { font-size: .8em; } .tdice .tr span { min-width: 1.3em; padding-top: .12em; }
 .tpip.rlmini { gap: 4cqw; }   /* Little Wheel: the last three spins */
 .tpip .tspins i.sp { width: calc(var(--mt) * 1.75); height: calc(var(--mt) * 1.75); font-size: var(--mt); border-width: 1cqw; padding-top: .14em; }
@@ -3356,6 +3718,7 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .tart.tcol { flex-direction: column; gap: 3cqw; width: auto; } .tart.tcol .tpic { width: auto; } .tart.tcol .tpip { flex: none; width: auto; }   /* 21: the hand above the pips */
 .tbj .tcd { width: calc(var(--mtn) * 1.45); height: calc(var(--mtn) * 2); margin-left: calc(var(--mtn) * -.3); padding-left: calc(var(--mtn) * .12); }
 .tbj .tcd b { font-size: var(--mtn); } .tbj .tcd svg { width: calc(var(--mtn) * .7); height: calc(var(--mtn) * .7); }
+.tbj { padding: 2.5cqw 7cqw 2cqw; border: max(2px, 1cqw) solid var(--ink); border-radius: 5cqw; background: radial-gradient(ellipse at 50% 30%, #4a9a55, #2c6a37); box-shadow: inset 0 0 0 1cqw #a06a35; }   /* 21: the hand on its little railed felt */
 .tplk .tbins { align-items: flex-end; height: 16cqw; } .tplk .tbins i { height: calc(5cqw + 11cqw * var(--h, 1)); padding: 0; }   /* Peg Drop: each bin as tall as it is worth */
 .tswn { display: grid; grid-template-columns: 1fr 1fr; margin-top: 1.5cqw; font: 400 var(--mt)/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); text-align: center; font-variant-numeric: tabular-nums; }   /* Star Swarm, Scoop Stack: each total under the picture */
 .tscoop { width: 80cqw; }
@@ -4593,9 +4956,11 @@ button.dukd:disabled { cursor: default; }
 .trmy .trmyh { gap: 0; } .trmy .trmyh .tcd + .tcd { margin-left: -2.6cqw; }   /* (the backs overlap a little: a hand of 7 keeps inside its 56cqw) */
 /* ----- Card motion (November 2026, ui/cardfly.js): the sources cards fly from. 21's shoe sits in the felt's corner, out of the rows' way. ----- */
 .g-bj .felt { position: relative; }
-.bjshoe { position: absolute; top: 8px; right: 10px; pointer-events: none; }
-.bjshoe .plc { --cw: 30px; }
-.bjshoe::after { content: ''; position: absolute; inset: 3px -3px -3px 3px; border-radius: 5px; background: rgba(0, 0, 0, .25); z-index: -1; }
+.bjshoe { position: absolute; top: 13px; right: 14px; pointer-events: none; transform: rotate(7deg); z-index: 0; }
+.bjshoe .plc { --cw: 32px; display: block; }
+.bjshoe::before, .bjshoe::after { content: ''; position: absolute; inset: 0; border-radius: 5px; border: 2.5px solid var(--ink); background: #cfe6f2; z-index: -1; }   /* (the stack under the top card, and its shadow on the felt) */
+.bjshoe::before { transform: translate(-2.5px, 2.5px); }
+.bjshoe::after { transform: translate(-5px, 5px); box-shadow: -3px 4px 0 rgba(0, 0, 0, .28); z-index: -2; }
 [data-cf] { z-index: 3; }
 .cfgath { position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; }
 .cfgath .plc { position: absolute; }

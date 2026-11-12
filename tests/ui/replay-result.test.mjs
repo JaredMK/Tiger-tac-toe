@@ -90,24 +90,54 @@ test('Apple Pick: the spinner, the apples and the words are the opponent\'s spin
   assert.ok(html.includes(`--end:${(1800 - o.flash.apple.at * 360).toFixed(1)}deg`), 'the wheel stops on the opponent\'s segment');
   assert.match(html, /--gx:178px;[^"]*--dir:-1/, 'the bird comes for the opponent\'s bucket (O\'s, on the right), not the viewer\'s');
 });
-test('Risky Rolls: the Bank button keeps its points until the die has landed, then takes the new total (the move\'s own event times it); the Roll button stays as it was', () => {
+test('Risky Rolls: the Bank button and the pot keep their points until the roll\'s points are in the pot, then take the new total (the move\'s own event times it); the buttons\' small lines stay as they were', () => {
   const m0 = E.newMini('pig', E.makeRng('bank')), first = play(m0, 'X', 'roll', fixed(0.2)), second = play(first.mini, 'X', 'roll', fixed(0.7));
-  const r1 = first.flash.roll, r2 = second.flash.roll, pot = r1 + r2;
+  const r1 = first.flash.roll, r2 = second.flash.roll, pot = r1 + r2, T = VIEWS.pig.PIG_T;
   assert.ok(r1 !== r2);
   const render = (mini, a) => VIEWS.pig.screen({ owner: null, mini }, a, null, mini, false, false, a, null, false, () => -1, false, 'X', '');
-  const bank = html => (/<button class="big bank"[^>]*>(.*?)<\/button>/.exec(html) || [])[1];
-  // a later roll: the old points show, counting up to the new total after the die lands (data-delay = the tumble)
+  const btn = (html, cls) => (new RegExp(`<button class="big ${cls} rrb"[^>]*>(.*?)<small>(.*?)</small></button>`).exec(html) || []).slice(1);
+  const bank = html => btn(html, 'bank')[0];
+  const cnt = `<b class="cnt" data-from="${r1}" data-delay="${T.pot}" data-ms="${T.count}">${pot}</b>`;
+  // a later roll: the old points show, counting up to the new total as the roll's points reach the pot (data-delay: after the tumble and the flight)
   const h2 = render(second.mini, second.flash);
-  assert.match(bank(h2), new RegExp(`^Bank <b class="cnt" data-from="${r1}" data-delay="600" data-ms="400">${pot}</b>$`));
-  // the turn's first roll: no points on the button until the die lands, then they appear (the same moment as the +N)
+  assert.ok(T.pot > T.land, 'the points reach the pot after the die has landed');
+  assert.equal(bank(h2), `Bank ${cnt}`);
+  assert.ok(h2.includes(`<div class="rrpot bump"><span>+${cnt}</span></div>`), 'the pot counts on at the same moment');
+  assert.deepEqual([btn(h2, 'X')[1], btn(h2, 'bank')[1]], [`1 in 8 loses ${r1}`, `makes ${r1} of 51`], 'what a roll risks and what a bank makes: as before this roll, until it is over');
+  assert.match(h2, new RegExp(`class="d3 d3octa roll v0" style="--dur:${T.land}ms"`), 'the die is thrown in and lands on the number at T.land');
+  assert.match(h2, new RegExp(`<i class="d3t u k0 on"><svg[^>]*><path[^>]*/><text[^>]*>${r2}</text>`), 'the face towards the player is the number rolled');
+  assert.ok(h2.includes(`<i class="on new">${r2}</i>`) && h2.includes(`<i class="on">${r1}</i>`), 'the number is taken as its die lands; the one before stays taken');
+  assert.ok(h2.includes(`<b class="rrfly" aria-hidden="true">+${r2}</b>`), 'its points fly to the pot');
+  // the turn's first roll: no points on the button until they are in the pot, then they appear (the pot too)
   const h1 = render(first.mini, first.flash);
-  assert.match(bank(h1), new RegExp(`^Bank <b class="bpot">${r1}</b>$`));
+  assert.equal(bank(h1), `Bank <b class="bpot">${r1}</b>`);
+  assert.equal(btn(h1, 'X')[0], 'Roll', 'the Roll button stays as it was while the first roll plays');
+  assert.match(h1, /<div class="rrpot first"><span>\+<b class="cnt" data-from="0"/);
   // nothing playing: the points as they stand
-  assert.equal(bank(render(second.mini, null)), `Bank ${pot}`);
+  const h0 = render(second.mini, null);
+  assert.equal(bank(h0), `Bank ${pot}`); assert.deepEqual([btn(h0, 'X')[0], btn(h0, 'X')[1], btn(h0, 'bank')[1]], ['Roll again', `2 in 8 loses ${pot}`, `makes ${pot} of 51`]);
+  assert.ok(h0.includes(`<div class="rrpot"><span>+${pot}</span></div>`) && !h0.includes(' roll v0'), 'the pot as it stands, the die at rest');
   // a roll that takes the player to the target: the Roll button is there until the die lands, then goes (Bank wins it)
   const big = clone(first.mini); big.bank.X = 51 - r1 - 1; const win = play(big, 'X', 'roll', fixed(0.7)), g = clone(win.mini);
   const land = html => html.includes('data-act="move" data-v="roll"') || /data-act="move"[^>]*>(Roll|Roll again)</.test(html);
   assert.ok(g.bank.X + g.turn.pot >= 51, 'enough to win after this roll');
   assert.ok(land(render(g, win.flash)), 'Roll still offered while the die is rolling');
   assert.ok(!land(render(g, null)), 'and gone once it has landed');
+  // the winning bank: one button all through (nothing moves), the pot on its way to the banker's score, which counts on
+  const wb = play(g, 'X', 'bank', fixed(0.5)), hw = render(wb.mini, Object.assign({}, wb.flash, { kind: 'claim' }));
+  assert.ok(!land(hw) && hw.includes('class="rrbtns one"'), 'only Bank while the winning bank plays');
+  assert.match(hw, /<div class="rrpot bank toX">/); assert.ok(hw.includes(`data-delay="${T.bank}" data-ms="500">${wb.mini.bank.X}</b>`));
+  assert.match(hw, new RegExp(`class="rrline ok appear" style="--t:${T.bank}ms" role="status">Banked ${wb.flash.pot}<`));
+});
+test('Risky Rolls: a bust is the move\'s own (the number rolled twice, the pot it had, its words in the game\'s line as the die lands), never the square\'s', () => {
+  const T = VIEWS.pig.PIG_T, m0 = E.newMini('pig', E.makeRng('bust')), a = play(m0, 'O', 'roll', fixed(0.3)), b = play(a.mini, 'O', 'roll', fixed(0.3));
+  assert.equal(b.flash.note, 'bust');
+  const shown = clone(b.mini); shown.last = { by: 'X', kind: 'bank', pot: 4, rolls: [4], roll: 4 };   // (the viewer's own last result on the square)
+  const html = VIEWS.pig.screen({ owner: null, mini: shown }, b.flash, null, shown, false, true, b.flash, null, false, () => -1, false, 'O', '');
+  assert.match(html, new RegExp(`Eight-sided die: ${b.flash.roll}"`)); assert.ok(html.includes(`<i class="on dup">${b.flash.roll}</i>`));
+  assert.match(html, new RegExp(`class="rrline no appear" style="--t:${T.land}ms" role="status">Bust! ${b.flash.pot} lost<`));
+  assert.match(html, /<div class="rrpot lost">/); assert.equal((html.match(/class="rrsh [lr]"/g) || []).length, 2, 'the pot breaks in two');
+  assert.match(html, /class="rrgh lost"/, 'the points at risk come off the roller\'s bar');
+  const snd = []; VIEWS.pig.sounds(b.flash, (n, ms) => snd.push([n, ms]));
+  assert.deepEqual(snd.map(x => x[0]), ['rattle', 'diceTap', 'thunk', 'bust']); assert.deepEqual([snd[2][1], snd[3][1]], [T.land, T.lose]);
 });

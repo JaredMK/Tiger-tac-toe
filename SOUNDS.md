@@ -80,7 +80,9 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Higher/Lower | `lower` | The answer is lower, as the guess lands on the number line (the result's buzz) | Falling glide 900→500 Hz |
 | Snakes and Ladders, Dice Race | `rattle` | The die is rolled (also Risky Rolls) | Nine short noise ticks |
 | Snakes and Ladders, Dice Race | `thunk` | The die lands (also Risky Rolls) | Low triangle with noise |
-| Snakes and Ladders, Dice Race, Candy Race, Bump | `hop` | The piece hops one space. *Varied.* | Short glide 520→760 Hz |
+| Risky Rolls, Krabs | `diceTap` | A thrown die's first touch of the table, before it lands (the shared 3-D die: `ui/dice.js`). *Varied.* | A short bright noise click with a falling triangle blip |
+| Snakes and Ladders, Dice Race, Candy Race, Bump | `hop` | The piece springs off for each space, a little higher in pitch each hop (a long move's hops come quicker and quicker); in Bump also, played low, the knocked piece coming down at Home. *Varied.* | Short glide 520→760 Hz |
+| Snakes and Ladders, Dice Race, Candy Race, Bump | `c4drop` | The piece set down on its last space, after any ladder or snake (Four in a Row's wooden thunk: the move's result, so its buzz); a square won: the `won` chime as the piece jumps on it | As Four in a Row |
 | Snakes and Ladders | `climb` | Up a ladder | Five rising notes |
 | Snakes and Ladders | `slide` | Down a snake | Falling glide 1000→260 Hz with noise |
 | Find the Pair | `flipUp` | A card is turned up | Noise sweep up 1200→2400 Hz with a tick |
@@ -88,14 +90,14 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Find the Pair | `pair` | A pair is found | Three-note chime |
 | Find the Pair | `nopair` | No match | Two falling notes |
 | Candy Race | `wheelTick` | The wheel ticks, slowing as it stops. *Varied.* | 2200 Hz sine, very short |
-| Bump | `spin` | The spinner spins | Noise sweep down |
+| Bump | `spin` | The spinner spins, ticking to a stop (Candy Race's `wheelTick`) | Noise sweep down |
 | Bump | `boing` | A piece is knocked back home | Spring glide 200→700 Hz with a wobble |
 | Coin Flip | `coinFlick` | The thumb's flick as the coins are tossed (new). *Varied.* | A short click of bandpass noise at 4200 Hz under a ring of two high sines (3100 and 4650 Hz) |
 | Coin Flip | `coinSpin` | The coins spin in the air | Glide 1200→2000 Hz with a shimmer |
 | Coin Flip | `clink` | Each coin as it lands (0.78 s after it left, one 80 ms after the other). *Varied.* | Two high sines |
-| Risky Rolls | `point` | Points at risk grow after a roll. *Varied.* | Short glide 700→1000 Hz |
-| Risky Rolls | `bank` | Points are banked | Four quick bright blips |
-| Risky Rolls | `bust` | A repeated number: the points are lost | Crash: lowpass noise with a falling sawtooth |
+| Risky Rolls | `point` | A roll's points reach the pot. *Varied.* | Short glide 700→1000 Hz |
+| Risky Rolls | `bank` | The pot reaches the banker's score | Four quick bright blips |
+| Risky Rolls | `bust` | A repeated number: the pot breaks, the points are lost | Crash: lowpass noise with a falling sawtooth |
 | Treasure Hunt | `dig` | A square is dug | Shovel: lowpass noise sweep with a thud |
 | Treasure Hunt | `band` | The band is revealed as its colour blooms from the hole (`hunt/rules.js` `HUNTT.bloom`; the result's buzz): higher for Hot, lower for Cold | Triangle 880 Hz, played faster or slower for each band |
 | Treasure Hunt | `thunk` / `sparkle` | The treasure is found: the shovel strikes the chest (the die's thunk), then the gem comes up out of it | As above; rising sparkles |
@@ -106,15 +108,16 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Codebreaker | `reveal` | The code is cracked | Rising tone with two chimes |
 | Blackjack, Ride the Bus | `cardSlide` | A card is dealt or drawn (the dealer's too). *Varied.* | Bandpass noise sweep down 2600→1100 Hz |
 | Blackjack, Ride the Bus | `cardFlip` | A card turns face up (the dealer's hole card too). *Varied.* | Short bright noise snap with a faint triangle tick |
-| Blackjack | `chips` | A hand is won (twice for a won double) | Three bright clinks with noise |
+| Blackjack | `chips` | A hand is won, as its result shows, with `point` over it (the result's buzz); a natural 21 with `sparkle` instead | Three bright clinks with noise |
 | Blackjack | `push` | A push (then the new hand's cards slide in, in the same turn) | Two level triangle notes, 523 Hz |
 | Blackjack | `bust` | The player goes over 21 (the Risky Rolls crash) | Crash: lowpass noise with a falling sawtooth |
-| Blackjack | `nopair` | The dealer wins the hand (Find the Pair's no-match) | Two falling notes |
+| Blackjack | `nopair` | The dealer wins the hand (Find the Pair's no-match), over a `thud` (the result's buzz) | Two falling notes |
 | Ride the Bus | `ding` | A right guess (the Hangman bell), once the card's face shows; a second `cardSlide` as the card moves into its slot. For the computer or the other player, the sounds start after their choice has lit up (0.8 s) | Bell: 1046 Hz with a 1568 Hz partial |
-| Ride the Bus | `thud` | A wrong guess (the Hangman thump) | Low thump with lowpass noise |
+| Ride the Bus | `thud` | A wrong guess (the Hangman thump); a `cardSlide` as the card goes back into the deck | Low thump with lowpass noise |
+| Ride the Bus | `point` | A right card lands on its stop and the bus arrives under it: played a step higher each round (rate 1, 1.14, 1.28, 1.42) | Short rising triangle blip 700→1000 Hz |
 | Roulette | `peg` | A number, a group or green 0 is picked for the bet (Codebreaker's peg). *Varied.* | Triangle click |
 | Roulette | `rlSpin` | The wheel starts spinning (it fades as the wheel slows; the ball's clicks carry on) | Lowpass noise falling 1100→300 Hz over 1.25 s, with a low hum |
-| Roulette | `ballTick` | The ball clicks over the pockets, slower and slower. *Varied.* | 3100 Hz triangle, very short |
+| Roulette | `ballTick` | The ball clicks as each pocket's edge passes under it (the wheel one way, the ball the other), slower and slower until it drops, the last three lower. *Varied.* | 3100 Hz triangle, very short |
 | Roulette | `ballDrop` | The ball drops into its pocket | Two falling clicks and a short rattle |
 | Roulette | `ding` / `thud` | A hit / a miss | As above |
 | Roulette | `sparkle` | Green 0 comes up on a bet on 0: the square at once | Rising sparkles |
@@ -126,7 +129,7 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Peg Drop | `peg` / `ding` / `plop` / `point` / `sparkle` | The chip clicks on every peg (Codebreaker's peg, a little higher each row); a ding as it touches the bonus peg; it drops into its bin and the points sound (`point`); the winning drop sparkles | Plop: a sine falling 520→260 Hz |
 | Cup Pong | `pongThrow` / `clink` / `splash` / `thud` / `pongRoll` | The flick (new `pongThrow`: a soft rising whoosh, bandpass noise 1100→2800 Hz under a faint triangle 260→420 Hz, *varied*; online your own plays at the flick itself, the rest with the server's record); the ball on the rim tings (Coin Flip's clink); a made cup splashes (Sea Battle's splash); a ball coming down on the table taps (the Hangman thud: a miss, or a rim-out off the rim); a long roll to the table's edge rattles (new `pongRoll`: lowpass noise 900→500 Hz with five quick triangle ticks 1900→1340 Hz). Haptics: the tap at the flick, medium as the ball lands (clink, thud, splash are RESULT sounds), success on the square won | As said |
 | Trivia | `ding` / `thud` | Right / wrong (crossed out), as the pick is marked | As above |
-| Craps | `rattle` / `thunk` / `clack` / `diceWin` / `diceLose` / `toggle` | Each roll: the dice rattle (Risky Rolls' rattle) and land (the thunk); the puck going on a point or off at a round's end (the Four in a Row clack); the round won (`diceWin`: a rising arpeggio with sparkles, as the dice dance) or lost (`diceLose`: a deflating slide and a sigh, as they slump); a Stop (the toggle) | As above |
+| Craps | `rattle` / `diceTap` / `thunk` / `clack` / `diceWin` / `diceLose` / `toggle` | Each roll: the dice rattle (Risky Rolls' rattle), touch the felt (`diceTap`) and land (the thunk); the marker landing on the number to roll again (the clack); the round won (`diceWin`: a rising arpeggio with sparkles, as the last pair lands and hops) or lost (`diceLose`: a deflating slide and a sigh, as it dims); a Stop (the toggle, squares from before) | As above |
 | Takeover | `mark` / `pop` / `flipUp` | The tapped square (Tic-tac-toe's mark); the empty squares around it pop in, the other player's turn over (Find the Pair's flip), one after the other | As above |
 | Flood | `splash` / `pop` / `thud` | The blob changes colour (Sea Battle's splash); a pop for each wave of squares it grabs, a little higher each wave; nothing grabbed: a thud | As above |
 | Seating | `mark` / `ding` / `hop` / `cushion` / `whoosh` | The mover sits (Tic-tac-toe's mark), a ding if that makes a table theirs; the customer walks in (Bump's hop) and sits down (Pool's cushion), or, with no seat of their colour, walks out (Four in a Row's whoosh) | As above |
@@ -136,7 +139,8 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | Flap | `flap` / `crash` / `thud` / `sparkle` / `ding` | Each tap: a wing beat (new: filtered noise and a little rising tone); the crash; the result: thud or sparkle, the bar's ding | As above |
 | Chopper | `rotor` / `crash` / `thud` / `sparkle` / `ding` | Each press: the rotor biting (new: four low noise chops); the crash; the result as Flap | As above |
 | Patterns | `ding` / `thud` | Right (the answer drops into the gap) / wrong (crossed out), as the pick is marked (Trivia's) | As above |
-| Risky Spins | `rlSpin` / `wheelTick` / `ding` / `thud` / `sparkle` | The wheel starts (Roulette's spin) and ticks round, slower and slower (Candy race's wheel ticks); it stops on points (ding; a sparkle for the high-risk wheel's 10) or on nothing (thud) | As above |
+| Risky Spins | `rlSpin` / `wheelTick` / `ding` / `thud` / `sparkle` | The wheel starts (Roulette's spin) and its pointer ticks over the pegs, one tick as each peg passes, slower and slower, the last three lower (Candy race's wheel ticks); it stops on points (ding; a sparkle for the high-risk wheel) or on nothing (thud) | As above |
+| Risky Spins | `marker` / `bust` / `bank` | The points land in the turn's pot (Codebreaker's marker); a skull: the pot is lost (a thud, then the Risky Rolls crash); Bank: the pot onto the score (Risky Rolls' bank) | As above |
 | Apple Pick | `rlSpin` / `wheelTick` / `ding` / `thud` | The spinner starts (Roulette's spin) and ticks round, slower and slower (Candy race's wheel ticks); it stops on a pick (ding) or on the bird or a spill (thud) | As above |
 | Apple Pick | `appleDrop` | Each picked apple plops into the bucket (the last one fills it: `sparkle`, then the square's chime). *Varied.* | Sine 420→240 Hz with a quiet triangle tap and a touch of low-passed noise, 0.18 s |
 | Apple Pick | `birdSwoop` / `birdChirp` / `appleLift` | The bird swoops in over the bucket; it chirps as it grabs; the apples lift away up to the tree | Swoop: bandpass noise rising 900→2600 Hz; chirp: three quick sine chirps around 2 kHz; lift: triangle rising 300→720 Hz |

@@ -3,6 +3,7 @@ import { needRng, randInt } from '../../core/random.js';
 import { PLAY } from '../../core/timer.js';
 import { tuneLive } from '../../core/tune.js';
 import { other } from '../../core/util.js';
+import { HOPS, hopAt } from '../shared/hops.js';
 
 // Bump: 9 spaces between Home and the Finish (10); a spin moves 1, 2 or 3.
 export const BUMP = { n: 9, max: 3 };
@@ -33,7 +34,7 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
 }
 export function flashMs(f, winLen, won) {
   if (f.scr) return BUMP_KNOCK.lead + bumpHops(f.scr) * PLAY.hop + (f.scr.knocked.length ? PLAY.knock : 0) + BUMP_KNOCK.hold + (won ? 600 : 0);   // Super Chaos's round end: both pieces hopping at once (both spun here), then any knock back Home
-  return PLAY.spin3 + Math.max(1, f.to - f.from) * PLAY.hop + (f.bumped ? PLAY.knock : 0) + 250;
+  return PLAY.spin3 + hopAt(Math.max(1, f.to - f.from)) + (f.bumped ? PLAY.knock : 0) + 250 + (won ? HOPS.win : 0);   // the wheel, the hops, any knock Home, the landing; a square won: the piece's jump
 }
 // Super Chaos: a spin plays at once in the spinner's own square (the wheel, the hops), moving only their own
 // piece: it may land on the other piece's space, but nothing is knocked yet (the other may be spinning too).
