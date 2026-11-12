@@ -28,7 +28,7 @@ function previewHost(html, env) { return env === 'staging' ? html.replace(/(<met
 // Universal Links (the app, docs/ios-plan.md): which links open the app, once it has its ids (scripts/app-config.js).
 function aasa(app) {
   if (!app || !app.teamId || !app.bundleId) return null;
-  return { applinks: { details: [{ appIDs: [`${app.teamId}.${app.bundleId}`], components: [{ '/': '/', '?': { room: '?*' }, comment: 'a friend room' }, { '/': '/', '?': { play: 'find' }, comment: 'Find Match' }] }] } };
+  return { applinks: { details: [{ appIDs: [`${app.teamId}.${app.bundleId}`], components: [{ '/': '/join/*', comment: 'a friend room (net/invite.js)' }, { '/': '/', '?': { room: '?*' }, comment: 'a friend room (the older link)' }, { '/': '/', '?': { play: 'find' }, comment: 'Find Match' }] }] } };
 }
 function robots(env) { return env === 'staging' ? 'User-agent: *\nDisallow: /\n' : 'User-agent: *\nAllow: /\n'; }
 function build(env, sha, out) {

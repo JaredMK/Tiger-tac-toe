@@ -8,6 +8,18 @@
       "firebase.json",
       "**/.DS_Store"
     ],
+    "redirects": [
+      {
+        "source": "/join/:code",
+        "destination": "/?room=:code",
+        "type": 302
+      },
+      {
+        "source": "/join/:code/",
+        "destination": "/?room=:code",
+        "type": 302
+      }
+    ],
     "headers": [
       {
         "source": "**",

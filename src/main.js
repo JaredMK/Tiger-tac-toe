@@ -119,7 +119,7 @@ function boot() {
   }
   else if (play) openFind();
   if (autoJoin) joinRoom(autoJoin, joinName.trim() || 'Friend', false);
-  onAppLink(openLink);                                        // the app: a link opened while it runs (a Universal Link to tictacchaos.com/?room=CODE)
+  onAppLink(openLink);                                        // the app: a link opened while it runs (a Universal Link to tictacchaos.com/join/CODE or /?room=CODE)
 }
 const playLink = url => { try { return new URL(url, 'https://tictacchaos.com/').searchParams.get('play') === 'find'; } catch (e) { return false; } };
 // A join link's code: the room joined at once (the name kept from before, else "Friend"; the code is the link's), or, with

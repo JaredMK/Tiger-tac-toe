@@ -4,7 +4,8 @@
 //   - the sign-in screen's Continue with Google opens the sign-in window, which reaches Google's own sign-in page
 //     (Firebase's auth handler on the site's domain loaded, Google's scripts with it);
 //   - production: a match against the computer plays (our move, the computer's reply, the turn back with us);
-//   - the admin page gets past "Loading…" to its sign-in.
+//   - the admin page gets past "Loading…" to its sign-in;
+//   - the room invite: /join/CODE redirects and opens the join flow, Share invite and Copy invite carry the code and the link.
 // Run after every deploy (the Deploy workflow) and after a release (scripts/release.js, once production is live).
 //   node scripts/smoke-browser.js production|staging      (SMOKE_URL to point it elsewhere)
 // Needs Playwright with Chromium: npm i --no-save playwright && npx playwright install --with-deps chromium.
@@ -43,6 +44,29 @@ async function cpuMatch(ctx) {
   }).catch(e => ({ ok: false, err: e.message }));
   check(r.ok && !perr.length, `a match against the computer: our move, then the computer's, and the turn back with us (${JSON.stringify(r).slice(0, 120)}${perr.length ? '; page errors: ' + perr.join(' | ') : ''})`);
   await cpu.close().catch(() => {});
+}
+// The room invite (net/invite.js buildInvite): /join/CODE sends the site to /?room=CODE (firebase.json), the page opens the
+// join flow for that code, and the host room's Share invite and Copy invite, tapped, hand over the one text with the code and
+// the site's /join/CODE link (the share sheet and the clipboard caught; nothing is sent anywhere, no room is opened).
+async function inviteCheck(ctx) {
+  const code = 'BCDFG';
+  const r = await fetch(`${SITE}/join/${code}`, { redirect: 'manual' });
+  const loc = r.headers.get('location') || '';
+  check(r.status >= 301 && r.status <= 308 && /\/\?room=BCDFG$/.test(loc), `/join/${code} sends the site to /?room=${code} (HTTP ${r.status} ${loc})`);
+  const p = await ctx.newPage();
+  await p.addInitScript(() => { window.__got = []; Object.defineProperty(navigator, 'share', { value: async d => { window.__got.push(['share', d]); }, configurable: true }); Object.defineProperty(navigator, 'clipboard', { value: { writeText: async t => { window.__got.push(['copy', t]); } }, configurable: true }); });
+  await p.goto(`${SITE}/join/${code}`, { waitUntil: 'load', timeout: 30000 });
+  await p.waitForFunction(() => typeof state !== 'undefined' && state.screen === 'join', null, { timeout: 20000 }).catch(() => {});
+  const j = await p.evaluate(async () => ({ screen: state.screen, code: (await import('/src/net/room.js')).joinCode }));
+  check(j.screen === 'join' && j.code === code, `a /join/${code} link opens the join flow for its code (${JSON.stringify(j)})`);
+  await p.evaluate(c => { state.online = { role: 'host', code: c, me: 'X', joined: false }; state.screen = 'setup'; state.setup.vs = null; render(); }, code);
+  await p.click('[data-act="share"]'); await p.waitForTimeout(300);
+  await p.click('[data-act="copy-invite"]'); await p.waitForTimeout(300);
+  const got = await p.evaluate(() => window.__got);
+  const want = `Join my Tic Tac Chaos game! Code: ${code} ${SITE}/join/${code}`;
+  check(JSON.stringify(got) === JSON.stringify([['share', { text: want }], ['copy', want]]), `Share invite and Copy invite hand over the one text with the code and the /join link (${JSON.stringify(got).slice(0, 200)})`);
+  await p.evaluate(() => { state.online = null; state.screen = 'menu'; render(); }).catch(() => {});
+  await p.close();
 }
 async function main() {
   let chromium;
@@ -92,6 +116,7 @@ async function main() {
   } catch (e) {
     check(false, `the browser check stopped: ${String(e && e.message || e).split('\n')[0]}`);
   }
+  try { await inviteCheck(ctx); } catch (e) { check(false, `the invite check stopped: ${String(e && e.message || e).split('\n')[0]}`); }
   if (TARGET === 'production') { try { await cpuMatch(ctx); } catch (e) { check(false, `the match against the computer stopped: ${String(e && e.message || e).split('\n')[0]}`); } }
   check(csp.length === 0, `no Content Security Policy violations${csp.length ? ':\n       ' + [...new Set(csp)].slice(0, 12).join('\n       ') : ''}`);
   await browser.close();

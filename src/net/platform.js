@@ -18,6 +18,14 @@ export function siteUrl() {
   const env = typeof window !== 'undefined' && window.TTC_ENV;
   return env && env.staging ? 'https://staging.tictacchaos.com/' : 'https://tictacchaos.com/';
 }
+// The address invites point at (net/invite.js): the site's root, never the page's path (a page opened from /join/CODE or
+// /index.html would carry that path into the link): the page's origin on the web (staging's on staging), the live site's
+// in the app (staging's for a staging build).
+export function inviteSite() {
+  if (!NATIVE && typeof location !== 'undefined' && /^https?:$/.test(location.protocol)) return location.origin + '/';
+  const env = typeof window !== 'undefined' && window.TTC_ENV;
+  return env && env.staging ? 'https://staging.tictacchaos.com/' : 'https://tictacchaos.com/';
+}
 // The privacy policy (privacy.html beside the page; scripts/build-site.js copies it to both sites and into the app's build):
 // the page's own copy on the web (a relative link, whichever site this is), the live site's in the app (a page inside the
 // app opens in its in-app browser, initPlatform below; its own address, capacitor://localhost, is no address to send anyone to).
@@ -123,7 +131,7 @@ export function initPlatform() {
   }, true);
 }
 // The links that open the game. The address it loaded with (the web page's own, read once at the start), then, in the app,
-// every deep link it is handed while it runs (a Universal Link to tictacchaos.com/?room=CODE: the App plugin's appUrlOpen).
+// every deep link it is handed while it runs (a Universal Link to tictacchaos.com/join/CODE or /?room=CODE: the App plugin's appUrlOpen).
 export function startLink() { try { return typeof location !== 'undefined' ? location.href : ''; } catch (e) { return ''; } }
 export function onAppLink(fn) {
   const app = plugin('App');
@@ -132,7 +140,7 @@ export function onAppLink(fn) {
 // The address with the link's parts taken out (handled once: going back or reopening the page is not a second link).
 export function tidyLink(keep) {
   if (NATIVE) return;
-  try { const u = new URL(location.href); for (const k of [...u.searchParams.keys()]) if (!keep || !keep.includes(k)) u.searchParams.delete(k); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e) { /* (an old browser keeps it) */ }
+  try { const u = new URL(location.href); for (const k of [...u.searchParams.keys()]) if (!keep || !keep.includes(k)) u.searchParams.delete(k); const p = /^\/join\/[^/]*\/?$/i.test(u.pathname) ? '/' : u.pathname; history.replaceState(history.state, '', p + u.search + u.hash); } catch (e) { /* (an old browser keeps it) */ }
 }
 // One part of the address taken out (a playtester's ?t=: kept on the device, gone from the address).
 export function dropParam(k) {

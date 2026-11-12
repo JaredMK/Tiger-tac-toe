@@ -13,7 +13,7 @@ test('Universal Links: nothing published until the app has its Team ID and bundl
   if (!app.teamId || !app.bundleId) assert.equal(aasa(app), null, 'scripts/app-config.js: not set yet');
   const a = aasa({ teamId: 'A1B2C3D4E5', bundleId: 'com.example.ttc' });
   assert.deepEqual(a.applinks.details[0].appIDs, ['A1B2C3D4E5.com.example.ttc']);
-  assert.deepEqual(a.applinks.details[0].components.map(c => c['?']), [{ room: '?*' }, { play: 'find' }]);
+  assert.deepEqual(a.applinks.details[0].components.map(c => [c['/'], c['?']]), [['/join/*', undefined], ['/', { room: '?*' }], ['/', { play: 'find' }]], 'the invite link /join/CODE, the older ?room=CODE and Find Match');
 });
 test('the app\'s page: its Firebase project and its own SDK named first in the head', () => {
   const html = '<!doctype html>\n<html>\n<head>\n<meta charset="utf-8">\n</head>';

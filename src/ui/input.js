@@ -56,11 +56,11 @@ const gameAction = act => { for (const t in GAMES) { const a = GAMES[t].view && 
 // A tap inside a scrolling list never moves it: anything the browser does on its own (bringing a box it
 // focuses fully into view) is put back before the next frame. A drag is a scroll and fires no click.
 let tapScroll = null;
-// A shared link (?room=CODE): the code read forgivingly (any case, spaces or stray characters dropped), from any address that
-// opened the game: the page's own at the start, or a deep link handed to the app (net/platform.js).
+// A shared link (/join/CODE, net/invite.js, or ?room=CODE): the code read forgivingly (any case, spaces or stray characters
+// dropped), from any address that opened the game: the page's own at the start, or a deep link handed to the app (net/platform.js).
 export function linkCode(url) {
   let v = null;
-  try { v = new URL(url || startLink(), 'https://tictacchaos.com/').searchParams.get('room'); } catch (e) { return null; }
+  try { const u = new URL(url || startLink(), 'https://tictacchaos.com/'), j = /^\/join\/([^/]+)\/?$/i.exec(u.pathname); v = j ? decodeURIComponent(j[1]) : u.searchParams.get('room'); } catch (e) { return null; }
   const c = String(v || '').toUpperCase().replace(/[^A-Z]/g, '');
   return validCode(c) ? c : null;
 }

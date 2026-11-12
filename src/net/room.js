@@ -1,7 +1,8 @@
 // Friend games: the room (host and guest: the lobby on the database, opened and joined through the server), presence,
 // the match as the server runs it (a games/{id} match like Find Match's: net/matchmaking.js reads it, the moves go to
 // the server), and the opponent's moves played back on this phone.
-import { copyText, shareText, siteUrl } from './platform.js';
+import { copyText, shareText } from './platform.js';
+import { buildInvite } from './invite.js';
 import { restrictGames } from '../core/games.js';
 import { NAME_MAX, playerName } from '../core/match.js';
 import { upgradeMini } from '../core/minis.js';
@@ -58,7 +59,6 @@ export function blocked() { return cpuTurn() || remoteTurn() || !!moveWait || (!
 export function pinned() { return echoPinned() || oddPinned() || attPinned() || fingPinned(); }   // an attempt under way that the player has started (Echo's pattern played, Odd One Out's grid revealed): they stay in the square until it goes in
 export function lockMine() { return state.lock != null && (mySide() == null || state.turn === mySide()); }
 export function setNet(status, msg) { net = { status, msg: msg || '' }; noteNet(); if (status === 'error' || status === 'idle') { startBusy = false; startTap = null; startNote = null; } }   // (an error, or out of the room: Start game is a button again)
-function roomLink() { return siteUrl() + '?room=' + state.online.code; }   // (the site's address wherever the game runs: net/platform.js; the app's opens the app again, a Universal Link)
 export function roomRef(path) { return fb.m.ref(fb.db, 'rooms/' + state.online.code + (path ? '/' + path : '')); }
 function presRef(side) { return fb.m.ref(fb.db, isMM() ? `gpresence/${state.online.game}/${side}` : `presence/${state.online.code}/${side}`); }
 const inRoomGame = () => !!(state.online && state.online.kind === 'mm' && state.online.room);   // a friend room's match (the server runs it, as Find Match's)
@@ -520,21 +520,18 @@ export function quitMatch() {
   if (lost) state.endPick = null;
   commit();
 }
-// The invite: one text holding everything, the room's code and the link (which carries the code too), e.g.
-// "Join my Tic Tac Chaos game! https://tictacchaos.com/?room=ABCDE Code: ABCDE". It is shared as that text alone, with no
-// separate url field (iMessage drops the text when a url comes with it), and the link never ends it: from the app's share
-// sheet, Messages turned a link at the end into its preview and dropped the code before it. The link joins at once; the
-// code goes in the Join screen.
-export function inviteText(code, url) { return `Join my Tic Tac Chaos game! ${url} Code: ${code}`; }
+// The invite (Share invite, Copy invite): the one text net/invite.js buildInvite makes, the code and the /join/CODE link in
+// it, shared as that text alone with no separate url field (some apps share the url instead of the text) and copied as the
+// same text. The link joins at once; the code goes in the Join screen.
 export async function shareRoom() {
-  const text = inviteText(state.online.code, roomLink());
+  const text = buildInvite(state.online.code);
   try { if (await shareText(text)) return; }                      // (the share sheet: the app's or the browser's, net/platform.js)
   catch (e) { if (e && (e.name === 'AbortError' || /cancel/i.test(String(e.message || '')))) return; }
   await copyInvite();                                              // (no share sheet here: the invite is copied instead)
 }
 // Copy invite: the same text, on the clipboard.
 export async function copyInvite() {
-  const text = inviteText(state.online.code, roomLink());
+  const text = buildInvite(state.online.code);
   let note = 'Invite copied';
   try { await copyText(text); } catch (e) { note = text; }
   showNotice(note, 1800);
