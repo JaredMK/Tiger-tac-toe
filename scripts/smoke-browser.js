@@ -120,7 +120,11 @@ async function main() {
   } catch (e) {
     check(false, `the browser check stopped: ${String(e && e.message || e).split('\n')[0]}`);
   }
-  try { await inviteCheck(ctx); } catch (e) { check(false, `the invite check stopped: ${String(e && e.message || e).split('\n')[0]}`); }
+  // (a browser of its own: the join it opens is kept on the device, and the next page there would open on the Join screen,
+  // not the menu the match against the computer starts from)
+  const ictx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  try { await inviteCheck(ictx); } catch (e) { check(false, `the invite check stopped: ${String(e && e.message || e).split('\n')[0]}`); }
+  await ictx.close().catch(() => {});
   // staging Open (the admin's Staging access, config/staging/mode): an outsider plays it as production's players do, so the
   // same match against the computer, with no login and no gate on the way
   const open = TARGET === 'staging' && !process.env.SMOKE_URL && await fetch(`${require('./env-config.js').CONFIGS.staging.databaseURL}/config/staging/mode.json`).then(r => r.json()).then(v => v === 'open').catch(() => false);
