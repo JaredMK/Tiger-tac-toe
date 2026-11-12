@@ -96,8 +96,12 @@ export function secret(mini) {
 export function hide(m, k, st) {
   delete m.ship; delete m.tg; return;
 }
+// A shot's timings (ms, at the game's pace; the stylesheet's Sea Battle figures are these): the shell lands at `land`;
+// a miss's ripples or a hit's burst have played by `shot`; the sinking shot: the ship surfaces, then goes under from
+// `under`, all of it over by `sunk`.
+export const BST = { land: 340, shot: 800, under: 950, sunk: 1600 };
 export function flashMs(f, winLen, won) {
-  return won ? 1300 : 750;
+  return won ? BST.sunk : BST.shot;
 }
 // Super Chaos: a Submarine (3 cells, across or down) on a 5x5 sea. A move fires as in a match: a hit fires
 // again, until a miss or the shot that hits its last part (the timeout rule: one shot); that shot is a plain
