@@ -5457,7 +5457,6 @@ button.bglg i { animation: bglring 1s ease-in-out infinite alternate; } button.b
 .tbglh.X { fill: var(--x); } .tbglh.O { fill: var(--o); }
 .tpip.tbglp { width: auto; gap: 3cqw; }
 .g-arc.shut .ctal > .tnm { flex-basis: 4.7em; } .g-arc.shut .ctal .pips { gap: 3px; } .g-arc.shut .ctal .pips i { width: 12px; height: 12px; border-width: 2px; }   /* (six tiles: the name keeps its room beside them) */
-
 .tseq span.q svg.tpq { width: 70%; height: 70%; fill: none; stroke: var(--muted); stroke-width: 1.3; stroke-linecap: round; }   /* Patterns' miniature: the gap's question mark, drawn */
 .exlist { list-style: none; margin: .5em 0 0; padding: 0; display: grid; gap: .25em; font-size: .92em; text-align: left; }   /* a game's list in its "?" (Dice Combo's combos) */
 .exlist b { font-weight: 800; }
@@ -5468,8 +5467,8 @@ button.bglg i { animation: bglring 1s ease-in-out infinite alternate; } button.b
 .rpsarena { position: relative; flex: 1; min-height: 0; container-type: size; display: grid; grid-template-rows: minmax(0, 1fr) 36px minmax(0, 1fr); justify-items: center; padding: 0 10px; background: radial-gradient(ellipse at 50% 50%, #74b47e, #3f7f52); border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 18px; box-shadow: inset 0 6px 0 rgba(22, 18, 16, .2); overflow: hidden; }
 .rpswho { position: absolute; left: 9px; z-index: 3; max-width: calc((100cqw - min(34cqh, 42cqw)) / 2 - 6px); padding: 3px 8px 2px; border: 2.5px solid var(--ink); border-radius: 11px 8px 12px 9px; background: var(--paper); color: var(--ink); font-size: 14px; font-weight: 800; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rpswho.h { top: 9px; } .rpswho.m { bottom: 9px; }
-.rpsarm { --dir: 1; position: relative; width: min(34cqh, 42cqw); min-height: 0; display: flex; flex-direction: column; align-items: center; }
-.rpsarm.me { --dir: -1; flex-direction: column-reverse; }
+.rpsarm { --dir: 1; --hw: calc(min(34cqh, 42cqw) * var(--dir)); position: relative; width: min(34cqh, 42cqw); min-height: 0; display: flex; flex-direction: column; align-items: center; }
+.rpsarm.me { --dir: -1; flex-direction: column-reverse; }   /* (--hw: the hand's width, signed the way the arm points: every reach is a share of it, never of the arm's length) */
 .rpssl { flex: 1 1 0; min-height: 4px; width: 47%; margin: -6px 0 -3px; background: #4a4038; border: solid var(--ink); border-width: 0 3px; }   /* the sleeve, from the felt's edge to the cuff */
 .rpsarm.me .rpssl { margin: -3px 0 -6px; background: var(--pc); }
 .rpshd { position: relative; z-index: 1; flex: none; width: 100%; aspect-ratio: 64 / 78; display: grid; filter: drop-shadow(0 4px 0 rgba(22, 18, 16, .28)); }
@@ -5491,22 +5490,22 @@ button.bglg i { animation: bglring 1s ease-in-out infinite alternate; } button.b
 @keyframes rpsfist { from, to { visibility: visible; } }
 .rpsthrow.pop { animation: rpspop .28s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }
 @keyframes rpspop { 0% { opacity: 0; transform: scale(.55); } 1% { opacity: 1; } 100% { opacity: 1; transform: none; } }
-.rpsarm.win { z-index: 2; transform: translateY(calc(var(--dir) * 7%)); }
-.rpsarm.lose { transform: translateY(calc(var(--dir) * -9%)) rotate(calc(var(--dir) * -7deg)); }
+.rpsarm.win { z-index: 2; transform: translateY(calc(var(--hw) * .08)); }
+.rpsarm.lose { transform: translateY(calc(var(--hw) * -.1)) rotate(calc(var(--dir) * -7deg)); }
 .rpsarm.lose .rpshd { filter: grayscale(.9) brightness(.8) drop-shadow(0 4px 0 rgba(22, 18, 16, .28)); }
 .rpsarm.play { animation: rpstie .32s var(--tj, 0ms) cubic-bezier(.4, 0, .2, 1) backwards, rpspump var(--t, 720ms) cubic-bezier(.45, 0, .55, 1) backwards; }
 .rpsarm.play.win { animation-name: rpswin, rpspump; } .rpsarm.play.lose { animation-name: rpslose, rpspump; }
 .rpsarm.play.lose .rpshd { animation: rpsdim .18s calc(var(--tj, 0ms) + 130ms) backwards; }
-@keyframes rpspump { 0%, 33.3%, 66.6%, 100% { transform: none; } 16.6%, 50%, 83.3% { transform: translateY(calc(var(--dir) * -14%)) rotate(calc(var(--dir) * 4deg)); } }
-@keyframes rpswin { 0% { transform: none; animation-timing-function: ease-out; } 18% { transform: translateY(calc(var(--dir) * -6%)); animation-timing-function: cubic-bezier(.5, 0, .9, .4); } 43% { transform: translateY(calc(var(--dir) * 24%)) scale(1.1); animation-timing-function: cubic-bezier(.3, .6, .4, 1); } }
-@keyframes rpslose { 0%, 40% { transform: none; animation-timing-function: cubic-bezier(.2, .8, .4, 1); } 68% { transform: translateY(calc(var(--dir) * -16%)) rotate(calc(var(--dir) * -13deg)); } }
-@keyframes rpstie { 0%, 100% { transform: none; } 20% { transform: translateY(calc(var(--dir) * -5%)); } 43% { transform: translateY(calc(var(--dir) * 15%)); } 70% { transform: translateY(calc(var(--dir) * -4%)); } }
+@keyframes rpspump { 0%, 33.3%, 66.6%, 100% { transform: none; } 16.6%, 50%, 83.3% { transform: translateY(calc(var(--hw) * -.19)) rotate(calc(var(--dir) * 4deg)); } }
+@keyframes rpswin { 0% { transform: none; animation-timing-function: ease-out; } 18% { transform: translateY(calc(var(--hw) * -.08)); animation-timing-function: cubic-bezier(.5, 0, .9, .4); } 43% { transform: translateY(calc(var(--hw) * .27)) scale(1.1); animation-timing-function: cubic-bezier(.3, .6, .4, 1); } }
+@keyframes rpslose { 0%, 40% { transform: none; animation-timing-function: cubic-bezier(.2, .8, .4, 1); } 68% { transform: translateY(calc(var(--hw) * -.2)) rotate(calc(var(--dir) * -13deg)); } }
+@keyframes rpstie { 0%, 100% { transform: none; } 20% { transform: translateY(calc(var(--hw) * -.07)); } 43% { transform: translateY(calc(var(--hw) * .18)); } 70% { transform: translateY(calc(var(--hw) * -.05)); } }
 @keyframes rpsdim { from { filter: drop-shadow(0 4px 0 rgba(22, 18, 16, .28)); } }
 .rpsbang { position: absolute; inset: 2% -16% 10%; z-index: -1; background: var(--gold); clip-path: polygon(50.0% 0.0%, 59.3% 15.2%, 75.0% 6.7%, 75.5% 24.5%, 93.3% 25.0%, 84.8% 40.7%, 100.0% 50.0%, 84.8% 59.3%, 93.3% 75.0%, 75.5% 75.5%, 75.0% 93.3%, 59.3% 84.8%, 50.0% 100.0%, 40.7% 84.8%, 25.0% 93.3%, 24.5% 75.5%, 6.7% 75.0%, 15.2% 59.3%, 0.0% 50.0%, 15.2% 40.7%, 6.7% 25.0%, 24.5% 24.5%, 25.0% 6.7%, 40.7% 15.2%); }   /* the winner's hand: a burst behind it as its strike lands */
 .rpsarm.house .rpsbang { inset: 10% -16% 2%; }
 .rpsarm.play .rpsbang { animation: rpsbang .34s calc(var(--tj, 0ms) + 130ms) cubic-bezier(.3, 1.5, .5, 1) backwards; }
 @keyframes rpsbang { from { opacity: 0; transform: scale(.3) rotate(-30deg); } }
-.rpsres { align-self: center; z-index: 3; margin: 0; max-width: 100%; height: 36px; padding-top: 4px; font: 400 clamp(17px, 5.6cqw, 21px)/31px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; color: #fff; text-align: center; text-shadow: 0 2px 0 rgba(22, 18, 16, .45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rpsres { position: relative; align-self: center; z-index: 4; margin: 0; max-width: 100%; height: 36px; padding-top: 4px; font: 400 clamp(17px, 5.6cqw, 21px)/31px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; color: #fff; text-align: center; text-shadow: 0 2px 0 rgba(22, 18, 16, .45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rpsres.win { color: #ffe27a; } .rpsres.lose { color: #ffd6cb; } .rpsres.tie { color: #e8f0ff; }
 .rpsbtns { flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; min-height: 84px; }
 .rpsbtns.none { min-height: 0; }
@@ -5874,4 +5873,3 @@ button.dukd:active .dukf, .dukd.rpress .dukf { scale: .88; }
 .domfly svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .dslot.dlate { animation: dmlate 1ms var(--t, 0ms) both; }   /* the tile laid: shown on the table as its flight lands */
 @keyframes dmlate { from { opacity: 0; } to { opacity: 1; } }
-
