@@ -2976,8 +2976,8 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 @keyframes otin { from { scale: .88; } }
 .ogrid.open .otile:not(:disabled):active { scale: .93; }
 /* the pick made (--p: the tap's moment; --t: the verdict's): the tile is pressed in from the tap; then the odd tile is ringed (.odd: found, a green ring under a tick, and it hops; missed, an ink ring that beats twice), a wrong pick shakes under a cross */
-.otile.odd { animation: tilering .6s var(--t, 0ms) both; overflow: visible; z-index: 1; }
-.otile.odd.found { animation: tilefound .6s var(--t, 0ms) cubic-bezier(.3, 1.4, .5, 1) both; }
+.otile.odd { box-shadow: 0 0 0 5px var(--ink); animation: tilering .6s var(--t, 0ms) both; overflow: visible; z-index: 1; }
+.otile.odd.found { box-shadow: 0 0 0 5px var(--green); animation: tilefound .6s var(--t, 0ms) cubic-bezier(.3, 1.4, .5, 1) both; }
 .otile.wrong { overflow: visible; }
 .otile.picked.wrong { animation: oddpick .2s var(--p, 0ms) both, cardshake .45s var(--t, 0ms); }
 .otile.picked.odd { animation: oddpick .2s var(--p, 0ms) backwards, tilefound .6s var(--t, 0ms) cubic-bezier(.3, 1.4, .5, 1) both; }
