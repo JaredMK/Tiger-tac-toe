@@ -167,11 +167,12 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
 // The move's moments (ms): a take flies the card from the pile or the deck into the hand (`land`; a deck card of
 // one's own then turns up, `flip`; a deck run out is gathered from the pile first, three backs `gap` apart taking
 // `fly` each, and the take leaves at `deal`); a discard flies it out onto the pile, and a new meld lights as it
-// lands (`light`), held a little longer.
+// lands (`light`), held a little longer (note: the move's note, 'meld' or 'melds' for a new meld; none given: any meld held).
 export const RMYT = { slide: 300, flip: 260, light: 420, hold: 450, gap: 60, fly: 220, deal: 180 };
-export function rmyTimes(r) {
+export function rmyTimes(r, note) {
   if (!r) return { end: RMYT.hold };
   if (r.kind === 'take') { const at = r.reshuf ? RMYT.deal : 0; return { at, land: at + RMYT.slide, end: at + RMYT.slide + (r.from === 'deck' ? RMYT.flip : 0) + 150 }; }
-  return { at: 0, land: RMYT.slide, light: RMYT.slide + 40, end: RMYT.slide + (r.n ? RMYT.light : 0) + RMYT.hold };
+  const lit = note != null ? note === 'meld' || note === 'melds' : !!r.n;
+  return { at: 0, land: RMYT.slide, light: RMYT.slide + 40, end: RMYT.slide + (lit ? RMYT.light : 0) + RMYT.hold };
 }
-export function flashMs(f, winLen, won) { return rmyTimes(f.rummy).end + (won ? 600 : 0); }
+export function flashMs(f, winLen, won) { return rmyTimes(f.rummy, f.note).end + (won ? 600 : 0); }

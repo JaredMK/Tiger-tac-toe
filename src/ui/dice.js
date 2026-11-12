@@ -15,7 +15,7 @@
 import { dieFace } from './art.js';
 import { DIE_MORE } from '../core/config.js';
 
-export const DIE_FLAT_MS = 600 + DIE_MORE;           // a flat die's tumble (Backgammon Lite's, the retired Dice race's: styles.css .die.roll, --dur); Dice Combo's is 520 + DIE_MORE
+export const DIE_FLAT_MS = 600 + DIE_MORE;           // a flat die's tumble (the retired Dice race's: styles.css .die.roll, --dur; Dice Combo and Backgammon Lite throw the 3-D die now)
 export const DIE_BOUNCE = 0.46;                       // the first touch of the table, as a share of the tumble (the keyframes' 46%)
 const OTHERS8 = [5, 2, 7, 4, 3, 6, 1];               // the faces after the one on show, as steps round an eight-sided die
 function cube(n) {

@@ -15,7 +15,7 @@ import { cardDeck } from '../shared/cards.js';
 // timeoutClose: 'auto') scores the hand as it was dealt, nothing thrown (as 21 stands on a hand in play).
 // Nothing is hidden: the hand rides the public state (it is the mover's own and is shown to both), and the cards
 // drawn are drawn only as the draw is made.
-export const POK = { deal: 90, dealMs: 260, out: 220, hold: 650 };   // the moments: a card slides in every `deal` ms, each taking dealMs; thrown cards go `out` first
+export const POK = { deal: 90, dealMs: 320, out: 220, hold: 750, turn: 100 };   // the moments: a card flies in every `deal` ms, each taking dealMs (it starts to turn up `turn` into its flight); thrown cards go `out` first; the result holds `hold` (its cards hop one after the other)
 export const HANDS = ['none', 'pair', 'two', 'three', 'straight', 'flush', 'full', 'four', 'sf'];
 export const HAND_NAMES = { none: 'Nothing', pair: 'Pair', two: 'Two pair', three: 'Three of a kind', straight: 'Straight', flush: 'Flush', full: 'Full house', four: 'Four of a kind', sf: 'Straight flush' };
 export const POK_PTS = { none: 0, pair: 1, two: 2, three: 3, straight: 4, flush: 5, full: 6, four: 8, sf: 10 };   // (the defaults; the square's own from its settings: pokPoints)

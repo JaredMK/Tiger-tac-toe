@@ -7,6 +7,8 @@ import { thumbArt } from '../../ui/thumbs.js';
 import { attemptMove } from '../../net/moves.js';
 import { mySide } from '../../net/room.js';
 import { render } from '../../ui/render.js';
+import { SND } from '../../audio/sound.js';
+import { haptic } from '../../net/platform.js';
 
 // The screen: both players' tallies up top (name, the tiles in their hand as a small face-down stack and their count),
 // the table (an SVG: the line of played tiles laid as on a real table, end to end, doubles crosswise, snaking down the
@@ -83,9 +85,10 @@ const PIPS = [[], [[0, 0]], [[-S, -S], [S, S]], [[-S, -S], [0, 0], [S, S]], [[-S
 const half = (v, cx, r) => PIPS[Math.max(0, Math.min(6, v))].map(([x, y]) => `<circle class="dpip" cx="${(cx + x).toFixed(2)}" cy="${y.toFixed(2)}" r="${r}"/>`).join('');
 // A tile glyph, horizontal about the origin: its face, the divider, the pips of each half, and (by: who placed it) the
 // divider's dot in their colour.
-export const tileG = (t, by, cls) => `<g class="dtl${cls ? ' ' + cls : ''}"><rect class="dface" x="-1" y="-.5" width="2" height="1" rx=".16"/><path class="ddiv" d="M0 -.38V.38"/>${half(t[0], -0.5, 0.085)}${half(t[1], 0.5, 0.085)}${by ? `<circle class="dby ${by}" r=".09"/>` : ''}</g>`;
+export const tileG = (t, by, cls) => `<g class="dtl${cls ? ' ' + cls : ''}"><rect class="dface" x="-1" y="-.5" width="2" height="1" rx=".16"/><path class="ddiv" d="M0 -.38V.38"/>${half(t[0], -0.5, 0.095)}${half(t[1], 0.5, 0.095)}${by ? `<circle class="dby ${by}" r=".09"/>` : ''}</g>`;
 const BACK_G = '<g class="dtl back"><rect class="dback" x="-1" y="-.5" width="2" height="1" rx=".16"/><rect class="dbackin" x="-.82" y="-.32" width="1.64" height=".64" rx=".1"/></g>';
-const tileSvg = (t, cls, label) => `<svg class="dtsvg${cls ? ' ' + cls : ''}" viewBox="-1.06 -.56 2.12 1.12"${label ? ` aria-label="${label}"` : ' aria-hidden="true"'}>${t ? tileG(t) : BACK_G}</svg>`;
+const SHADE = '<rect class="dshd" x="-1" y="-.5" width="2" height="1" rx=".16"/>';   // a tile's thickness: its lower edge, drawn under it (the light from above, whichever way the tile lies)
+const tileSvg = (t, cls, label) => `<svg class="dtsvg${cls ? ' ' + cls : ''}" viewBox="-1.06 -.56 2.12 1.12"${label ? ` aria-label="${label}"` : ' aria-hidden="true"'}><g transform="translate(0 .1)">${SHADE}</g>${t ? tileG(t) : BACK_G}</svg>`;
 const say = t => `${t[0]}-${t[1]}`;
 // The tile just laid, as it flies in (card motion, ui/cardfly.js): over its place on the felt (percentages of the felt),
 // turned the way it lies, from its source; gone as it lands, when the table's own tile shows.
@@ -94,9 +97,12 @@ function flyTile(t, p, by, box, from) {
   const st = `left:${pc(p.x - bw / 2 - box.x, box.w)}%;top:${pc(p.y - bh / 2 - box.y, box.h)}%;width:${pc(bw, box.w)}%;height:${pc(bh, box.h)}%`;
   return `<span class="domfly" style="${st}"${cfFrom(from, 0, { go: true, wait: from.startsWith('tile:'), d: DOMT.slide })} aria-hidden="true"><svg viewBox="${(-bw / 2).toFixed(2)} ${(-bh / 2).toFixed(2)} ${bw} ${bh}"><g transform="rotate(${p.rot})">${tileG(t, by)}</g></svg></span>`;
 }
-// A tile on the table at its place in the layout (p), turned the way it lies.
-function placed(t, p, by, cls, style) {
-  return `<g class="dslot${cls ? ' ' + cls : ''}"${style ? ` style="${style}"` : ''}><g transform="translate(${p.x.toFixed(2)} ${p.y.toFixed(2)}) rotate(${p.rot})">${tileG(t, by)}</g></g>`;
+// A tile on the table at its place in the layout (p), turned the way it lies, its thickness under it (o.ring: the tile
+// laid last, haloed in its player's colour; o.wave: ms into the move it hops, the line's wave as the last tile goes out).
+function placed(t, p, by, cls, style, o = {}) {
+  const at = `translate(${p.x.toFixed(2)} ${p.y.toFixed(2)}) rotate(${p.rot})`, ghost = cls === 'dghost';
+  const body = `${ghost ? '' : `<g transform="translate(${p.x.toFixed(2)} ${(p.y + 0.1).toFixed(2)}) rotate(${p.rot})">${SHADE}</g>`}<g transform="${at}">${o.ring ? `<rect class="dlastr ${o.ring}" x="-1.13" y="-.63" width="2.26" height="1.26" rx=".26"/>` : ''}${tileG(t, by)}</g>`;
+  return `<g class="dslot${cls ? ' ' + cls : ''}"${style ? ` style="${style}"` : ''}>${o.wave != null ? `<g class="dwv" style="--t:${Math.round(o.wave)}ms">${body}</g>` : body}</g>`;
 }
 // The ghost of the selected tile at an end (as it would lie there, from the layout of the line with it on), and where
 // its button goes (percentages of the felt as it is now).
@@ -130,10 +136,13 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   // the table: every tile where the layout puts it, the one just placed sliding in from its player's side
   const L = domLayout(mini.line, left), box = L.box;
   let fly = '';                                                   // the tile just laid, flying from the hand (or the other player's stack) to its place (card motion)
+  const lp = !dm && mini.last && mini.last.kind === 'play' && !d ? mini.last : null;   // the tile laid last, while it is the latest move: haloed in its player's colour
+  const out = dm && dm.kind === 'play' && dm.left === 0 && !dm.blocked && !REDUCED, newK = dm && dm.kind === 'play' ? dm.pos + left : -1;   // the last tile out: the line hops, a wave out from it
   const tiles = mini.line.map((tl, k) => {
     const pos = k - left, byT = tl[2] === 'X' || tl[2] === 'O' ? tl[2] : null, isNew = dm && dm.kind === 'play' && dm.pos === pos;
     if (isNew && !REDUCED) fly = flyTile(tl, L.tiles[k], dm.by, box, dm.by === me ? 'tile:' + dm.t : 'stk:' + dm.by);
-    return placed(tl, L.tiles[k], isNew ? dm.by : byT, isNew ? (fly ? 'dlate' : 'dslide') : '', isNew ? `--dy:${dm.by === me ? box.h.toFixed(2) : (-box.h).toFixed(2)}px;--t:${fly ? DOMT.slide : 0}ms;--d:${DOMT.slide}ms` : '');
+    const o = { ring: isNew ? dm.by : lp && lp.pos === pos ? lp.by : null, wave: out ? t.land + 120 + Math.abs(k - newK) * 55 : null };
+    return placed(tl, L.tiles[k], isNew ? dm.by : byT, isNew ? (fly ? 'dlate' : 'dslide') : '', isNew ? `--dy:${dm.by === me ? box.h.toFixed(2) : (-box.h).toFixed(2)}px;--t:${fly ? DOMT.slide : 0}ms;--d:${DOMT.slide}ms` : '', o);
   }).join('');
   let ghosts = '', endBtns = '';
   if (domDraft && domDraft.sq === state.zoom && !view) {
@@ -174,7 +183,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
     if (!seen || seen.sq !== state.zoom || seen.p !== p) seen = { sq: state.zoom, p, ids: hand.slice() };
     const fresh = drawing ? hand.filter(k => !seen.ids.includes(k)) : [];
     if (!drawing) seen.ids = hand.slice();
-    const cols = Math.max(6, Math.ceil(hand.length / 2));
+    const cols = Math.max(view ? 6 : 4, Math.ceil(hand.length / 2));   // (two rows: the tiles as large as the row allows, four across at most while the hand is eight or fewer)
     const tilesH = hand.map(k => {
       const tl = domTile(mini, k), fits = own && mine && domFits(mini, k).length > 0, nk = fresh.indexOf(k);
       const at = nk < 0 ? 0 : dm.kind === 'draw' ? lands[Math.min(lands.length - 1, nk)] - dsl : t.land + 220;
@@ -203,13 +212,13 @@ export function moveText(f, who) {
   if (dm.kind === 'pass') return `${who} passed`;
   return `${who} played ${dm.tile ? dm.tile[0] + '-' + dm.tile[1] : 'a tile'}${dm.left === 0 ? ' · last tile!' : ''}`;
 }
-// A placed tile clicks down on the table as it lands; a draw's tiles slide off the boneyard one by one (domDrawTimes); a pass knocks on
+// A placed tile slides out of the hand and clicks down on the table as it lands; a draw's tiles slide off the boneyard one by one (domDrawTimes); a pass knocks on
 // the table; a blocked end knocks twice, then rings for the fewer pips; the last tile out sparkles.
 export function sounds(f, add, won, mini, last) {
   const dm = f.dom || {}, t = domTimes(dm);
   if (dm.kind === 'draw') { const dsl = Math.min(DOMT.drawSlide, t.lands[0]); for (const l of t.lands) add('cardSlide', l - dsl); add(dm.fits ? 'domClick' : 'knock', t.land + 60); }   // each tile slides off the boneyard as it comes; the last one's landing clicks (a fit) or knocks (none)
   else if (dm.kind === 'pass') add('knock', 60);
-  else { add('domClick', t.land); if (dm.open) add('cardSlide', t.land + 220); if (won && !dm.blocked) add('sparkle', t.land + 260); }
+  else { add('cardSlide', 0, 0.8); add('domClick', t.land); if (dm.open) add('cardSlide', t.land + 220); if (won && !dm.blocked) add('sparkle', t.land + 260); }   // (the tile slides off the hand, clicks down on the table)
   if (dm.blocked) { add('knock', t.pips || t.land + 300); add('knock', (t.pips || t.land + 300) + 260); if (won) add('ding', (t.pips || t.land + 300) + DOMT.count); else add('thud', (t.pips || t.land + 300) + DOMT.count); }
   return;
 }
@@ -223,14 +232,15 @@ export function domtileAct(el, e, act) {
   if (!hand.includes(k)) return;
   const fits = domFits(mini, k), ends = domEnds(mini);
   if (!fits.length) return;
-  if (domDraft && domDraft.t === k) { domDraft = null; render(); return; }
+  if (domDraft && domDraft.t === k) { domDraft = null; SND.play('peg', { rate: 0.8 }); render(); return; }   // (put back: the tile's own tick, lower)
   if (!ends || fits.length === 1 || ends[0] === ends[1]) { domDraft = null; attemptMove({ t: k, e: !ends ? 'R' : fits.length === 1 ? fits[0] : (fits.includes('R') ? 'R' : 'L') }); return; }
   domDraft = { sq: state.zoom, t: k, by: me };
+  SND.play('peg'); haptic('tap');                                  // picked up: its tick (never the interface's click: audio/sound.js TAP_SOUND), the ghosts showing where it can go
   render();
 }
 // Someone else's move replayed (ui/replay.js): their tile picked (its ghost at the end it fits, as on their screen), then the move.
 function replayInput(act, val, r) {
-  if (act === 'domtile' && /^i=\d+$/.test(val || '')) { domDraft = { sq: r.sq, t: Number(val.slice(2)), by: r.by }; return false; }
+  if (act === 'domtile' && /^i=\d+$/.test(val || '')) { domDraft = { sq: r.sq, t: Number(val.slice(2)), by: r.by }; SND.play('peg'); return false; }
   return false;
 }
 const replaySynth = (m, mini) => (m && typeof m === 'object' && Number.isInteger(m.t) ? [[0, 'domtile', 'i=' + m.t], [560, 'move', 'm=' + JSON.stringify(m)]] : null);

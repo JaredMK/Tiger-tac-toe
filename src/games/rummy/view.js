@@ -52,7 +52,7 @@ function rummyTable(sq, mini, a, o) {
   const key = `${state.online ? state.online.game || state.online.code || '' : ''}:${state.zoom}:${me}`;
   if (hand[me]) kept = { key, hand: hand[me].slice() };
   else if (state.online && kept && kept.key === key && kept.hand.length === handN(mini, me)) hand[me] = kept.hand.slice();
-  const tim = rmyTimes(s), takeNow = anim && s.kind === 'take', throwNow = anim && s.kind === 'discard', up = s && s.kind === 'discard' && madeMeld(a);
+  const tim = rmyTimes(s, a ? a.note : null), takeNow = anim && s.kind === 'take', throwNow = anim && s.kind === 'discard', up = s && s.kind === 'discard' && madeMeld(a);
   const takeAt = takeNow ? tim.at : 0;
   // the tallies: the melds each hand holds, as pips (public: how many, never which); a new one fills as the throw lands
   const mc = p => Math.min(need, mini.mc && Number.isInteger(mini.mc[p]) ? mini.mc[p] : hand[p] ? rmyMelds(hand[p]).n : 0);
@@ -114,7 +114,7 @@ function rummyTable(sq, mini, a, o) {
       : `<p ${lateAt('arcres', anim ? tim.land : null)} role="status">${W(a.by)} threw ${s.d ? cardShort(s.d) : 'a card'}</p>`;
   } else line = `<p class="arcnote">${o.view ? '' : o.locked || by !== turn || by !== me ? waitLine(by) : ''}</p>`;
   return `<div class="g-arc rmy"><div class="ctals">${tal('X')}${tal('O')}</div>
-    <div class="rmyfelt pc-${by}${throwNow ? ' cfup' : ''}">${oppRow()}<div class="rmytop">${deckBtn}${pileBtn}</div>${line}${mineRow()}</div></div>`;
+    <div class="rmyfelt${throwNow ? ' cfup' : ''}">${oppRow()}<div class="rmytop">${deckBtn}${pileBtn}</div>${line}${mineRow()}</div></div>`;
 }
 // The miniature (public alone: the hands are each side's own): the felt with the deck and the pile's top card (the one
 // face on the board), and the melds each player holds as pips.
@@ -138,7 +138,7 @@ export function moveText(f, who) {
 export function sounds(f, add, won, mini, last) {
   const r = f.rummy;
   if (!r) return;
-  const t = rmyTimes(r);
+  const t = rmyTimes(r, f.note);
   if (r.kind === 'take') {
     if (r.reshuf) { add('cardSlide', 0, 1.2); add('cardSlide', RMYT.gap, 1.3); add('cardSlide', 2 * RMYT.gap, 1.4); }
     add('cardSlide', t.at);

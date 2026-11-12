@@ -6,6 +6,7 @@ import { DIE_BOUNCE, die3d } from '../../ui/dice.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 import { markSvgG } from '../../ui/thumbs.js';
 import { render } from '../../ui/render.js';
+import { SND } from '../../audio/sound.js';
 
 // The table: both players' combo cards side by side (a band in the player's colour with their mark, then the six
 // combos, each a little picture of its dice over its name; a claimed one filled in its player's colour and stamped
@@ -54,7 +55,7 @@ function card(mini, p, o, open, tap, f, tim) {
   const cells = COMBO.kinds.map(k => {
     const got = mine.includes(k), can = open.includes(k) && !got, stamp = stampNow === k;
     const cls = `cmbc${got ? ' got ' + p : ''}${got && k === newest ? ' new' : ''}${can ? ' can' : ''}${can && litAt != null ? ' soon' : ''}${stamp ? ' stamp' : ''}`;
-    const inner = `${comboPic(k)}<span class="cmbn">${COMBO_SHORT[k]}</span>${got ? markSvg(p) : ''}`;
+    const inner = `${got ? markSvg(p) : comboPic(k)}<span class="cmbn">${COMBO_SHORT[k]}</span>`;
     const label = `${COMBO_NAMES[k]}${got ? ', claimed' : can ? ': claim it' : ''}`;
     const st = stamp ? ` style="--t:${tim.mark}ms"` : can && litAt != null ? ` style="--t:${litAt}ms"` : '';
     return can && tap ? `<button class="${cls}" data-act="move" ${mv('c:' + k)} aria-label="${label}">${inner}</button>`
@@ -81,8 +82,8 @@ function comboTable(mini, a, o) {
   const die = i => {
     const v = dice ? dice[i] : null, cls = ['cmbd'], st = [];
     if (held[i]) cls.push('held');
-    if (made.includes(i)) { cls.push('mk'); if (f) { cls.push('late'); st.push(`--t:${made.indexOf(i) * 45}ms`); } }
-    if (dull && v) { cls.push('dull'); if (f) { cls.push('late'); st.push(`--t:${tim.land}ms`); } }
+    if (made.includes(i)) { cls.push('mk'); if (f) { cls.push('late'); st.push(`--tk:${made.indexOf(i) * 45}ms`); } }
+    if (dull && v) { cls.push('dull'); if (f) { cls.push('late'); st.push(`--tz:${tim.land}ms`); } }
     const body = die3d(v, { roll: rolling && !held[i] ? comboLand(i, held) : 0, v: i });
     const lab = v ? `Die ${i + 1}: ${v}${held[i] ? ', held' : ''}` : `Die ${i + 1}`;
     return canHold ? `<button class="${cls.join(' ')}" data-act="cmbhold" data-k="${i}" aria-pressed="${!!held[i]}" aria-label="${lab}">${body}</button>`
@@ -90,7 +91,7 @@ function comboTable(mini, a, o) {
   };
   const W = p => `<b class="${p}">${N(p)}</b>`;
   const tal = p => arcTally(p, o, pips(p, Math.min(t.goal, mini.claimed[p].length), t.goal, !!(f && f.kind === 'claim' && f.by === p), tim.hit));
-  const say = c => (c.kind === 'claim' ? `${W(c.by)} claimed ${COMBO_NAMES[c.combo]}` : c.kind === 'end' ? `${W(c.by)}: nothing claimed` : c.none ? 'No combo: nothing claimed' : '');
+  const say = c => (c.kind === 'claim' ? `${COMBO_NAMES[c.combo]}!` : c.kind === 'end' ? 'Nothing claimed' : c.none ? 'No combo: nothing claimed' : '');   // (the move alone: whose it is, the tallies and the card say)
   const resTxt = f ? say(f) : '';
   const res = resTxt ? `<p ${lateAt('arcres ' + (f.kind === 'claim' ? 'ok' : 'no'), f.kind === 'roll' ? tim.land : f.kind === 'claim' ? tim.hit : 0)} role="status">${resTxt}</p>`
     : o.view ? '<p class="arcnote"></p>'
@@ -98,7 +99,8 @@ function comboTable(mini, a, o) {
     : `<p class="arcnote">${cur ? '' : `${W(turn)} to play`}</p>`;   // (no help text in the game: the lit combos and Roll say it; the roll count is in the header, heldSub)
   const rollsLeft = cur ? R - cur.rolls : R, rollM = !cur || !cur.rolls ? 'roll' : 'roll:' + held.join('');
   const canRoll = mover && !f && rollsLeft > 0 && !(cur && held.every(Boolean));
-  const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv(rollM)}${canRoll ? '' : ' disabled'}>${cur && cur.rolls ? `Roll again (${rollsLeft} left)` : 'Roll'}</button></div>`;
+  const pre = rolling && f.by === turn ? f.rolls - 1 : cur ? cur.rolls : 0;   // (a roll playing: the button reads as it did when pressed)
+  const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv(rollM)}${canRoll ? '' : ' disabled'}>${pre ? `Roll again (${R - pre} left)` : 'Roll'}</button></div>`;
   const tray = `<div class="cmbtray${dice ? '' : ' idle'}${canHold ? ' pick' : ''}" aria-label="The dice"><div class="cmbdice">${[0, 1, 2, 3, 4].map(die).join('')}</div></div>`;
   const C = p => card(mini, p, o, turn === p ? open : [], mover && !f, f, tim);
   return `<div class="g-arc g-cmb pc-${pc}"><div class="ctals">${tal('X')}${tal('O')}</div><div class="cmb"><div class="cmbcards">${C('X')}${C('O')}</div>${tray}${res}</div>${btn}</div>`;
@@ -113,6 +115,7 @@ function holdAct(el) {
   const h = holdsFor(state.zoom, m.cur), k = Number(el.dataset.k);
   if (!(k >= 0 && k < 5)) return;
   h[k] = h[k] ? 0 : 1;
+  SND.play(h[k] ? 'select' : 'deselect');
   render();
 }
 export const actions = { cmbhold: holdAct };
@@ -122,6 +125,7 @@ function replayInput(act, val, r) {
   const sq = state.squares && state.squares[r.sq], m = sq && sq.mini;
   if (!m || !m.cur) return false;
   const h = holdsFor(r.sq, m.cur), k = Number(val.slice(2)); h[k] = h[k] ? 0 : 1;
+  SND.play(h[k] ? 'select' : 'deselect');
   return false;
 }
 const replaySynth = m => {

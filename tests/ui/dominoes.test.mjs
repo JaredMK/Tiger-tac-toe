@@ -83,7 +83,7 @@ test('Dominoes: a move replayed animates from its recorded flash: the placed til
   assert.equal(V.moveText({ dom: { kind: 'play', tile: [1, 1], left: 0 } }, 'Jared'), 'Jared played 1-1 · last tile!');
   assert.equal(V.moveText({ dom: { kind: 'draw', blocked: true, pips: { X: 4, O: 9 } } }, 'Jared'), 'Blocked: 4 to 9 pips');
   const snd = []; V.sounds({ dom: f.dom }, (n, t) => snd.push([n, t]), false, mini, null);
-  assert.deepEqual(snd, [['domClick', 580]]);
+  assert.deepEqual(snd, [['cardSlide', 0], ['domClick', 580]], 'the tile slides off the hand and clicks down as it lands');
   snd.length = 0; V.sounds({ dom: { kind: 'draw', drew: 2, fits: false, blocked: true, pips: { X: 1, O: 2 } } }, (n, t) => snd.push([n, t]), true, mini, null);
   assert.deepEqual(snd, [['cardSlide', 60], ['cardSlide', 360], ['knock', 660], ['knock', 900], ['knock', 1160], ['ding', 1600]], 'a slide as each tile comes, once each');
   snd.length = 0; V.sounds({ dom: { kind: 'draw', drew: 3, fits: true } }, (n, t) => snd.push([n, t]), false, mini, null);

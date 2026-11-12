@@ -370,7 +370,7 @@ export function presentEntry(st, e, rest) {
     // The other player's move: the square as it was until their inputs have played (ui/replay.js), then the
     // square as the move left it and the move's own animation.
     const mini0 = before ? clone(before) : null;
-    if (mini0) state.squares[e.square] = clone(mini0);
+    if (mini0) { state.squares[e.square] = clone(mini0); mergeMySides(); }   // (this side's own part goes on the square as it was, too: its hand or rack is not the other player's move's to change, and never turns to backs while their move replays)
     const start = () => repStart({ sq: e.square, by: e.by, type: f.type, mini: mini0 ? mini0.mini : state.squares[e.square].mini, move: f.m, list: mini0 ? f.rep : null, timeout: !!f.timeout, speed: replaySpeed(),
       onMove: () => { state.squares[e.square] = clone(e.after); mergeMySides(); state.flash = f; state.done = done; state.draft = ''; state.notice = null; playFlash(); save(); render(); } });
     showRemoteMove(e.square, moveLabel(e), mini0, start);

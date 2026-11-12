@@ -41,8 +41,9 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
   const l = mini.last;
   flash.rps = { t: l.t, h: l.h, res: l.res, score: Object.assign({}, l.score) };
 }
-// The move's moments (ms from the move): both fists shake (`shake`), the throws show (`show`), the verdict (`judge`), the end.
-export const RPST = { shake: 720, judge: 260, hold: 520, tie: 380 };
+// The move's moments (ms from the move): both fists shake (`shake`), the throws show (`show`), the verdict (`judge`: the
+// winner's hand strikes, landing `strike` later), the end.
+export const RPST = { shake: 720, judge: 260, strike: 130, hold: 520, tie: 380 };
 export function rpsTimes(f) {
   const show = RPST.shake, judge = show + RPST.judge;
   return { show, judge, end: judge + (f && f.res === 'tie' ? RPST.tie : RPST.hold) };

@@ -2,8 +2,7 @@
 import { BGL, BGLT, bglCan, bglDice, bglHome, bglMoves, bglStep, bglTimes, bglTo, bglV2 } from './rules.js';
 import { N, REDUCED, mv, state, waitLine, zoomedType } from '../../ui/app.js';
 import { dieFace } from '../../ui/art.js';
-import { DIE_FLAT_MS } from '../../ui/dice.js';
-import { DIE_MORE } from '../../core/config.js';
+import { DIE_BOUNCE, die3d } from '../../ui/dice.js';
 import { fxAttr } from '../../ui/fx.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 import { markSvgG, pipRows, tokSvg } from '../../ui/thumbs.js';
@@ -16,10 +15,14 @@ import { haptic } from '../../net/platform.js';
 import { SND } from '../../audio/sound.js';
 import { ANIM } from '../../core/timer.js';
 
-// The board: the track's n points in a row, with a zone at each end: the left one holds X's pieces waiting to start
-// (top) and O's pieces borne off (bottom), the right one O's waiting and X's off. X travels left to right, O right to
-// left (the arrows under the board). Pieces stack up from the bottom of their point (one side to a point: a lone
-// enemy is hit, two block). Every piece has a cell (column, slot of 6) worked out from the positions alone (bglCells),
+// The board: a wooden frame round the track's n points in a row, with a tray at each end: the left one holds O's pieces
+// borne off (and, on a square from before, X's waiting to start at its top), the right one X's off (O's waiting). Each
+// tray carries its owner's mark and a socket for each piece still to come; each side's home zone (its last points) is
+// tinted in its colour over a band along the bottom. X travels left to right, O right to left (the marks and arrows
+// under the board). Pieces stack up from the bottom of their point (one side to a point: a lone enemy is hit, two
+// block). The dice are the shared 3-D die (ui/dice.js), thrown in under the board. The turn before is marked while
+// nothing is under way: a ring on each piece it moved and a ghost where each came from. A hit bursts where it lands; a
+// side with every piece off: its tray is framed in gold and its pieces hop. Every piece has a cell (column, slot of 6) worked out from the positions alone (bglCells),
 // so a move is drawn as the change between the cells before and after it: the piece slides, a hit piece flies home
 // after it lands, a piece borne off slides into its tray. A piece that moves several times in one turn slides once
 // for each step, one after the other (a wrapper a step, nested: hops).
@@ -86,9 +89,12 @@ function addStep(dr, mini, d, k, auto) {
   dr.steps.push({ d, k, auto: !!auto }); dr.at = performance.now(); dr.pick = null;
   dr.hit = res.hit ? other(dr.p) + res.hit.k : null; dr.off = res.to > c.n;
   const S = ANIM.speed || 1, at = ms => ({ at: ms / 1000 / S });
+  SND.play('pieceSlide');
   SND.play('clack', at(BGLT.slide - 60));
   if (res.hit) SND.play('thud', at(BGLT.slide + 40));
   if (dr.off) SND.play('ding', at(BGLT.slide - 80));
+  clearTimeout(dr.buzzT); dr.buzzT = null;
+  if (!dr.rep && (res.hit || dr.off)) dr.buzzT = setTimeout(() => { dr.buzzT = null; haptic('medium'); }, (BGLT.slide - 40) / S);   // (this phone's own step: a hit or a piece off buzzes as it lands)
   return true;
 }
 // Undo: the steps back to before the last one chosen (the forced ones after it go with it).
@@ -98,7 +104,7 @@ function undoStep(dr, mini) {
   while (dr.steps.length && dr.steps[dr.steps.length - 1].auto) dr.steps.pop();
   dr.steps.pop();
   dr.from = bglCells(c.pos, c.n); dr.at = performance.now(); dr.hit = null; dr.off = false; dr.pick = null;
-  clearTimeout(dr.commitT); dr.commitT = null;
+  clearTimeout(dr.commitT); dr.commitT = null; clearTimeout(dr.buzzT); dr.buzzT = null;
   SND.play('swish');
   return true;
 }
@@ -161,7 +167,10 @@ function landing(mini, p, k, v) {
   return [col, SLOTS - 1 - there];
 }
 const cellStyle = (col, slot, c) => `left:${(col * 100 / c).toFixed(3)}%;top:${(slot * 100 / SLOTS).toFixed(3)}%;width:${(100 / c).toFixed(3)}%;height:${(100 / SLOTS).toFixed(3)}%`;
-const piece = p => `<svg viewBox="-10 -10 20 20" aria-hidden="true"><circle r="8.6"/>${markSvgG(p, 3.6)}</svg>`;
+const piece = p => `<svg viewBox="-10 -10 20 20" aria-hidden="true"><ellipse class="bglsh" cx="0.7" cy="1.9" rx="8.9" ry="8.5"/><circle class="bglck" r="8.5"/><circle class="bglrim" r="6.2"/>${markSvgG(p, 3.3)}</svg>`;
+const markSvg = p => `<svg class="bglmk ${p}" viewBox="-10 -10 20 20" aria-hidden="true">${markSvgG(p, 6)}</svg>`;
+// When die d of a roll's dice lands (ms into the move): the last at BGLT.land, each one before it a little sooner.
+export const bglLand = (d, n) => BGLT.land - (n - 1 - d) * BGLT.stag;
 // The hops between two layouts of the cells: every piece whose cell changed slides at t (the hit one flies at flyT).
 function addHops(H, a, b, t, flyKey, flyT, lookKey, lookT) {
   for (const key of Object.keys(b)) {
@@ -238,10 +247,24 @@ function table(mini, a, o) {
     tb.steps.forEach((s, i) => addHops(H, cells[i], cells[i + 1], T.steps[i].go, s.hit ? q + s.hit.k : null, T.steps[i].hitAt, tb.by + s.k, T.steps[i].at));
   } else if (dr && dr.from && dr.at != null && !REDUCED) addHops(H, dr.from, now, 0, dr.hit, BGLT.slide);
   const pickedKey = me && pick != null ? me + pick : null;
+  // the turn before, marked while nothing is under way: a ring on each piece it moved, a ghost where each came from
+  const lt = !b && !dr && mini.last && (mini.last.kind === 'turn' || mini.last.kind === 'use') && mini.last.pos ? turnOf(mini.last) : null;
+  const lm = lt && JSON.stringify(lt.b.pos) === JSON.stringify(mini.pos) ? lt.b : null;
+  const moved = new Set(lm ? lm.steps.map(s => lm.by + s.k) : []), ghosts = new Set();
+  const trail = lm ? lm.steps.map((s, i) => {
+    const [col, slot] = bglCells(stepPos(lm, i), n)[lm.by + s.k], at = col + '.' + slot;
+    if (ghosts.has(at) || Object.values(now).some(x => x[0] === col && x[1] === slot)) return '';
+    ghosts.add(at);
+    return `<i class="bgltr ${lm.by}" style="${cellStyle(col, slot, c)}" aria-hidden="true"></i>`;
+  }).join('') : '';
+  // a side with every piece off: its pieces hop in its tray (as the last one lands, when a move is playing)
+  const offOf = p => view.pos[p].filter(x => x > n).length;
+  const champ = ['X', 'O'].find(p => offOf(p) >= BGL.pieces) || null;
+  const champAt = !champ || REDUCED ? null : anim ? T.slid : dr && dr.at != null && dr.off ? BGLT.slide : null;
   const pieces = ['X', 'O'].flatMap(p => [0, 1, 2].map(k => {
     const key = p + k, [col, slot] = now[key], hs = H[key];
-    let cls = `bglp ${p}${hs && hs.length ? ' mv' : ''}`;
-    const st = cellStyle(col, slot, c), inner = hopWrap(piece(p), hs);
+    let cls = `bglp ${p}${hs && hs.length ? ' mv' : ''}${moved.has(key) ? ' last' : ''}${p === champ ? ` won${champAt != null ? ' late' : ''}` : ''}`;
+    const st = cellStyle(col, slot, c) + (p === champ && champAt != null ? `;--tw:${Math.round(champAt + k * 90)}ms` : ''), inner = hopWrap(piece(p), hs);
     if (p === me && movable.has(view.pos[p][k])) {
       const tk = movable.get(view.pos[p][k]);
       cls += ' can' + (pickedKey === p + tk && tk === k ? ' pick' : '');
@@ -259,16 +282,24 @@ function table(mini, a, o) {
     const [col, slot] = bglCells(stepPos(tb, i + 1), n)[tb.by + s.k], st = T.steps[i];
     return `<i class="bglg fl ${tb.by}${s.off ? ' off' : ''}" style="${cellStyle(col, slot, c)};--t:${Math.round(st.at)}ms;--d:${Math.max(1, Math.round(st.land - st.at))}ms" aria-hidden="true"><i>${dieLab(tb.v[s.d])}</i></i>`;
   }).join('');
-  const pts = Array.from({ length: n }, (_, i) => `<i class="bglpt${i % 2 ? ' b' : ''}" style="left:${((i + 1) * 100 / c).toFixed(3)}%;width:${(100 / c).toFixed(3)}%"></i>`).join('');
-  const zones = `<i class="bglz l" style="width:${(100 / c).toFixed(3)}%"></i><i class="bglz r" style="width:${(100 / c).toFixed(3)}%"></i>`
-    + (bglV2(mini) ? ['X', 'O'].map(p => { const h = bglHome(mini), from = p === 'X' ? n - h + 1 : 1; return `<i class="bglhm ${p}" style="left:${(from * 100 / c).toFixed(3)}%;width:${(h * 100 / c).toFixed(3)}%"></i>`; }).join('') : '');   // each side's home zone: a band in its colour under its last points
+  // a hit: a burst where the piece lands on the other's (the flash's steps, or the draft's latest)
+  let bams = '';
+  if (anim) bams = tb.steps.map((s, i) => { if (!s.hit) return ''; const [col, slot] = bglCells(stepPos(tb, i + 1), n)[tb.by + s.k]; return `<i class="bglbam" style="${cellStyle(col, slot, c)};--t:${Math.round(T.steps[i].hitAt)}ms" aria-hidden="true"></i>`; }).join('');
+  else if (dr && dr.hit && dr.at != null && dr.steps.length && !REDUCED) { const [col, slot] = now[dr.p + dr.steps[dr.steps.length - 1].k]; bams = `<i class="bglbam" style="${cellStyle(col, slot, c)};--t:${BGLT.slide}ms" aria-hidden="true"></i>`; }
+  const v2 = bglV2(mini), wd = (100 / c).toFixed(3);
+  const pts = Array.from({ length: n }, (_, i) => `<i class="bglpt${i % 2 ? ' b' : ''}" style="left:${((i + 1) * 100 / c).toFixed(3)}%;width:${wd}%"></i>`).join('');
+  // the trays: the left one O's, the right one X's, each with its owner's mark and a socket a piece (a square from before: plain, its top the other side's waiting pieces)
+  const tray = (side, p) => `<i class="bglz ${side} ${p}${offOf(p) >= BGL.pieces ? ' full' : ''}" style="width:${wd}%">${v2 ? markSvg(p) : ''}</i>`;
+  const sockets = v2 ? ['X', 'O'].map(p => [0, 1, 2].map(i => `<i class="bglso" style="${cellStyle(p === 'X' ? n + 1 : 0, SLOTS - 1 - i, c)}"></i>`).join('')).join('') : '';
+  const zones = tray('l', 'O') + tray('r', 'X')
+    + (v2 ? ['X', 'O'].map(p => { const h = bglHome(mini), from = p === 'X' ? n - h + 1 : 1; return `<i class="bglhm ${p}" style="left:${(from * 100 / c).toFixed(3)}%;width:${(h * 100 / c).toFixed(3)}%"></i>`; }).join('') : '');   // each side's home zone: its last points tinted in its colour over a band along the bottom
   const host = !b && dr && dr.at != null ? fxAttr(dr.at) : '';    // (the draft's step: its slide timed from the tap)
-  const board = `<div class="bglw"><div class="bglb" style="--c:${c}"${host} role="img" aria-label="The track: ${n} points">${zones}${pts}${pieces}${rings}</div></div>`;
-  const arrows = `<div class="bglar" aria-hidden="true"><svg class="X" viewBox="0 0 40 12"><path d="M2 6h33M29 1.5l6 4.5-6 4.5"/></svg><svg class="O" viewBox="0 0 40 12"><path d="M38 6H5M11 1.5L5 6l6 4.5"/></svg></div>`;
+  const board = `<div class="bglw"><div class="bglb" style="--c:${c}"${host} role="img" aria-label="The track: ${n} points">${zones}${pts}${sockets}${trail}${pieces}${rings}${bams}</div></div>`;
+  const arrows = `<div class="bglar" aria-hidden="true"><span class="X">${markSvg('X')}<svg viewBox="0 0 40 12"><path d="M2 6h33M29 1.5l6 4.5-6 4.5"/></svg></span><span class="O"><svg viewBox="0 0 40 12"><path d="M38 6H5M11 1.5L5 6l6 4.5"/></svg>${markSvg('O')}</span></div>`;
   // the dice: the roll's tumbling in; the turn's greying one by one as each is used (crossed: no move for it)
   const rollNow = b && b.kind === 'roll' && !REDUCED;
   let dd = null;
-  if (b && b.kind === 'roll') dd = b.v.map((v, d) => ({ v, cls: (b.one && d === 1 ? ' used' : '') + (rollNow ? ' roll' : '') }));
+  if (b && b.kind === 'roll') dd = b.v.map((v, d) => ({ v, cls: b.one && d === 1 ? ' used' : '', roll: rollNow }));
   else if (tb) {
     const spendAt = {}; tb.steps.forEach((s, i) => { spendAt[s.d] = T.steps[i].land; });
     dd = tb.v.map((v, d) => {
@@ -278,27 +309,30 @@ function table(mini, a, o) {
       return { v, cls: '' };
     });
   } else if (view.dice && view.dice.by === (dr ? dr.p : turn)) {
-    const dead = dr ? deadOf(view, optsOf(view, dr.p)) : [], last = dr && dr.steps.length && dr.at != null ? dr.steps[dr.steps.length - 1].d : null;
+    const dead = dr && champ !== dr.p ? deadOf(view, optsOf(view, dr.p)) : [], last = dr && dr.steps.length && dr.at != null ? dr.steps[dr.steps.length - 1].d : null;
     dd = view.dice.v.map((v, d) => ({ v, cls: view.dice.used[d] ? (d === last && !REDUCED ? ' spend' : ' used') : dead.includes(d) ? ' dead' : (me && to.some(x => x.d === d) ? ' sel' : ''), t: d === last ? BGLT.slide : null }));
   }
-  const dice = dd ? dd.map(x => (x.v ? `<span class="die bgldie${x.cls}"${x.t != null || /roll/.test(x.cls) ? ` style="${x.t != null ? `--t:${Math.round(x.t)}ms;` : ''}${/roll/.test(x.cls) ? `--dur:${DIE_FLAT_MS}ms` : ''}"` : ''} aria-label="${x.v}${/used|spend/.test(x.cls) ? ', used' : /dead/.test(x.cls) ? ', no move' : ''}">${dieFace(x.v)}</span>` : '')).join('') : '';
+  const nd = dd ? dd.filter(x => x.v).length : 0;                  // (the shared 3-D die: a roll's dice thrown in, landing one after the other)
+  const dice = dd ? dd.map((x, d) => (x.v ? `<span class="bgldie${x.cls}"${x.t != null ? ` style="--ts:${Math.round(x.t)}ms"` : ''} role="img" aria-label="${x.v}${/used|spend/.test(x.cls) ? ', used' : /dead/.test(x.cls) ? ', no move' : ''}">${die3d(x.v, { roll: x.roll ? bglLand(d, nd) : 0, v: d })}</span>` : '')).join('') : '';
   const W = p => `<b class="${p}">${N(p)}</b>`;
-  const offOf = p => view.pos[p].filter(x => x > n).length;
-  const tal = p => arcTally(p, o, pips(p, offOf(p), BGL.pieces, !!(anim && tb.by === p && T.offAt != null), anim ? T.offAt : null));
+  // the tallies: a pip a piece off, filling as the piece reaches its tray (a move playing, or the draft's step)
+  const offAt = anim ? T.offAt : dr && dr.off && dr.at != null && !REDUCED ? BGLT.slide - 60 : null, offBy = anim ? tb.by : dr ? dr.p : null;
+  const tal = p => arcTally(p, o, pips(p, offOf(p), BGL.pieces, offAt != null && offBy === p, offAt));
   let say = '', ok = '', sayAt = null;
   if (b && b.kind === 'roll') { say = b.stuck ? 'No move: the turn passes' : b.one ? `Opening roll: ${b.v[0]}` : b.v.length === 4 ? `Double ${b.v[0]}: four moves` : `${W(b.by)} rolled ${b.v[0]} and ${b.v[1]}`; sayAt = rollNow ? BGLT.roll : null; }
   else if (tb) {
     const hi = tb.steps.findIndex(s => s.hit), oi = tb.steps.findIndex(s => s.off);
-    if (hi >= 0) { say = `Hit! ${W(other(tb.by))} goes back to the start`; ok = 'ok'; sayAt = T.steps[hi].hitAt; }
-    else if (oi >= 0) { say = tb.steps.filter(s => s.off).length > 1 ? 'Pieces off!' : 'A piece off!'; ok = 'ok'; sayAt = T.steps[oi].land; }
+    if (hi >= 0) { say = 'Hit! Back to the start'; ok = 'ok'; sayAt = T.steps[hi].hitAt; }
+    else if (oi >= 0) { say = champ === tb.by ? 'Last piece off!' : tb.steps.filter(s => s.off).length > 1 ? 'Pieces off!' : 'A piece off!'; ok = 'ok'; sayAt = champ === tb.by ? T.slid : T.steps[oi].land; }
     else if (tb.lost.length) { say = deadLine(tb.v, tb.lost); sayAt = T.deadAt; }
     else if (tb.again) { say = 'Roll again'; sayAt = T.slid; }
     if (!anim) sayAt = null;
   } else if (dr) {
-    if (dr.hit && dr.steps.length) { say = `Hit! ${W(other(dr.p))} goes back to the start`; ok = 'ok'; }
-    else say = deadLine(view.dice ? view.dice.v : [], deadOf(view, optsOf(view, dr.p)));
+    if (dr.hit && dr.steps.length) { say = 'Hit! Back to the start'; ok = 'ok'; sayAt = dr.at != null && !REDUCED ? BGLT.slide : null; }   // (the draft's step: said as the piece lands)
+    else if (dr.off && dr.steps.length) { say = champ === dr.p ? 'Last piece off!' : 'A piece off!'; ok = 'ok'; sayAt = dr.at != null && !REDUCED ? BGLT.slide - 60 : null; }
+    else if (champ !== dr.p) say = deadLine(view.dice ? view.dice.v : [], deadOf(view, optsOf(view, dr.p)));
   }
-  const res = say ? `<p ${lateAt('arcres ' + ok, sayAt)} role="status">${say}</p>`
+  const res = say ? `<p ${lateAt('arcres ' + ok, sayAt)}${!tb && !b && sayAt != null ? host : ''} role="status">${say}</p>`
     : `<p class="arcnote">${o.view ? '' : o.locked && !dr ? waitLine(turn) : ''}</p>`;
   // the button: Roll, or, with the dice out, Undo (the same room)
   const inPlay = !!bglDice(mini, turn) || !!dr || !!tb;
@@ -306,7 +340,8 @@ function table(mini, a, o) {
   if (!o.view) btn = inPlay && !(b && b.kind === 'roll')
     ? `<div class="cbtns one"><button class="big bglundo" data-act="bglundo"${live && dr.steps.some(s => !s.auto) ? '' : ' disabled'}>Undo</button></div>`
     : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv('roll')}${o.locked || inPlay || b ? ' disabled' : ''}>Roll</button></div>`;
-  return `<div class="g-arc"><div class="ctals">${tal('X')}${tal('O')}</div><div class="bgl">${board}${arrows}<div class="bgldice"${host}>${dice}</div>${res}</div>${btn}</div>`;
+  const pc = tb ? tb.by : b ? b.by : dr ? dr.p : turn;
+  return `<div class="g-arc g-bgl pc-${pc}"><div class="ctals"${host}>${tal('X')}${tal('O')}</div><div class="bgl" style="--c:${c}">${board}${arrows}<div class="bgldice"${host}>${dice}</div>${res}</div>${btn}</div>`;
 }
 // The positions after the first i steps of a turn's flash (its pos is after them all).
 function stepPos(tb, i) {
@@ -317,18 +352,18 @@ function stepPos(tb, i) {
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   return table(mini, a, { view, locked, turn, zoom: state.zoom, f: !!f, d: !!d });
 }
-// The miniature: the track as a strip of points with every piece on it (and those waiting in the end zones), and under
-// it each player's pieces borne off as pips.
+// The miniature: the board in its frame (the points, each side's home band, the two trays) with every piece on it,
+// the ones borne off in their trays, and under it each player's pieces off as pips.
 export function miniature(mini, final) {
-  const n = mini.n, c = n + 2, cells = bglCells(mini.pos, n), W = c * 10, H = 30;
-  const pts = Array.from({ length: n }, (_, i) => `<rect class="tbglpt${i % 2 ? ' b' : ''}" x="${(i + 1) * 10}" y="0" width="10" height="${H}"/>`).join('');
+  const n = mini.n, c = n + 2, cells = bglCells(mini.pos, n), W = c * 10, H = 36, hm = bglV2(mini) ? bglHome(mini) : 0;
+  const pts = Array.from({ length: n }, (_, i) => { const x = (i + 1) * 10; return `<path class="tbglpt${i % 2 ? ' b' : ''}" d="M${x + 0.9} ${H}L${x + 5} 5 ${x + 9.1} ${H}z"/>`; }).join('');
+  const bands = hm ? `<rect class="tbglh X" x="${(n - hm + 1) * 10}" y="${H - 2.6}" width="${hm * 10}" height="2.6"/><rect class="tbglh O" x="10" y="${H - 2.6}" width="${hm * 10}" height="2.6"/>` : '';
   const toks = ['X', 'O'].flatMap(p => [0, 1, 2].map(k => {
     const [col, slot] = cells[p + k], a = mini.pos[p][k];
-    if (a > n) return '';                                         // (borne off: the pips)
-    const y = a <= 0 ? 5 + slot * 10 : H - 5 - (SLOTS - 1 - slot) * 10;
-    return tokSvg(p, col * 10 + 5, y, 4.4);
+    const y = a <= 0 ? 5.2 + slot * 8.6 : H - 5.2 - (SLOTS - 1 - slot) * 8.6;
+    return tokSvg(p, col * 10 + 5, y, 4.3);
   })).join('');
-  const art = `<svg class="tbgl" viewBox="0 0 ${W} ${H}" aria-hidden="true"><rect class="tbglz" x="0" y="0" width="${W}" height="${H}" rx="3"/>${pts}${toks}</svg>`;
+  const art = `<svg class="tbgl" viewBox="-3 -3 ${W + 6} ${H + 6}" aria-hidden="true"><rect class="tbglf" x="-2" y="-2" width="${W + 4}" height="${H + 4}" rx="4"/><rect class="tbglz" x="0" y="0" width="${W}" height="${H}" rx="2"/><rect class="tbglb" x="10" y="0" width="${W - 20}" height="${H}"/>${pts}${bands}<path class="tbgle" d="M10 0V${H}M${W - 10} 0V${H}"/>${toks}</svg>`;
   const off = { X: mini.pos.X.filter(a => a > n).length, O: mini.pos.O.filter(a => a > n).length };
   return `<div class="tbglm" aria-label="Backgammon Lite: X has ${off.X} of 3 off, O has ${off.O} of 3 off">${art}<div class="tpip tbglp">${pipRows(off, BGL.pieces)}</div></div>`;
 }
@@ -340,16 +375,18 @@ export function moveText(f, who) {
   if (b.kind === 'turn') { const st = b.steps || []; return `${who} moved ${st.map(s => b.v[s.d]).join(', ')}${st.some(s => s.hit) ? ' and hit' : st.some(s => s.off) ? ' and bore a piece off' : ''}`; }
   return `${who} moved ${b.v[b.d]}${b.hit ? ' and hit' : b.off ? ' and bore a piece off' : ''}`;
 }
-// The roll: the rattle, the dice landing (a thud for no move); each step: its click as it lands, a hit's thump as the
-// other piece flies home, a ding for a piece off (none for a turn already played here, step by step: seenOf).
+// The roll: the rattle, a light click as the first die touches down, the thunk of the last (a thud for no move); each
+// step: the piece's slide, its click as it lands, a hit's thump as the other piece flies home, a ding for a piece off
+// (none for a turn already played here, step by step: seenOf).
 export function sounds(f, add, won, mini, last) {
   const b = f.bgl;
   if (!b) return;
-  if (b.kind === 'roll') { add('rattle', 0); add('thunk', 500 + DIE_MORE); if (b.stuck) add('thud', BGLT.roll); return; }
+  if (b.kind === 'roll') { const n = b.v.filter(Boolean).length; add('rattle', 0); add('diceTap', Math.round(bglLand(0, n) * DIE_BOUNCE)); add('thunk', BGLT.land); if (b.stuck) add('thud', BGLT.roll); return; }
   const tt = turnOf(b);
   if (!tt || seenOf(tt.b, state.zoom)) return;
   tt.b.steps.forEach((s, i) => {
     const t = tt.T.steps[i];
+    add('pieceSlide', t.go);
     add('clack', t.land - (s.off ? BGLT.off : 0) - 60);
     if (s.hit) add('thud', t.hitAt + 40);
     if (s.off) add('ding', t.land - 80);

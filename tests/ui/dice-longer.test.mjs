@@ -34,7 +34,9 @@ test('every die\'s tumble and landing is DIE_MORE later than the figures it had'
   assert.equal(CRAPS.land, 560 + DIE_MORE, 'Krabs: the first rolls');
   assert.equal(CRAPS.roll, 900 + DIE_MORE, 'Krabs: the next throw leaves the same pause after the landing');
   assert.equal(COMBO.roll, 700 + DIE_MORE, 'Dice Combo');
+  assert.equal(COMBO.land, 520 + DIE_MORE, 'Dice Combo: its last die down (the shared 3-D die now; its flat die tumbled as long)');
   assert.equal(BGLT.roll, 820 + DIE_MORE, 'Backgammon Lite');
+  assert.equal(BGLT.land, 600 + DIE_MORE, 'Backgammon Lite: its last die down (the shared 3-D die now; its flat die tumbled as long)');
   assert.equal(DIE_FLAT_MS, 600 + DIE_MORE);
 });
 
@@ -60,7 +62,7 @@ test('each game\'s move holds to its dice\'s landing and on: flashMs grew with t
 test('the stylesheet\'s own figures for the flat dice and the 3-D die\'s turns follow', () => {
   const sec = ms => `${(ms / 1000).toFixed(ms % 10 ? 3 : 2).replace(/0+$/, '').replace(/\.$/, '').replace(/^0/, '')}s`;
   assert.ok(css.includes(`.die.roll { animation: dieroll var(--dur, ${sec(DIE_FLAT_MS)})`), `a flat die's tumble: ${sec(DIE_FLAT_MS)}`);
-  assert.ok(css.includes(`.cmb .cmbd.tum { animation: cmbtum var(--dur, ${sec(520 + DIE_MORE)})`), `Dice Combo's: ${sec(520 + DIE_MORE)}`);
+  assert.ok(!/cmbtum|\.die\.bgldie/.test(css), 'Dice Combo and Backgammon Lite throw the shared 3-D die: no flat tumble of their own left');
   // the 3-D die turns about as fast as it did: its turns scale with the longer tumble (each a whole number of quarter turns)
   const turns = [...css.matchAll(/--s([xyz]): (-?\d+)deg/g)].map(m => Number(m[2]));
   assert.ok(turns.length >= 12 && turns.every(d => d % 90 === 0), 'whole quarter turns, so it lands on a face');
