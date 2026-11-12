@@ -190,3 +190,111 @@ table.eff tr:last-child td { border-bottom: 0; }
 .rec .tg { color: var(--ink); }
 @media (prefers-reduced-motion: reduce) { .ph *, .ph *::before, .ph *::after { animation: none !important; } }
 @media (max-width: 700px) { :root { --s: .72; } .cc { grid-template-columns: 96px 1fr; } .cc img { width: 96px; } }
+
+/* ============ Patchwork v2 (round 2): one button language, one information language, one selected marker ============
+   BUTTON: a patch you can tap carries a raised cream plate (.pl: ink outline, hard ink shadow, a slight tilt); pressed,
+   the patch lifts and the plate squashes down onto it, its shadow gone. INFORMATION: flat; a tan ribbon with notched ends
+   (.rib) or text printed straight on a patch (.prt); never an outline, a shadow or a tilt. SELECTED: a yellow stitched
+   frame with ink either side and a tick (.sel, .tick). DECORATIVE: a plain patch (.dec), nothing on it. */
+:root { --kraft: #d8b07a; }
+.dV { background: var(--ink); font-family: 'Fredoka', system-ui, sans-serif; padding: 9px; display: flex; flex-direction: column; gap: 7px; }
+.dV .rw { display: flex; gap: 7px; min-height: 0; align-items: stretch; }
+.dV .pt { position: relative; flex: 1; border-radius: 12px; display: grid; place-items: center; min-width: 0; animation: patchin .45s cubic-bezier(.3, 1.5, .5, 1) backwards; animation-delay: calc(var(--k, 0) * 55ms); }
+.dV .pt.inf, .dV .pt.dec { overflow: hidden; }
+.dV .pt.off { filter: saturate(.25) brightness(.8); }
+/* the button: the plate, and the patch it sits on */
+.dV button.pt { cursor: pointer; transition: transform .1s cubic-bezier(.3, 1.6, .5, 1), box-shadow .1s; -webkit-tap-highlight-color: transparent; }
+.dV button.pt:active { transform: translateY(-3px) scale(1.025); box-shadow: 0 8px 0 rgba(0, 0, 0, .6); z-index: 2; }
+.dV .pl { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 8px 13px 4px;
+  background: var(--cream); color: var(--ink); border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 5px 0 var(--ink); transform: rotate(var(--r, -1.5deg));
+  font: 400 20px/1.05 'Luckiest Guy', sans-serif; text-align: center; transition: transform .08s, box-shadow .08s;
+  animation: plateon .4s cubic-bezier(.3, 1.6, .5, 1) backwards; animation-delay: calc(var(--k, 0) * 55ms + 180ms); }
+.dV .pl small { display: block; font: 600 12.5px/1.15 'Fredoka', sans-serif; color: #5a4a38; margin-top: 3px; letter-spacing: 0; }
+.dV .pl.l { font-size: 25px; padding: 10px 16px 5px; } .dV .pl.l small { font-size: 13.5px; }
+.dV .pl.s { font-size: 16px; padding: 7px 11px 3px; } .dV .pl.xs { font-size: 14px; padding: 6px 10px 2px; border-radius: 10px; box-shadow: 0 4px 0 var(--ink); }
+.dV .pl.xl { font-size: 42px; padding: 14px 26px 6px; border-radius: 16px; box-shadow: 0 7px 0 var(--ink); }
+.dV .pl.g { padding: 5px 6px 3px; width: 92%; }
+.dV button:active .pl { transform: rotate(var(--r, -1.5deg)) translateY(5px) scale(1.05, .88); box-shadow: 0 0 0 var(--ink); }
+@keyframes plateon { from { transform: rotate(calc(var(--r, -1.5deg) + 9deg)) translateY(-18px) scale(1.15); opacity: 0; } }
+.dV .start .pl { animation: plateon .4s cubic-bezier(.3, 1.6, .5, 1) backwards, nudge 2.2s ease-in-out 1.4s infinite; animation-delay: calc(var(--k, 0) * 55ms + 180ms), 1.4s; }
+@keyframes nudge { 0%, 70%, 100% { translate: 0 0; } 78% { translate: 0 -5px; } 86% { translate: 0 0; } 92% { translate: 0 -2px; } }
+.dV .acct { display: flex; align-items: center; gap: 8px; text-align: left; } .dV .acct small { margin-top: 1px; }
+.dV .ico { display: flex; align-items: center; gap: 7px; } .dV .ico svg { width: 26px; height: 26px; flex: none; } .dV .ico.col { flex-direction: column; gap: 3px; }
+.dV .glyph { font-size: 34px; line-height: .9; padding-top: 4px; -webkit-text-stroke: 1.5px var(--ink); } .dV .glyph.x { color: var(--x); } .dV .glyph.o { color: #d9a400; }
+.dV .gi { display: flex; flex-direction: column; align-items: center; gap: 2px; } .dV .gi svg { width: 38px; height: 38px; } .dV .gi span { font: 600 11px/1.1 'Fredoka', sans-serif; white-space: nowrap; }
+.dV .hs { display: flex; flex-direction: column; align-items: center; } .dV .hs svg { width: 34px; height: 34px; }
+.dV .red { color: var(--x); }
+.dV .slots { display: flex; gap: 6px; } .dV .slots i { width: 40px; height: 52px; border-radius: 8px; border: 2.5px solid var(--ink); background: #fff; display: grid; place-items: center; font: 400 30px/1 'Luckiest Guy', sans-serif; padding-top: 6px; font-style: normal; animation: typein .01s backwards; animation-delay: calc(900ms + var(--i) * 220ms); }
+.dV .slots i:last-child::after { content: ''; position: absolute; } 
+@keyframes typein { from { color: transparent; } }
+.dV .pl.code { padding: 8px 10px; }
+/* a slider: the track printed flat, the knob a plate */
+.dV .slide { display: block; } .dV .track { position: absolute; left: 22px; right: 22px; top: 50%; height: 12px; margin-top: -6px; border-radius: 6px; background: #4a3f36; overflow: hidden; } .dV .track i { display: block; height: 100%; background: var(--kraft); }
+.dV .pl.knob { position: absolute; top: 50%; margin-top: -24px; width: 48px; min-width: 0; height: 44px; padding: 0; border-radius: 14px; }
+.dV .slide .pl.knob { left: calc(22px + (100% - 44px) * .7 - 24px) !important; }
+/* the selected marker */
+.dV .sel { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; animation: selin .35s cubic-bezier(.3, 1.6, .5, 1) backwards; animation-delay: calc(var(--k, 0) * 55ms + 420ms); }
+.dV .sel rect { fill: none; vector-effect: non-scaling-stroke; } .dV .selk { stroke: var(--ink); stroke-width: 9; } .dV .sely { stroke: var(--o); stroke-width: 4.5; stroke-dasharray: 9 6; animation: sew 6s linear infinite; }
+@keyframes sew { to { stroke-dashoffset: -150; } }
+@keyframes selin { from { transform: scale(1.12); opacity: 0; } }
+.dV .tick { position: absolute; right: 5px; top: 5px; width: 24px; height: 24px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--o) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='%23161210' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 17px no-repeat;
+  animation: tickpop .35s cubic-bezier(.3, 1.8, .5, 1) backwards; animation-delay: calc(var(--k, 0) * 55ms + 560ms); z-index: 2; }
+@keyframes tickpop { from { transform: scale(0) rotate(-40deg); } }
+/* information: ribbons and printed text */
+.dV .rib { position: relative; display: inline-flex; align-items: center; justify-content: center; height: 26px; padding: 2px 18px 0; background: var(--kraft); color: var(--ink); font: 700 11.5px/1 'Fredoka', sans-serif; letter-spacing: 1.3px; text-transform: uppercase; white-space: nowrap;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 50%, 100% 100%, 0 100%, 9px 50%); }
+.dV .rib.band { flex: 1; height: 100%; }
+.dV .rib.lg { font: 400 17px/1 'Luckiest Guy', sans-serif; letter-spacing: .6px; padding-top: 4px; }
+.dV .rr { height: 26px; animation: patchin .4s cubic-bezier(.3, 1.5, .5, 1) backwards; animation-delay: calc(var(--k, 0) * 55ms); }
+.dV .rib.foot { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); }
+.dV .inf > .rib:not(.foot) { margin-top: 6px; }
+.dV .inf { align-content: center; justify-items: center; }
+.dV .prt { font: 600 14px/1.15 'Fredoka', sans-serif; color: var(--ink); text-align: center; }
+.dV .prt.cr { color: var(--cream); } .dV .prt.sm { font-size: 12.5px; } .dV .prt.foot { color: #cdbfa3; font-size: 13px; }
+.dV .prt.ttl { font: 400 22px/1 'Luckiest Guy', sans-serif; color: var(--cream); -webkit-text-stroke: 5px var(--ink); paint-order: stroke fill; padding-top: 4px; letter-spacing: .4px; }
+.dV .prt.code { font: 400 54px/1 'Luckiest Guy', sans-serif; color: var(--o); letter-spacing: 6px; padding: 8px 0 0 6px; }
+.dV .prt.sub { color: #cdbfa3; font-size: 12.5px; margin-top: 2px; }
+.dV .prt.dim { font: 400 18px/1 'Luckiest Guy', sans-serif; color: #e8e2d4; -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; padding-top: 3px; }
+.dV .prt.dim.big { font-size: 34px; }
+.dV .prt.big2 { font: 400 20px/1 'Luckiest Guy', sans-serif; padding-top: 3px; text-align: left; display: block; }
+.dV .prt.num2 { font: 400 40px/1 'Luckiest Guy', sans-serif; color: #fff; -webkit-text-stroke: 7px var(--ink); paint-order: stroke fill; padding-top: 6px; }
+.dV .who { display: flex; flex-direction: column; align-items: center; gap: 2px; } .dV .who.row { flex-direction: row; gap: 12px; text-align: left; }
+.dV .dots { display: flex; gap: 5px; height: 34px; align-items: center; } .dV .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--cream); animation: bob 1s ease-in-out infinite; } .dV .dots i:nth-child(2) { animation-delay: .15s; } .dV .dots i:nth-child(3) { animation-delay: .3s; }
+.dV .vs { flex: none; align-self: center; width: 44px; height: 44px; margin: 0 -26px; z-index: 3; border-radius: 50%; background: var(--x); color: var(--cream); display: grid; place-items: center; font: 400 19px/1 'Luckiest Guy', sans-serif; padding-top: 3px; border: 3px solid var(--ink); animation: wig 1.4s ease-in-out infinite; }
+.dV .face { display: block; width: 82px; height: 82px; animation: bob 2.2s ease-in-out infinite; } .dV .face svg { width: 100%; height: 100%; }
+.dV .face.win { width: 92px; height: 92px; margin-top: -8px; animation-duration: .7s; }
+.dV .flp { position: relative; display: block; width: 100%; height: 100%; } .dV .flp svg { position: absolute; inset: 0; animation: flipA 2.4s steps(1) infinite; } .dV .flp svg + svg { animation-name: flipB; }
+@keyframes flipA { 0% { opacity: 1; } 50% { opacity: 0; } } @keyframes flipB { 0% { opacity: 0; } 50% { opacity: 1; } }
+.dV .duo { display: flex; gap: 18px; margin-bottom: 22px; }
+.dV .logo { display: flex; flex-direction: column; align-items: center; margin-top: -24px; } .dV .logo .ttop { font: 400 48px/1 'Luckiest Guy', sans-serif; color: var(--o); -webkit-text-stroke: 7px var(--ink); paint-order: stroke fill; padding-top: 8px; }
+.dV .pal { position: absolute; width: 56px; height: 56px; animation: bob 2.2s ease-in-out infinite; }
+.dV .fb { position: relative; width: 162px; height: 162px; }
+.dV .facts { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.dV .conf { position: absolute; width: 16px; height: 16px; border: 2.5px solid var(--ink); border-radius: 4px; top: -24px; animation: fall 2.6s linear infinite; animation-delay: calc(var(--j) * -.37s); left: calc(var(--j) * 11% + 4%); }
+.dV .steps { display: flex; align-items: flex-start; gap: 2px; padding: 0 6px; } .dV .step { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 92px; } .dV .step svg { width: 46px; height: 46px; }
+.dV .step .num { width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: var(--cream); display: grid; place-items: center; font: 400 15px/1 'Luckiest Guy', sans-serif; padding-top: 3px; }
+.dV .arr { align-self: center; font: 700 20px 'Fredoka', sans-serif; margin-top: 10px; }
+.dV .key { flex: none; display: flex; align-items: center; gap: 5px; color: var(--cream); font: 600 11.5px 'Fredoka', sans-serif; padding: 0 4px 0 8px; } .dV .key i { width: 12px; height: 12px; border-radius: 3px; display: block; margin-left: 4px; }
+.dV .qb .pl { font-size: 20px; }
+/* the annotated copy: every tappable area outlined and numbered; motion stopped so it reads */
+.dV.ann { counter-reset: tap; }
+.dV.ann *, .dV.ann *::before, .dV.ann *::after { animation: none !important; }
+.dV.ann [data-tap] { outline: 3px solid #00a2ff; outline-offset: -3px; }
+.dV.ann [data-tap]::after { counter-increment: tap; content: counter(tap); position: absolute; left: 3px; top: 3px; z-index: 5; min-width: 22px; height: 22px; border-radius: 11px; background: #00a2ff; color: #fff; font: 700 13px/22px system-ui, sans-serif; text-align: center; padding: 0 5px; }
+.dV.ann .inf, .dV.ann .dec, .dV.ann .rr { opacity: .55; }
+/* the legend */
+.lgd { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 6px 0 26px; }
+.lgc { border: 3px solid var(--ink); border-radius: 16px; background: #fff; overflow: hidden; }
+.lgc h3 { font-size: 20px; padding: 12px 14px 0; }
+.lgc .demo { background: var(--ink); padding: 12px; margin: 10px 12px; border-radius: 12px; display: flex; gap: 8px; min-height: 120px; }
+.lgc .demo .pt { min-height: 96px; }
+.lgc ul { margin: 0 12px 14px; padding-left: 18px; font-size: 14px; line-height: 1.42; }
+.chk2 { border: 3px solid var(--ink); border-radius: 14px; background: #fff; padding: 12px 14px; font-size: 14px; line-height: 1.42; width: 300px; }
+.chk2 h4 { font-size: 16px; margin: 0 0 6px; } .chk2 ol { margin: 0 0 8px; padding-left: 20px; } .chk2 .ok { display: inline-block; background: #cdeec3; border: 2px solid var(--ink); border-radius: 999px; padding: 0 9px; font: 700 12px system-ui, sans-serif; text-transform: uppercase; }
+.chk2 .fl { margin: 6px 0 0; padding-left: 18px; } .chk2 .fl li { margin-bottom: 4px; }
+.cmp.v2 { grid-template-columns: repeat(4, max-content); }
+.dV .rr.tall { height: 48px; } .dV .rr.tall .rib.band { height: 26px; align-self: center; }
+.dV .face.sm { width: 36px; height: 36px; animation: none; }
+.dV .facts .rib { padding: 2px 14px 0; letter-spacing: .8px; }
+.dV .fb { width: 150px; height: 150px; }
+.lgc .demo :where(button) { border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
