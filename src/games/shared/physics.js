@@ -34,9 +34,9 @@ export const aimTo = (from, to) => Math.atan2(to[0] - from[0], from[1] - to[1]);
 // A square's own settings for its simulation (meta.js TUNE, dealt into the square: mini.tune): Mini Golf's
 // cup speed and bumper kick, Pool's and Bowling's full-power speed. None for a square dealt with the defaults.
 export function physOpt(mini) {
+  if (mini && mini.type === 'golf' && mini.v >= 2) { const t = tune(mini); return { holeSpeed: t.holeSpeed, kick: t.kick, terrain: { slopes: t.slopes === 'on', sand: t.sand === 'on', water: t.water === 'on', mills: t.mills === 'on', phase: golfPhase(mini) } }; }   // (Mini Golf's terrain, December 2026, whether or not the square was dealt other settings: a square dealt before has none)
   if (!mini || !mini.tune) return undefined;
   const t = tune(mini);
-  if (mini.type === 'golf' && mini.v >= 2) return { holeSpeed: t.holeSpeed, kick: t.kick, terrain: { slopes: t.slopes === 'on', sand: t.sand === 'on', water: t.water === 'on', mills: t.mills === 'on', phase: golfPhase(mini) } };   // (Mini Golf's terrain, December 2026: a square dealt before has none)
   return mini.type === 'golf' ? { holeSpeed: t.holeSpeed, kick: t.kick } : mini.type === 'bowling' ? { vMax: t.vMax, hook: Number.isFinite(t.hook) ? t.hook / 1000 : undefined } : { vMax: t.vMax };   // (Bowling's hook: thousandths of a radian a unit rolled, at full curve)
 }
 export function physRun(mini, p, shot) { return PHYSICS.lib ? PHYSICS.lib.run(mini.type, mini, p, shot, physOpt(mini)) : null; }
@@ -72,11 +72,11 @@ export function physCandidates(mini, p, rng) {
   if (mini.type === 'golf') {                                 // at the next points of the hole's path, and at the cup, with powers to suit the distance
     const hole = L.HOLES[mini.hole], from = mini.balls[p], k = golfNext(hole, from);
     const targets = [hole.path[k], hole.path[Math.min(k + 1, hole.path.length - 1)], hole.cup];
-    for (let j = hole.path.length - 1, far = 0; j > k + 1 && far < 2; j--) if (golfClear(hole, from, hole.path[j])) { targets.push(hole.path[j]); far++; }   // and the farthest points of the way in sight (a path with many points: the long shots down a straight)
+    for (let j = hole.path.length - 1, far = 0; j > k + 1 && far < (globalThis.__FAR || 2); j--) if (golfClear(hole, from, hole.path[j])) { targets.push(hole.path[j]); far++; }   // and the farthest points of the way in sight (a path with many points: the long shots down a straight)
     const putt = d => Math.max(0.15, Math.min(1, Math.pow(d * 1.08 / (L.GOLF.reach || 174), 0.57)));   // (a putt rolls about reach x power^1.7; aimed a little long)
     for (const t of targets) {
       const a = aimTo(from, t), d = Math.hypot(t[0] - from[0], t[1] - from[1]), base = putt(d);
-      for (const dp of [0, 0.12, -0.08, 0.25]) out.push({ aim: a, power: base + dp });
+      for (const dp of (globalThis.__DP || [0, 0.12, -0.08, 0.25])) out.push({ aim: a, power: base + dp });
       out.push({ aim: a + 0.12, power: base }, { aim: a - 0.12, power: base });
     }
     out.push(...golfBumperShots(hole, from, targets, putt));   // round the bumpers in the way, and off them

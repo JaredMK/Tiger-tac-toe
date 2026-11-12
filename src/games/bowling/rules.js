@@ -75,7 +75,7 @@ export function publicView(mini) {
   const c = JSON.parse(JSON.stringify(mini)); if (c.last) delete c.last.rec; return c;
 }
 export function randomMove(mini, p, rng, from, empties) {
-  return bowlShot({ aim: (rng() - 0.5) * 0.2, curve: (rng() - 0.5) * 0.6, power: 0.75 + rng() * 0.2 });   // a random gentle roll
+  return bowlShot({ aim: (rng() - 0.5) * 0.2, curve: (rng() - 0.5) * 0.6, power: 0.5 + rng() * 0.25 });   // a random gentle roll
 }
 export function flashMs(f, winLen, won) {
   return (f.phys ? f.phys.ms : 3000) + BOWLG.hold + (won ? 600 : 0) + (f.phys && f.phys.strike ? BOWLG.strike : 0);

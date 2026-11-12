@@ -42,7 +42,7 @@ test('bowling: about 4 to 6 rolls each, the first to roll under 60% of squares w
   }
   for (const [name, even, o] of all) {
     const each = o.each / o.n, first = o.first / (o.n - o.draws);
-    if (name === 'hard' || name === 'easy') continue;                // (the levels' ends: reported, not held)
+    if (name === 'hard' || name === 'easy' || /loose/.test(name)) continue;   // (the ends: Hard, Easy and a loose finger are reported, not held)
     assert.ok(each >= 3.8 && each <= 6.5, `${name}, ${even}: rolls each (${each.toFixed(2)})`);
     if (even === 'on') assert.ok(first < 0.6 && first > 0.4, `${name}: the first to roll (${(100 * first).toFixed(1)}%)`);
     assert.ok(o.draws / o.n < 0.15, `${name}, ${even}: level squares (${(100 * o.draws / o.n).toFixed(1)}%)`);
