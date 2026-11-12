@@ -14,9 +14,9 @@ import { chaosBadge, chaosVisible, scPicked, testBadge, visibleTypes } from '../
 import { dbSetup, isHost, net, starting } from '../../net/room.js';
 import { advOpen, app, esc, save, state } from '../app.js';
 import { CHEV, ICONS, toon, toonT } from '../art.js';
-import { penPick, tape } from '../stickers.js';
+import { cap } from '../comic.js';
 import { qBtn } from '../explainer.js';
-import { fxAt, fxAttr } from '../fx.js';
+import { burstSvg, fxAt, fxAttr } from '../fx.js';
 import { render } from '../render.js';
 
 /* ----- setup screen ----- */
@@ -85,28 +85,26 @@ export function renderSetup() {
     <div class="timerrow" role="group" aria-label="You play as"><span>You play as:</span>${pick('X')}${pick('O')}${pick('random')}</div>
     <div class="timerrow" role="group" aria-label="Difficulty"><span>Difficulty</span>${LEVELS.map(v => `<button class="seg${C.level === v ? ' on' : ''}" data-act="clevel" data-v="${v}" aria-pressed="${C.level === v}">${LEVEL_NAME[v]}</button>`).join('')}</div>`;
   };
-  // Play Computer in the Sticker book (stickers.css): a ruled card taped down, the real X and O facing off (the one you
-  // will be and the computer's; Random: both, taking turns), your side and the level each circled in red pen, the
-  // mini-games, and Start as the one big sticker under it all.
+  // Play Computer in Comic Chaos (comic.css, the calm level): a VS card with the real X and O (the one you will be and
+  // the computer's; Random: both, taking turns), your side and the level as skewed panels, the chosen one inverted to
+  // ink and yellow, the mini-games, and Start as the one big panel under it all.
   if (vsCpu) {
     const C = normCpu(s), c1 = C.pick !== 'random' ? C.pick : null, c2 = c1 ? other(c1) : null, you = (loggedIn() && acct.profile.username) || 'You';
     const who = (side, ph) => (side ? `<span class="vsface">${toonT(side)}</span>` : `<span class="vsface rflip${ph ? ' ph' : ''}" aria-label="X or O, drawn every match">${toon('X')}${toon('O')}</span>`);
-    const opt = (act, attr, v, label, on, k) => `<button class="opt${on ? ' on' : ''}${v === 'X' || v === 'O' ? ' ' + v : ''}" data-act="${act}" ${attr}="${v}" aria-pressed="${on}">${label}${on ? penPick(act + ':' + v) : ''}</button>`;
-    const pips = n => `<i class="lvp" aria-hidden="true">${'<b></b>'.repeat(n)}</i>`;
-    return `<main class="scr setup sb cpuset">
+    const opt = (act, attr, v, label, on, k) => `<button class="pn opt${on ? ' on' : ''}${v === 'X' || v === 'O' ? ' g' + v : ''}${k % 2 ? ' fr' : ''}" data-act="${act}" ${attr}="${v}" aria-pressed="${on}" style="--k:${k}"><b>${label}</b></button>`;
+    const meter = n => `<i class="lvm" aria-hidden="true">${[1, 2, 3].map(j => `<i class="${j <= n ? 'on' : ''}"></i>`).join('')}</i>`;
+    return `<main class="scr setup cc calm cpuset">
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
       <div class="ttl"><b>Play Computer</b><small>You vs Computer</small></div></div>
     <div class="setup-box" data-keep-scroll="setup">
-      <div class="stk rule vscard slap">${tape('r')}
-        <div class="vscpu"><div class="vsme">${who(c1, 0)}<b>${esc(you)}</b></div><i class="vsv" aria-hidden="true">vs</i><div class="vsme">${who(c2, 1)}<b>${CPU_NAME}</b></div></div>
-        <div class="pickrow" role="group" aria-label="You play as"><span class="lab">you play as</span><div class="opts">${['X', 'O', 'random'].map(v => opt('cside', 'data-side', v, v === 'random' ? 'Random' : v, C.pick === v)).join('')}</div></div>
-        <div class="pickrow" role="group" aria-label="Difficulty"><span class="lab">difficulty</span><div class="opts">${LEVELS.map((v, k) => opt('clevel', 'data-v', v, `${LEVEL_NAME[v]}${pips(k + 1)}`, C.level === v)).join('')}</div></div>
-        ${templatesRow(VT)}
-        <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(on, VT.length)}</small><i class="chev">${CHEV}</i></button>
-          ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div>` : ''}</div>
-      </div>
+      <div class="vscard ccpunch"><div class="vsme">${who(c1, 0)}<b>${esc(you)}</b></div><span class="vsv" aria-hidden="true">${burstSvg('VS', 'w', 120, 80, 40)}</span><div class="vsme">${who(c2, 1)}<b>${CPU_NAME}</b></div></div>
+      <div class="pickrow" role="group" aria-label="You play as">${cap('your side')}<div class="opts">${['X', 'O', 'random'].map((v, k) => opt('cside', 'data-side', v, v === 'random' ? 'Random' : v, C.pick === v, k + 1)).join('')}</div></div>
+      <div class="pickrow" role="group" aria-label="Difficulty">${cap('level')}<div class="opts">${LEVELS.map((v, k) => opt('clevel', 'data-v', v, `${meter(k + 1)}${LEVEL_NAME[v]}`, C.level === v, k + 4)).join('')}</div></div>
+      ${templatesRow(VT)}
+      <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(on, VT.length)}</small><i class="chev">${CHEV}</i></button>
+        ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div>` : ''}</div>
     </div>
-    <div class="setup-foot"><button class="stk mode m-start" data-act="start"${ready ? '' : ' disabled'} style="--k:3"><b>Start!</b></button>${(w => `<small class="warn${w ? '' : ' info'}" role="status">${w || modeNote || CPU_HINT}</small>`)(setupWarn(s))}</div></main>`;
+    <div class="setup-foot"><button class="pn y big m-start" data-act="start"${ready ? '' : ' disabled'} style="--k:8"><i class="ptag" aria-hidden="true">go!</i><b>Start!</b></button>${(w => `<small class="warn${w ? '' : ' info'}" role="status">${w || modeNote || CPU_HINT}</small>`)(setupWarn(s))}</div></main>`;
   }
   return `<main class="scr setup">
     <div class="bar">${host ? `<button class="back" data-act="lobby-back" aria-label="Close the room and go back">${CHEV}Back</button>` : vsCpu ? `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>` : `<button class="back" data-act="friend-go" aria-label="Back to Play a Friend">${CHEV}Back</button>`}

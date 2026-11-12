@@ -18,6 +18,7 @@ const E = require('../engine.js');
 const MM = await import('../../src/net/matchmaking.js');
 const { renderMenu } = await import('../../src/ui/screens/menu.js');
 const { renderWin } = await import('../../src/ui/screens/win.js');
+const { renderSetup } = await import('../../src/ui/screens/setup.js');
 const { state } = await import('../../src/ui/app.js');
 const ROOT = new URL('../../', import.meta.url);
 const CSS = fs.readFileSync(new URL('src/ui/comic.css', ROOT), 'utf8');
@@ -74,4 +75,22 @@ test('the results: Rematch the one big panel, then Board, Menu and Share as smal
   state.winReason = 'resign'; state.cpu = 'X'; state.winner = 'O';
   assert.match(renderWin(), /resigned/, 'a computer\'s name stays markup, never escaped twice');
   assert.doesNotMatch(renderWin(), /&lt;svg/);
+});
+
+test('Play Computer: the real X and O on a VS card, one selected style (ink and yellow), Start the one big panel', () => {
+  Object.assign(state, board(), { screen: 'setup', online: null });
+  state.setup.vs = 'cpu'; state.setup.vsCpu = null;
+  for (const t of E.TYPES) state.setup.games[t] = true;
+  let html = renderSetup();
+  assert.match(html, /<main class="scr setup cc calm cpuset">/);
+  assert.match(html, /class="vsface rflip"[^>]*><svg class="pc pX"[^]*?<svg class="pc pO"/, 'Random: both characters, taking turns');
+  assert.equal((html.match(/class="pn opt on/g) || []).length, 2, 'one chosen side, one chosen level');
+  assert.match(html, /class="pn opt on[^"]*" data-act="cside" data-side="random" aria-pressed="true"/);
+  assert.match(html, /class="pn opt on[^"]*" data-act="clevel" data-v="normal" aria-pressed="true"/);
+  assert.match(html, /class="pn y big m-start" data-act="start"[^>]*><i class="ptag"[^>]*>go!<\/i><b>Start!<\/b>/);
+  state.setup.vsCpu.pick = 'O';
+  html = renderSetup();
+  assert.match(html, /<div class="vsme"><span class="vsface"><svg class="pc pO"[^]*?<b>You<\/b>/, 'your side: O');
+  assert.match(html, /<span class="vsv"[^>]*>[^]*?<\/span><div class="vsme"><span class="vsface"><svg class="pc pX"/, 'the computer: X');
+  state.setup.vs = 'same';
 });

@@ -166,7 +166,7 @@ main.scr.cc { overflow: clip; }
 .cc .menu-card { max-width: 360px; gap: clamp(14px, 2.6vh, 24px); padding: 0 4px; animation: none; }
 .cc .title .ttop { font-size: clamp(40px, 7.2vh, 52px); }
 .cc .title .chaos { width: min(270px, 70vw); margin: -6px auto -6px; }
-.cc .chaos .bst.w { fill: #fff; stroke-width: 5; }
+.cc .bst.w { fill: #fff; } .cc .chaos .bst.w { stroke-width: 5; }
 .cc .chaos .bursttxt { fill: var(--x); stroke: var(--ink); stroke-width: 3.5px; paint-order: stroke fill; }
 .cc .ccpals { display: flex; align-items: center; justify-content: center; gap: 10px; margin: -4px 0 4px; }
 .cc .ccpals .pal { width: clamp(50px, 8.5vh, 64px); height: clamp(50px, 8.5vh, 64px); flex: none; }
@@ -231,3 +231,56 @@ main.scr.cc { overflow: clip; }
   .cc .endsmall .pn.sm { height: 46px; } .cc .rmline { height: 48px; }
 }
 @media (prefers-reduced-motion: reduce) { .cc .cel .bit { display: none; } }
+
+/* ----- the working screens (calm): a back panel, a shouted title, captions over the choices ----- */
+.cc .bar { position: relative; z-index: 1; }
+.cc .bar .back { height: 44px; border: 3px solid var(--ink) !important; border-radius: 0 !important; background: #fff; box-shadow: var(--cc-sh) !important; transform: skew(var(--cc-skew));
+  font: 400 19px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; padding: 3px 12px 0 8px; margin-right: 4px; animation: ccinL .4s cubic-bezier(.2, 1.3, .4, 1) backwards .05s; }
+.cc .bar .back:active:not(:disabled) { transform: skew(var(--cc-skew)) translate(3px, 3px) !important; box-shadow: var(--cc-sh-in) !important; }
+.cc .bar .ttl > b { display: block; font: 400 clamp(26px, 4.6vh, 32px)/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: #fff; -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; transform: rotate(-2deg); padding-top: 4px; }
+.cc .bar .ttl small { font: 700 15px/1.2 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); margin-top: 2px; -webkit-line-clamp: 1; }
+
+/* ----- Play Computer: the VS card, the choices, the mini-games, Start the one big action ----- */
+.cpuset .setup-box { max-width: 380px; padding: 6px 10px 12px; gap: clamp(10px, 2vh, 18px); flex: 0 1 auto; overflow-x: clip; }
+.cpuset .vscard { position: relative; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 10px 6px 8px; border: 3.5px solid var(--ink); background: linear-gradient(108deg, var(--x) 0 50%, var(--o) 50%); }
+.cpuset .vsme { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.cpuset .vsme > b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 22px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: #fff; -webkit-text-stroke: 5px var(--ink); paint-order: stroke fill; padding-top: 3px; }
+.cpuset .vsface { position: relative; display: block; width: clamp(56px, 10vh, 74px); height: clamp(56px, 10vh, 74px); }
+.cpuset .vsface .pc { width: 100%; height: 100%; animation: bob 1s ease-in-out infinite; transform-origin: 50% 100%; }
+.cpuset .vsface.rflip .pc { position: absolute; inset: 0; animation: bob 1s ease-in-out infinite, ccflipA 2.4s steps(1) infinite; }
+.cpuset .vsface.rflip .pO { animation: bob 1s ease-in-out infinite, ccflipB 2.4s steps(1) infinite; }
+.cpuset .vsface.rflip.ph .pX { animation: bob 1s ease-in-out infinite, ccflipB 2.4s steps(1) infinite; }
+.cpuset .vsface.rflip.ph .pO { animation: bob 1s ease-in-out infinite, ccflipA 2.4s steps(1) infinite; }
+@keyframes ccflipA { 0% { opacity: 1; } 50% { opacity: 0; } } @keyframes ccflipB { 0% { opacity: 0; } 50% { opacity: 1; } }
+.cpuset .vsv { width: 86px; animation: ccvs 1s ease-in-out infinite; }
+.cpuset .vsv svg { width: 100%; height: auto; overflow: visible; }
+.cpuset .vsv .bursttxt { font-family: 'Bangers', 'Luckiest Guy', sans-serif; fill: var(--ink); }
+@keyframes ccvs { 0%, 100% { transform: scale(1) rotate(-4deg); } 50% { transform: scale(1.08) rotate(3deg); } }
+.cpuset .pickrow { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.cpuset .opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; width: 100%; padding-right: 6px; }
+.cpuset .pn.opt { width: auto; margin: 0; height: clamp(50px, 8.6vh, 62px); padding: 4px 6px 2px; box-shadow: 5px 5px 0 var(--ink); }
+.cpuset .pn.opt > b { font-size: clamp(20px, 3.6vh, 24px); display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.cpuset .pn.opt.gX > b { font-size: 34px; color: var(--x); -webkit-text-stroke: 1.5px var(--ink); }
+.cpuset .pn.opt.gO > b { font-size: 34px; color: var(--o); -webkit-text-stroke: 1.5px var(--ink); }
+.cpuset .pn.opt.on > b { color: var(--o); -webkit-text-stroke: 0; }
+.cpuset .lvm { display: flex; align-items: flex-end; gap: 3px; height: 14px; } .cpuset .lvm i { width: 8px; border: 2px solid currentColor; display: block; }
+.cpuset .lvm i:nth-child(1) { height: 7px; } .cpuset .lvm i:nth-child(2) { height: 11px; } .cpuset .lvm i:nth-child(3) { height: 15px; }
+.cpuset .lvm i.on { background: currentColor; }
+.cpuset .adv { width: 100%; padding-right: 6px; }
+.cpuset .adv-h { width: calc(100% - 4px); height: 52px; border: 3.5px solid var(--ink) !important; border-radius: 0 !important; background: #fff; box-shadow: 5px 5px 0 var(--ink) !important; transform: skew(var(--cc-skew));
+  font: 400 22px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; padding: 3px 14px 0; transition: transform .07s, box-shadow .07s; }
+.cpuset .adv-h:active { transform: skew(var(--cc-skew)) translate(4px, 4px); box-shadow: 1px 1px 0 var(--ink) !important; }
+.cpuset .adv-h small { font: 400 22px/1 'Bangers', 'Luckiest Guy', sans-serif; color: var(--ink); text-align: right; }
+.cpuset .adv.open .adv-h { background: var(--ink); color: var(--o); } .cpuset .adv.open .adv-h small { color: var(--o); }
+.cpuset .chk { border: 2.5px solid var(--ink); border-radius: 0; background: #fff; font-family: 'Comic Neue', 'Patrick Hand', sans-serif; font-weight: 700; }
+.cpuset .chk:not(.off) { background: var(--ink); color: var(--o); }
+.cpuset .chk:not(.off) svg { color: var(--o); }
+.cpuset .chk input { accent-color: var(--o); }
+.cpuset .setup-foot { flex: 1 0 auto; min-height: 0; max-width: 380px; justify-content: center; gap: 8px; padding: 14px 6px 2px; }
+.cpuset .m-start { width: calc(100% - 30px); height: clamp(66px, 13vh, 104px); }
+.cpuset .m-start > b { font-size: clamp(36px, 7vh, 52px); }
+.cpuset .m-start:disabled { background: var(--stone); }
+.cpuset .setup-foot .warn { min-height: 18px; font: 700 16px/1.1 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); }
+.cpuset:has(.adv.open) .setup-box { flex: 1 1 auto; }
+.cpuset:has(.adv.open) .setup-foot { flex: none; }
+.cpuset:has(.adv.open) .m-start { height: 60px; } .cpuset:has(.adv.open) .m-start > b { font-size: 32px; }
