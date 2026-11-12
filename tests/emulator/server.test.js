@@ -1247,7 +1247,8 @@ test('bots: after a player\'s move, the bot\'s move is planned inside its own wi
     if (!next) { planned[type] = null; continue; }
     const [lo, hi] = WORD.includes(type) ? [3, 8] : [pa, pb];
     const d = (next.due - t0) / 1000, dAfter = (next.due - t1) / 1000;
-    assert.ok(d >= lo - 0.1 && dAfter <= hi + 0.5, `${type}: the bot's move is due ${d.toFixed(2)} s after the tick began, ${dAfter.toFixed(2)} s after it returned (window ${lo}-${hi} s)`);   // (a loaded runner's slow search shows between t0 and t1, never in the think time)
+    const dbg = d >= lo - 0.1 && dAfter <= hi + 0.5 ? '' : JSON.stringify({ timer: JSON.parse((await get(`games/${id}`)).pub.state).timer, next, t0, t1 });   // (what the server planned from, should the window ever be missed)
+    assert.ok(d >= lo - 0.1 && dAfter <= hi + 0.5, `${type}: the bot's move is due ${d.toFixed(2)} s after the tick began, ${dAfter.toFixed(2)} s after it returned (window ${lo}-${hi} s) ${dbg}`);   // (a loaded runner's slow search shows between t0 and t1, never in the think time)
     planned[type] = Math.round(d * 10) / 10;
   }
   const made = Object.values(planned).filter(x => x != null).length;
