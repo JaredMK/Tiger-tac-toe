@@ -7,7 +7,8 @@ import { SND } from '../audio/sound.js';
 import { ANIM } from '../core/timer.js';
 import { savePref } from '../net/accounts.js';
 import { canVibrate, setVibOn, vibOn } from '../net/platform.js';
-import { app } from './app.js';
+import { app, esc } from './app.js';
+import { APP_VERSION } from './config.js';
 import { setPace } from './pace.js';
 import { render } from './render.js';
 import { CHEV } from './art.js';
@@ -20,7 +21,8 @@ export function settingsBody() {
   return `<div class="settings">${row('Sound', pick('set-sound', 'on', !SND.muted, 'On') + pick('set-sound', 'off', SND.muted, 'Off'))}
     ${row('Volume', `<input id="setvol" class="setvol" type="range" min="0" max="100" step="5" value="${volPct()}" aria-label="Volume"${SND.muted ? ' disabled' : ''}><b class="volnum" aria-hidden="true">${volPct()}</b>`, 'vol')}
     ${row('Animation', pick('anim-set', 'normal', ANIM.mode !== 'speed', 'Normal') + pick('anim-set', 'speed', ANIM.mode === 'speed', 'Speed'))}
-    ${canVibrate() ? row('Vibration', pick('set-vib', 'on', vibOn, 'On') + pick('set-vib', 'off', !vibOn, 'Off')) : ''}</div>`;
+    ${canVibrate() ? row('Vibration', pick('set-vib', 'on', vibOn, 'On') + pick('set-vib', 'off', !vibOn, 'Off')) : ''}
+    <p class="build" aria-label="Build ${esc(APP_VERSION)}">Build ${esc(APP_VERSION)}</p></div>`;   // (the build on this phone: a stale page is seen for what it is)
 }
 // The Settings screen, from the main menu.
 export function renderSettings() {

@@ -497,3 +497,21 @@ main.scr.cc { overflow: clip; }
 .cc .popp .pnm { font-family: 'Comic Neue', 'Patrick Hand', sans-serif; font-weight: 700; }
 .setvol { height: 44px; }
 .cc .qbtn.sm, .cc button.qbtn.sm i { font-family: 'Bangers', 'Luckiest Guy', sans-serif; font-size: 16px; }
+
+/* ---------- The audit, round 2 (December 2026) ----------
+   The top bar re-divided: each side is its character beside a small column, the name over the clock (a match clock;
+   without one the name alone, centred), so "Computer" and a 12-letter name stand whole at 360px; Menu keeps its 44px
+   target at a narrower width. The build stamp lives in Settings, 12px. */
+.hdrrow .menubtn:not(.pback) { min-width: 0; padding: 3px 8px 0; font-size: 17px; margin-right: 2px; }
+.hdrrow { gap: 6px; }
+.hdr .tbar { height: 44px; padding: 0 5px; gap: 24px; }
+.hdr .tside { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-auto-rows: auto; column-gap: 4px; row-gap: 1px; align-content: center; align-items: center; }
+.hdr .tside .tg { grid-column: 1; grid-row: 1 / span 2; width: 28px; height: 28px; } .hdr .tside .tg .pc { width: 28px; height: 28px; }
+.hdr .tside .nm { grid-column: 2; font-size: 16px; letter-spacing: .02em; padding-top: 1px; }
+.hdr .tside .pclk { grid-column: 2; justify-self: start; font-size: 16px; line-height: 1; padding: 1px 4px 0; border-width: 1.5px; }
+.hdr .tside.O { grid-template-columns: minmax(0, 1fr) auto; text-align: right; }
+.hdr .tside.O .tg { grid-column: 2; } .hdr .tside.O .nm, .hdr .tside.O .pclk { grid-column: 1; } .hdr .tside.O .pclk { justify-self: end; }
+.hdr.mclock .tside .nm { font-size: 16px; line-height: 1; }
+.settings .build { margin: 14px 0 0; text-align: center; font: 700 12px/1.2 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--muted); opacity: 1; letter-spacing: .04em; }
+.cc .title .ttop { font-family: 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .06em; font-size: clamp(46px, 8.2vh, 60px); }   /* the logo's TIC TAC in the display face, as CHAOS! and the link preview */
+.hdr:not(.mclock) .tside .nm { grid-row: 1 / span 2; }   /* no match clock: the name alone, centred beside its character */

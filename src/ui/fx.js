@@ -466,6 +466,16 @@ export function swapRun(o) {
     g.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
     if (o.kind === 'slide') { g.appendChild(o.old); }
     else { g.style.background = o.bg; g.style.padding = o.pad; g.classList.add('full'); for (const e of o.olds) g.appendChild(e); }
+    // a slide between pages that differ (the loud menu, a calm screen): the old page stays behind the screen that is
+    // going and fades off as it leaves, never snapping to the new page under it
+    if (o.kind === 'slide' && o.bg && o.bg !== getComputedStyle(app).background) {
+      const k = document.createElement('div');
+      k.className = 'zghost ccback'; k.setAttribute('aria-hidden', 'true');
+      k.style.cssText = `left:${o.rect.left}px;top:${o.rect.top}px;width:${o.rect.width}px;height:${o.rect.height}px`; k.style.background = o.bg;
+      document.body.appendChild(k);
+      k.animate([{ opacity: 1 }, { opacity: 0 }], { duration: o.D * .7, easing: 'ease-out', fill: 'both' }).startTime = t0;
+      w.burst = k;                                                 // (removed with the change: swapEnd)
+    }
     document.body.appendChild(g);
     animCarry(g, o.snap);
     w.ghost = g; swap = w;

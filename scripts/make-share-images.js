@@ -52,12 +52,41 @@ body{background:${CREAM};position:relative;font-family:'Patrick Hand',cursive;co
 .pal svg{width:100%;height:100%}
 .tag{position:absolute;left:0;right:0;bottom:12px;text-align:center}
 .tag span{display:inline-block;background:${PAPER};border:3.5px solid ${INK};box-shadow:0 5px 0 ${INK};border-radius:22px 16px 20px 14px/16px 22px 14px 20px;padding:2px 28px 4px;font-size:40px;line-height:1.15}`;
-const page = body => `<!doctype html><meta charset="utf-8"><style>${CSS}</style>${body}`;
-const SHARE = page(`<div class="rays"></div><div class="vig"></div>
-<div class="title"><div class="tt">TIC TAC</div><div class="bw">${burst('CHAOS!', 300, 150, 66)}</div></div>
+const page = (body, css) => `<!doctype html><meta charset="utf-8"><style>${css || CSS}</style>${body}`;
+// The link-preview image in the Comic Chaos look (December 2026, with the share card, src/ui/sharecard.js): the loud page
+// (red over yellow, rays, a light halftone) in an ink-outlined comic panel, TIC TAC in Bangers over the white CHAOS!
+// burst, the # board on a white panel with a comic burst behind each claimed square, the line in Comic Neue on a yellow tag.
+const cburst = (fill, seed) => { let sd = seed * 7919 + 13; const r = () => { sd = (sd * 16807) % 2147483647; return (sd - 1) / 2147483646; }; const pts = []; for (let k = 0; k < 20; k++) { const a = k * Math.PI / 10 - Math.PI / 2, f = k % 2 === 0 ? 0.9 + r() * 0.1 : 0.64 + r() * 0.08; pts.push(`${(50 + Math.cos(a) * 49 * f).toFixed(1)},${(50 + Math.sin(a) * 49 * f).toFixed(1)}`); } return `<svg class="cb" viewBox="0 0 100 100"><polygon points="${pts.join(' ')}" fill="${fill}" stroke="${INK}" stroke-width="3.5" stroke-linejoin="round"/></svg>`; };
+const csquare = (k, claim, i) => `<div class="sq${claim ? ' own ' + claim : ''}">${claim ? cburst(claim === 'X' ? X : O, i + 1) + svg(claim === 'X' ? toonX() : toonO(), 'big') : svg(MINI[k])}</div>`;
+const ccells = [['coin'], ['dice', 'X'], ['golf'], ['cards', 'O'], ['pins'], ['golf', 'X'], ['dice'], ['wheel'], ['wheel', 'O']].map((c, i) => csquare(c[0], c[1], i)).join('');
+const chaos = `<svg viewBox="0 0 300 150"><polygon points="150,12 176,27 217,19 222,40 276,39 243,63 295,75 249,88 264,107 217,108 218,133 175,121 150,146 124,123 77,137 82,108 35,108 54,88 15,75 57,63 24,39 79,40 83,18 126,31" fill="#fff" stroke="${INK}" stroke-width="7" stroke-linejoin="round"/><text x="150" y="99" font-size="68" text-anchor="middle" class="ct">CHAOS!</text></svg>`;
+const CCSS = `${fonts}
+*{box-sizing:border-box;margin:0} html,body{width:1200px;height:630px;overflow:hidden}
+body{background:${INK};position:relative;font-family:'Comic Neue',sans-serif;font-weight:700;color:${INK}}
+.pnl{position:absolute;inset:14px;border:7px solid ${INK};overflow:hidden;background:linear-gradient(168deg, ${X} 0 46%, ${O} 46%)}
+.rays{position:absolute;inset:-40%;background:repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,.16) 0 7.5deg, transparent 7.5deg 15deg)}
+.dots{position:absolute;inset:0;background:radial-gradient(rgba(22,18,16,.16) 22%, transparent 24%) 0 0 / 14px 14px;-webkit-mask-image:radial-gradient(ellipse at 50% 45%, transparent 38%, #000 100%);mask-image:radial-gradient(ellipse at 50% 45%, transparent 38%, #000 100%)}
+.title{position:absolute;left:40px;top:46px;width:440px;text-align:center}
+.tt{font-family:'Bangers',sans-serif;font-size:150px;line-height:.95;color:${O};-webkit-text-stroke:14px ${INK};paint-order:stroke fill;letter-spacing:6px;transform:rotate(-4deg);text-shadow:8px 9px 0 ${INK}}
+.bw{width:440px;height:220px;margin:-18px 0 0 6px;transform:rotate(3deg)} .bw svg{width:100%;height:100%;overflow:visible}
+.ct{font-family:'Bangers',sans-serif;fill:${X};stroke:${INK};stroke-width:7;paint-order:stroke fill;letter-spacing:4px}
+.bpan{position:absolute;right:112px;top:62px;width:420px;height:420px;background:#fff;border:7px solid ${INK};box-shadow:12px 12px 0 ${INK};transform:rotate(2deg)}
+.board{position:absolute;inset:14px;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:0}
+.board>.hash{position:absolute;inset:0;width:100%;height:100%;color:${INK};overflow:visible}
+.sq{position:relative;padding:20px}
+.sq svg{width:100%;height:100%}
+.sq .cb{position:absolute;inset:6px;width:calc(100% - 12px);height:calc(100% - 12px)} .sq .big{position:absolute;inset:20px;width:calc(100% - 40px);height:calc(100% - 40px);z-index:1}
+.sq.own.X .cb polygon{fill:#f9c7b6} .sq.own.O .cb polygon{fill:#fbe39a}
+.pal{position:absolute;width:150px;height:150px}
+.pal.l{left:86px;bottom:92px;transform:rotate(-10deg)} .pal.r{left:356px;bottom:92px;transform:rotate(9deg)}
+.pal svg{width:100%;height:100%}
+.tag{position:absolute;left:0;right:0;bottom:26px;text-align:center}
+.tag span{display:inline-block;background:${O};border:5px solid ${INK};padding:6px 26px 7px;font-size:36px;line-height:1.1;transform:rotate(-1deg)}`;
+const SHARE = page(`<div class="pnl"><div class="rays"></div><div class="dots"></div>
+<div class="title"><div class="tt">TIC TAC</div><div class="bw">${chaos}</div></div>
 <div class="pal l">${svg(toonX())}</div><div class="pal r">${svg(toonO())}</div>
-<div class="board">${cells}${hashSvg('hash', 9)}</div>
-<div class="tag"><span>Tic-tac-toe, but every square is a mini-game.</span></div>`);
+<div class="bpan"><div class="board">${ccells}${hashSvg('hash', 9)}</div></div>
+<div class="tag"><span>Tic-tac-toe, but every square is a mini-game.</span></div></div>`, CCSS);
 // The icon: the X character on a cream square (a phone rounds the corners itself, so it fills the square).
 const ICON = size => `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;width:${size}px;height:${size}px;overflow:hidden}body{background:${CREAM};display:grid;place-items:center}svg{width:${Math.round(size * .86)}px;height:${Math.round(size * .86)}px;overflow:visible}</style>${svg(`<circle cx="50" cy="50" r="46" fill="${O}" stroke="${INK}" stroke-width="5"/><g transform="translate(50 50) scale(.78) translate(-50 -50)">${toonX()}</g>`)}`;
 // An .ico holding PNGs (16, 32, 48).

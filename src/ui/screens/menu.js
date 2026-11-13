@@ -4,7 +4,7 @@ import { activeElsewhere, findOn, resumable, resumeBusy } from '../../net/matchm
 import { privacyUrl } from '../../net/platform.js';
 import { esc, menuNote } from '../app.js';
 import { toon } from '../art.js';
-import { APP_VERSION, RATINGS_ENABLED } from '../config.js';
+import { RATINGS_ENABLED } from '../config.js';
 import { burstSvg } from '../fx.js';
 import { CICON, bubble, panel, rays, smallPanel } from '../comic.js';
 
@@ -25,7 +25,7 @@ export function renderMenu() {
     ${panel('friend-go', 'Play a Friend', { tag: '2 players', sub: 'share a code, or pass the phone', cls: 'r fr', k: 3 })}
     ${findBtn()}
     <div class="ccsmall">${smallPanel('howto', CICON.help, 'How to play', { k: 5 })}${smallPanel('settings', CICON.cog, 'Settings', { cls: 'w fr', k: 6 })}</div>
-  </div><div class="menu-foot"><a class="credit" href="${JARHEAD_URL}" target="_blank" rel="noopener noreferrer" aria-label="by JarHead Labs, on X (opens in a new tab)">${JARHEAD_LOGO}<span>by JarHead Labs</span></a><a class="privacy" href="${privacyUrl()}" target="_blank" rel="noopener noreferrer" aria-label="Privacy policy (opens in a new tab)">Privacy</a><span class="build" aria-label="Build ${esc(APP_VERSION)}">${esc(APP_VERSION)}</span></div></main>`;
+  </div><div class="menu-foot"><a class="credit" href="${JARHEAD_URL}" target="_blank" rel="noopener noreferrer" aria-label="by JarHead Labs, on X (opens in a new tab)">${JARHEAD_LOGO}<span>by JarHead Labs</span></a><a class="privacy" href="${privacyUrl()}" target="_blank" rel="noopener noreferrer" aria-label="Privacy policy (opens in a new tab)">Privacy</a></div></main>`;
 }
 // Find Match: a panel like the others while it is on (back into the match in progress if there is one); while the
 // admin has it off, a small flat "soon" tag (still a disabled button: the menu's controls keep their order).
