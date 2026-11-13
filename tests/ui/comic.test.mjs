@@ -154,3 +154,21 @@ test('a mini-game\'s icon in the menus: in a white disc tinted by its kind, in t
   assert.match(CSS, /\.gic > svg \{[^}]*stroke-width: 3px/, 'chunky');
   state.setup.vs = 'same';
 });
+
+test('the remaining screens are Comic Chaos (calm); their dialogs and cards are flat, their buttons panels; no inner class takes a panel\'s look', async () => {
+  const { renderFriend, renderJoin } = await import('../../src/ui/screens/online.js');
+  const { renderSettings } = await import('../../src/ui/settings.js');
+  Object.assign(state, board(), { screen: 'friend', online: null });
+  const fr = renderFriend();
+  assert.match(fr, /<main class="scr setup online-scr cc calm">/);
+  assert.deepEqual(panels(fr).map(p => p.act), ['host', 'join-go'], 'Host and Join as panels');
+  assert.match(renderJoin(), /<main class="scr setup cc calm join-scr">/);
+  assert.match(renderSettings(), /<main class="scr setup settings-scr cc calm">/);
+  state.setup.vs = 'same';
+  assert.match(renderSetup(), /<main class="scr setup cc calm sameset">/);
+  const rule = sel => { const m = new RegExp(sel.replace(/[.()[\]]/g, '\\$&') + '[^{]*\\{([^}]*)\\}').exec(CSS); return m ? m[1] : ''; };
+  assert.match(rule('.flash.pause .card, .excard'), /box-shadow: none/, 'a dialog\'s card: flat');
+  assert.match(CSS, /\n\.cc \.pcard \{[^}]*box-shadow: none/, 'a stats card: flat');
+  const prof = fs.readFileSync(new URL('src/ui/screens/profile.js', ROOT), 'utf8');
+  assert.doesNotMatch(prof, /class="(pk|pn)"/, 'never .pn (a panel) or .pk (a setting\'s pick) inside a row');
+});

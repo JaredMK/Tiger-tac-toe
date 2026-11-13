@@ -58,7 +58,7 @@ test('lobby: a player host sees No limit and a match clock of 3, 5 or 10 minutes
   let html = renderSetup();
   assert.deepEqual([...html.matchAll(/data-act="clock" data-v="([^"]+)"/g)].map(m => m[1]), ['off', 'm3+5', 'm5+5', 'm10+5'], 'no per-turn option for players, whatever the admin set');
   assert.match(html, /aria-pressed="true">5</);
-  assert.match(html, /<span>Minutes<button class="qbtn sm" data-act="explain" data-t="timer"/, 'the "?" beside the minutes');
+  assert.match(html, /<span><i class="cap">Minutes<\/i><button class="qbtn sm" data-act="explain" data-t="timer"/, 'the "?" beside the minutes');
   assert.doesNotMatch(html, /Per turn|30 ?s/);
   acct.admin = true; state.setup.clock = 'm10+5';
   html = renderSetup();

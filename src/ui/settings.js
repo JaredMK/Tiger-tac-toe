@@ -24,7 +24,7 @@ export function settingsBody() {
 }
 // The Settings screen, from the main menu.
 export function renderSettings() {
-  return `<main class="scr setup settings-scr">
+  return `<main class="scr setup settings-scr cc calm">
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
       <div class="ttl"><b>Settings</b></div></div>
     <div class="setup-box">${settingsBody()}</div></main>`;

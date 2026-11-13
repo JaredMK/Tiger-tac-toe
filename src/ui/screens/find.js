@@ -22,17 +22,17 @@ export function renderFind() {
   const back = `<div class="bar">${search.on ? '' : `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>`}
       <div class="ttl"><b>Find Match</b><small>${esc(p.username || '')} · ${RATINGS_ENABLED ? `rating ${p.rating || 1200}` : `record ${record(p)}`}</small></div></div>`;
   if (search.found) {
-    return `<main class="scr setup acct-scr">${back}<div class="setup-box"><div class="searching found" role="status"><div class="big-g">${toon('X')}${toon('O')}</div><h2>Match found!</h2><p class="hint">${esc(net.msg || 'Loading the match…')}</p></div></div></main>`;
+    return `<main class="scr setup acct-scr find-scr cc calm">${back}<div class="setup-box"><div class="searching found" role="status"><div class="big-g">${toon('X')}${toon('O')}</div><h2>Match found!</h2><p class="hint">${esc(net.msg || 'Loading the match…')}</p></div></div></main>`;
   }
   if (search.on) {
-    return `<main class="scr setup acct-scr">${back}<div class="setup-box"><div class="searching" role="status" aria-live="polite">
+    return `<main class="scr setup acct-scr find-scr cc calm">${back}<div class="setup-box"><div class="searching" role="status" aria-live="polite">
       <div class="spinner" aria-hidden="true">${toon('X')}${toon('O')}</div><h2>Searching…</h2>
       <p class="hint"><span id="mmwait">${fmtClock(Date.now() - search.since)}</span></p>
       ${search.msg ? `<div class="warn">${esc(search.msg)}</div>` : ''}
       <button class="btn" data-act="search-cancel">Cancel</button></div></div></main>`;
   }
   // (not searching: only if a search could not start; Search tries again)
-  return `<main class="scr setup acct-scr">${back}<div class="setup-box"><div class="searching" role="status">
+  return `<main class="scr setup acct-scr find-scr cc calm">${back}<div class="setup-box"><div class="searching" role="status">
       <div class="spinner" aria-hidden="true">${toon('X')}${toon('O')}</div>
       ${search.msg ? `<div class="warn">${esc(search.msg)}</div>` : ''}
       <button class="primary" data-act="search-go">Search</button></div></div></main>`;

@@ -121,7 +121,7 @@ export function renderLeaderboard() {
   if (lb && lb.me) mine = lb.me.unlisted ? `<p class="lbme hint">Play ${Math.max(1, 5 - (lb.me.games || 0))} more ranked game${5 - (lb.me.games || 0) === 1 ? '' : 's'} to be listed.</p>`
     : `<div class="lbme"><small>Your rank</small>${rowOf(lb.me, true)}</div>`;
   else if (!uid) mine = '<p class="lbme hint"><button class="link" data-act="login">Log in</button> to see your own rank.</p>';
-  return `<main class="scr setup acct-scr lb-scr">
+  return `<main class="scr setup acct-scr lb-scr cc calm">
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
       <div class="ttl"><b>Leaderboard</b><small>Top 100 by rating · players with 5+ ranked games</small></div></div>
     <div class="setup-box" data-keep-scroll="leaderboard">${body}</div>${mine}</main>`;
@@ -152,7 +152,7 @@ export function renderProfile() {
     // Top opponents: the three people played most online (never a bot or the computer), each with the record
     // against them; three rows always, so nothing moves whatever there is to show.
     const opps = p.opps || [];
-    const oppRow = (r, i) => (r ? `<button class="popp" data-act="profile" data-uid="${esc(r.uid)}" aria-label="${esc(r.name)}: ${r.wins} won, ${r.losses} lost, ${r.draws} drawn. Open their profile"><b class="pk">${i + 1}</b><span class="pn">${esc(r.name)}</span><b class="pr">${record(r)}</b><i class="pc" aria-hidden="true">${CHEV}</i></button>`
+    const oppRow = (r, i) => (r ? `<button class="popp" data-act="profile" data-uid="${esc(r.uid)}" aria-label="${esc(r.name)}: ${r.wins} won, ${r.losses} lost, ${r.draws} drawn. Open their profile"><b class="prk">${i + 1}</b><span class="pnm">${esc(r.name)}</span><b class="pr">${record(r)}</b><i class="pc" aria-hidden="true">${CHEV}</i></button>`
       : `<div class="popp${i === 0 ? ' none' : ''}"${i ? ' aria-hidden="true"' : ''}>${i === 0 ? 'No online opponents yet' : ''}</div>`);
     const oppBox = `<h3 class="hh hopp"><span>Top opponents</span><small>W-L-D</small></h3><div class="popps">${[0, 1, 2].map(i => oppRow(opps[i], i)).join('')}</div>`;
     const nh = p.hist ? p.hist.length : null;
@@ -161,7 +161,7 @@ export function renderProfile() {
       ${card}${oppBox}`   // the game history first, then the record and the top opponents
       : `${card}<p class="hint center ppriv">Game history and opponents are private.</p>`;
   }
-  return `<main class="scr setup acct-scr prof-scr">
+  return `<main class="scr setup acct-scr prof-scr cc calm">
     <div class="bar"><button class="back" data-act="prof-back" aria-label="Back">${CHEV}${backLabel}</button>
       <div class="ttl"><b>${own ? 'My Stats' : esc(u ? u.username : 'Profile')}</b><small>${own ? esc(u ? u.username : '') : 'Player profile'}</small></div></div>
     <div class="setup-box" data-keep-scroll="profile">${body}${own ? '<button class="link wide" data-act="logout">Log out</button><button class="link wide delacct" data-act="del-account">Delete account</button>' : ''}</div>${own ? deleteDialog() : ''}</main>`;
@@ -200,7 +200,7 @@ export function renderProfHist() {
     return `<button class="hirow ${h.result}" data-act="hist-open" data-id="${esc(h.id)}" aria-label="${r} against ${esc(h.opponent && h.opponent.name)}${h.side === 'X' || h.side === 'O' ? `, you played ${h.side}` : ''}, ${HOW_TEXT[h.how] || ''}, ${fmtDate(h.date)}. Tap to see the final board">
       <span class="hin">${histSnap(h)}<span class="hres">${r}</span><span class="hvs"><span class="hname">vs ${esc(h.opponent && h.opponent.name || '?')}</span><small>${HOW_TEXT[h.how] || ''} · ${fmtDate(h.date)}</small></span><span class="hmeta">${h.side === 'X' || h.side === 'O' ? `<i class="hyou ${h.side}">You: ${h.side}</i>` : ''}<i class="badge ${h.mode}">${MODE_TEXT[h.mode] || ''}</i>${chg}</span></span></button>`;
   }).join('')}</div>`;
-  return `<main class="scr setup acct-scr prof-scr">
+  return `<main class="scr setup acct-scr prof-scr cc calm">
     <div class="bar"><button class="back" data-act="profile" data-uid="${esc(p.uid || '')}" aria-label="Back to the stats">${CHEV}Stats</button>
       <div class="ttl"><b>Game history</b><small>${esc(u ? u.username : '')}</small></div></div>
     <div class="setup-box" data-keep-scroll="profhist">${list}</div></main>`;

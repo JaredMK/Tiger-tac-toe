@@ -32,7 +32,7 @@ export const modeRow = sc => (!isHost() || chaosVisible() ? `<div class="timerro
 // a time per turn (30 or 60 s) or a match clock (3, 5 or 10 minutes each, plus 0, 2 or 5 seconds a move).
 function timerRows(cur) {
   const seg = (spec, label, on) => `<button class="seg${on ? ' on' : ''}" data-act="clock" data-v="${spec}" aria-pressed="${on}">${label}</button>`;
-  const row = (label, body, q) => `<div class="timerrow" role="group" aria-label="${label}"><span>${label}${q ? qBtn('timer', 'sm') : ''}</span>${body}</div>`;
+  const row = (label, body, q) => `<div class="timerrow" role="group" aria-label="${label}"><span><i class="cap">${label}</i>${q ? qBtn('timer', 'sm') : ''}</span>${body}</div>`;
   const p = specParts(cur), m = p.kind === 'match' ? p : { mins: 5, inc: 5 };
   // Players (November 2026): the match clock, minutes each with +5 s a move, or no limit; the "?" beside it says so.
   if (!acct.admin) return row('Minutes', [['off', 'No limit'], ...CLOCK_MINS.map(v => [`m${v}+5`, `${v}`])].map(([v, l]) => seg(v, l, cur === v)).join(''), true);
@@ -106,7 +106,7 @@ export function renderSetup() {
     </div>
     <div class="setup-foot"><button class="pn y big m-start" data-act="start"${ready ? '' : ' disabled'} style="--k:8"><i class="ptag" aria-hidden="true">go!</i><b>Start!</b></button>${(w => `<small class="warn${w ? '' : ' info'}" role="status">${w || modeNote || CPU_HINT}</small>`)(setupWarn(s))}</div></main>`;
   }
-  return `<main class="scr setup">
+  return `<main class="scr setup cc calm ${host ? 'hostset' : 'sameset'}">
     <div class="bar">${host ? `<button class="back" data-act="lobby-back" aria-label="Close the room and go back">${CHEV}Back</button>` : vsCpu ? `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>` : `<button class="back" data-act="friend-go" aria-label="Back to Play a Friend">${CHEV}Back</button>`}
       <div class="ttl"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>
     <div class="setup-box" data-keep-scroll="setup">

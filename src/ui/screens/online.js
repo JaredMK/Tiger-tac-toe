@@ -9,19 +9,20 @@ import { visibleTypes } from '../../net/releases.js';
 import { joinCode, joinName, leaveLoses, net, online, room } from '../../net/room.js';
 import { advOpen, esc, state } from '../app.js';
 import { byName, gamesCount } from './setup.js';
-import { CHEV, ICONS, gameIcon } from '../art.js';
+import { CHEV, ICONS, gameIcon, toon } from '../art.js';
+import { bubble, panel } from '../comic.js';
 import { joinAsk } from '../input.js';
 
 /* ----- online screens ----- */
 // Play a Friend: host a room and share its code, or join one; or Same phone, two people taking turns on this phone.
 export function renderFriend() {
-  return `<main class="scr setup online-scr">
-    <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button></div>
+  return `<main class="scr setup online-scr cc calm">
+    <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
+      <div class="ttl"><b>Play a Friend</b></div></div>
     <div class="online-mid" data-keep-scroll="friend"><div class="menu-card">
-    <h1>Play a Friend</h1>
-    <p class="sub">One of you hosts a room and shares its code; the other joins.</p>
-    <button class="primary" data-act="host">Host game</button>
-    <button class="primary alt" data-act="join-go">Join game</button>
+    <p class="ccfr" aria-hidden="true"><span class="pal X">${toon('X')}</span>${bubble('One hosts, one joins!', '', 'ccpunch')}<span class="pal O">${toon('O')}</span></p>
+    ${panel('host', 'Host game', { tag: 'make a room', sub: 'you get a code to share', cls: 'y', k: 1 })}
+    ${panel('join-go', 'Join game', { tag: 'got a code?', sub: 'type in the code you were sent', cls: 'c fr', k: 2 })}
     <button class="link wide same" data-act="same-go">Same phone</button>
   </div></div></main>`;
 }
@@ -47,7 +48,7 @@ export function renderJoin() {
     : o ? '<div class="status">Connected · waiting for the host…</div>' : '';
   const form = o ? '' : `${loggedIn() ? `<div class="field"><span>You play as</span><div class="namebox">${esc(acct.profile.username)}</div></div>` : `<label class="field"><span>Your name</span><input id="jname" value="${esc(joinName)}" maxlength="${NAME_MAX}" placeholder="Your name" autocomplete="off" autocapitalize="words"></label>`}
     <label class="field"><span>Room code</span><input id="jcode" class="codein" value="${esc(joinCode)}" maxlength="5" placeholder="ABCDE" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="latin"></label>`;
-  return `<main class="scr setup">
+  return `<main class="scr setup cc calm join-scr">
     <div class="bar"><button class="back" data-act="lobby-back" aria-label="${o ? 'Leave the room and go back' : 'Back to Play a Friend'}">${CHEV}Back</button>
       <div class="ttl"><b>Join game</b><small>${o ? `Room ${esc(o.code)}` : 'Enter the code the host shared'}</small></div></div>
     <div class="setup-box" data-keep-scroll="setup">${form}${status}${o && net.status === 'error' ? '<button class="primary" data-act="rejoin">Try again</button>' : ''}</div>

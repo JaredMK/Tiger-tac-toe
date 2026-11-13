@@ -341,3 +341,132 @@ main.scr.cc { overflow: clip; }
 .cpuset .chk:not(.off) .gic > svg { color: var(--ink); }
 .excard h2 .gic { width: 46px; height: 46px; border-width: 3px; } .excard h2 .gic > svg { width: 28px; height: 28px; }
 @media (max-width: 359px) { .chk .gic { display: none; } }
+
+/* ===== step 9 (December 2026): the remaining screens and the dialogs, calm. The older pieces they share keep their
+   markup and classes; on a Comic Chaos screen each takes the system's look:
+   TAPPABLE  .primary, .btn, .link, .seg, .pk (skewed panels: a thick ink outline, a hard shadow, punched in when pressed),
+             the list rows .popp and .hirow (straight, outlined, a hard shadow, punched in);
+   SELECTED  .seg.on, .pk.on, .tplrow.on: ink with yellow type, as .pn.on;
+   INFORMATION a field's name and a row's name (caption boxes), a name shown (.namebox), the cards (.pcard, .room,
+             the dialogs' cards, the explainer): flat, an ink frame, never a shadow, never skewed. ===== */
+.cc .primary, .cc .btn, .cc .link, .flash.pause .btn, .excard .btn, .cc .seg, .cc button.pk {
+  border: 3px solid var(--ink) !important; border-radius: 0 !important; box-shadow: 4px 4px 0 var(--ink) !important; transform: skew(var(--cc-skew));
+  font: 400 19px/1 'Bangers', 'Luckiest Guy', sans-serif !important; letter-spacing: .05em; padding: 3px 14px 0; min-height: 44px; color: var(--ink);
+  transition: transform .07s, box-shadow .07s; -webkit-tap-highlight-color: transparent; }
+.cc .primary:active:not(:disabled), .cc .btn:active:not(:disabled), .cc .link:active:not(:disabled), .flash.pause .btn:active:not(:disabled), .excard .btn:active:not(:disabled), .cc .seg:active:not(:disabled), .cc button.pk:active:not(:disabled) {
+  transform: skew(var(--cc-skew)) translate(3px, 3px) !important; box-shadow: 1px 1px 0 var(--ink) !important; }
+.cc .primary { height: 60px; font-size: 28px !important; background: var(--o); box-shadow: 6px 6px 0 var(--ink) !important; border-width: 3.5px !important; }
+.cc .primary:active:not(:disabled) { transform: skew(var(--cc-skew)) translate(4px, 4px) !important; }
+.cc .primary.alt { background: #fff; color: var(--ink); }
+.cc .primary:disabled, .cc .btn:disabled { background: var(--stone); opacity: .6; }
+.cc .btn, .flash.pause .btn, .excard .btn { height: 48px; background: #fff; }
+.cc .btn.go, .flash.pause .btn.go, .excard .btn.practice { background: var(--o); }
+.cc .link { height: 44px; background: #fff; }
+.cc .link.wide { width: calc(100% - 12px); margin: 0 auto; }
+.cc .link.delacct { color: var(--x); }
+.cc .seg, .cc button.pk { background: #fff; }
+.cc .seg.on, .cc .seg.X.on, .cc .seg.O.on, .cc button.pk.on, .flash.pause button.pk.on, .cc .tplrow.on { background: var(--ink) !important; color: var(--o) !important; }
+.cc .seg:disabled { opacity: .45; }
+/* captions: a field's name, a setting's name, a row's name */
+.cc .field > span, .cc .timerrow > span > .cap, .cc .sides > span, .cc .setname, .flash.pause .setname, .cc .hh > span, .cc .pcard .prec > small:first-child, .cc .pcard .ppct > small:first-child, .cc .pcard .prt > small:first-child {
+  display: inline-block; align-self: flex-start; width: auto; background: var(--o); color: var(--ink); border: 2.5px solid var(--ink); padding: 3px 8px 1px;
+  font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; text-transform: uppercase; }
+.cc .field.X > span { background: var(--x); color: #fff; } .cc .field.O > span { background: var(--o); }
+.cc .field input, .cc .namebox { border: 3px solid var(--ink) !important; border-radius: 0 !important; background: #fff; box-shadow: none; font: 700 18px/1.1 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); }
+.cc .field input:focus { outline: 3px solid #35c4e0; outline-offset: 2px; }
+.cc .field input.codein { font: 400 32px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .3em; text-align: center; text-transform: uppercase; height: 58px; }
+.cc .status, .cc .hint, .cc .warn { font: 700 16px/1.25 'Comic Neue', 'Patrick Hand', sans-serif; }
+.cc .status { color: var(--ink); } .cc .status b { font-family: 'Bangers', 'Luckiest Guy', sans-serif; font-weight: 400; letter-spacing: .04em; }
+/* the checklist and its section, on every setup (as Play Computer's) */
+.cc .adv-h { width: calc(100% - 4px); height: 52px; border: 3.5px solid var(--ink) !important; border-radius: 0 !important; background: #fff; box-shadow: 5px 5px 0 var(--ink) !important; transform: skew(var(--cc-skew));
+  font: 400 22px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; padding: 3px 14px 0; transition: transform .07s, box-shadow .07s; color: var(--ink); }
+.cc .adv-h:active { transform: skew(var(--cc-skew)) translate(4px, 4px); box-shadow: 1px 1px 0 var(--ink) !important; }
+.cc .adv-h small { font: 400 22px/1 'Bangers', 'Luckiest Guy', sans-serif; color: var(--ink); text-align: right; }
+.cc .adv.open .adv-h { background: var(--ink); color: var(--o); } .cc .adv.open .adv-h small, .cc .adv.open .adv-h .chev { color: var(--o); }
+.cc .chk { border: 2.5px solid var(--ink); border-radius: 0; background: #fff; box-shadow: none; font-family: 'Comic Neue', 'Patrick Hand', sans-serif; font-weight: 700; font-size: 15px; }
+.cc .chk:not(.off) { background: var(--ink); color: var(--o); }
+.cc .chk input { accent-color: var(--o); }
+.cc .chk.ro { opacity: 1; } .cc .chk.ro.off { background: #fff; color: var(--ink); opacity: .55; }
+.cc .games-top { padding: 12px 6px 4px 0; gap: 14px; }
+.cc .selall { height: 44px; font-size: 17px !important; }
+.cc .setup-foot .primary { width: calc(100% - 24px); height: 64px; font-size: 32px !important; }
+.cc .setup-foot .primary.busy { font-size: 24px !important; }
+.cc .tplrow { border: 2.5px solid var(--ink) !important; border-radius: 0 !important; box-shadow: 3px 3px 0 var(--ink) !important; }
+
+/* ----- Play a Friend: two panels and the small Same phone ----- */
+.online-scr.cc .online-mid { justify-content: flex-start; padding-top: 4px; }
+.online-scr.cc .menu-card { gap: 22px; padding: 10px 8px 12px; }
+.cc .ccfr { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 4px; }
+.cc .ccfr .pal { width: 58px; height: 58px; flex: none; } .cc .ccfr .pal .pc { width: 100%; height: 100%; animation: bob 1.8s ease-in-out infinite; transform-origin: 50% 100%; }
+.cc .ccfr .pal.O .pc { animation-delay: -.9s; }
+.online-scr.cc .menu-card > .pn { min-height: clamp(84px, 14vh, 108px); }
+.online-scr.cc .link.same { width: auto; align-self: center; padding: 3px 22px 0; }
+
+/* ----- Join, Host, Same phone: the lobby ----- */
+.cc .room { background: #fff; border: 3px solid var(--ink); border-radius: 0; box-shadow: none; }
+.cc .room small { font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; color: var(--ink); letter-spacing: .06em; }
+.cc .room .code { font: 400 48px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .2em; color: var(--ink); }
+.cc .room .row { gap: 16px; padding: 4px 6px 4px 0; }
+.cc .jinfo { display: flex; flex-direction: column; gap: 12px; }
+
+/* ----- Find Match: searching ----- */
+.find-scr.cc .searching h2 { font: 400 34px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: #fff; -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; transform: rotate(-2deg); }
+.find-scr.cc .searching .hint { font: 400 26px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .06em; color: var(--ink); }
+.find-scr.cc .searching .btn, .find-scr.cc .searching .primary { min-width: 160px; }
+
+/* ----- Settings (the screen and the in-game menu's step) ----- */
+.cc .settings, .flash.pause .settings { gap: 16px; }
+.cc .setrow, .flash.pause .setrow { background: transparent; border: 0; box-shadow: none; padding: 0; gap: 10px; }
+.cc .setctl, .flash.pause .setctl { gap: 14px; padding-right: 6px; }
+.cc button.pk, .flash.pause button.pk { min-width: 72px; height: 46px; font-size: 18px !important; padding-left: 10px; padding-right: 10px; }
+.flash.pause .pk { border: 3px solid var(--ink) !important; border-radius: 0 !important; box-shadow: 4px 4px 0 var(--ink) !important; transform: skew(var(--cc-skew)); background: #fff; color: var(--ink);
+  font: 400 19px/1 'Bangers', 'Luckiest Guy', sans-serif !important; letter-spacing: .05em; padding: 3px 12px 0; }
+.flash.pause .pk:active:not(:disabled) { transform: skew(var(--cc-skew)) translate(3px, 3px) !important; box-shadow: 1px 1px 0 var(--ink) !important; }
+.cc .setvol, .flash.pause .setvol { accent-color: var(--x); }
+.cc .volnum, .flash.pause .volnum { font: 400 22px/1 'Bangers', 'Luckiest Guy', sans-serif; }
+
+/* ----- My Stats: flat cards of information, the rows that open something tappable ----- */
+.cc .pcard { background: #fff; border: 2.5px solid var(--ink); border-radius: 0; box-shadow: none; }
+.cc .pcard b { font-family: 'Bangers', 'Luckiest Guy', sans-serif; font-weight: 400; letter-spacing: .04em; }
+.cc .pcard .prec b { font-size: 44px; } .cc .pcard .ppct b { font-size: 34px; }
+.cc .pcard small { font-family: 'Comic Neue', 'Patrick Hand', sans-serif; font-weight: 700; }
+.cc .ptabs { gap: 14px; padding: 0 8px 0 6px; }
+.cc .hh { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 0; } .cc .hh small { font: 700 14px/1 'Comic Neue', 'Patrick Hand', sans-serif; }
+.cc .popp, .cc .hirow { border: 3px solid var(--ink) !important; border-radius: 0 !important; background: #fff; box-shadow: 4px 4px 0 var(--ink) !important; transition: transform .07s, box-shadow .07s; }
+.cc .popp:active, .cc .hirow:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink) !important; }
+.cc div.popp { box-shadow: none !important; border: 2px dashed var(--ink) !important; background: transparent; }
+.cc div.popp:not(.none) { visibility: hidden; }
+.cc .popp b, .cc .hres { font-family: 'Bangers', 'Luckiest Guy', sans-serif; font-weight: 400; letter-spacing: .04em; }
+.cc .hlist { gap: 14px; padding: 4px 8px 8px 2px; }
+.cc .popps { gap: 12px; padding: 0 6px 6px 0; }
+.cc .phist { width: calc(100% - 12px); margin: 0 auto; }
+
+/* ----- the dialogs (the in-game menu, Leave this match?, Join another game?, Delete account) and the "?" explainer:
+   flat cards in an ink frame (information) with panels for buttons ----- */
+.flash.pause .card, .excard { background: #fff; border: 3.5px solid var(--ink) !important; border-radius: 0 !important; box-shadow: none !important; }
+.flash.pause .card h2, .excard h2 > span { font: 400 30px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: var(--ink); }
+.flash.pause .card p { font: 700 16px/1.3 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); }
+.flash.pause .card .row { gap: 16px; padding-right: 6px; }
+.flash.pause .card > .btn { width: calc(100% - 10px); margin-top: 14px; }
+.excard .excat { display: inline-block; width: auto; align-self: flex-start; background: var(--o); border: 2.5px solid var(--ink); padding: 3px 8px 1px; font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: var(--ink); }
+.excard .excat:empty, .excard .excat:has(> br) { display: none; }
+.exline b { border-radius: 0 !important; font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif !important; letter-spacing: .05em; }
+.exline > span { font-family: 'Comic Neue', 'Patrick Hand', sans-serif; font-weight: 700; font-size: 17px; }
+.excard .btn.practice { width: calc(100% - 10px); height: 54px; font-size: 24px !important; }
+.excard small { font-family: 'Comic Neue', 'Patrick Hand', sans-serif; font-weight: 700; color: var(--ink); }
+
+/* the Same phone players' cards and the host's names: flat (information round its controls), an ink frame, no shadow */
+.cc .slot { border: 2.5px solid var(--ink) !important; border-radius: 0 !important; box-shadow: none !important; }
+.cc .slot .seg { font-size: 17px !important; padding-left: 6px; padding-right: 6px; }
+.cc .ptabs .seg { font-size: 17px !important; padding-left: 6px; padding-right: 6px; }
+.cc .popps { overflow: visible; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; background: transparent !important; padding: 2px 8px 6px 0; }
+.cc .ptabs .seg:nth-child(2) { flex: 1.7 1 0; }
+
+/* the host's timer rows: the name a caption with its "?" beside it, four choices that fit at 320 */
+.cc .timerrow { gap: 12px 10px; padding-right: 8px; }
+.cc .timerrow > span { display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 0; }
+.cc .timerrow .seg { font-size: 16px !important; padding-left: 4px; padding-right: 4px; }
+.cc .setup-foot .warn, .cc .setup-foot .warn.info { color: var(--ink); font: 700 16px/1.1 'Comic Neue', 'Patrick Hand', sans-serif; }
+.cc .timerrow { padding-left: 6px; }
+.cc .timerrow > .seg:first-of-type { flex: 2 1 0; }
+.cc .room .row .btn { white-space: nowrap; font-size: 17px !important; padding-left: 10px; padding-right: 10px; }
