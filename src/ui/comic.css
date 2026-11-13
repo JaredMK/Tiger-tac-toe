@@ -482,3 +482,18 @@ main.scr.cc { overflow: clip; }
 @media (max-width: 440px) { .cc .chk .gic { display: none; } }
 .cc .chk span { letter-spacing: .02em; } .cc .chk { padding-right: 20px; }
 @media (max-width: 340px) { .cc .adv .games { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- The audit's small gaps (December 2026) ----------
+   The side reveal ("You are X": every match's first card) in the system's look: a flat card in an ink frame like the
+   dialogs (information: straight, no shadow), its type Bangers and Comic Neue. A lobby's "not joined yet", My Stats'
+   opponent rows and the timer's "?" in the system's fonts; the volume slider a 44px target. */
+.vsintro .vscard { border: 3.5px solid var(--ink); border-radius: 0; box-shadow: none; background: #fff; }
+.vsintro .vstitle, .vsintro .vsp b, .vsintro .vsp small, .vsintro .vsmid { font-family: 'Bangers', 'Luckiest Guy', sans-serif; font-weight: 400; letter-spacing: .04em; }
+.vsintro .vstitle { font-size: 30px; } .vsintro .vsp b { font-size: 21px; }
+.vsintro .vsp i, .vsintro .hint { font-family: 'Comic Neue', 'Patrick Hand', sans-serif; font-weight: 700; }
+.vsintro .vsp i { font-size: 14px; border-radius: 0; background: var(--ink); color: var(--o); }
+.cc .namebox i { font-family: 'Comic Neue', 'Patrick Hand', sans-serif; font-weight: 700; font-size: 15px; }
+.cc .popp .prk { font-family: 'Bangers', 'Luckiest Guy', sans-serif; font-size: 16px; letter-spacing: .04em; }
+.cc .popp .pnm { font-family: 'Comic Neue', 'Patrick Hand', sans-serif; font-weight: 700; }
+.setvol { height: 44px; }
+.cc .qbtn.sm, .cc button.qbtn.sm i { font-family: 'Bangers', 'Luckiest Guy', sans-serif; font-size: 16px; }
