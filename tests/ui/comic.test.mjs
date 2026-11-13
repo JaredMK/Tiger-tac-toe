@@ -124,3 +124,17 @@ test('How to Play: the three rules as drawn comic panels (flat), then every mini
   const rule = /\.cc \.cpanel \{([^}]*)\}/.exec(CSS)[1];
   assert.doesNotMatch(rule, /box-shadow|skew/, 'the panels are flat');
 });
+
+test('screen changes: a burst wipe into a match and into its results, a panel slide between the menus\' screens (back to one come through before), none where the zoom plays', async () => {
+  const { swapKind } = await import('../../src/ui/fx.js');
+  assert.deepEqual(swapKind('setup:null', 'board:null'), { kind: 'wipe' });
+  assert.deepEqual(swapKind('board:null', 'win:null'), { kind: 'wipe' });
+  assert.deepEqual(swapKind('mini:4', 'win:null'), { kind: 'wipe' });
+  assert.deepEqual(swapKind('menu:null', 'howto:null'), { kind: 'slide', back: false });
+  assert.deepEqual(swapKind('howto:null', 'menu:null'), { kind: 'slide', back: true });
+  assert.equal(swapKind('board:null', 'mini:4'), null, 'the zoom');
+  assert.equal(swapKind('mini:4', 'board:null'), null);
+  assert.deepEqual(swapKind('win:null', 'board:null'), { kind: 'wipe' }, 'a rematch');
+  assert.equal(swapKind('win:null', 'review:null'), null, 'the finished board\'s review');
+  assert.equal(swapKind('menu:null', 'menu:null'), null, 'the same screen');
+});

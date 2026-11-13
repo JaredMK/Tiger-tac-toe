@@ -324,3 +324,9 @@ main.scr.cc { overflow: clip; }
 .howto-scr .rulecard.credits { border-width: 2.5px; border-radius: 0; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) { .cc .cpanel, .cc .hwgrid .hsq.lit { animation: none; } }
 @media (max-width: 350px) { .howto-scr .howlist { gap: 12px 12px; } .cc .pn.gt { gap: 5px; padding-left: 4px; padding-right: 5px; } .cc .pn.gt > b { font-size: 16px; } .cc .gic { width: 34px; height: 34px; } .cc .gic svg { width: 20px; height: 20px; } }
+
+/* ----- screen changes (ui/fx.js swapPrep/swapRun): the panel slide's stand-in for the screen going, the burst wipe's
+   stand-in (the whole page as it was) and its burst, all fixed outside #app and never taking a tap ----- */
+.zghost.ccghost.full { z-index: 50; box-sizing: border-box; }
+.ccwipe { position: fixed; z-index: 60; pointer-events: none; }
+.ccwipe svg { display: block; width: 100%; height: 100%; overflow: visible; }

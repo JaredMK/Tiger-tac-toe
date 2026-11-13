@@ -394,6 +394,108 @@ export function zoomRun(o) {
     zoomKeep();
   } catch (e) { zoomCancel(); if (o.old && o.old.parentNode && !o.old.closest('#app')) o.old.remove(); }
 }
+/* ----- Comic Chaos's screen changes (December 2026): a panel slide between the menus' screens, a burst wipe into a
+ * match and into its results. From the screen change itself (render.js, once: a redraw of the same screen never plays
+ * it again, it only keeps the slide on the redrawn screen, swapKeep), transforms and opacity only (Web Animations), the
+ * new screen in place and taking taps at once, the screen that goes a stand-in outside #app taking none. None where the
+ * zoom plays (the board and a square), with reduced motion or with the page out of sight; Speed shortens both. */
+export const SWAP = { slide: 300, slideSpeed: 180, wipe: 560, wipeSpeed: 340, ease: 'cubic-bezier(.3, 0, .2, 1)' };
+const GAME_SCR = ['board', 'mini', 'review', 'review-mini'];
+let swapPath = [], swap = null;                       // the screens come through since the menu (back or on?), the slide under way
+const swapMs = k => { const z = zoomMs(); if (!z) return 0; const sp = ANIM.mode === 'speed'; return (k === 'wipe' ? (sp ? SWAP.wipeSpeed : SWAP.wipe) : (sp ? SWAP.slideSpeed : SWAP.slide)) / (ANIM.admin || 1); };
+// Which change it is: 'wipe' into a match (from the menus) or into the results (from the match), 'slide' between two of
+// the menus' screens (on: further in, back: a screen come through before), else none.
+export function swapKind(prev, view) {
+  const ps = String(prev || '').split(':')[0], vs = String(view || '').split(':')[0];
+  if (!ps || ps === vs || ps === 'undefined') return null;
+  if (vs === 'win' && GAME_SCR.includes(ps)) return { kind: 'wipe' };
+  if ((vs === 'board' || vs === 'mini') && !GAME_SCR.includes(ps)) return { kind: 'wipe' };   // (a match from the menus, or a rematch; the finished match's review: none)
+  if (GAME_SCR.includes(vs) || GAME_SCR.includes(ps)) return null;
+  const back = vs === 'menu' || swapPath.includes(vs);
+  return { kind: 'slide', back };
+}
+function swapTrack(view) {
+  const vs = String(view || '').split(':')[0];
+  if (vs === 'menu' || GAME_SCR.includes(vs)) { swapPath = []; return; }
+  const i = swapPath.indexOf(vs);
+  if (i >= 0) swapPath.length = i + 1; else swapPath.push(vs);
+}
+// Before the new screen goes in: what the change needs of the screen that is going (its elements, its page's look).
+export function swapPrep(prev, view) {
+  swapCancel();
+  try {
+    const k = swapKind(prev, view);
+    swapTrack(view);
+    const D = k && swapMs(k.kind);
+    if (!k || !D) return null;
+    const r = app.getBoundingClientRect(), cs = getComputedStyle(app);
+    const o = Object.assign({}, k, { D, rect: { left: r.left, top: r.top, width: r.width, height: r.height }, bg: cs.background, pad: cs.padding });
+    if (!good(o.rect)) return null;
+    if (k.kind === 'slide') { o.old = app.querySelector(':scope > main.scr'); if (!o.old) return null; o.oldRect = rectOf(o.old); o.snap = animSnap(o.old); }
+    else { o.olds = [...app.children].filter(e => !e.classList.contains('explain')); o.snap = animSnap(app); }
+    return o;
+  } catch (e) { return null; }
+}
+function swapEnd(w) {
+  if (!w || swap !== w) return;
+  swap = null; clearTimeout(w.timer);
+  for (const e of [w.ghost, w.burst]) if (e && e.parentNode) e.remove();
+  if (w.live && w.live.getAnimations) for (const a of w.live.getAnimations()) if (a.id === SWAP_ID) a.cancel();
+}
+export function swapCancel() { if (swap) swapEnd(swap); }
+const SWAP_ID = 'ttc-swap';
+// The burst of the wipe: twenty spikes, yellow with a red heart and an ink edge (decoration: no taps).
+function burstEl(cx, cy, R) {
+  const n = 20, pts = (ro, ri) => Array.from({ length: n * 2 }, (_, i) => { const a = (i / (n * 2)) * Math.PI * 2, rr = i % 2 ? ri : ro; return `${(Math.cos(a) * rr).toFixed(1)},${(Math.sin(a) * rr).toFixed(1)}`; }).join(' ');
+  const el = document.createElement('div');
+  el.className = 'ccwipe'; el.setAttribute('aria-hidden', 'true');
+  el.style.cssText = `left:${cx.toFixed(1)}px;top:${cy.toFixed(1)}px;width:${(R * 2).toFixed(0)}px;height:${(R * 2).toFixed(0)}px;margin:${(-R).toFixed(0)}px 0 0 ${(-R).toFixed(0)}px`;
+  el.innerHTML = `<svg viewBox="-100 -100 200 200"><polygon points="${pts(100, 74)}" fill="#f6c21b" stroke="#161210" stroke-width="3" stroke-linejoin="round"/><polygon points="${pts(62, 44)}" fill="#e5432a" stroke="#161210" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
+  document.body.appendChild(el);
+  return el;
+}
+// After the new screen went in: the change starts (or, on a redraw part way through, carries on on the new elements).
+export function swapRun(o) {
+  if (!o) { swapKeep(); return; }
+  try {
+    const tl = document.timeline && document.timeline.currentTime, t0 = typeof tl === 'number' ? tl : performance.now();
+    const w = { kind: o.kind, D: o.D, t0, end: t0 + o.D };
+    const g = document.createElement('div');
+    g.className = 'zghost ccghost'; g.setAttribute('aria-hidden', 'true');
+    const r = o.kind === 'slide' ? o.oldRect : o.rect;
+    g.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`;
+    if (o.kind === 'slide') { g.appendChild(o.old); }
+    else { g.style.background = o.bg; g.style.padding = o.pad; g.classList.add('full'); for (const e of o.olds) g.appendChild(e); }
+    document.body.appendChild(g);
+    animCarry(g, o.snap);
+    w.ghost = g; swap = w;
+    if (o.kind === 'slide') {
+      const dx = o.back ? 1 : -1;
+      g.animate([{ transform: 'none', opacity: 1 }, { transform: `translateX(${dx * 38}%) skewX(${dx * 6}deg)`, opacity: 0 }], { duration: o.D, easing: SWAP.ease, fill: 'both' }).startTime = t0;
+      w.kf = [{ transform: `translateX(${-dx * 70}%) skewX(${-dx * 7}deg)`, opacity: 0 }, { opacity: 1, offset: .45 }, { transform: 'none', opacity: 1 }];
+    } else {
+      const R = Math.hypot(o.rect.width, o.rect.height) * .82, cx = o.rect.left + o.rect.width / 2, cy = o.rect.top + o.rect.height * .46;
+      w.burst = burstEl(cx, cy, R);
+      w.burst.animate([{ transform: 'scale(.02) rotate(-40deg)', opacity: 1 }, { transform: 'scale(1) rotate(0deg)', opacity: 1, offset: .5 }, { transform: 'scale(1.25) rotate(8deg)', opacity: 0 }], { duration: o.D, easing: 'cubic-bezier(.5, 0, .3, 1)', fill: 'both' }).startTime = t0;
+      g.animate([{ opacity: 1 }, { opacity: 1, offset: .49 }, { opacity: 0, offset: .5 }, { opacity: 0 }], { duration: o.D, fill: 'both' }).startTime = t0;
+    }
+    w.timer = setTimeout(() => swapEnd(w), o.D + 400);
+    const last = g.getAnimations ? g.getAnimations() : [];
+    if (last[0]) last[0].onfinish = () => swapEnd(w);
+    swapKeep();
+  } catch (e) { swapCancel(); }
+}
+function swapKeep() {
+  const w = swap;
+  if (!w || !w.kf) return;
+  if (performance.now() > w.end + 50) return;
+  const main = app.querySelector(':scope > main.scr');
+  if (!main || !main.animate) return;
+  w.live = main;
+  if (main.getAnimations && main.getAnimations().some(a => a.id === SWAP_ID)) return;
+  const a = main.animate(w.kf, { duration: w.D, easing: SWAP.ease, fill: 'backwards' });
+  a.id = SWAP_ID; a.startTime = w.t0;
+}
 // Speed lines out from the square being opened, over the zoom in (comic.css .zlines): outside #app, no taps, gone at its end.
 function zoomLines(R, D, t0) {
   if (REDUCED || !R) return;

@@ -9,7 +9,7 @@ import { scJointFrame, scPopup, scShown } from './chaos.js';
 import { closeExplain, explainT, renderExplain, renderHowTo, renderPracticeEnd } from './explainer.js';
 import { renderSettings } from './settings.js';
 import { fingPaint } from './finger.js';
-import { anchorFx, animate, fx, fxAt, startFx, sweepBursts, zoomPrep, zoomRun } from './fx.js';
+import { anchorFx, animate, fx, fxAt, startFx, swapCancel, swapPrep, swapRun, sweepBursts, zoomPrep, zoomRun } from './fx.js';
 import { refocus, typingIn } from './keyboard.js';
 import { renderMini } from './mini.js';
 import { physPaint } from './physics.js';
@@ -63,6 +63,8 @@ function renderNow() {
   setEntering(view !== lastView); setLastView(view);
   if (entering) { startFx('enter', view); fx.enter.from = prev; }   // a new screen: the event for its own entry (the zoom into a square; from which: the board's zoom-out from a square)
   const zp = entering ? zoomPrep(prev, view) : null;           // into a square or back to the board: what the zoom needs of the screen that is going (ui/fx.js), measured before it goes
+  const sp = entering && !zp ? swapPrep(prev, view) : null;
+  if (entering && zp) swapCancel();     // between the menus' screens, into a match, into its results: the panel slide or the burst wipe (ui/fx.js)
   if (entering && explainT) closeExplain(true);                 // another screen (Back, a menu, a move): no explainer left over it
   const kept = entering ? [] : [...app.querySelectorAll('[data-keep-scroll]')].map(e => [e.dataset.keepScroll, e.scrollTop]);
   const focus = entering ? null : typingIn();
@@ -76,6 +78,7 @@ function renderNow() {
     fresh.innerHTML = html;
     graft(app, fresh, boards.map(([sel, old]) => [old, fresh.querySelector(sel)]).filter(([old, now]) => now && sameShape(old, now) && sameChain(old, now, app, fresh)));
   }
+  swapRun(sp);
   zoomRun(zp);                                                // the zoom starts (or, on a redraw part way through, carries on: never starts again)
   for (const [k, top] of kept) { const e = app.querySelector(`[data-keep-scroll="${k}"]`); if (e) e.scrollTop = top; }   // the same screen again: lists stay where they were scrolled
   if (focus) refocus(focus);                                  // and a field being typed in keeps the focus, and the cursor
