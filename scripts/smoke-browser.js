@@ -30,6 +30,10 @@ async function cpuMatch(ctx) {
     while (Date.now() - t0 < 60000 && !state.winner) {
       const me = state.cpu === 'X' ? 'O' : 'X', still = state.flash || state.spot || state.done;
       if (at != null && state.moves > at && state.turn === me && !still && state.screen === 'board') return { ok: true, moves: state.moves };
+      if (at != null && state.moves > at && state.turn === me && !still && state.screen === 'mini' && state.zoom != null && !state.squares[state.zoom].owner) {   // (a move that keeps the turn in its square, a roll before a bank say: play on there)
+        const m = randomLegalMove(state.squares[state.zoom].mini, me, RNG);
+        if (m != null) { at = state.moves; attemptMove(m); }
+      }
       if (at == null && state.turn === me && !still && (state.screen === 'board' || state.screen === 'mini')) {
         const i = state.squares.findIndex(q => q && !q.owner);
         if (i >= 0) {
