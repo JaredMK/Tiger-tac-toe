@@ -180,6 +180,7 @@ function loadModel(read, oldTypes) {
     fld('Trivia', after(EXPLAINER, /visibleTypes\(\)\.includes\('trivia'\) \? (?=')/)),
     fld('Physics games', after(EXPLAINER, /t === 'pinball'\) \? (?=')/)),
     fld('Word Tiles', after(EXPLAINER, /visibleTypes\(\)\.includes\('wtiles'\) \? (?=')/)),
+    fld('Fonts', region(EXPLAINER, /: ''\}<p>(Fonts: .*?)<\/p><p class="priv">/, 'tpl')),
     fld('Privacy note', region(EXPLAINER, /<p class="priv">(.*?): <a href="\$\{privacyUrl\(\)\}"/, 'tpl')),
     fld('Privacy link', region(EXPLAINER, /<p class="priv">[^<]*<a href="\$\{privacyUrl\(\)\}"[^>]*>(.*?)<\/a>/, 'tpl')),
   ]);

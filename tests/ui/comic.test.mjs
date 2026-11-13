@@ -20,6 +20,7 @@ const { renderMenu } = await import('../../src/ui/screens/menu.js');
 const { renderWin } = await import('../../src/ui/screens/win.js');
 const { renderSetup } = await import('../../src/ui/screens/setup.js');
 const { state } = await import('../../src/ui/app.js');
+const { renderHowTo } = await import('../../src/ui/explainer.js');
 const ROOT = new URL('../../', import.meta.url);
 const CSS = fs.readFileSync(new URL('src/ui/comic.css', ROOT), 'utf8');
 const board = () => E.newMatch(E.makeRng('cc'), { games: ['ttt'] });
@@ -107,4 +108,19 @@ test('the sound family: a blip for a panel, a pip-pip for an option, a zip going
   const doc = fs.readFileSync(new URL('SOUNDS.md', ROOT), 'utf8');
   for (const n of ['ccBlip', 'ccPick', 'ccBack', 'ccBam']) { assert.ok(SFX[n], n); assert.ok(doc.includes('`' + n + '`'), `${n} in SOUNDS.md`); }
   for (const n of ['paperSlap', 'pencilTick', 'peel', 'startSting']) assert.ok(!SFX[n] && !doc.includes('`' + n + '`'), `${n}: gone with the Sticker book`);
+});
+
+test('How to Play: the three rules as drawn comic panels (flat), then every mini-game as a tappable tile', () => {
+  Object.assign(state, board(), { screen: 'howto', online: null });
+  const html = renderHowTo();
+  assert.match(html, /<main class="scr setup howto-scr cc calm">/);
+  const figs = [...html.matchAll(/<figure class="cpanel [^"]*"[^>]*>([^]*?)<\/figure>/g)];
+  assert.equal(figs.length, 3, 'three panels');
+  figs.forEach((f, i) => { assert.match(f[1], new RegExp(`<figcaption class="cap">${i + 1}</figcaption>`)); assert.doesNotMatch(f[1], /<button|data-act/, 'a panel is information: nothing to tap'); });
+  assert.match(figs[2][1], /Three squares in a row wins the match/);
+  const tiles = panels(html).filter(p => p.act === 'explain');
+  assert.ok(tiles.length >= 10 && tiles.every(p => /\bgt\b/.test(p.cls)), 'every game a tile');
+  assert.match(html, /<div class="games howlist"><button class="pn gt w" data-act="explain" data-t="ttt"[^>]*><i class="gic"><svg/, 'the icon in its disc');
+  const rule = /\.cc \.cpanel \{([^}]*)\}/.exec(CSS)[1];
+  assert.doesNotMatch(rule, /box-shadow|skew/, 'the panels are flat');
 });

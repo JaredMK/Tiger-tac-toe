@@ -9,9 +9,9 @@ Keep anything in {braces} (a setting the game fills in) and any <tags> or links 
 The core rules and the How to Play screen.
 
 ## Core rules [rules]
-Rule 1: Tic-tac-toe, where every square is its own mini-game. Win the mini-game to claim the square. Get three squares in a row to win.
+Rule 1: Tic-tac-toe, where every square is its own mini-game. Win it to claim the square.
 Rule 2: On your turn, make one move in any square.
-Rule 3: Once neither player can get three in a row any more, the match ends in a draw.
+Rule 3: Three squares in a row wins the match. No line left for anyone? A draw.
 
 ## How to Play screen [howto-screen]
 Modes heading: Modes
@@ -490,6 +490,7 @@ End screen back: How to play
 Trivia: <p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>
 Physics games: <p>Mini Golf, Pool, Bowling and Pinball run on <a href="https://brm.io/matter-js" target="_blank" rel="noopener noreferrer">Matter.js</a> (MIT licence).</p>
 Word Tiles: <p>Word Tiles checks its words against the ENABLE word list (public domain).</p>
+Fonts: Fonts: Luckiest Guy, Patrick Hand, Bangers and Comic Neue (SIL Open Font License).
 Privacy note: What the game keeps about you, and how to delete your account
 Privacy link: Privacy policy
 

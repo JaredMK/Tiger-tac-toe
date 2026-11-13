@@ -284,3 +284,43 @@ main.scr.cc { overflow: clip; }
 .cpuset:has(.adv.open) .setup-box { flex: 1 1 auto; }
 .cpuset:has(.adv.open) .setup-foot { flex: none; }
 .cpuset:has(.adv.open) .m-start { height: 60px; } .cpuset:has(.adv.open) .m-start > b { font-size: 32px; }
+
+/* ----- How to Play (calm): the three rules as drawn comic panels (information: a plain ink frame, no shadow, never
+   skewed), then every mini-game as a tile (tappable: a panel, its rules), then the credits on a flat card ----- */
+.howto-scr .setup-box { gap: 12px; padding-bottom: 18px; overflow-x: clip; }
+.cc .cpanels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 6px 2px 4px; }
+.cc .cpanel { position: relative; margin: 0; padding: 22px 10px 10px; background: #fff; border: 2.5px solid var(--ink); display: flex; flex-direction: column; align-items: center; gap: 8px;
+  animation: ccpop .4s cubic-bezier(.2, 1.4, .4, 1) backwards; animation-delay: calc(var(--k, 0) * 110ms + 120ms); }
+.cc .cpanel::before { content: ''; position: absolute; right: 0; bottom: 0; width: 46%; height: 46%; pointer-events: none;
+  background: radial-gradient(var(--cc-dot) 24%, transparent 27%) 0 0 / 8px 8px; -webkit-mask-image: linear-gradient(315deg, #000, transparent 70%); mask-image: linear-gradient(315deg, #000, transparent 70%); }
+@keyframes ccpop { from { opacity: 0; transform: scale(.9); } }
+.cc .cpanel.wide { grid-column: 1 / -1; flex-direction: row; gap: 12px; padding: 12px 12px 12px 14px; }
+.cc .cpanel > .cap { position: absolute; left: -2.5px; top: -2.5px; padding: 3px 9px 1px; }
+.cc .cpanel > p { position: relative; margin: 0; font: 700 16px/1.2 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); text-align: center; }
+.cc .cpanel.wide > p { text-align: left; font-size: 17px; }
+.cc .hwgrid { position: relative; flex: none; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); width: 112px; height: 112px; color: var(--ink); }
+.cc .hwgrid.sm { width: 92px; height: 92px; }
+.cc .hwgrid > .hash { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--ink); pointer-events: none; overflow: visible; }
+.cc .hsq { display: grid; place-items: center; padding: 5px; }
+.cc .hsq svg { width: 100%; height: 100%; }
+.cc .hwgrid .hsq.lit { background: radial-gradient(circle, var(--o) 0 52%, transparent 54%); animation: ccvs 1.4s ease-in-out infinite; }
+.cc .hwgrid .hsq.tap { background: radial-gradient(color-mix(in srgb, var(--x) 55%, transparent) 26%, transparent 29%) 0 0 / 6px 6px; box-shadow: inset 0 0 0 3px var(--x); border-radius: 8px; }
+.cc .hduo { display: flex; align-items: flex-end; gap: 4px; }
+.cc .hme { width: 46px; height: 46px; margin-bottom: 4px; } .cc .hme .pc { width: 100%; height: 100%; animation: bob 1s ease-in-out infinite; transform-origin: 50% 100%; }
+.cc .hwgrid.win .hsq { padding: 3px; }
+.cc .hwinb { position: absolute; right: -26px; bottom: -14px; width: 70px; transform: rotate(-8deg); pointer-events: none; }
+.cc .hwinb svg { width: 100%; height: auto; overflow: visible; } .cc .hwinb .bursttxt { font-family: 'Bangers', 'Luckiest Guy', sans-serif; fill: var(--x); }
+.cc .bst.w { fill: #fff; }
+.howto-scr .games-h { padding: 8px 2px 0; }
+.howto-scr .games-h > span { display: inline-block; background: var(--o); border: 2.5px solid var(--ink); padding: 3px 9px 1px; font: 400 18px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; }
+.howto-scr .games-h small { font: 700 15px/1.2 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); }
+.howto-scr .howlist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; padding: 4px 8px 6px 2px; }
+.cc .pn.gt { width: auto; margin: 0; flex-direction: row; justify-content: flex-start; gap: 8px; min-height: 56px; padding: 4px 8px 2px 6px; box-shadow: 4px 4px 0 var(--ink); border-width: 3px; animation: none; }
+.cc .pn.gt:active:not(:disabled) { box-shadow: 1px 1px 0 var(--ink); transform: skew(var(--cc-skew)) translate(3px, 3px); }
+.cc .pn.gt > b { flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: normal; text-align: left; font-size: 17px; line-height: 1; padding-top: 3px; }
+.cc .pn.gt > .tst { position: absolute; right: -4px; top: -11px; transform: skew(7deg); }
+.cc .gic { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #fff; border: 2.5px solid var(--ink); color: var(--ink); transform: skew(7deg); }
+.cc .gic svg { width: 24px; height: 24px; }
+.howto-scr .rulecard.credits { border-width: 2.5px; border-radius: 0; box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .cc .cpanel, .cc .hwgrid .hsq.lit { animation: none; } }
+@media (max-width: 350px) { .howto-scr .howlist { gap: 12px 12px; } .cc .pn.gt { gap: 5px; padding-left: 4px; padding-right: 5px; } .cc .pn.gt > b { font-size: 16px; } .cc .gic { width: 34px; height: 34px; } .cc .gic svg { width: 20px; height: 20px; } }

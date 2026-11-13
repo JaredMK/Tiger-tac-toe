@@ -14,8 +14,9 @@ import { SUPER_CHAOS_ENABLED } from '../core/config.js';
 import { privacyUrl } from '../net/platform.js';
 import { testBadge, visibleTypes } from '../net/releases.js';
 import { RNG, app, commit, flashTimer, holdTimer, setFlashTimer, setHoldTimer, setMenuOpen, setMenuStep, setSpotTimer, spotTimer, state } from './app.js';
-import { CHEV, ICONS } from './art.js';
-import { fxAt, fxAttr, startFx } from './fx.js';
+import { CHEV, ICONS, toon } from './art.js';
+import { hashSvg } from './hash.js';
+import { burstSvg, fxAt, fxAttr, startFx } from './fx.js';
 import { render } from './render.js';
 import { repStop } from './replay.js';
 import { cutHaptics } from './haptics.js';
@@ -27,9 +28,9 @@ import { cpuStop, scheduleCpu } from './turns.js';
 
 /* ----- explainers: the rules in short, from the "?" in a mini-game, the game list, or How to Play ----- */
 const RULES_CORE = [
-  'Tic-tac-toe, where every square is its own mini-game. Win the mini-game to claim the square. Get three squares in a row to win.',
+  'Tic-tac-toe, where every square is its own mini-game. Win it to claim the square.',
   'On your turn, make one move in any square.',
-  'Once neither player can get three in a row any more, the match ends in a draw.',
+  'Three squares in a row wins the match. No line left for anyone? A draw.',
 ];
 export const EXPLAIN = Object.fromEntries(Object.keys(GAMES).map(t => [t, GAMES[t].meta.explainer]));
 // Super Chaos: the mode's own explainer (its switch on the setup screen), and a game's Super Chaos rules where they differ.
@@ -152,16 +153,27 @@ export function closeExplain(quiet) {
   explainT = null;
   if (!quiet) scheduleCpu();
 }
+// How to Play (Comic Chaos, calm): the three core rules as three drawn comic panels (information: flat frames, no
+// shadow or skew), then every mini-game as a tappable tile (a panel: its "?" rules), then the credits.
+const HOW_PICS = ['ttt', 'c4', 'pig', 'bs', 'memory', 'hilo', 'coins', 'snakes', 'wordle'];
+function howPanels() {
+  const sq = (inner, cls = '') => `<i class="hsq${cls ? ' ' + cls : ''}">${inner}</i>`;
+  const p1 = `<div class="hwgrid" aria-hidden="true">${HOW_PICS.map((t, i) => sq(ICONS[t] || '', i === 4 ? 'lit' : '')).join('')}${hashSvg('hash', 9)}</div>`;
+  const p2 = `<div class="hduo" aria-hidden="true"><span class="hme">${toon('X')}</span><div class="hwgrid sm">${Array.from({ length: 9 }, (_, i) => sq('', i === 2 ? 'tap' : '')).join('')}${hashSvg('hash', 9)}</div></div>`;
+  const p3 = `<div class="hwgrid sm win" aria-hidden="true">${Array.from({ length: 9 }, (_, i) => sq([0, 4, 8].includes(i) ? toon('X') : i === 2 || i === 3 ? toon('O') : '')).join('')}${hashSvg('hash', 9)}<span class="hwinb">${burstSvg('WIN!', 'w', 120, 70, 30)}</span></div>`;
+  const panel = (n, pic, text, cls) => `<figure class="cpanel ${cls}" style="--k:${n}"><figcaption class="cap">${n}</figcaption>${pic}<p>${text}</p></figure>`;
+  return `<div class="cpanels">${panel(1, p1, RULES_CORE[0], 'wide')}${panel(2, p2, RULES_CORE[1], 'half')}${panel(3, p3, RULES_CORE[2], 'half')}</div>`;
+}
 export function renderHowTo() {
-  return `<main class="scr setup howto-scr">
+  return `<main class="scr setup howto-scr cc calm">
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
       <div class="ttl"><b>How to Play</b></div></div>
     <div class="setup-box" data-keep-scroll="howto">
-      <div class="rulecard">${RULES_CORE.map(t => `<p>${t}</p>`).join('')}</div>
+      ${howPanels()}
       ${SUPER_CHAOS_ENABLED ? `<div class="games-h"><span>Modes</span><small>Tap for its rules</small></div>
-      <div class="games howlist"><button class="chk how" data-act="explain" data-t="superchaos" aria-label="How to play Super Chaos">${SC_ICON}<span>Super Chaos</span><i class="qbtn sm" aria-hidden="true">?</i></button></div>` : ''}
+      <div class="games howlist"><button class="pn gt w" data-act="explain" data-t="superchaos" aria-label="How to play Super Chaos"><i class="gic">${SC_ICON}</i><b>Super Chaos</b></button></div>` : ''}
       <div class="games-h"><span>Mini-games</span><small>Tap one for its rules</small></div>
-      <div class="games howlist">${visibleTypes().filter(t => SUPER_CHAOS_ENABLED || !SC_ONLY.includes(t)).map(t => `<button class="chk how" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${ICONS[t]}<span>${EXPLAIN[t].name}</span>${testBadge(t)}<i class="qbtn sm" aria-hidden="true">?</i></button>`).join('')}</div>
-      <div class="games-h"><span>Credits</span></div><div class="rulecard credits">${visibleTypes().includes('trivia') ? '<p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>' : ''}${visibleTypes().some(t => PHYS_TYPES.includes(t) || t === 'pinball') ? '<p>Mini Golf, Pool, Bowling and Pinball run on <a href="https://brm.io/matter-js" target="_blank" rel="noopener noreferrer">Matter.js</a> (MIT licence).</p>' : ''}${visibleTypes().includes('wtiles') ? '<p>Word Tiles checks its words against the ENABLE word list (public domain).</p>' : ''}<p class="priv">What the game keeps about you, and how to delete your account: <a href="${privacyUrl()}" target="_blank" rel="noopener noreferrer">Privacy policy</a></p></div>
+      <div class="games howlist">${visibleTypes().filter(t => SUPER_CHAOS_ENABLED || !SC_ONLY.includes(t)).map(t => `<button class="pn gt w" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}"><i class="gic">${ICONS[t]}</i><b>${EXPLAIN[t].name.replace(/\//g, '/<wbr>')}</b>${testBadge(t)}</button>`).join('')}</div>
+      <div class="games-h"><span>Credits</span></div><div class="rulecard credits">${visibleTypes().includes('trivia') ? '<p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>' : ''}${visibleTypes().some(t => PHYS_TYPES.includes(t) || t === 'pinball') ? '<p>Mini Golf, Pool, Bowling and Pinball run on <a href="https://brm.io/matter-js" target="_blank" rel="noopener noreferrer">Matter.js</a> (MIT licence).</p>' : ''}${visibleTypes().includes('wtiles') ? '<p>Word Tiles checks its words against the ENABLE word list (public domain).</p>' : ''}<p>Fonts: Luckiest Guy, Patrick Hand, Bangers and Comic Neue (SIL Open Font License).</p><p class="priv">What the game keeps about you, and how to delete your account: <a href="${privacyUrl()}" target="_blank" rel="noopener noreferrer">Privacy policy</a></p></div>
     </div></main>`;
 }
