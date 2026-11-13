@@ -1,6 +1,7 @@
 // Coin Pusher: the screen, the miniature, the move's words and sounds, and the inputs (November 2026; reworked the same
 // month: a live machine and a dropper to time).
-import { OWN, OWNER, PUSH, pushBar, pushCfg, pushDropX, pushInit, pushMaxSteps, pushR, pushRest, pushSettleSteps, pushShelf, pushStars, pushStep, pushReplay, pushWorth } from './rules.js';
+import { OWN, OWNER, PUSH, pushBar, pushCfg, pushDropX, pushGoal, pushHz, pushInit, pushMaxSteps, pushOver, pushPhAfter, pushR, pushRest, pushShelf, pushStars, pushStep, pushReplay, pushWorth } from './rules.js';
+import { durRate } from '../../core/timer.js';
 import { SND, ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { haptic } from '../../net/platform.js';
@@ -26,7 +27,7 @@ import { cpuTurn, flashAnimating, skipFlash } from '../../ui/turns.js';
 // Whatever leaves the shelf is shown going (`gone`: a coin over the front turns over into the tray and lies there for
 // the rest of the move; one off a side drops into its gutter), the same live and in a replay, and the mover's total
 // counts on coin by coin as each lands (liveNow / frame: written into the page from the machine's own events).
-let pd = null;                                       // this phone's move under way: { sq, p, sim, ph, dp, k, c, n, at, acc, phase, raf, endStep, queued }
+let pd = null;                                       // this phone's move under way: { sq, p, sim, ph, ph0, dp, k, c, n, at, acc (steps owed), phase, raf, lastK, queued }
 let pLive = null;                                    // the move just made here: { sq, p, view (its last frame), at } (kept on show while it goes in)
 let src = null, raf = 0, ready = false, skipped = null, rsim = null;
 const PSH_EARLY = 700;                               // online: a move under way is finished and goes in this long before the turn's time is up
@@ -36,8 +37,12 @@ const PSH_EARLY = 700;                               // online: a move under way
 export const PSHT = { drop: 170, fall: 340, bounce: 140, gone: 320, spark: 480 };
 // Someone else's move plays first (the computer's, the other phone's): its length on screen, in ms; 0 for one made here.
 export const pushPre = f => (f && f.type === 'pusher' && f.push && !f.timeout && !REDUCED && (state.online ? f.by !== state.online.me : cpuPlays(f.by)) ? f.push.ms : 0);
-// The bar's and the dropper's places in their cycles on the page's clock (idle: they never stop).
-const idlePh = (c, now) => ((now / 1000) / Math.max(0.5, c.period)) % 1;
+// Idle: the machine stands still where the last move here left it (the bar at mini.ph: nothing moves, nothing falls
+// between turns); the dropper alone slides on the page's clock (it is what the first tap is timed by).
+// The live machine's steps a real second: while coins are to drop, its own pace in real time (the taps are the game);
+// after the last coin (the settle), at the page's pace too (core/timer.js durRate('ui'): Speed runs it faster).
+export const pushLiveRate = (c, phase) => pushHz(c) * (phase === 'settle' ? durRate('ui') : 1);
+export const restPh = mini => (mini && typeof mini.ph === 'number' ? mini.ph : 0);
 const idleDp = (c, now) => ((now / 1000) / Math.max(0.5, c.dropPeriod)) % 1;
 
 function pushTable(mini, a, o) {
@@ -77,7 +82,7 @@ function replayOf(g, c) {
     if (e.kind === 'drop') continue;
     let y = 1;
     if (e.kind === 'lost') {
-      const fr = r.frames[Math.round(e.t * PUSH.hz / 1000) - 2] || [], left = e.x < 0.5;
+      const fr = r.frames[Math.round(e.t * pushHz(c) / 1000) - 2] || [], left = e.x < 0.5;
       let best = null;
       for (const q of fr) if (q[1] >= PUSH.gut - 0.04 && (left ? q[0] < 0.12 : q[0] > 0.88) && (!best || (left ? q[0] < best[0] : q[0] > best[0]))) best = q;
       y = best ? best[1] : PUSH.gut + 0.06;
@@ -90,7 +95,7 @@ function replayOf(g, c) {
 // The points of the coins that have landed in the tray by tm (ms into the move); in a move under way here, by now.
 // side: whose points (a coin's `to`: its owner, or the mover for the machine's own coins).
 const landedPts = (gone, tm, side) => { let n = 0; for (const e of gone) if (e.kind === 'off' && (!side || e.to === side) && tm - e.t >= PSHT.fall) n += e.w; return n; };
-const landed = (fd, side) => landedPts(fd.gone, fd.sim.s * 1000 / PUSH.hz, side);
+const landed = (fd, side) => landedPts(fd.gone, fd.sim.s * 1000 / pushHz(fd.c), side);
 
 // ---- this phone's move ----
 function tap() {
@@ -99,8 +104,8 @@ function tap() {
   const mini = sq.mini, c = pushCfg(mini), n = Math.max(1, c.perMove | 0), now = performance.now();
   if (!pd) {
     if (!src || !src.mine) return false;
-    const p = state.turn, ph = Math.round(idlePh(c, now) * 1000) % 1000, dp = Math.round(idleDp(c, now) * 1000) % 1000;
-    pd = { sq: state.zoom, p, c, n, mini, ph, dp, k: [], stars: pushStars(mini, p, c, n), sim: pushInit(c, pushShelf(mini, p), ph / 1000, false, p), at: now, last: now, acc: 0, phase: 'play', raf: 0, endStep: 0, queued: null, gone: [], shown: 0 };
+    const p = state.turn, ph0 = restPh(mini), ph = Math.round(ph0 * 1000) % 1000, dp = Math.round(idleDp(c, now) * 1000) % 1000;   // (the bar starts from where it stood: rules.js pushStartPh)
+    pd = { sq: state.zoom, p, c, n, mini, ph, ph0, dp, k: [], stars: pushStars(mini, p, c, n), sim: pushInit(c, pushShelf(mini, p), ph0, false, p, pushGoal(mini, c)), at: now, last: now, acc: 0, phase: 'play', raf: 0, lastK: -1, queued: null, gone: [], shown: 0 };
     pLive = null;
     queue(pd);
     render();
@@ -116,7 +121,7 @@ function queue(fd) {
   const s = Math.max(fd.sim.s, fd.k.length ? fd.k[fd.k.length - 1] + 1 : 0);
   fd.k.push(s); fd.queued = s;
   SND.play('clink'); haptic('tap');
-  if (fd.k.length >= fd.n) { fd.phase = 'settle'; fd.endStep = s + pushSettleSteps(fd.c); }
+  if (fd.k.length >= fd.n) { fd.phase = 'settle'; fd.lastK = s; }
 }
 function stepOnce(fd) {
   const s = fd.sim.s, i = fd.k.indexOf(s), drop = i >= 0 ? { x: pushDropX(fd.c, s / PUSH.hz, fd.dp / 1000), st: fd.stars[i], ow: OWN[fd.p] } : null;
@@ -142,12 +147,14 @@ function frameLoop(now) {
   fd.last = now;
   const left = clockLeft();
   if (left != null && left <= (state.online ? PSH_EARLY : 0)) { finish(true); return; }        // the turn's time is up: the rest at once
-  fd.acc += dt;
-  while (fd.acc >= 1 / PUSH.hz - 1e-9) {
-    fd.acc -= 1 / PUSH.hz;
+  // the machine's steps this frame (in steps: pushHz a real second): while coins are to drop, in real time (the taps are
+  // the game); after the last, at the page's pace (core/timer.js durRate: Speed runs the settle faster)
+  fd.acc += dt * pushLiveRate(fd.c, fd.phase);
+  while (fd.acc >= 1 - 1e-9) {
+    fd.acc -= 1;
     if (fd.phase === 'play' && fd.queued == null && fd.sim.s >= pushMaxSteps(fd.c) - (fd.n - fd.k.length - 1)) { queue(fd); continue; }   // the attempt's time limit: the coins left drop where the dropper is, a step apart, the last on the limit
     stepOnce(fd);
-    if (fd.phase === 'settle' && fd.sim.s >= fd.endStep) { finish(false); return; }
+    if (fd.sim.win != null || (fd.phase === 'settle' && pushOver(fd.sim, fd.lastK))) { finish(false); return; }   // a total at the target (the square won there and then), or the machine settled: the move ends at once
   }
   liveNow(fd);
   paint();
@@ -158,11 +165,11 @@ function finish(rush) {
   const fd = pd;
   if (!fd) return;
   cancelAnimationFrame(fd.raf); pd = null;
-  while (fd.k.length < fd.n) { const s = Math.max(fd.sim.s, fd.k[fd.k.length - 1] + 1); fd.k.push(s); fd.queued = s; if (fd.k.length >= fd.n) fd.endStep = s + pushSettleSteps(fd.c); }
-  if (!fd.endStep) fd.endStep = fd.k[fd.k.length - 1] + pushSettleSteps(fd.c);
-  while (fd.sim.s < fd.endStep) { const s = fd.sim.s, i = fd.k.indexOf(s); pushStep(fd.sim, i >= 0 ? { x: pushDropX(fd.c, s / PUSH.hz, fd.dp / 1000), st: fd.stars[i], ow: OWN[fd.p] } : null); }
+  while (fd.k.length < fd.n) { const s = Math.max(fd.sim.s, fd.k[fd.k.length - 1] + 1); fd.k.push(s); fd.queued = s; }   // (the coins not dropped: a step apart from now; after a win, never dropped)
+  fd.lastK = fd.k[fd.k.length - 1];
+  while (!pushOver(fd.sim, fd.lastK)) { const s = fd.sim.s, i = fd.k.indexOf(s); pushStep(fd.sim, i >= 0 ? { x: pushDropX(fd.c, s / PUSH.hz, fd.dp / 1000), st: fd.stars[i], ow: OWN[fd.p] } : null); }
   const pts = fd.sim.pts;
-  pLive = { sq: fd.sq, p: fd.p, coins: pushRest(fd.sim), at: performance.now(), gone: fd.gone, pts, by: { X: fd.sim.by.X, O: fd.sim.by.O }, n: fd.mini.moves[fd.p] };
+  pLive = { sq: fd.sq, p: fd.p, coins: pushRest(fd.sim), ph: pushPhAfter(fd.c, fd.ph0, fd.sim.s), at: performance.now(), gone: fd.gone, pts, by: { X: fd.sim.by.X, O: fd.sim.by.O }, n: fd.mini.moves[fd.p] };
   if (pts > 0) { SND.play('ding'); haptic('medium'); } else SND.play('thud');   // (its result's sound here: the flash of a move made here goes straight to its result)
   attemptMove({ ph: fd.ph, dp: fd.dp, k: fd.k.slice() });
   render();
@@ -358,14 +365,14 @@ function frame(c, G, now) {
   const P = runColours(), mini = src.mini, cfg = src.c, S = G.S, X = u => G.ox + u * S, Y = v => G.oy + v * S, rr = pushR(cfg), R = rr * S, wl = WALL * S;
   const fd = pd && pd.sq === src.zoom ? pd : null, a = fd ? null : src.a, g = a ? a.push : null;
   const at = a ? fxAt('move', a) : null, t = at == null ? null : Math.max(0, now - at);
-  const m = g && pushPre(a) && t != null ? replayOf(g, cfg) : null, step = m ? Math.min(m.frames.length - 1, Math.floor(t / 1000 * PUSH.hz)) : -1;
+  const m = g && pushPre(a) && t != null ? replayOf(g, cfg) : null, step = m ? Math.min(m.frames.length - 1, Math.floor(t / 1000 * pushHz(cfg))) : -1;
   const who = fd ? fd.p : src.who, col = who === 'O' ? P.O : P.X, n = Math.max(1, cfg.perMove | 0);
   // where the bar and the dropper are: the move under way's, a replay's, else the page's clock; the coins on the shelf,
   // the move's time (tm, ms), its drops ([step, x]) and what has left the shelf so far
   let bar, dx, list, tm = null, drops = [], gone = null, stepNow = -1, left = 0;
   if (fd) {
-    bar = pushBar(cfg, fd.sim.s / PUSH.hz, fd.ph / 1000); dx = pushDropX(cfg, fd.sim.s / PUSH.hz, fd.dp / 1000);
-    list = fd.sim.list.map(o => [o.x, o.y, kindOf(o.st, o.ow)]); tm = fd.sim.s * 1000 / PUSH.hz; stepNow = fd.sim.s - 1; gone = fd.gone;
+    bar = pushBar(cfg, fd.sim.s / PUSH.hz, fd.ph0); dx = pushDropX(cfg, fd.sim.s / PUSH.hz, fd.dp / 1000);
+    list = fd.sim.list.map(o => [o.x, o.y, kindOf(o.st, o.ow)]); tm = fd.sim.s * 1000 / pushHz(cfg); stepNow = fd.sim.s - 1; gone = fd.gone;
     drops = fd.k.filter(k => k <= stepNow).map(k => [k, pushDropX(cfg, k / PUSH.hz, fd.dp / 1000)]); left = fd.n - fd.k.length;
   } else if (m && step >= 0) {
     bar = pushBar(cfg, (step + 1) / PUSH.hz, g.ph / 1000); dx = pushDropX(cfg, (step + 1) / PUSH.hz, g.dp / 1000);
@@ -374,7 +381,8 @@ function frame(c, G, now) {
     if (sx !== m.shown.X || so !== m.shown.O) { m.shown = { X: sx, O: so }; const bx = g.by === 'X' ? g.before : g.ob, bo = g.by === 'O' ? g.before : g.ob; if (bx != null && bo != null) showPts({ X: bx + sx, O: bo + so }); }   // (both totals counting on as each coin lands in the tray)
     drops = g.k.filter(k => k <= step).map(k => [k, pushDropX(cfg, k / PUSH.hz, g.dp / 1000)]); left = g.k.length - drops.length;
   } else {
-    bar = pushBar(cfg, 0, idlePh(cfg, now)); dx = pushDropX(cfg, 0, idleDp(cfg, now));
+    const own0 = pLive && pLive.sq === src.zoom && pLive.p === src.who ? pLive : null;
+    bar = pushBar(cfg, 0, own0 && !g && own0.n === mini.moves[src.who] ? own0.ph : restPh(mini)); dx = pushDropX(cfg, 0, idleDp(cfg, now));   // (the bar frozen where the last move left it)
     const own = pLive && pLive.sq === src.zoom && pLive.p === src.who ? pLive : null;
     list = (own && !g ? own.coins : pushShelf(mini, src.who)).map(q => [q[0] / PUSH.Q, q[1] / PUSH.Q, kindOf(q[2], q[3])]);
     if (own && (g || own.n === mini.moves[src.who]) && now - own.at < 6000) { gone = own.gone; tm = Infinity; }   // (a move made here, its result on show or going in: its coins still lie in the tray)
@@ -396,7 +404,7 @@ function frame(c, G, now) {
   // the coins on the shelf: their shadows (one fill: none darkens another), then the coins; the ones just let go fall
   // from the dropper to where the machine has them (the last of the list, newest last)
   const fall = new Map();
-  drops.forEach(([k, x0], j) => { const age = (stepNow - k) * 1000 / PUSH.hz + (fd ? fd.acc * 1000 : 0); if (age < PSHT.drop && !REDUCED) fall.set(list.length - (drops.length - j), { u: clamp(age / PSHT.drop, 0, 1), x0 }); });
+  drops.forEach(([k, x0], j) => { const age = (stepNow - k) * 1000 / pushHz(cfg) + (fd ? fd.acc * 1000 / pushHz(cfg) : 0); if (age < PSHT.drop && !REDUCED) fall.set(list.length - (drops.length - j), { u: clamp(age / PSHT.drop, 0, 1), x0 }); });
   c.save(); c.beginPath(); c.rect(X(0) - wl, Y(0), S + 2 * wl, (1 + TRAY) * S); c.clip();   // (a coin over the front edge or in a gutter hangs out over it)
   c.fillStyle = 'rgba(10,8,20,.24)'; c.beginPath();
   list.forEach(([x, y], i) => { const f = fall.get(i), h = f ? 1 - f.u * f.u : 0, px = X(x) + R * (0.14 + 0.5 * h), py = Y(y) + R * (0.2 + 0.7 * h), r = R * (1 - 0.25 * h); c.moveTo(px + r, py); c.arc(px, py, r, 0, 7); });

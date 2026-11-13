@@ -119,8 +119,8 @@ Win: All {n} coins show your side.
 
 ## Coin Pusher [pusher]
 Category: More luck
-Play: One machine for both. Tap to drop a coin where the dropper is as it slides: {perMove} coins a go, in your colour. Your coins score for you whenever they go over the front edge, on anyone's turn. The machine's own silver coins score for whoever pushes them off. A star coin is worth {starWorth}. Off the sides, they are gone.{goAgain}
-Win: Reach {target} first. The other player then gets one last turn: the higher total wins.
+Play: One machine for both. Tap to drop a coin where the dropper is as it slides: {perMove} coins a go ({open} on the very first), in your colour. Your coins score for you whenever they go over the front edge, on anyone's turn. The machine's own silver coins score for whoever pushes them off. A star coin is worth {starWorth}. Off the sides, they are gone.{goAgain}
+Win: First to {target} wins, the moment the coin lands.
 
 ## Cup Pong [pong]
 Category: More skill

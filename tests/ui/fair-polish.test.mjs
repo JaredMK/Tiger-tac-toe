@@ -149,15 +149,29 @@ test('pusher: taps on the machine are the move: a canvas, no button; the picture
   const mini = E.newMini('pusher', E.makeRng('ps')), html = draw(pusher, mini);
   assert.match(html, /<div class="psh live"><canvas class="pshcv"/); assert.equal(count(html, /<button/g), 0);
   assert.doesNotMatch(draw(pusher, mini, { locked: true }), /class="psh live"/);
-  assert.deepEqual(PR.PUSH, { slots: 9, Q: 10000, hz: 60, r: 0.05, back: 0.16, gut: 0.84, iters: 6, hold: 500 });
-  assert.equal(PR.pushSettleSteps(PR.pushCfg(mini)), 300, 'the settle: 2.5 strokes of 2 s');
+  assert.deepEqual(PR.PUSH, { slots: 9, Q: 10000, hz: 60, r: 0.05, back: 0.16, gut: 0.84, iters: 6, hold: 500, still: 2e-5, pace: 1.6 });
+  assert.equal(PR.pushCapSteps(PR.pushCfg(mini)), 480, 'the settle: at most 4 strokes of 2 s (it stops once settled)');
   assert.ok(pusher.PSHT.drop < 250 && pusher.PSHT.fall + pusher.PSHT.bounce <= PR.PUSH.hold, 'a coin over the edge at the very end still lands before the result\'s hold is over');
+});
+
+test('pusher: the machine runs faster than real time, its settle at the page\'s pace (Speed), and stands still between turns', async () => {
+  const T = await import('../../src/core/timer.js'), c = PR.pushCfg(E.newMini('pusher', E.makeRng('pace')));
+  try {
+    T.setAnimMode('normal');
+    assert.equal(pusher.pushLiveRate(c, 'play'), 60 * 1.6, 'the machine at 1.6x real time while coins drop');
+    assert.equal(pusher.pushLiveRate(c, 'settle'), 60 * 1.6, 'Normal: the settle at the same pace');
+    T.setAnimMode('speed');
+    assert.equal(pusher.pushLiveRate(c, 'play'), 60 * 1.6, 'Speed: the taps keep real time (the game)');
+    assert.ok(pusher.pushLiveRate(c, 'settle') >= 2 * 60 * 1.6, 'Speed: the settle twice as fast');
+  } finally { T.setAnimMode('normal'); }
+  const m = E.newMini('pusher', E.makeRng('pz')); E.applyMove(m, 'X', { ph: 0, dp: 0, k: [0, 30] }, E.makeRng('z'));
+  assert.equal(pusher.restPh(m), m.ph, 'idle, the bar is drawn where the last move left it (frozen: nothing falls between turns)');
 });
 
 test('pusher: someone else\'s move sounds from its events (a clink and a tick a coin, the tray\'s clink, a star\'s chime) and their total counts on from where it was', () => {
   seat(); state.cpu = 'O';
   E.setTune('pusher', { start: 40 }); const mini = E.newMini('pusher', E.makeRng('ps2')); E.setTune('pusher', null);   // (a fuller shelf: a push spills coins)
-  mini.coins.forEach((q, i) => { q[1] = Math.min(9900, q[1] + 700); if (q[1] > 8800 && i % 2 === 0) q[2] = 1; if (i % 4 === 1) q[3] = 1; });   // (the shared shelf about to spill, star coins at the front, some of them X's)
+  mini.moves = { X: 1, O: 1 }; mini.turns = { X: 1, O: 1 }; mini.coins.forEach((q, i) => { q[1] = Math.min(9900, q[1] + 700); if (q[1] > 8800 && i % 2 === 0) q[2] = 1; if (i % 4 === 1) q[3] = 1; });   // (the shared shelf about to spill, star coins at the front, some of them X's)
   const { f } = move(mini, 'O', { ph: 100, dp: 300, k: [0, 30, 70] }, E.makeRng('r')), g = f.push;
   assert.ok(g.scored > 1 && g.pts + g.opp > g.scored, 'coins over the edge, a star coin among them');
   assert.ok(pusher.pushPre(f) > 0);

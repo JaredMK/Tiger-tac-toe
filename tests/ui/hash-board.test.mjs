@@ -55,6 +55,8 @@ test('the final board, the history snapshot, the share card and the preview imag
   assert.match(fs.readFileSync(new URL('src/ui/screens/profile.js', ROOT), 'utf8'), /hashSvg\('hash'/, 'the history snapshot');
   const card = fs.readFileSync(new URL('src/ui/sharecard.js', ROOT), 'utf8');
   assert.match(card, /hashPath\(ctx, left, top, size\)/, 'the share card');
-  assert.doesNotMatch(card.slice(card.indexOf('// the board:'), card.indexOf('// both names')), /box\(ctx/, 'no boxes on the share card');
+  const board = card.slice(card.indexOf('// the board:'), card.indexOf('// both names')), cells = board.slice(board.indexOf('for (let i = 0; i < 9'));
+  assert.doesNotMatch(cells, /box\(ctx|strokeRect|fillRect/, 'no boxes on the share card\'s squares (the # alone; the one comic panel the board sits on is the card\'s, December 2026)');
+  assert.equal((board.match(/box\(ctx/g) || []).length, 1, 'one panel behind the board, no frame round the #');
   assert.match(fs.readFileSync(new URL('scripts/make-share-images.js', ROOT), 'utf8'), /hashSvg\('hash'/, 'the link-preview image');
 });

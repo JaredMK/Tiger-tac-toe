@@ -1,6 +1,6 @@
 // Coin Pusher: the computer's play (November 2026; reworked with the timed dropper).
 import { randInt } from '../../core/random.js';
-import { OWN, PUSH, pushR, pushCfg, pushDropX, pushDrops, pushMaxSteps, pushShelf, pushSim, pushStars } from './rules.js';
+import { OWN, PUSH, pushR, pushCfg, pushDropX, pushDrops, pushGoal, pushHz, pushMaxSteps, pushShelf, pushSim, pushStars, pushStartPh } from './rules.js';
 
 // The coins a column's push would shove: the coins in the band a drop at slot s lands in, weighted the nearer the front
 // edge they lie (a coin at the front is what falls; one at the back only passes the push on). On the shared machine (v 3)
@@ -50,15 +50,15 @@ export function pushPlan(c, cols, ph, err, rng) {
   // the first: dp puts the dropper over the column now, going right (the cycle's rising half), shifted by the hand's error
   let dp = ((tx(cols[0]) - r) / half) / 2 + off() / Math.max(0.5, c.dropPeriod);
   dp = ((dp % 1) + 1) % 1;
-  const dpi = Math.round(dp * 1000) % 1000, k = [0], max = pushMaxSteps(c), gap = Math.round(PUSH.hz * 0.25);
+  const hz = pushHz(c), dpi = Math.round(dp * 1000) % 1000, k = [0], max = pushMaxSteps(c), gap = Math.round(hz * 0.25);   // (hz: steps a real second)
   for (let i = 1; i < cols.length; i++) {
     const want = tx(cols[i]);
     let best = null;
-    for (let s = k[i - 1] + gap; s <= Math.min(max, k[i - 1] + gap + Math.round(c.dropPeriod * PUSH.hz) + 1); s++) {
+    for (let s = k[i - 1] + gap; s <= Math.min(max, k[i - 1] + gap + Math.round(c.dropPeriod * hz) + 1); s++) {
       const d = Math.abs(pushDropX(c, s / PUSH.hz, dpi / 1000) - want);
       if (!best || d < best.d - 1e-9) best = { s, d };
     }
-    let s = best ? best.s + Math.round(off() * PUSH.hz) : k[i - 1] + 1;
+    let s = best ? best.s + Math.round(off() * hz) : k[i - 1] + 1;
     s = Math.max(k[i - 1] + 1, Math.min(max - (cols.length - 1 - i), s));
     k.push(s);
   }
@@ -70,7 +70,7 @@ export function needs(pm, p) { const c = pushCfg(pm); return Math.max(1, (c.targ
 export function best(pm, me, rng, style, ctx) {
   const c = pushCfg(Object.assign({}, pm, { v: 3 })), n = Math.max(1, c.perMove | 0), coins = pushShelf(pm, me), lvl = ctx && ctx.level, left = c.target - pm.score[me];
   const q = left <= 1 ? 0.7 : left <= 2 ? 0.5 : left <= 3 ? 0.35 : left <= 5 ? 0.12 : 0;
-  const ph = rng();                                               // (where the bar is when it starts: whenever it happens to)
+  const ph = typeof pm.ph === 'number' && (pm.v || 0) >= 3 ? pm.ph : rng();   // (where the bar is when it starts: where the last move left it)
   if (lvl === 'easy') return { move: pushPlan(c, Array.from({ length: n }, () => randInt(rng, PUSH.slots)), ph, c.aiErrEasy, rng), q };
   if (lvl !== 'hard') return { move: pushPlan(c, pushNormal(coins, n, me, pushR(c)), ph, c.aiErr, rng), q };
   // Hard: each candidate's exact taps through the real push (its own stars and the bar where it is), the best kept, then
@@ -80,9 +80,9 @@ export function best(pm, me, rng, style, ctx) {
   const shared = Array.isArray(pm.coins) && (pm.v || 0) >= 3, base = shared ? coins : coins.map(a => [a[0], a[1], a[2] ? 1 : 0, 0]);   // (a square from before: its next move makes it the shared machine, every coin neutral: rules.js pushUp)
   for (const cols of candidates(base, n, c.aiTries, me, pushR(c))) {
     if (top && until && until() <= 0) break;
-    const mv = pushPlan(c, cols, ph, 0, rng), res = pushSim(c, base, pushDrops(c, mv, stars, OWN[me]), false, mv.ph / 1000, me), v = worth(res, me);
+    const mv = pushPlan(c, cols, ph, 0, rng), res = pushSim(c, base, pushDrops(c, mv, stars, OWN[me]), false, shared ? pushStartPh(pm, mv) : mv.ph / 1000, me, shared ? pushGoal(pm, c) : null), v = worth(res, me) + (res.win === me ? 1000 : res.win ? -1000 : 0);
     if (!top || v > top.v) top = { cols, v, res };
   }
-  const won = top.res.pts >= left;
+  const won = top.res.win === me || top.res.pts >= left;
   return { move: pushPlan(c, top.cols, ph, c.aiErrHard, rng), q: won ? Math.max(q, 0.8) : q };
 }
