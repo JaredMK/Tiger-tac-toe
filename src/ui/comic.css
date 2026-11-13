@@ -319,14 +319,25 @@ main.scr.cc { overflow: clip; }
 .cc .pn.gt:active:not(:disabled) { box-shadow: 1px 1px 0 var(--ink); transform: skew(var(--cc-skew)) translate(3px, 3px); }
 .cc .pn.gt > b { flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: normal; text-align: left; font-size: 17px; line-height: 1; padding-top: 3px; }
 .cc .pn.gt > .tst { position: absolute; right: -4px; top: -11px; transform: skew(7deg); }
-.cc .gic { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #fff; border: 2.5px solid var(--ink); color: var(--ink); transform: skew(7deg); }
-.cc .gic svg { width: 24px; height: 24px; }
 .howto-scr .rulecard.credits { border-width: 2.5px; border-radius: 0; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) { .cc .cpanel, .cc .hwgrid .hsq.lit { animation: none; } }
-@media (max-width: 350px) { .howto-scr .howlist { gap: 12px 12px; } .cc .pn.gt { gap: 5px; padding-left: 4px; padding-right: 5px; } .cc .pn.gt > b { font-size: 16px; } .cc .gic { width: 34px; height: 34px; } .cc .gic svg { width: 20px; height: 20px; } }
+@media (max-width: 350px) { .howto-scr .howlist { gap: 12px 12px; } .cc .pn.gt { gap: 5px; padding-left: 4px; padding-right: 5px; } .cc .pn.gt > b { font-size: 16px; } .cc .pn.gt .gic { width: 34px; height: 34px; } .cc .pn.gt .gic svg { width: 20px; height: 20px; } }
 
 /* ----- screen changes (ui/fx.js swapPrep/swapRun): the panel slide's stand-in for the screen going, the burst wipe's
    stand-in (the whole page as it was) and its burst, all fixed outside #app and never taking a tap ----- */
 .zghost.ccghost.full { z-index: 50; box-sizing: border-box; }
 .ccwipe { position: fixed; z-index: 60; pointer-events: none; }
 .ccwipe svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+/* ----- a mini-game's icon in the menus (ui/art.js gameIcon): chunky (its strokes drawn heavier), in ink, in a white disc
+   with an ink edge, the disc's heart tinted by the game's kind (luck red, skill blue, brain yellow); information ----- */
+.gic { --gt: #fff; flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 2.5px solid var(--ink); color: var(--ink); font-style: normal;
+  background: radial-gradient(circle, var(--gt) 0 55%, #fff 57%); }
+.gic.g-luck { --gt: var(--x-soft); } .gic.g-skill { --gt: color-mix(in srgb, #35c4e0 32%, #fff); } .gic.g-brain { --gt: var(--o-soft); }
+.gic > svg { width: 24px; height: 24px; color: var(--ink); stroke-width: 3px; }
+.cc .pn .gic { transform: skew(7deg); }
+.chk .gic { width: 32px; height: 32px; border-width: 2px; } .chk .gic > svg { width: 19px; height: 19px; color: var(--ink); }
+.chk.off .gic { filter: grayscale(1); }
+.cpuset .chk:not(.off) .gic > svg { color: var(--ink); }
+.excard h2 .gic { width: 46px; height: 46px; border-width: 3px; } .excard h2 .gic > svg { width: 28px; height: 28px; }
+@media (max-width: 359px) { .chk .gic { display: none; } }

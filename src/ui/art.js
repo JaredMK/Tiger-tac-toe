@@ -6,6 +6,9 @@ import { esc } from './app.js';
 export const CPU_ICON = '<svg class="cpui" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="13.5" rx="3" fill="#58a8cf" stroke="#161210" stroke-width="2"/><ellipse cx="9" cy="8.6" rx="1.5" ry="2" fill="#161210"/><ellipse cx="15" cy="8.6" rx="1.5" ry="2" fill="#161210"/><path d="M9 12q3 2.2 6 0" fill="none" stroke="#161210" stroke-width="1.7" stroke-linecap="round"/><path d="M9.6 16.4v3.4h4.8v-3.4M6.5 20.6h11" fill="none" stroke="#161210" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 export const ICONS = Object.fromEntries(Object.keys(GAMES).map(t => [t, GAMES[t].meta.icon]));
+// A mini-game's icon as the menus show it (Comic Chaos): chunky, in ink, in a white disc tinted by its kind (luck,
+// skill, brain: comic.css .gic). Information (the button round it is what is tapped). `svg`: another icon in its place.
+export const gameIcon = (t, svg) => `<i class="gic${GAMES[t] && GAMES[t].meta.category ? ' g-' + GAMES[t].meta.category : ''}" aria-hidden="true">${svg || ICONS[t] || ''}</i>`;
 const BOAT = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.5 14.5h19l-2.6 4.6a2 2 0 0 1-1.7 1H6.8a2 2 0 0 1-1.7-1z"/><path d="M11 3h2v10h-2z"/><path d="M13 4.5 18.5 11H13z"/><path d="M5 12.5h14v2H5z"/></svg>';
 export const RESET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 3v5h-5"/></svg>';
 // The two characters: a red X and a yellow O with pie-cut eyes and a grin (drawn on a 100 x 100 grid).

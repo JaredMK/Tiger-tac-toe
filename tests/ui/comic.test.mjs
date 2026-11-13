@@ -120,7 +120,7 @@ test('How to Play: the three rules as drawn comic panels (flat), then every mini
   assert.match(figs[2][1], /Three squares in a row wins the match/);
   const tiles = panels(html).filter(p => p.act === 'explain');
   assert.ok(tiles.length >= 10 && tiles.every(p => /\bgt\b/.test(p.cls)), 'every game a tile');
-  assert.match(html, /<div class="games howlist"><button class="pn gt w" data-act="explain" data-t="ttt"[^>]*><i class="gic"><svg/, 'the icon in its disc');
+  assert.match(html, /<div class="games howlist"><button class="pn gt w" data-act="explain" data-t="ttt"[^>]*><i class="gic g-brain" aria-hidden="true"><svg/, 'the icon in its disc');
   const rule = /\.cc \.cpanel \{([^}]*)\}/.exec(CSS)[1];
   assert.doesNotMatch(rule, /box-shadow|skew/, 'the panels are flat');
 });
@@ -137,4 +137,20 @@ test('screen changes: a burst wipe into a match and into its results, a panel sl
   assert.deepEqual(swapKind('win:null', 'board:null'), { kind: 'wipe' }, 'a rematch');
   assert.equal(swapKind('win:null', 'review:null'), null, 'the finished board\'s review');
   assert.equal(swapKind('menu:null', 'menu:null'), null, 'the same screen');
+});
+
+test('a mini-game\'s icon in the menus: in a white disc tinted by its kind, in the checklists and the explainer too', async () => {
+  const { gameIcon } = await import('../../src/ui/art.js');
+  assert.match(gameIcon('pig'), /^<i class="gic g-luck" aria-hidden="true"><svg/);
+  assert.match(gameIcon('ttt'), /^<i class="gic g-brain"/);
+  Object.assign(state, board(), { screen: 'setup', online: null });
+  state.setup.vs = 'cpu'; state.setup.vsCpu = null;
+  const { setAdvOpen } = await import('../../src/ui/app.js');
+  setAdvOpen(true);
+  for (const t of E.TYPES) state.setup.games[t] = true;
+  const html = renderSetup();
+  setAdvOpen(false);
+  assert.match(html, /<input type="checkbox" data-t="[a-z0-9]+" checked><i class="gic g-\w+"/, 'the checklist');
+  assert.match(CSS, /\.gic > svg \{[^}]*stroke-width: 3px/, 'chunky');
+  state.setup.vs = 'same';
 });

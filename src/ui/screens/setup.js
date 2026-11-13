@@ -13,7 +13,7 @@ import { noticeSeq } from '../../net/moves.js';
 import { chaosBadge, chaosVisible, scPicked, testBadge, visibleTypes } from '../../net/releases.js';
 import { dbSetup, isHost, net, starting } from '../../net/room.js';
 import { advOpen, app, esc, save, state } from '../app.js';
-import { CHEV, ICONS, toon, toonT } from '../art.js';
+import { CHEV, ICONS, gameIcon, toon, toonT } from '../art.js';
 import { cap } from '../comic.js';
 import { qBtn } from '../explainer.js';
 import { burstSvg, fxAt, fxAttr } from '../fx.js';
@@ -52,7 +52,7 @@ export function renderSetup() {
   const field = p => (p === guest
     ? `<div class="field"><span>Player 2 · friend</span><div class="namebox">${state.online.joined ? esc(s.names[p]) : '<i>not joined yet</i>'}</div></div>`
     : `<div class="field"><span>Player 1 · you</span><div class="namebox">${esc((acct.profile && acct.profile.username) || s.names[p] || 'You')}</div></div>`);   // (hosting needs an account: always its username)
-  const chk = t => `<label class="chk${s.games[t] ? '' : ' off'}${dealable(t) ? '' : ' wait'}" title="${dealable(t) ? '' : `Loading its ${t === 'trivia' ? 'questions' : 'physics'}… (needs a connection the first time)`}"><input type="checkbox" data-t="${t}"${s.games[t] ? ' checked' : ''}>${ICONS[t]}<span>${INFO[t].name}</span>${testBadge(t)}${dealable(t) ? '' : '<i class="tst wait">Loading</i>'}${qBtn(t, 'sm')}</label>`;
+  const chk = t => `<label class="chk${s.games[t] ? '' : ' off'}${dealable(t) ? '' : ' wait'}" title="${dealable(t) ? '' : `Loading its ${t === 'trivia' ? 'questions' : 'physics'}… (needs a connection the first time)`}"><input type="checkbox" data-t="${t}"${s.games[t] ? ' checked' : ''}>${gameIcon(t)}<span>${INFO[t].name}</span>${testBadge(t)}${dealable(t) ? '' : '<i class="tst wait">Loading</i>'}${qBtn(t, 'sm')}</label>`;
   const timer = host && !sc ? timerRows(setupSpec(s)) : '';
   const room = host ? `<div class="room"><small>Room code</small><b class="code">${esc(state.online.code)}</b>
       <div class="row"><button class="btn" data-act="share">Share invite</button><button class="btn" data-act="copy-invite">Copy invite</button></div>

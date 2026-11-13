@@ -14,7 +14,7 @@ import { SUPER_CHAOS_ENABLED } from '../core/config.js';
 import { privacyUrl } from '../net/platform.js';
 import { testBadge, visibleTypes } from '../net/releases.js';
 import { RNG, app, commit, flashTimer, holdTimer, setFlashTimer, setHoldTimer, setMenuOpen, setMenuStep, setSpotTimer, spotTimer, state } from './app.js';
-import { CHEV, ICONS, toon } from './art.js';
+import { CHEV, ICONS, gameIcon, toon } from './art.js';
 import { hashSvg } from './hash.js';
 import { burstSvg, fxAt, fxAttr, startFx } from './fx.js';
 import { render } from './render.js';
@@ -74,7 +74,7 @@ export function renderExplain() {
   if (!x) return '';
   return `<div class="explain" data-act="explain-close" role="dialog" aria-modal="true" aria-label="How to play ${x.name}"${fxAttr(fxAt('explain', explainT))}><div class="excard">
     <p class="excat">${GAMES[explainT] && CAT_LABEL[GAMES[explainT].meta.category] || '&nbsp;'}</p>
-    <h2>${explainT === 'timer' ? CLOCK_ICON : explainT === 'superchaos' || explainT === 'mode' ? SC_ICON : ICONS[explainT]}<span>${x.name}</span></h2>
+    <h2>${gameIcon(explainT, explainT === 'timer' ? CLOCK_ICON : explainT === 'superchaos' || explainT === 'mode' ? SC_ICON : null)}<span>${x.name}</span></h2>
     ${x.text ? `<p class="exline wide"><span>${x.text}</span></p>` : x.lines ? x.lines.map(([k, v]) => `<p class="exline wide"><b>${k}</b><span>${v}</span></p>`).join('') : `<p class="exline play"><b>Play</b><span>${x.play}</span></p>
     <p class="exline win"><b>Win</b><span>${x.win}</span></p>${exList(explainT)}`}
     ${practiceOffered(explainT) ? `<button class="btn practice" data-act="practice" data-t="${explainT}">Practice</button>` : ''}
@@ -171,9 +171,9 @@ export function renderHowTo() {
     <div class="setup-box" data-keep-scroll="howto">
       ${howPanels()}
       ${SUPER_CHAOS_ENABLED ? `<div class="games-h"><span>Modes</span><small>Tap for its rules</small></div>
-      <div class="games howlist"><button class="pn gt w" data-act="explain" data-t="superchaos" aria-label="How to play Super Chaos"><i class="gic">${SC_ICON}</i><b>Super Chaos</b></button></div>` : ''}
+      <div class="games howlist"><button class="pn gt w" data-act="explain" data-t="superchaos" aria-label="How to play Super Chaos">${gameIcon('superchaos', SC_ICON)}<b>Super Chaos</b></button></div>` : ''}
       <div class="games-h"><span>Mini-games</span><small>Tap one for its rules</small></div>
-      <div class="games howlist">${visibleTypes().filter(t => SUPER_CHAOS_ENABLED || !SC_ONLY.includes(t)).map(t => `<button class="pn gt w" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}"><i class="gic">${ICONS[t]}</i><b>${EXPLAIN[t].name.replace(/\//g, '/<wbr>')}</b>${testBadge(t)}</button>`).join('')}</div>
+      <div class="games howlist">${visibleTypes().filter(t => SUPER_CHAOS_ENABLED || !SC_ONLY.includes(t)).map(t => `<button class="pn gt w" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${gameIcon(t)}<b>${EXPLAIN[t].name.replace(/\//g, '/<wbr>')}</b>${testBadge(t)}</button>`).join('')}</div>
       <div class="games-h"><span>Credits</span></div><div class="rulecard credits">${visibleTypes().includes('trivia') ? '<p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>' : ''}${visibleTypes().some(t => PHYS_TYPES.includes(t) || t === 'pinball') ? '<p>Mini Golf, Pool, Bowling and Pinball run on <a href="https://brm.io/matter-js" target="_blank" rel="noopener noreferrer">Matter.js</a> (MIT licence).</p>' : ''}${visibleTypes().includes('wtiles') ? '<p>Word Tiles checks its words against the ENABLE word list (public domain).</p>' : ''}<p>Fonts: Luckiest Guy, Patrick Hand, Bangers and Comic Neue (SIL Open Font License).</p><p class="priv">What the game keeps about you, and how to delete your account: <a href="${privacyUrl()}" target="_blank" rel="noopener noreferrer">Privacy policy</a></p></div>
     </div></main>`;
 }
