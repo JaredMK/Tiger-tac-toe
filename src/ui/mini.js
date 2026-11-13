@@ -9,7 +9,7 @@ import { isMM } from '../net/matchmaking.js';
 import { rx } from '../net/reactions.js';
 import { canReport } from '../net/tracking.js';
 import { blocked, leaveLoses, lockMine, mySide, pinned, remoteTurn } from '../net/room.js';
-import { N, esc, menuOpen, menuStep, state, waitsOn , viewer } from './app.js';
+import { N, esc, isYou, menuOpen, menuStep, state, waitsOn , viewer } from './app.js';
 import { CHEV, toon } from './art.js';
 import { attPinned } from './attention.js';
 import { scJointFrame, scWaiting } from './chaos.js';
@@ -46,7 +46,7 @@ export function renderMini(sq, review, popup) {
   if (game.screen) g = noOwnWait(game.screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g));
   const lock = state.lock != null && mini.type !== 'trivia' && mini.type !== 'bingo' && mini.type !== 'dominoes' && !ATT_TYPES.includes(mini.type) && !FINGER_TYPES.includes(mini.type) && !TIMED_RUN_TYPES.includes(mini.type);   // a bonus move (a Trivia reveal, an attention game's or a finger game's Start holds the player too, and a timed run's square opened online: not a bonus; Bingo's call after its draw: its own status line says whose call it is)
   let sub = lock ? (game.heldSub ? game.heldSub(mini, turn, f, a)   // (a game's own words for a turn held to its square: its view's heldSub, e.g. Shut the Box's roll waiting for tiles)
-    : mini.type === 'pig' || mini.type === 'wheels' ? `<b class="${turn}">${N(turn)}</b>'s turn in progress`   // (turn info only: how to play is in the ? explainer)
+    : mini.type === 'pig' || mini.type === 'wheels' ? (isYou(turn) ? `<b class="${turn}">Your</b> turn in progress` : `<b class="${turn}">${N(turn)}</b>'s turn in progress`)   // (turn info only: how to play is in the ? explainer)
     : mini.type === 'bj' ? (mini.hand || f ? `<b class="${turn}">${N(turn)}</b>'s hand` : `<b class="${turn}">${N(turn)}</b> won the hand · goes again`)   // (a hand won, a hot streak: said once its result has played, never ahead of it)
     : mini.type === 'craps' || mini.type === 'rl' ? (f ? '' : `<b class="${turn}">${N(turn)}</b> ${mini.type === 'rl' ? 'hit' : 'won the round'} · goes again`)   // (Krabs, Little Wheel: a hot streak, once the result has played)
     : mini.type === 'bus' ? (a ? '' : `<b class="${turn}">${N(turn)}</b>'s run`) : mini.type === 'bs' ? `<b class="${turn}">${N(turn)}</b> hit · goes again` : mini.type === 'pool' ? `<b class="${turn}">${N(turn)}</b> sank one · goes again` : `<b class="${turn}">${N(turn)}</b> guessed right · goes again`) : '';

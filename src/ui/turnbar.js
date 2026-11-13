@@ -31,7 +31,7 @@ export function renderHeader() {
   const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}"><span class="tg">${toon(p)}<span class="rbub${card(p) ? ' on' : ''}"${card(p) ? fxAttr(card(p).at, 'rt') : ''} aria-live="polite">${card(p) ? card(p).e : ''}</span></span><b class="nm">${N(p)}</b>${pclk(p)}</div>`;
   return `<header class="hdr t-${t}${clock || ml ? ' has-clock' : ''}${ml ? ' mclock' : ''}">
     <div class="hdrrow">${practiceBack() || '<button class="menubtn" data-act="pause" aria-label="Menu">Menu</button>'}<div class="tbar">${side('X')}${side('O')}</div></div>
-    <div class="hdrrow2"><div class="turn" aria-live="polite">${resultLine(drawn ? `<span class="who">Draw · ${state.winReason === 'both' ? 'both made a line' : 'no line left'}</span>` : won ? `<span class="g">${t}</span><span class="who">${isYou(t) ? 'You win' : `${N(t)} wins`}</span>` : sc ? scTurnText() : `<span class="g">${t}</span><span class="who">${isYou(t) ? 'Your turn' : `${N(t)}<i class="suf">'s turn</i>`}</span>`)}</div><span class="clockbox">${clock}</span></div>
+    <div class="hdrrow2"><div class="turn" aria-live="polite">${resultLine(drawn ? `<span class="who">Draw · ${state.winReason === 'both' ? 'both made a line' : 'no line left'}</span>` : won ? `<span class="g">${t}</span><span class="who">${isYou(t) ? 'You win!' : `${N(t)} wins!`}</span>` : sc ? scTurnText() : `<span class="g">${t}</span><span class="who">${isYou(t) ? 'Your move!' : `${N(t)}<i class="suf">'s move</i>`}</span>`)}</div><span class="clockbox">${clock}</span></div>
   </header>`;
 }
 // The reactions' button, at the bottom of the game screen in a strip kept for it (#app.rxon: the board and the

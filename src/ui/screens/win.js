@@ -17,9 +17,9 @@ import { CICON, bubble, burstBadge, panel, rays, smallPanel } from '../comic.js'
 // The match-end message: one picked at random per match, from the winner's, the loser's or the tie list,
 // as this phone sees it; kept in the state so it does not change while the screen is up.
 const END_MSGS = {
-  win: ['WINNER!', 'CHAMPION!', 'UNSTOPPABLE!', 'VICTORY!', 'TOTAL DOMINATION!', 'MASTER OF CHAOS!'],
-  loss: ['BETTER LUCK NEXT TIME', 'SO CLOSE…', 'OUTPLAYED', 'DEFEATED', 'CHAOS WON THIS ONE', 'REMATCH?'],
-  tie: ["IT'S A TIE!", 'STALEMATE', 'DEAD EVEN', 'NOBODY WINS', 'EVENLY MATCHED', 'CALL IT A DRAW'],
+  win: ['KAPOW!', 'WINNER!', 'CHAMPION!', 'UNSTOPPABLE!', 'TOTAL DOMINATION!', 'MASTER OF CHAOS!'],
+  loss: ['OOF!', 'SO CLOSE…', 'OUTPLAYED!', 'NEXT TIME!', 'CHAOS WON THIS ONE', 'REMATCH?'],
+  tie: ["IT'S A TIE!", 'DEAD EVEN!', 'STALEMATE!', 'NOBODY BLINKS!', 'EVENLY MATCHED!', 'CALL IT A DRAW'],
 };
 export function endKind() {                                         // { list, name }: whose perspective, and whether to name the winner
   const w = state.winner;
@@ -138,6 +138,6 @@ export function renderWin(acts) {
 }
 // A draw: once neither player could still make three in a row, the match ended there.
 function renderDraw(acts) {
-  const why = state.winReason === 'both' ? 'Both made three in a row at once' : state.winReason === 'timeout' ? 'Both missed two rounds in a row' : 'Nobody can make three in a row now';
+  const why = state.winReason === 'both' ? 'Two lines at once' : state.winReason === 'timeout' ? 'Both sat out twice' : 'No line left';
   return endScreen('draw', "It's a draw!", why, acts);
 }

@@ -93,7 +93,7 @@ function cpuSpot() {                                           // the computer h
   if (!cpuTurn() || state.screen !== 'board' || state.confirm || menuOpen) return;
   if (!cpuPlan) { render(); return; }
   cpuPlan.stage = 0;
-  state.spot = { square: cpuPlan.square, by: state.turn, label: `${playerName(state, state.turn)} plays here` };
+  state.spot = { square: cpuPlan.square, by: state.turn, label: `${playerName(state, state.turn)} goes here!` };
   startFx('spot', state.spot); SND.play('spot');
   render();                                                     // no commit: the glow is not for the saved state
   setCpuTimer(setTimeout(cpuZoom, CPU_MS.spot));

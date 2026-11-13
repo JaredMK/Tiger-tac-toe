@@ -4,8 +4,9 @@ Play it: https://tictacchaos.com
 
 A two-player, pass-and-play game for one phone, against the computer, or online, drawn in a
 1930s rubber-hose cartoon style: thick wobbly ink lines, flat colours on cream paper, an X and an O
-with faces, and a squash-and-stretch stamp with comic-book bursts when a square is won. The
-fonts (Luckiest Guy, Patrick Hand) are embedded, so the look survives offline. The game is plain
+with faces, and a squash-and-stretch stamp with comic-book bursts when a square is won. The menus
+and the frame round the board are a comic page (Comic Chaos: skewed panels to tap, speech bubbles to read).
+The fonts (Luckiest Guy, Patrick Hand, Bangers, Comic Neue) are embedded, so the look survives offline. The game is plain
 ES modules with no build step: `index.html` is a shell that loads `src/main.js`; the engine
 (`src/core`) and every mini-game's rules, AI and meta (`src/games/<game>/`) are shared with the
 server; the page's own code is in `src/ui`, `src/audio`, `src/net` and each game's `view.js` (see
@@ -194,6 +195,9 @@ Sea Battle ship, the Codebreaker code, the Blackjack dealer's hole card and the 
 shown on the board or in a mini-game before it is revealed.
 
 ### Credits
+
+The fonts are embedded in `src/ui/fonts.css`: Luckiest Guy, Patrick Hand, Bangers and Comic Neue, each under the
+[SIL Open Font License 1.1](https://openfontlicense.org) (Bangers and Comic Neue from the `@fontsource` 5.3.0 packages).
 
 Trivia questions are from the [Open Trivia Database](https://opentdb.com) (opentdb.com), licensed
 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). The question file in this repository,

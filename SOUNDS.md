@@ -21,10 +21,10 @@ Sounds start from the events they belong to, never from drawing the screen: a re
 | `tap` | Any button press, including tapping a square to open it and the Board button (not a move or card, and never a game's own input: pads, keys, cells, Start buttons and presses a game takes itself play only their own sounds) | Triangle glide 640→430 Hz with a short noise tick. *Varied.* |
 | `key` | Five Letters or Hangman key, Enter, Backspace | Triangle blip 1400→1100 Hz. *Varied.* |
 | `toggle` | A switch, box or the sound switch | Two rising blips, 660 then 880 Hz |
-| `paperSlap` | The Sticker book's menus (main menu, results, Play Computer, every `main.sb` screen): a sticker pressed (instead of `tap`) | Bandpass noise at 1400 Hz, 0.06 s, with a low triangle thump 210→120 Hz and a faint 3.6 kHz tick. *Varied.* |
-| `pencilTick` | A sticker book screen: an option circled in pen (your side, the level), the mini-games line opened, a box ticked (instead of `toggle`) | Two scratches of bandpass noise at 5.2 and 4.3 kHz, 28 ms apart, with a faint 1.9 kHz tick. *Varied.* |
-| `peel` | A sticker book screen: going back (a Back or Menu sticker, the results' menu, Back to How to Play) (instead of `back`) | Bandpass noise sweeping 700→3400 Hz over 0.2 s (tape peeling), ending on a short 2.4 kHz snap |
-| `startSting` | A sticker book screen's one big action: Start, Rematch, Find Match again, Practice again, Play again | The peel, quickly; a rising triangle run C5–E5–G5 to C6, 70 ms apart; the paper slap under the top note. 0.6 s |
+| `ccBlip` | Comic Chaos's screens (main menu, results, Play Computer, every `main.cc` screen): a panel pressed (instead of `tap`) | Square glide 520→300 Hz with a triangle 1040→700 Hz and an 18 ms noise click at 3.2 kHz. *Varied.* |
+| `ccPick` | A Comic Chaos screen: an option picked (your side, the level), the mini-games line opened, a box ticked (instead of `toggle`) | Two square pips, 740 then 1110 Hz, 60 ms apart, with a noise tick. *Varied.* |
+| `ccBack` | A Comic Chaos screen: going back (Back, Menu, the results' Menu, Back to How to Play) (instead of `back`) | Square zip 900→260 Hz with bandpass noise falling 2.6→0.7 kHz, 0.16 s |
+| `ccBam` | A Comic Chaos screen's one big action: Start, Rematch, Find Match again, Practice again, Play again | A wide noise burst at 1.8 kHz, a low punch 170→48 Hz, a square C major stab (C5–E5–G5–C6) and a falling hiss. 0.55 s |
 | `pop` | An emoji reaction is sent, or the other player's arrives. *Varied.* | Sine glide 620→980 Hz with a faint overtone at 1240 Hz |
 | `select` | Select all (Advanced checklist) | Rising three-note arpeggio, triangle |
 | `deselect` | Deselect all | Falling three-note arpeggio, triangle |

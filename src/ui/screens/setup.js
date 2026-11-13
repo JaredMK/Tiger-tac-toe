@@ -214,7 +214,7 @@ export const byName = types => types.slice().sort((a, b) => INFO[a].name.localeC
 const onGames = s => enabledGames(s).filter(t => setupTypes().includes(t));   // the games on, among those this player may see (Super Chaos: its own)
 function setupReady(s) { const on = onGames(s).length; return isHost() ? !!(on && state.online.joined && connected) : !!on; }
 const CPU_HINT = 'three in a row takes the match';   // Play Computer's foot with nothing to warn of
-function setupWarn(s) { return !onGames(s).length ? 'pick at least one mini-game' : isHost() && !setupReady(s) ? "Start opens when your friend's in" : ''; }
+function setupWarn(s) { return !onGames(s).length ? 'pick a mini-game or two' : isHost() && !setupReady(s) ? "Start opens once your friend's in" : ''; }
 // Ticking a mini-game (or Select all) changes the screen in place, with no re-render, so the list
 // stays exactly where it was scrolled and Mini-games stays open. The choice is saved for the next match.
 export function setGames(change) {

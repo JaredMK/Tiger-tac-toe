@@ -94,3 +94,17 @@ test('Play Computer: the real X and O on a VS card, one selected style (ink and 
   assert.match(html, /<span class="vsv"[^>]*>[^]*?<\/span><div class="vsme"><span class="vsface"><svg class="pc pX"/, 'the computer: X');
   state.setup.vs = 'same';
 });
+
+test('the sound family: a blip for a panel, a pip-pip for an option, a zip going back, the bam for the one big action', async () => {
+  const { comicSound, SFX } = await import('../../src/audio/sound.js');
+  const el = (...cls) => ({ classList: { contains: c => cls.includes(c) } });
+  for (const act of ['start', 'rematch', 'find-again', 'practice', 'test-again']) assert.equal(comicSound(el(), act), 'ccBam', act);
+  assert.equal(comicSound(el('back'), 'menu'), 'ccBack');
+  assert.equal(comicSound(el(), 'practice-back'), 'ccBack');
+  assert.equal(comicSound(el('opt'), 'cside'), 'ccPick');
+  assert.equal(comicSound(el(), 'adv'), 'ccPick');
+  assert.equal(comicSound(el(), 'cpu-go'), 'ccBlip');
+  const doc = fs.readFileSync(new URL('SOUNDS.md', ROOT), 'utf8');
+  for (const n of ['ccBlip', 'ccPick', 'ccBack', 'ccBam']) { assert.ok(SFX[n], n); assert.ok(doc.includes('`' + n + '`'), `${n} in SOUNDS.md`); }
+  for (const n of ['paperSlap', 'pencilTick', 'peel', 'startSting']) assert.ok(!SFX[n] && !doc.includes('`' + n + '`'), `${n}: gone with the Sticker book`);
+});
