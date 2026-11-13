@@ -132,5 +132,5 @@ test('the card is Comic Chaos: Bangers for the headline, Comic Neue for small te
   const fs = await import('node:fs');
   const src = fs.readFileSync(new URL('../../src/ui/sharecard.js', import.meta.url), 'utf8');
   assert.match(src, /'Bangers'/); assert.match(src, /'Comic Neue'/); assert.match(src, /burstPath/); assert.match(src, /halftone/);
-  assert.doesNotMatch(src, /rematch\s*code|\?room=/i);
+  assert.doesNotMatch(src.replace(/\/\/.*$/gm, ''), /rematch|\?room=/i);
 });
