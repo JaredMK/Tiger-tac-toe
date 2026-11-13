@@ -3,7 +3,7 @@ import { hashSvg } from './hash.js';
 import { isRace, raceView } from '../core/race.js';
 import { playerName } from '../core/match.js';
 import { fullState } from '../core/records.js';
-import { ANIM } from '../core/timer.js';
+import { ANIM, dur, durRate } from '../core/timer.js';
 import { INFO, viewOf } from '../games/index.js';
 import { isMM } from '../net/matchmaking.js';
 import { devError } from '../net/tracking.js';
@@ -66,11 +66,11 @@ export function renderBoard(review) {
   // A fresh claim stamps in once, from the moment it landed on the board (stampFx). A re-render while it
   // plays carries it on from there; after that the owner's mark simply sits there. Nothing replays it.
   const stampAt = !review && state.stamp != null && state.squares[state.stamp] && state.squares[state.stamp].owner ? fxAt('stamp', state.stampId) : null;
-  const el = stampAt == null ? Infinity : (performance.now() - stampAt) * ANIM.speed;   // (in the stylesheet's base time: the stamp plays at the game's pace)
+  const el = stampAt == null ? Infinity : (performance.now() - stampAt) * durRate('ui');   // (in the stylesheet's base time: the stamp plays at the game's pace)
   const stampOn = el < STAMP_MS;
   const stamped = i => state.stamp === i || (!!state.sc && Array.isArray(state.stamps) && state.stamps.includes(i));   // (Super Chaos: both players may claim a square in the same round)
   const drawAt = !review && state.drawStamp != null && state.drawId != null && state.squares[state.drawStamp] && !state.squares[state.drawStamp].owner ? fxAt('draw', state.drawId) : null;
-  const drawI = drawAt != null && (performance.now() - drawAt) * ANIM.speed < DRAW_MS ? state.drawStamp : null;   // (after it, the new game simply sits there: nothing replays it)
+  const drawI = drawAt != null && (performance.now() - drawAt) * durRate('ui') < DRAW_MS ? state.drawStamp : null;   // (after it, the new game simply sits there: nothing replays it)
   const lastP = review ? null : scLastPlayed();                       // Super Chaos: the square each player played last, a badge in their colour on it
   const rc = !review && state.sc && state.sc.recap;
   const sqs = state.squares.map((sq, i) => {
@@ -108,7 +108,7 @@ export function renderBoard(review) {
   const hint = state.sc && !state.winner ? scHint() : spot ? (cpuPlays(spot.by) ? CPU_ICON : '') + esc(spot.label) : cpuTurn() ? `${N(state.turn)} is thinking…` : remoteTurn() ? `Waiting for ${N(state.turn)}…`
     : state.moves ? 'Tap any open square to make a move' : `${N(state.turn)}: tap a square to start`;
   const st = el < BOARD_BURST[1] + BURST_MS ? state.stamp : null;    // a fresh claim: two bursts around it, gone after about a second
-  const bw = st == null ? null : burstPick('board:' + state.stampId), bend = k => Math.round(stampAt + (BOARD_BURST[k] + BURST_MS) / ANIM.speed);
+  const bw = st == null ? null : burstPick('board:' + state.stampId), bend = k => Math.round(stampAt + dur(BOARD_BURST[k] + BURST_MS));
   const pow = st == null ? '' : `<div class="pow-b c${st % 3}" style="grid-row:${Math.floor(st / 3) + 1} / span 1;grid-column:${st % 3 + 1} / span 1"${fxAttr(stampAt)} aria-hidden="true">${el < BOARD_BURST[0] + BURST_MS ? `<span class="b1" data-bend="${bend(0)}">${burstSvg(bw.words[0], 'y', 150, 110, 34)}</span>` : ''}<span class="b2" data-bend="${bend(1)}">${burstSvg(bw.words[1], 'r', 160, 104, 28)}</span></div>`;
   const w = waitBand(spot);
   // Classic: whose move it is as a small bar under the board, in the foot's own room (the hint's place: nothing moves);
@@ -120,7 +120,7 @@ export function renderBoard(review) {
 // A drawn square's overlay on the board: the old game's tile (its label and miniature as the draw left them), and the
 // Draw stamp over it. Each goes off the page once the shuffle is over (data-bend: sweepBursts), animations or none.
 function drawOver(at) {
-  const end = Math.round(at + DRAW_MS / ANIM.speed), was = drawOld && drawOld.id === state.drawId && INFO[drawOld.type] ? drawOld : null;
+  const end = Math.round(at + dur(DRAW_MS)), was = drawOld && drawOld.id === state.drawId && INFO[drawOld.type] ? drawOld : null;
   const old = was ? `<div class="drawold"${fxAttr(at)} data-bend="${end}" aria-hidden="true"><div class="lab${INFO[was.type].name.length > 14 ? ' long' : ''}">${ICONS[was.type]}<span>${INFO[was.type].name}</span></div><div class="thumb">${was.mini ? thumb(was.mini, false) : ''}</div></div>` : '';
   return `${old}<div class="drawst"${fxAttr(at)} data-bend="${end}" aria-hidden="true"><b>Draw</b></div>`;
 }

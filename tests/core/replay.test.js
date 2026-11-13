@@ -28,7 +28,7 @@ test('replay log: a move played with a log carries it on the flash, normalized; 
   const r2 = E.playMove(st, 4, 0, E.makeRng('y'), { rep: 'nonsense' });
   assert.equal(r2.ok, true); assert.ok(!('rep' in st.flash)); assert.equal(st.flash.m, 0);
 });
-test('pace: Normal is the game as designed (the admin\'s speed, as ever); Speed (a player\'s own setting) runs at its multiplier, replays 1.5x, real-time moves at the replay\'s speed; the server\'s reckoning never changes with it', () => {
+test('pace: Normal is the game as designed (the admin\'s speed, as ever); Speed (a player\'s own setting) runs at its multiplier, replays 1.5x, a real-time move the mover\'s own pace, replayed at the pace; the server\'s reckoning never changes with it', () => {
   assert.equal(E.ANIM.mode, 'normal'); assert.equal(E.ANIM.speed, 1); assert.equal(E.ANIM.fast, 2); assert.equal(E.ANIM.fx, 1);
   const e = [{ type: 'ttt', kind: 'move', square: 0 }], at1 = E.replayMs(e);
   assert.equal(at1, E.PLAY.spot + E.playMs(e[0]) + E.PLAY.flash.move, 'Normal: the base figures');
@@ -40,7 +40,7 @@ test('pace: Normal is the game as designed (the admin\'s speed, as ever); Speed 
   assert.equal(E.replayMs(e), at1, 'the server\'s reckoning is the same whatever this screen plays at');
   assert.equal(E.moveRate('ttt', 1), 2); assert.equal(E.moveRate('ttt', E.replaySpeed()), 2, 'replayed: the pace is faster than 1.5');
   for (const t of ['golf', 'pool', 'bowling', 'pinball', 'dash', 'skyhop', 'echo', 'snapshot']) {
-    assert.equal(E.moveRate(t, 1), 1, `${t}: the mover's own in real time`); assert.equal(E.moveRate(t, 1.5), 1.5, `${t}: replayed at 1.5x`);
+    assert.equal(E.moveRate(t, 1), 1, `${t}: the mover's own in real time`); assert.equal(E.moveRate(t, 1.5), 2, `${t}: replayed at the pace (December 2026: no longer held to the replay's 1.5x)`);
     assert.equal(E.holdRate(t, 1), 2, `${t}: its result's hold at the pace`);
   }
   E.setAnimFast(3); assert.equal(E.ANIM.speed, 3); E.setAnimFast(9); assert.equal(E.ANIM.fast, 2, 'out of range: the default');

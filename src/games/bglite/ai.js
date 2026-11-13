@@ -1,7 +1,7 @@
 // Backgammon Lite: the computer's play.
 import { makeRng, randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
-import { BGL, bglDice, bglMoves, bglOther, bglPips, bglPoint, bglRollDice, bglStep } from './rules.js';
+import { BGL, bglDice, bglOther, bglPips, bglPlayable, bglPoint, bglRollDice, bglStep } from './rules.js';
 
 // A turn is planned whole: every order of the dice and every piece for each (bglPlans), each plan valued, and the
 // best one played as the turn's one move ({ steps: [[d, k], ...] }: rules.js bglTurn).
@@ -23,7 +23,7 @@ const lite = mini => ({ type: 'bglite', v: mini.v, tune: mini.tune, n: mini.n, r
 export function bglPlans(mini, p) {
   const out = [];
   const walk = (m, steps, hits) => {
-    const ms = bglMoves(m, p);
+    const ms = bglPlayable(m, p);   // (the same engine as the server's: the dice used as fully as they can be)
     if (!ms.length || m.pos[p].every(a => a > m.n)) { out.push({ steps, end: m, hits }); return; }
     for (const s of ms) { const c = lite(m), r = bglStep(c, p, s.d, s.k); walk(c, steps.concat([s]), hits + (r.hit ? 1 : 0)); }
   };

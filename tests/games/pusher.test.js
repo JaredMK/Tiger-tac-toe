@@ -12,18 +12,20 @@ const fresh = s => E.newMini('pusher', E.makeRng('psh-' + s));
 const clone = v => JSON.parse(JSON.stringify(v));
 const mv = (k, ph = 0, dp = 0) => ({ ph, dp, k });
 
-test('pusher: each player their own machine, alike at the start, its coins in whole units, a public seed; the settings are the admin\'s', () => {
+test('pusher: one shared machine (v 3), its fresh shelf settled and every coin on it the machine\'s own, in whole units, a public seed; the settings are the admin\'s', () => {
   const m = fresh('a'), c = E.tuneLive('pusher');
-  assert.equal(c.target, 12); assert.equal(c.perMove, 3); assert.equal(c.again, 'off'); assert.equal(c.maxSecs, 8);
-  assert.equal(m.coins.X.length, c.start); assert.deepEqual(m.coins.X, m.coins.O); assert.equal(m.v, 2); assert.ok(Number.isInteger(m.seed));
-  assert.ok(m.coins.X.every(a => Number.isInteger(a[0]) && Number.isInteger(a[1])));
+  assert.equal(c.target, 14); assert.equal(c.perMove, 3); assert.equal(c.again, 'off'); assert.equal(c.maxSecs, 8); assert.equal(c.coin, 0.08); assert.equal(c.start, 18);
+  assert.equal(m.v, 3); assert.ok(Array.isArray(m.coins), 'one shelf'); assert.ok(m.coins.length > 0 && m.coins.length <= c.start); assert.ok(Number.isInteger(m.seed));
+  assert.ok(m.coins.every(a => Number.isInteger(a[0]) && Number.isInteger(a[1]) && !(a[3] | 0)), 'every coin the machine\'s own');
+  const pc = R.pushCfg(m), rest = R.pushSim(pc, m.coins, [], false, 0, null);
+  assert.equal(rest.scored + rest.lost, 0, 'settled: left alone, nothing falls (no free sweep for the first mover)');
   assert.deepEqual(m.score, { X: 0, O: 0 });
   // a move: ph and dp in thousandths, three steps from 0, each later than the one before, the last within the time limit
   for (const bad of [mv([0, 10]), mv([1, 10, 20]), mv([0, 10, 10]), mv([0, 20, 10]), mv([0, 10, R.pushMaxSteps(c) + 1]), mv([0, 10, 20], 1000), mv([0, 10, 20], 0, -1), { s: [1, 2, 3] }, null])
     assert.equal(E.applyMove(clone(m), 'X', bad, E.makeRng('x')).ok, false, JSON.stringify(bad));
   assert.ok(E.applyMove(clone(m), 'X', mv([0, 30, R.pushMaxSteps(c)]), E.makeRng('x')).ok, 'the last coin on the limit');
   E.setTune('pusher', { target: 20, start: 30 });
-  try { const t = fresh('b'); assert.equal(t.coins.X.length, 30); assert.deepEqual(t.tune, { target: 20, start: 30 }); } finally { E.setTune('pusher', null); }
+  try { const t = fresh('b'); assert.ok(t.coins.length > 18 && t.coins.length <= 30); assert.deepEqual(t.tune, { target: 20, start: 30 }); } finally { E.setTune('pusher', null); }
 });
 
 test('pusher: the move is its inputs alone: the same taps give the same push whatever the rng; the live steps, the server and the replay agree frame for frame', () => {
@@ -31,23 +33,25 @@ test('pusher: the move is its inputs alone: the same taps give the same push wha
   const r1 = E.applyMove(m, 'X', move, E.makeRng('one')), r2 = E.applyMove(m2, 'X', move, E.makeRng('another'));
   assert.deepEqual([r1, m.coins, m.score, m.last.stars], [r2, m2.coins, m2.score, m2.last.stars], 'no randomness beyond the move and the square');
   // the phone's live play: step by step, each coin released at its step where the dropper is
-  const was = fresh('c'), stars = R.pushStars(was, 'X', c, 3), sim = R.pushInit(c, was.coins.X, 0.321, true);
-  const end = 96 + R.pushSettleSteps(c);
-  while (sim.s < end) { const i = move.k.indexOf(sim.s); R.pushStep(sim, i >= 0 ? { x: R.pushDropX(c, sim.s / R.PUSH.hz, 0.654), st: stars[i] } : null); }
-  assert.deepEqual(R.pushRest(sim), m.coins.X, 'the live play ends where the server did');
+  const was = fresh('c'), pc = R.pushCfg(was), stars = R.pushStars(was, 'X', pc, 3), sim = R.pushInit(pc, was.coins, 0.321, true, 'X');
+  const end = 96 + R.pushSettleSteps(pc);
+  while (sim.s < end) { const i = move.k.indexOf(sim.s); R.pushStep(sim, i >= 0 ? { x: R.pushDropX(pc, sim.s / R.PUSH.hz, 0.654), st: stars[i], ow: R.OWN.X } : null); }
+  assert.deepEqual(R.pushRest(sim), m.coins, 'the live play ends where the server did');
   assert.equal(sim.pts, m.last.pts);
   // the replay from the flash
   const st = E.newMatch(E.makeRng('pm'), { games: ['pusher'] }); st.turn = 'X';
   assert.ok(E.playMove(st, 4, move, E.makeRng('f')).ok);
   const f = st.flash.push, rp = R.pushReplay(c, f);
-  for (const k of ['ph', 'dp', 'k', 'stars', 'from', 'scored', 'pts', 'lost', 'before', 'after', 'ms']) assert.ok(k in f, k);
-  assert.deepEqual(rp.coins, st.squares[4].mini.coins.X, 'the replay ends where the server did');
+  for (const k of ['ph', 'dp', 'k', 'stars', 'from', 'scored', 'pts', 'opp', 'lost', 'before', 'after', 'ob', 'oa', 'ms']) assert.ok(k in f, k);
+  assert.deepEqual(rp.coins, st.squares[4].mini.coins, 'the replay ends where the server did');
+  assert.ok(rp.coins.some(q => q[3] === R.OWN.X), 'the coins dropped are X\'s');
   assert.equal(rp.frames.length, rp.steps); assert.equal(f.ms, Math.round(rp.steps * 1000 / R.PUSH.hz));
   assert.ok(E.playMs(st.flash) >= f.ms);
   // each coin drops where the dropper was at its step
   const drops = rp.events.filter(e => e.kind === 'drop');
   assert.equal(drops.length, 3);
-  move.k.forEach((k, i) => assert.ok(Math.abs(drops[i].x - Math.max(R.PUSH.r, Math.min(1 - R.PUSH.r, R.pushDropX(c, k / R.PUSH.hz, 0.654)))) < 1e-3));
+  const r = R.pushR(R.pushCfg(st.squares[4].mini));
+  move.k.forEach((k, i) => assert.ok(Math.abs(drops[i].x - Math.max(r, Math.min(1 - r, R.pushDropX(R.pushCfg(st.squares[4].mini), k / R.PUSH.hz, 0.654)))) < 1e-3));
 });
 
 test('pusher: the bar and the dropper are triangle waves from where they were; the dropper spans the shelf', () => {
@@ -70,13 +74,12 @@ test('pusher: coins over the front edge score (a star coin its worth), coins off
   const side = [[Math.round(0.02 * Q), Math.round(0.9 * Q)], [Math.round(0.08 * Q), Math.round(0.9 * Q)]];
   const rl = R.pushSim(c, side, [], false, 0);
   assert.equal(rl.lost, 1); assert.equal(rl.coins.length, 1);
-  // the machine persists: the next move starts from what the last left; the other machine is untouched
-  const m = fresh('d'), was = m.coins.O.slice();
+  // the one machine persists: the next move, either player's, starts from what the last left
+  const m = fresh('d'), was = m.coins.slice();
   E.applyMove(m, 'X', mv([0, 40, 80]), E.makeRng('p1'));
-  assert.deepEqual(m.coins.O, was, "the other player's machine untouched");
-  assert.equal(m.coins.X.length, was.length + 3 - m.last.scored - m.last.lost);
-  const keep = m.coins.X.slice(); E.applyMove(m, 'O', mv([0, 5, 10]), E.makeRng('p2'));
-  assert.deepEqual(m.last.from, was); assert.deepEqual(m.coins.X, keep);
+  assert.equal(m.coins.length, was.length + 3 - m.last.scored - m.last.lost);
+  const keep = m.coins.map(q => q.slice()); E.applyMove(m, 'O', mv([0, 5, 10]), E.makeRng('p2'));
+  assert.deepEqual(m.last.from, keep, 'O pushes the shelf X left');
 });
 
 test('pusher: the server holds a move to the time the turn has lasted (its last coin and the settle)', () => {
@@ -89,12 +92,12 @@ test('pusher: the server holds a move to the time the turn has lasted (its last 
 });
 
 test('pusher: reaching the target lets the other player finish the round; the higher total wins, level totals are a draw', () => {
-  const m = fresh('e'); m.score = { X: 11, O: 3 }; m.turns = { X: 4, O: 4 }; m.moves = { X: 4, O: 4 }; m.last = { by: 'O' };
+  const m = fresh('e'); m.score = { X: 13, O: 3 }; m.coins = m.coins.map(q => [q[0], Math.min(9900, q[1] + 600), q[2] | 0, 0]);   // (a crowded front: a move scores) m.turns = { X: 4, O: 4 }; m.moves = { X: 4, O: 4 }; m.last = { by: 'O' };
   let r = null; for (let k = 0; k < 40 && !(r && r.note === 'reached'); k++) { const t = clone(m); r = E.applyMove(t, 'X', mv([0, 20 + k * 3, 60 + k * 5], (k * 97) % 1000, (k * 131) % 1000), E.makeRng('r' + k)); if (r.note === 'reached') Object.assign(m, t); }
   assert.equal(r.note, 'reached'); assert.equal(r.outcome, 'continue'); assert.deepEqual(m.final, { by: 'X' });
-  const lvl = clone(m); lvl.score.O = lvl.score.X; lvl.coins.O = [];   // (an empty shelf: O's last turn scores nothing)
+  const lvl = clone(m); lvl.score.O = lvl.score.X; lvl.coins = [];   // (an empty shelf: O's last turn scores nothing)
   assert.equal(E.applyMove(lvl, 'O', mv([0, 10, 20]), E.makeRng('l')).outcome, 'draw', 'level: a draw');
-  const o = clone(m); o.coins.O = [];
+  const o = clone(m); o.coins = [];
   const ro = E.applyMove(o, 'O', mv([0, 10, 20]), E.makeRng('o'));
   assert.deepEqual([ro.outcome, ro.winner], ['win', 'X'], 'O could not catch up');
 });
@@ -136,7 +139,46 @@ test('pusher: after the last coin the bar pushes on for 2.5 strokes (a stroke on
   const mini = E.newMini('pusher', E.makeRng('settle')), c = R.pushCfg(mini);
   assert.equal(c.settleStrokes, 2.5);
   assert.equal(R.pushSettleSteps(c), Math.round(2.5 * c.period * R.PUSH.hz));
-  const sim = R.pushSim(c, mini.coins.X, [{ k: 0, x: 0.5, st: 0 }], false, 0);
+  const sim = R.pushSim(c, mini.coins, [{ k: 0, x: 0.5, st: 0 }], false, 0);
   assert.equal(sim.steps, R.pushSettleSteps(c));
   assert.equal(R.pushSettleSteps(Object.assign({}, c, { settleStrokes: 3, period: 2 })), 360);
+});
+
+// ----- the shared machine (v 3, November 2026): whose coin scores for whom -----
+test('pusher: a player\'s coins score for them whenever they go over, on anyone\'s move; the machine\'s own coins score for the mover; off the sides nobody scores', () => {
+  const c = Object.assign(R.pushCfg(fresh('o')), { starPct: 0 }), r = R.pushR(c), Q = R.PUSH.Q;
+  const col = []; for (let y = R.PUSH.back + r + 0.001; y < 1; y += 2 * r) col.push([Math.round(0.5 * Q), Math.round(y * Q), 0, 0]);
+  const front = col.length - 1;
+  for (const [ow, to] of [[0, 'O'], [R.OWN.X, 'X'], [R.OWN.O, 'O']]) {
+    const shelf = col.map((a, i) => (i === front ? [a[0], a[1], 0, ow] : a.slice()));
+    const res = R.pushSim(c, shelf, [], false, 0, 'O');                                 // O's move pushes the column
+    assert.ok(res.scored >= 1, 'the front coin goes over');
+    const off = res.events.find(e => e.kind === 'off' && e.ow === ow);
+    assert.ok(off, 'the coin with that owner went over'); assert.equal(off.to, to, `owner ${ow}: scores for ${to}`);
+    assert.equal(res.by[to] >= 1, true);
+    if (to === 'X') assert.ok(res.opp >= 1, 'X scores on O\'s move'); else assert.ok(res.pts >= 1);
+  }
+  const side = R.pushSim(c, [[Math.round(0.02 * Q), Math.round(0.9 * Q), 0, R.OWN.X], [Math.round(0.1 * Q), Math.round(0.9 * Q), 0, 0]], [], false, 0, 'O');   // (X's coin shoved off the side by the other)
+  assert.deepEqual([side.lost, side.by.X, side.by.O], [1, 0, 0], 'off a side: nobody scores');
+});
+test('pusher: a move updates both totals; the totals and the shelf agree with the replay; reaching the target on the other side\'s points also finishes the round', () => {
+  const m = fresh('t');
+  m.coins = m.coins.map((q, i) => [q[0], Math.min(9900, q[1] + 600), q[2] | 0, i % 2 ? R.OWN.X : 0]);   // (a crowded front: half of it X's)
+  const b0 = { X: m.score.X, O: m.score.O };
+  E.applyMove(m, 'O', mv([0, 30, 60], 250, 400), E.makeRng('t1'));
+  assert.equal(m.score.O - b0.O, m.last.pts); assert.equal(m.score.X - b0.X, m.last.opp);
+  assert.ok(m.last.opp > 0, 'X\'s coins went over on O\'s move');
+  const f = fresh('u'); f.score = { X: 13, O: 2 }; f.turns = { X: 4, O: 3 }; f.moves = { X: 4, O: 3 }; f.last = { by: 'X' };   // (O's move levels the turns)
+  f.coins = f.coins.map((q, i) => [q[0], Math.min(9900, q[1] + 600), q[2] | 0, R.OWN.X]);   // (every coin X's: O's push can only score for X)
+  const r = E.applyMove(f, 'O', mv([0, 30, 60], 250, 400), E.makeRng('t2'));
+  assert.ok(f.score.X >= 14, 'X over the target on O\'s move');
+  assert.equal(r.outcome, 'win'); assert.equal(r.winner, 'X', 'the turns level: the round is over');
+});
+test('pusher: a square from before (v 2, a machine each) becomes the shared machine at its next move, the totals kept; its miniature and the computer read it meanwhile', () => {
+  const m = fresh('old'); const old = m.coins.map(q => [q[0], q[1]].concat(q[2] ? [1] : []));
+  m.v = 2; m.coins = { X: old, O: old.map(q => q.slice()) }; m.score = { X: 5, O: 4 };
+  assert.ok(R.pushShelf(m, 'X').length > 0);
+  for (const level of ['easy', 'normal', 'hard']) assert.ok(R.pushMove(R.pushCfg(Object.assign({}, m, { v: 3 })), E.localBest(E.publicMini(m, 'X'), 'X', E.makeRng('l' + level), {}, { level, until: null }).move));
+  const r = E.applyMove(m, 'X', mv([0, 30, 60]), E.makeRng('up'));
+  assert.ok(r.ok); assert.equal(m.v, 3); assert.ok(Array.isArray(m.coins)); assert.ok(m.score.X >= 5 && m.score.O >= 4, 'the totals kept');
 });

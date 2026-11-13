@@ -1,32 +1,42 @@
 // Coin Pusher: the computer's play (November 2026; reworked with the timed dropper).
 import { randInt } from '../../core/random.js';
-import { PUSH, pushCfg, pushDropX, pushDrops, pushMaxSteps, pushSim, pushStars } from './rules.js';
+import { OWN, PUSH, pushR, pushCfg, pushDropX, pushDrops, pushMaxSteps, pushShelf, pushSim, pushStars } from './rules.js';
 
 // The coins a column's push would shove: the coins in the band a drop at slot s lands in, weighted the nearer the front
-// edge they lie (a coin at the front is what falls; one at the back only passes the push on).
-export function pushPressure(coins, s) {
-  const x0 = (s + 0.5) / PUSH.slots, band = PUSH.r * 2.2;
+// edge they lie (a coin at the front is what falls; one at the back only passes the push on). On the shared machine (v 3)
+// a coin counts for `me` if it is mine or the machine's own (pushed off, it scores for me), against me if it is the other
+// player's (pushed off, it scores for them): `me` null counts every coin alike.
+const sideOf = (ow, me) => (!me || !ow ? 1 : ow === OWN[me] ? 1 : -1.2);
+export function pushPressure(coins, s, me, r) {
+  const x0 = (s + 0.5) / PUSH.slots, band = (r || PUSH.r) * 2.2;
   let v = 0;
-  for (const [xi, yi] of coins) {
-    const x = xi / PUSH.Q, y = yi / PUSH.Q, dx = Math.abs(x - x0);
-    if (dx < band) v += (1 - dx / band) * (y > 0.55 ? (y - 0.55) * 4 : 0.1);
+  for (const q of coins) {
+    const x = q[0] / PUSH.Q, y = q[1] / PUSH.Q, dx = Math.abs(x - x0);
+    if (dx < band) v += (1 - dx / band) * (y > 0.55 ? (y - 0.55) * 4 : 0.1) * sideOf(q[3] | 0, me);
   }
   return v;
 }
+// The coins waiting at the front edge, mine counted for me and the other player's against (they fall on anyone's turn).
+export function pushLean(coins, me) {
+  let v = 0;
+  for (const q of coins) { const y = q[1] / PUSH.Q, ow = q[3] | 0; if (ow && y > 0.8) v += (y - 0.8) * 5 * (ow === OWN[me] ? 1 : -1); }
+  return v;
+}
 // Normal's columns: the one with the most pressure behind it, then its next best (the drops spread along the strongest column).
-export function pushNormal(coins, n) {
-  const sc = Array.from({ length: PUSH.slots }, (_, s) => [s, pushPressure(coins, s)]).sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+export function pushNormal(coins, n, me, r) {
+  const sc = Array.from({ length: PUSH.slots }, (_, s) => [s, pushPressure(coins, s, me, r)]).sort((a, b) => b[1] - a[1] || a[0] - b[0]);
   const out = [];
   for (let k = 0; k < n; k++) out.push(sc[k % 2 === 0 ? 0 : Math.min(sc.length - 1, 1)][0]);
   return out;
 }
-// What a move did, for Hard: coins over the front, less those lost off the sides, and a little for the pressure it left.
-const worth = res => res.pts * 10 - res.lost * 6 + 0.5 * Math.max(...Array.from({ length: PUSH.slots }, (_, s) => pushPressure(res.coins, s)));
+// What a move did, for Hard: my points less the other player's, less coins lost off the sides, and a little for my coins
+// left waiting at the front (they score for me on anyone's turn) against theirs.
+const worth = (res, me) => (res.pts - (res.opp || 0)) * 10 - res.lost * 3 + 2 * pushLean(res.coins, me);
 // Hard's candidates: Normal's columns, every column three times over, and the strongest columns paired with their neighbours.
-function candidates(coins, n, tries) {
-  const sc = Array.from({ length: PUSH.slots }, (_, s) => [s, pushPressure(coins, s)]).sort((a, b) => b[1] - a[1] || a[0] - b[0]), seen = new Set(), out = [];
+function candidates(coins, n, tries, me, r) {
+  const sc = Array.from({ length: PUSH.slots }, (_, s) => [s, pushPressure(coins, s, me, r)]).sort((a, b) => b[1] - a[1] || a[0] - b[0]), seen = new Set(), out = [];
   const add = list => { const k = list.join(','); if (!seen.has(k)) { seen.add(k); out.push(list); } };
-  add(pushNormal(coins, n));
+  add(pushNormal(coins, n, me, r));
   for (const [s] of sc) add(Array(n).fill(s));
   for (let i = 0; i < 3; i++) for (const d of [-1, 1]) { const t = sc[i][0] + d; if (t >= 0 && t < PUSH.slots) add(Array.from({ length: n }, (_, k) => (k % 2 ? t : sc[i][0]))); }
   return out.slice(0, Math.max(1, tries));
@@ -36,7 +46,7 @@ const gauss = rng => { const u = Math.max(1e-9, rng()), v = rng(); return Math.s
 // the first column (dp chosen so: its moment is the move's start), each next one the next time the dropper passes over
 // its column, at least `gap` steps on; each tap off by a timing error of about `err` ms (0: exact). ph: the bar's place.
 export function pushPlan(c, cols, ph, err, rng) {
-  const r = PUSH.r, half = (1 - 2 * r), tx = s => Math.max(r, Math.min(1 - r, (s + 0.5) / PUSH.slots)), off = () => (err > 0 ? gauss(rng) * err / 1000 : 0);
+  const r = pushR(c), half = (1 - 2 * r), tx = s => Math.max(r, Math.min(1 - r, (s + 0.5) / PUSH.slots)), off = () => (err > 0 ? gauss(rng) * err / 1000 : 0);
   // the first: dp puts the dropper over the column now, going right (the cycle's rising half), shifted by the hand's error
   let dp = ((tx(cols[0]) - r) / half) / 2 + off() / Math.max(0.5, c.dropPeriod);
   dp = ((dp % 1) + 1) % 1;
@@ -55,21 +65,22 @@ export function pushPlan(c, cols, ph, err, rng) {
   return { ph: Math.max(0, Math.min(999, Math.round(ph * 1000))), dp: dpi, k };
 }
 // The turns p still needs, about: the coins left to the target over what a move pushes off, about (tests/sim/pusher.sim.js).
-export const PUSH_RATE = 2.8;
+export const PUSH_RATE = 2.4;   // (the shared machine, v 3: about 2.7 coins over a move, most of them the mover's: tests/sim/pusher.sim.js)
 export function needs(pm, p) { const c = pushCfg(pm); return Math.max(1, (c.target - pm.score[p]) / PUSH_RATE); }
 export function best(pm, me, rng, style, ctx) {
-  const c = pushCfg(pm), n = Math.max(1, c.perMove | 0), coins = pm.coins[me], lvl = ctx && ctx.level, left = c.target - pm.score[me];
+  const c = pushCfg(Object.assign({}, pm, { v: 3 })), n = Math.max(1, c.perMove | 0), coins = pushShelf(pm, me), lvl = ctx && ctx.level, left = c.target - pm.score[me];
   const q = left <= 1 ? 0.7 : left <= 2 ? 0.5 : left <= 3 ? 0.35 : left <= 5 ? 0.12 : 0;
   const ph = rng();                                               // (where the bar is when it starts: whenever it happens to)
   if (lvl === 'easy') return { move: pushPlan(c, Array.from({ length: n }, () => randInt(rng, PUSH.slots)), ph, c.aiErrEasy, rng), q };
-  if (lvl !== 'hard') return { move: pushPlan(c, pushNormal(coins, n), ph, c.aiErr, rng), q };
+  if (lvl !== 'hard') return { move: pushPlan(c, pushNormal(coins, n, me, pushR(c)), ph, c.aiErr, rng), q };
   // Hard: each candidate's exact taps through the real push (its own stars and the bar where it is), the best kept, then
   // tapped with Hard's own (small) timing error.
   let top = null;
   const until = ctx && typeof ctx.until === 'function' ? ctx.until : null, stars = pushStars(pm, me, c, n);
-  for (const cols of candidates(coins, n, c.aiTries)) {
+  const shared = Array.isArray(pm.coins) && (pm.v || 0) >= 3, base = shared ? coins : coins.map(a => [a[0], a[1], a[2] ? 1 : 0, 0]);   // (a square from before: its next move makes it the shared machine, every coin neutral: rules.js pushUp)
+  for (const cols of candidates(base, n, c.aiTries, me, pushR(c))) {
     if (top && until && until() <= 0) break;
-    const mv = pushPlan(c, cols, ph, 0, rng), res = pushSim(c, coins, pushDrops(c, mv, stars), false, mv.ph / 1000), v = worth(res);
+    const mv = pushPlan(c, cols, ph, 0, rng), res = pushSim(c, base, pushDrops(c, mv, stars, OWN[me]), false, mv.ph / 1000, me), v = worth(res, me);
     if (!top || v > top.v) top = { cols, v, res };
   }
   const won = top.res.pts >= left;

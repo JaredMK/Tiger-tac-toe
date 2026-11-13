@@ -89,6 +89,36 @@ export function bglMoves(mini, p) {
   }
   return out;
 }
+// The dice must be used as fully as they can be (November 2026 audit): of all the ways to play the dice left, a step is
+// legal only if the rest can still be played as fully as from here, so a player (or the computer) never plays one die so
+// that the other cannot be used when some other order would use both. Bearing the last piece off counts as every die used.
+const bglClone = m => ({ type: m.type, v: m.v, tune: m.tune, n: m.n, rolled: m.rolled, pos: { X: m.pos.X.slice(), O: m.pos.O.slice() }, dice: m.dice ? { by: m.dice.by, v: m.dice.v.slice(), used: m.dice.used.slice(), off: m.dice.off || 0 } : null });
+const bglOpen = m => (m.dice ? m.dice.v.filter((v, d) => v && !m.dice.used[d]).length : 0);
+// The most dice p can still use from here (every order of the dice and every piece tried).
+export function bglMaxUse(mini, p) {
+  if (mini.pos[p].every(a => a > mini.n)) return bglOpen(mini);
+  let best = 0;
+  const all = bglOpen(mini);
+  for (const s of bglMoves(mini, p)) {
+    const c = bglClone(mini); bglStep(c, p, s.d, s.k);
+    best = Math.max(best, 1 + bglMaxUse(c, p));
+    if (best >= all) break;
+  }
+  return best;
+}
+// The steps p may take now: bglMoves less any that would leave a die unused that another order would have used.
+export function bglPlayable(mini, p) {
+  const ms = bglMoves(mini, p);
+  if (ms.length < 2 && !(ms.length === 1 && bglOpen(mini) > 1)) return ms;
+  const max = bglMaxUse(mini, p);
+  return ms.filter(s => { const c = bglClone(mini); bglStep(c, p, s.d, s.k); return 1 + bglMaxUse(c, p) === max; });
+}
+// Is the step die d, piece k one of p's playable steps now (a die of the same value, a piece on the same place)?
+export function bglLegal(mini, p, d, k) {
+  const dc = bglDice(mini, p);
+  if (!dc || !(d >= 0 && d < dc.v.length) || dc.used[d] || !dc.v[d] || !(k >= 0 && k < BGL.pieces) || mini.pos[p].every(a => a > mini.n) || !bglCan(mini, p, k, dc.v[d])) return false;
+  return bglPlayable(mini, p).some(x => dc.v[x.d] === dc.v[d] && mini.pos[p][x.k] === mini.pos[p][k]);
+}
 export const bglLeft = (mini, p) => mini.pos[p].filter(a => a <= mini.n).length;   // pieces still to bear off
 export const bglPips = (mini, p) => mini.pos[p].reduce((s, a) => s + Math.max(0, mini.n + 1 - a), 0);   // the points still to travel
 export function create(type, rng) {
@@ -124,7 +154,7 @@ export function apply(mini, p, m, rng, idx) {
   if (m && typeof m === 'object' && Array.isArray(m.steps)) return applyTurn(mini, p, m.steps);
   if (!m || typeof m !== 'object' || !Number.isInteger(m.d) || !Number.isInteger(m.k) || m.d < 0 || m.d > 3 || m.k < 0 || m.k >= BGL.pieces) return { ok: false, reason: 'bad' };
   const dc = bglDice(mini, p);
-  if (!dc || m.d >= dc.v.length || dc.used[m.d] || !bglCan(mini, p, m.k, dc.v[m.d])) return { ok: false, reason: 'bad' };
+  if (!dc || !bglLegal(mini, p, m.d, m.k)) return { ok: false, reason: 'bad' };
   const s = bglStep(mini, p, m.d, m.k);
   const won = mini.pos[p].every(a => a > mini.n);
   const more = !won && bglMoves(mini, p).length > 0;
@@ -165,7 +195,7 @@ export function bglTurn(mini, p, steps) {
     if (!Array.isArray(s) || s.length !== 2) return undo();
     const [d, k] = s;
     if (!Number.isInteger(d) || !Number.isInteger(k) || d < 0 || d >= dc.v.length || k < 0 || k >= BGL.pieces) return undo();
-    if (dc.used[d] || !dc.v[d] || mini.pos[p].every(a => a > mini.n) || !bglCan(mini, p, k, dc.v[d])) return undo();
+    if (!bglLegal(mini, p, d, k)) return undo();
     const r = bglStep(mini, p, d, k);
     out.push({ d, k, from: r.from, to: r.to, hit: r.hit, off: r.to > mini.n });
   }
@@ -179,7 +209,7 @@ export function publicView(mini) {
 export function randomMove(mini, p, rng, from, empties) {
   if (!bglDice(mini, p)) return 'roll';
   const r = needRng(rng), c = { type: mini.type, n: mini.n, v: mini.v, tune: mini.tune, pos: { X: mini.pos.X.slice(), O: mini.pos.O.slice() }, dice: JSON.parse(JSON.stringify(mini.dice)) }, steps = [];
-  for (let ms = bglMoves(c, p); ms.length && !c.pos[p].every(a => a > c.n); ms = bglMoves(c, p)) { const x = ms[randInt(r, ms.length)]; bglStep(c, p, x.d, x.k); steps.push([x.d, x.k]); }
+  for (let ms = bglPlayable(c, p); ms.length && !c.pos[p].every(a => a > c.n); ms = bglPlayable(c, p)) { const x = ms[randInt(r, ms.length)]; bglStep(c, p, x.d, x.k); steps.push([x.d, x.k]); }
   return steps.length ? { steps } : 'roll';
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) {

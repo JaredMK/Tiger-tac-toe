@@ -1,7 +1,8 @@
 'use strict';
 // Simulations: Coin Pusher. Slow, so never part of npm test:
 // npm run sim -- pusher
-// The settings (meta.js TUNE) were picked here (November 2026; the timed dropper, the same month); the figures are printed
+// The settings (meta.js TUNE) were picked here (November 2026; the timed dropper, the same month; the shared machine, v 3:
+// coin 0.08, 18 coins on a fresh shelf, target 14, chosen so a player's own coins come into play); the figures are printed
 // by the run below (and kept in CLAUDE.md).
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,7 +19,7 @@ function play(lx, lo, N, set) {
       for (let k = 0; k < 200; k++) {
         const b = E.localBest(E.publicMini(m, p), p, rng, {}, { level: p === 'X' ? lx : lo, until: null }), r = E.applyMove(m, p, b.move, rng);
         assert.ok(r.ok, r.reason);
-        moves++; coins += m.last.pts; lost += m.last.lost;
+        moves++; coins += m.last.pts + (m.last.opp || 0); lost += m.last.lost;
         if (r.outcome === 'draw') { draws++; break; }
         if (r.outcome === 'win') { const w = r.winner || p; dec++; if (w === 'X') first++; each += (m.turns.X + m.turns.O) / 2; winner += m.turns[w]; break; }
         if (!r.again) p = p === 'X' ? 'O' : 'X';
@@ -32,7 +33,7 @@ const line = (name, r) => console.log(`  ${name}: turns each ${r.each.toFixed(2)
 test('pusher: the computer against itself: 3 to 6 turns each, the first mover under 60%; Hard at least as good as Normal', () => {
   const nn = play('normal', 'normal', 400), hh = play('hard', 'hard', 80), ee = play('easy', 'easy', 300), nh = play('normal', 'hard', 80);
   line('Normal v Normal', nn); line('Hard v Hard', hh); line('Easy v Easy', ee); line('Normal (X) v Hard (O)', nh);
-  for (const t of [10, 14]) line(`target ${t}, Normal v Normal`, play('normal', 'normal', 200, { target: t }));
+  for (const t of [12, 16]) line(`target ${t}, Normal v Normal`, play('normal', 'normal', 200, { target: t }));
   line('a looser hand (Normal 200 ms), Normal v Normal', play('normal', 'normal', 200, { aiErr: 200 }));
   assert.ok(nn.each >= 3 && nn.each <= 6, `Normal: 3 to 6 turns each (${nn.each.toFixed(2)})`);
   assert.ok(nn.first < 0.6, `Normal: the first mover under 60% (${(100 * nn.first).toFixed(1)}%)`);

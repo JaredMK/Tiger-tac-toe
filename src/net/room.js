@@ -8,7 +8,7 @@ import { NAME_MAX, playerName } from '../core/match.js';
 import { upgradeMini } from '../core/minis.js';
 import { isRace } from '../core/race.js';
 import { MATCH_FIELDS, packMatch, parseMatch, resignLocal, sideMergeOf } from '../core/records.js';
-import { ANIM, newTimer, normTimer, PLAYER_TIMERS, replaySpeed, setupSpec, speedMode, TIMER_DEFAULT } from '../core/timer.js';
+import { ANIM, dur, durRate, newTimer, normTimer, PLAYER_TIMERS, replaySpeed, setupSpec, speedMode, TIMER_DEFAULT } from '../core/timer.js';
 import { other } from '../core/util.js';
 import { echoPinned } from '../games/echo/view.js';
 import { oddPinned } from '../games/oddone/view.js';
@@ -277,8 +277,8 @@ export function presenting() { return !!(state.flash || state.done || state.spot
 // A square's stamp still playing on the board (ms left): the next move played back waits for it.
 function stampLeft() {
   const at = state.stamp != null ? fxAt('stamp', state.stampId) : null, dat = state.drawStamp != null ? fxAt('draw', state.drawId) : null;   // (a drawn square's Draw stamp and shuffle too: ui/board.js DRAW_MS)
-  const s = at == null ? 0 : Math.max(0, (speedMode() ? STAMP_MS * 0.6 : STAMP_MS) / ANIM.speed - (performance.now() - at));
-  const d = dat == null ? 0 : Math.max(0, DRAW_MS / ANIM.speed - (performance.now() - dat));
+  const s = at == null ? 0 : Math.max(0, dur(speedMode() ? STAMP_MS * 0.6 : STAMP_MS) - (performance.now() - at));
+  const d = dat == null ? 0 : Math.max(0, dur(DRAW_MS) - (performance.now() - dat));
   return Math.max(s, d);
 }   // (Speed: the next move's glow starts as the stamp settles, not after it)
 let pendingTimer = null;

@@ -1,5 +1,5 @@
 // Animations: each one started by the event that causes it, exactly once; bursts and count-ups.
-import { ANIM, playMs } from '../core/timer.js';
+import { ANIM, dur, durRate, playMs } from '../core/timer.js';
 import { ATT, ATT_TYPES, attMs } from '../games/shared/attention.js';
 import { FINGER_TYPES, fingMs } from '../games/shared/finger.js';
 import { bullsAim } from '../games/bullseye/rules.js';
@@ -85,7 +85,7 @@ export function anchorFx() {
   // already running where it should be reads the same, however late in the frame this redraw is
   const tl = document.timeline && document.timeline.currentTime, now = typeof tl === 'number' ? tl : performance.now();
   const css = a => !(typeof CSSTransition !== 'undefined' && a instanceof CSSTransition);   // (a transition just follows its style)
-  const S = ANIM.speed, mr = (fx.move && fx.move.rate) || 1;
+  const S = durRate('ui'), mr = (fx.move && fx.move.rate) || 1;
   // Each animation is set once, by the event of its nearest [data-fx] element (or, with none, the screen's
   // entry). (Setting everything by the entry first and then each event's own finished, and so lost, any
   // animation the entry's clock had already run past: Echo's first flashes, after the square had been open
@@ -166,7 +166,7 @@ export function animate() {
   if (!state.flash) return;
   for (const el of app.querySelectorAll('.cnt[data-from]')) {
     const host = el.closest('[data-fx]'), mv = host && host.dataset.fxk === 'm', at = host ? Number(host.dataset.fx) : performance.now();   // counted from the move, wherever a redraw finds it
-    const clock = mv ? () => performance.now() - (fx.move ? fx.move.at : at) : () => (performance.now() - at) * ANIM.speed;   // (the move's time: its drifting event; else the game's pace)
+    const clock = mv ? () => performance.now() - (fx.move ? fx.move.at : at) : () => (performance.now() - at) * durRate('ui');   // (the move's time: its drifting event; else the game's pace)
     countTo(el, Number(el.dataset.from), Number('to' in el.dataset ? el.dataset.to : el.textContent), Number(el.dataset.ms) || 400, Number(el.dataset.delay) || 0, clock);
   }
   hopToken();
@@ -195,7 +195,7 @@ export function drawFx(f) {
   drawOld = f && f.square === state.drawStamp && f.type ? { id: state.drawId, type: f.type, mini: f.drawn || null } : null;
   const z = zoomLeft();                                               // (back from the square: the stamp waits for the zoom-out to land in its square)
   startFx('draw', state.drawId, performance.now() + z);
-  const s = 1000 * ANIM.speed, zs = z / 1000;
+  const s = 1000 * durRate('ui'), zs = z / 1000;
   SND.play('stamp', { vol: 0.6, at: zs });
   SND.play('cardSlide', { at: zs + DRAW_SHUFFLE[0] / s }); SND.play('cardSlide', { at: zs + (DRAW_SHUFFLE[0] + 90) / s, rate: 1.12 }); SND.play('cardFlip', { at: zs + DRAW_SHUFFLE[1] / s });
   return true;
@@ -205,7 +205,7 @@ export function drawFx(f) {
 // zoom into a square would take the board away mid-shuffle), as an online phone's next playback does (net/room.js).
 export function drawLeft() {
   const at = state.drawStamp != null && state.drawId != null ? fxAt('draw', state.drawId) : null;
-  return at == null ? 0 : Math.max(0, at + DRAW_MS / ANIM.speed - performance.now());
+  return at == null ? 0 : Math.max(0, at + dur(DRAW_MS) - performance.now());
 }
 export function stampFx(elapsed) {                                   // elapsed: the stamp began this long ago (a sequence joined part way: quietly)
   if (state.screen !== 'board' || state.stamp == null || state.stampId == null || fxAt('stamp', state.stampId) != null) return;
@@ -213,10 +213,10 @@ export function stampFx(elapsed) {                                   // elapsed:
   startFx('stamp', state.stampId, elapsed ? performance.now() - elapsed : performance.now() + z);
   if (elapsed > 200) return;
   const zs = z / 1000;
-  SND.play('stamp', { at: zs }); SND.play('burst', { at: zs + BOARD_BURST[0] / 1000 / ANIM.speed }); SND.play('burst', { at: zs + BOARD_BURST[1] / 1000 / ANIM.speed });
+  SND.play('stamp', { at: zs }); SND.play('burst', { at: zs + dur(BOARD_BURST[0]) / 1000 }); SND.play('burst', { at: zs + dur(BOARD_BURST[1]) / 1000 });
   const owner = state.squares[state.stamp] && state.squares[state.stamp].owner, i = state.stamp;
   if (z > 0) setTimeout(() => claimHaptic(owner), z); else claimHaptic(owner);   // (one buzz with the stamp: claimed, or lost to the other side: ui/haptics.js)
-  setTimeout(() => { const sq = app.querySelector(`.board .sq:nth-child(${i + 1})`); shake(state.winner ? 1.3 : 1); confetti(state.winner ? 40 : 18, sq && sq.isConnected ? sq : null); }, z + 120 / ANIM.speed);   // (as the mark lands)
+  setTimeout(() => { const sq = app.querySelector(`.board .sq:nth-child(${i + 1})`); shake(state.winner ? 1.3 : 1); confetti(state.winner ? 40 : 18, sq && sq.isConnected ? sq : null); }, z + dur(120));   // (as the mark lands)
   return true;                                                       // (stamped now, with its sound and buzz: turns.js turnAlert waits for it)
 }
 
@@ -238,7 +238,7 @@ export const ZOOM_ID = 'ttc-zoom';
 // The zoom's length in ms: 0 when there is none (reduced motion, no Web Animations, the page out of sight).
 export function zoomMs() {
   if ((ZOOM.off == null ? REDUCED || !WAAPI : ZOOM.off) || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return 0;
-  return (ANIM.mode === 'speed' ? ZOOM.speed : ZOOM.normal) / (ANIM.admin || 1);
+  return ANIM.mode === 'speed' ? dur(ZOOM.speed * ANIM.fast) : dur(ZOOM.normal);   // (Speed: its own figure, 180 ms at the admin's speed 1)
 }
 let zoom = null;                                   // the zoom under way: { dir: 'in' | 'out', i, t0, end, D, main, sq, ghost, tile, timer }
 export const zoomNow = () => zoom;
@@ -402,7 +402,7 @@ export function zoomRun(o) {
 export const SWAP = { slide: 300, slideSpeed: 180, wipe: 560, wipeSpeed: 340, ease: 'cubic-bezier(.3, 0, .2, 1)' };
 const GAME_SCR = ['board', 'mini', 'review', 'review-mini'];
 let swapPath = [], swap = null;                       // the screens come through since the menu (back or on?), the slide under way
-const swapMs = k => { const z = zoomMs(); if (!z) return 0; const sp = ANIM.mode === 'speed'; return (k === 'wipe' ? (sp ? SWAP.wipeSpeed : SWAP.wipe) : (sp ? SWAP.slideSpeed : SWAP.slide)) / (ANIM.admin || 1); };
+const swapMs = k => (zoomMs() ? dur(k === 'wipe' ? SWAP.wipe : SWAP.slide) : 0);   // (the page's pace: Speed halves them, the admin's speed too)
 // Which change it is: 'wipe' into a match (from the menus) or into the results (from the match), 'slide' between two of
 // the menus' screens (on: further in, back: a screen come through before), else none.
 export function swapKind(prev, view) {

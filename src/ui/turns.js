@@ -6,7 +6,7 @@ import { mmIntro } from '../net/matchmaking.js';
 import { haptic } from '../net/platform.js';
 import { cutHaptics, moveHaptics, mySide } from './haptics.js';
 import { applyPending } from '../net/room.js';
-import { ANIM, holdRate, moveRate, replaySpeed, speedMode } from '../core/timer.js';
+import { ANIM, dur, durRate, holdRate, moveRate, replaySpeed, speedMode } from '../core/timer.js';
 import {
   CPU_MS, FLASH_MS, FLIP_MS, MEMORY_MS, RNG, app, commit, cpuPlan, cpuTimer, flashReady, flashTimer, holdTimer,
   menuOpen, setCpuPlan, setCpuTimer, setFlashReady, setFlashTimer, setHoldTimer, state
@@ -44,7 +44,7 @@ export function turnAlert(prev, stamped) {
     haptic('turn');
   };
   const z = zoomLeft();                                               // (back from a square: once the board is back, its stamp's thump after that)
-  if (stamped) setTimeout(go, z + TURN_AFTER_STAMP_MS / ANIM.speed); else if (z > 0) setTimeout(go, z); else go();
+  if (stamped) setTimeout(go, z + dur(TURN_AFTER_STAMP_MS)); else if (z > 0) setTimeout(go, z); else go();
 }
 // The computer stops dead (a practice match left part way, ui/explainer.js practiceEnd): its timer, its plan and any
 // question still being worked out, whose answer is then dropped.
@@ -144,13 +144,13 @@ export function playFlash(played, speed, holdMax, holdAt, elapsed) {
   const f = state.flash;
   if (!f || state.spot || fxAt('move', f) != null) return;     // while the square glows on the board, the move has not played yet
   const rs = speed || (rep && rep.stage === 'move' && !rep.f ? rep.speed : 1);
-  const sp = moveRate(f.type, rs), hr = holdRate(f.type, rs), el = Math.max(0, elapsed || 0), anim = animMs(f) / sp;   // (el: real ms of the move already gone; anim: its animation on screen)
+  const sp = durRate('move', f.type, rs), el = Math.max(0, elapsed || 0), anim = dur(animMs(f), 'move', f.type, rs);   // (el: real ms of the move already gone; anim: its animation on screen)
   const ms = played ? 0 : Math.max(0, anim - el);
   startFx('move', f, performance.now() - (played ? animMs(f) : el));
   fx.move.rate = sp; fx.move.end = performance.now() + ms;   // (rate: the move's own; end: when its animation is over, on this phone's clock)
   if (played || el > 0 || SND.muted || !SND.loaded || !SND.ensure(false)) fx.move.quiet = true;   // (a result already heard at a reload, played before audio was ready, or joined part way: it finishes quietly too)
   setFlashReady(Date.now() + ms);                   // the result can be tapped away once it has landed (a tap before that finishes the animation: skipFlash)
-  const hold = holdAt != null ? holdAt : Math.max(0, Math.min(holdMax == null ? Infinity : holdMax, holdOf(f) / hr) - Math.max(0, el - anim));   // (holdAt: exactly this long from the animation's end; else the usual hold, less what is gone already)
+  const hold = holdAt != null ? holdAt : Math.max(0, Math.min(holdMax == null ? Infinity : holdMax, dur(holdOf(f), 'hold', f.type, rs)) - Math.max(0, el - anim));   // (holdAt: exactly this long from the animation's end; else the usual hold, less what is gone already)
   clearTimeout(flashTimer); setFlashTimer(setTimeout(dismissFlash, ms + hold)); flashEnds = Date.now() + ms + hold;   // (first: the result always clears, whatever its sounds do)
   if (!played && !(el > 0)) {                        // its sounds, kept as the move's (a tap that finishes it silences them: SND.cut)
     const was = SND.scope; if (was == null) SND.scope = f;
@@ -196,7 +196,7 @@ export function holdOf(f) {
 export function skipFlash() {
   const f = state.flash;
   if (!f || fxAt('move', f) == null) return;
-  const sp = (fx.move && fx.move.rate) || 1, hr = Math.max(sp, ANIM.speed);
+  const sp = (fx.move && fx.move.rate) || 1, hr = Math.max(sp, durRate('ui'));
   SND.cut(f); cutHaptics();
   startFx('move', f, performance.now() - animMs(f) * Math.max(1, sp));   // (past its end at any speed)
   fx.move.rate = sp; fx.move.end = performance.now(); fx.move.quiet = true;
@@ -231,7 +231,7 @@ export function dismissFlash() {
   const ended = f.kind === 'match' && !!state.winner && state.screen === 'win' && !state.sc && state.squares[f.square] && state.squares[f.square].owner;
   if (ended && !state.practice) {                    // the square that ended the match: back to the main board first, where it stamps in; then the match's end (toWin)
     state.screen = 'board'; state.zoom = null; state.stamp = f.square; state.stampId = `${state.id || 'm'}:${state.moves}`;
-    clearTimeout(winTimer); winTimer = setTimeout(toWin, zoomLeft() + (speedMode() ? (STAMP_MS * 0.6 + WIN_AFTER) / ANIM.speed : (STAMP_MS + WIN_AFTER) / ANIM.speed));   // (after the zoom-out has landed and the stamp played; Speed: the end screen comes in as the stamp settles)
+    clearTimeout(winTimer); winTimer = setTimeout(toWin, zoomLeft() + (speedMode() ? dur(STAMP_MS * 0.6 + WIN_AFTER) : dur(STAMP_MS + WIN_AFTER)));   // (after the zoom-out has landed and the stamp played; Speed: the end screen comes in as the stamp settles)
   }
   if (hold && state.done) { startFx('back', state.done); if (!quiet) SND.play('flipDown'); }   // the two cards turning back over
   else if (!quiet && !state.practice) backSounds(from);
@@ -241,6 +241,6 @@ export function dismissFlash() {
   commit();
   if (hold && state.done) {
     clearTimeout(holdTimer);
-    setHoldTimer(setTimeout(() => { if (state.done && !state.flash && leaveSquare(state, !!state.practice)) { if (!quiet && !state.practice) backSounds(from); turnAlert(from.turn, stampFx()); commit(); } applyPending(); }, FLIP_MS / ANIM.speed));
+    setHoldTimer(setTimeout(() => { if (state.done && !state.flash && leaveSquare(state, !!state.practice)) { if (!quiet && !state.practice) backSounds(from); turnAlert(from.turn, stampFx()); commit(); } applyPending(); }, dur(FLIP_MS)));
   } else applyPending();                        // online: the room may have moved on meanwhile
 }

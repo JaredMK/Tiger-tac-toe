@@ -237,7 +237,7 @@ test('wheels: the deploy sets the live config/wheels to these defaults once (scr
 });
 
 test('wheels: a client has the game only from 1.4.0 (a two-wheel square is more than 1.3.0 or older could draw)', () => {
-  assert.equal(E.CLIENT_VERSION, '1.16.0', 'the November 2026 batch of games (Muncher, Star Swarm, Brick Break, Snake) is 1.5.0; Muncher\'s new maze and move shape 1.6.0; Seating\'s rework 1.7.0');
+  assert.equal(E.CLIENT_VERSION, '1.17.0', 'the November 2026 batch of games (Muncher, Star Swarm, Brick Break, Snake) is 1.5.0; Muncher\'s new maze and move shape 1.6.0; Seating\'s rework 1.7.0');
   assert.equal(E.minVersionOf('wheels'), '1.4.0'); assert.equal(E.minVersionOf('apple'), '1.3.0', 'Apple Pick keeps its own');
   assert.ok(E.clientHas({ v: '1.4.0', p: 'web' }, 'wheels')); assert.ok(!E.clientHas({ v: '1.3.0', p: 'ios' }, 'wheels')); assert.ok(!E.clientHas({ v: '1.2.0', p: 'ios' }, 'wheels'));
 });

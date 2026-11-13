@@ -112,10 +112,22 @@ export const replaySpeed = () => (speedMode() ? REPLAY_SPEED : 1);
 export function moveRate(type, rs) {
   const r = (rs || 1) * ANIM.admin;
   if (!speedMode()) return r;
-  return metaOf(type).realTime ? r : Math.max(r, ANIM.speed);
+  if (metaOf(type).realTime) return (rs || 1) > 1 ? Math.max(r, ANIM.speed) : r;   // (a real-time game: the mover's own attempt was live, as it happened; someone else's replayed at the pace like any move, December 2026: it once crept along at 1.5x in Speed)
+  return Math.max(r, ANIM.speed);
 }
 // The rate a result's hold plays at: in Speed never slower than its pace (a run's result reads as fast as any).
 export function holdRate(type, rs) { return speedMode() ? Math.max(moveRate(type, rs), ANIM.speed) : moveRate(type, rs); }
+// ONE TIMING FUNCTION for the page (December 2026): every duration put on screen is a base figure (the game as designed:
+// Normal at the admin's Animation speed 1) and goes through here, so the player's Normal | Speed and the admin's two
+// multipliers (config/anim speed and fast) reach all of it. kind:
+//   'ui'   the interface's own moments: transitions, the zoom, the computer's pauses, the board's glow and stamps, the
+//          side reveal, a step's slide (the pace: ANIM.speed);
+//   'move' a move's animation and its sounds (moveRate: its game's, a replay's speed);
+//   'hold' a result left on show once its animation has played (holdRate);
+//   'real' a game's own clock (an attention round, Echo's pattern, a run or a shot as it is played, a countdown, a
+//          note to read): never changed.
+export function durRate(kind, type, rs) { return kind === 'real' ? 1 : kind === 'move' ? moveRate(type, rs) : kind === 'hold' ? holdRate(type, rs) : ANIM.speed; }
+export const dur = (ms, kind, type, rs) => (ms > 0 ? ms / durRate(kind || 'ui', type, rs) : 0);
 // The animation of one move. winLen: how many cells a Hex win lights up.
 export function playMs(f, winLen) {
   const won = f.kind === 'claim' || f.kind === 'match';

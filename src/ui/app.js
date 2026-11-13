@@ -4,7 +4,7 @@ import { leaveSquare, mainResult } from '../core/board.js';
 import { newState, normLocal, normSetup, playerName } from '../core/match.js';
 import { upgradeMini } from '../core/minis.js';
 import { makeRng } from '../core/random.js';
-import { ANIM, PLAY, newTimer } from '../core/timer.js';
+import { ANIM, dur, durRate, PLAY, newTimer } from '../core/timer.js';
 import { markCoins } from '../games/coins/rules.js';
 import { TYPES } from '../games/index.js';
 import { blocked, mySide, validCode } from '../net/room.js';
@@ -23,8 +23,8 @@ export const FLIP_MS = PLAY.flip;              // ...then turn back over before 
 const CPU_BASE = { think: 700, spot: 600, zoom: 250, pre: 300, again: 350 };
 const CPU_SPEED = { think: 500, spot: 400, zoom: 250, pre: 300, again: 350 };   // Speed (the player's Animation setting): at its pace, a 0.25 s think and its square lit 0.2 s
 export const CPU_MS = Object.fromEntries(Object.keys(CPU_BASE).map(k => [k, 0]));   // (read at the moment of use: the Animation speed and setting applied)
-for (const k of Object.keys(CPU_BASE)) Object.defineProperty(CPU_MS, k, { get: () => (ANIM.mode === 'speed' ? CPU_SPEED : CPU_BASE)[k] / ANIM.speed, enumerable: true });   // the computer: a pause to think, its square lit up on the board, a look at the square, its choice shown, the next bonus move
-export const spotMs = () => PLAY.spot / ANIM.speed;   // how long the other player's square glows on the board before the zoom (at the Animation speed)
+for (const k of Object.keys(CPU_BASE)) Object.defineProperty(CPU_MS, k, { get: () => dur((ANIM.mode === 'speed' ? CPU_SPEED : CPU_BASE)[k]), enumerable: true });   // the computer: a pause to think, its square lit up on the board, a look at the square, its choice shown, the next bonus move
+export const spotMs = () => dur(PLAY.spot);   // how long the other player's square glows on the board before the zoom (at the Animation speed)
 export const SPIN_MS = PLAY.spin, HOP_MS = PLAY.hop;   // Candy race: the wheel's spin, then each hop of the token (the Dice race hops the same way)
 export const REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 export const WAAPI = typeof Element !== 'undefined' && typeof Element.prototype.animate === 'function';

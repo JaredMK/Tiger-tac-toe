@@ -156,10 +156,10 @@ test('pusher: taps on the machine are the move: a canvas, no button; the picture
 
 test('pusher: someone else\'s move sounds from its events (a clink and a tick a coin, the tray\'s clink, a star\'s chime) and their total counts on from where it was', () => {
   seat(); state.cpu = 'O';
-  const mini = E.newMini('pusher', E.makeRng('ps2'));
-  mini.coins.O.forEach((q, i) => { q[1] = Math.min(9900, q[1] + 450); if (q[1] > 9000 && i % 3 === 0) q[2] = 1; });   // (a shelf about to spill, star coins at the front)
+  E.setTune('pusher', { start: 40 }); const mini = E.newMini('pusher', E.makeRng('ps2')); E.setTune('pusher', null);   // (a fuller shelf: a push spills coins)
+  mini.coins.forEach((q, i) => { q[1] = Math.min(9900, q[1] + 700); if (q[1] > 8800 && i % 2 === 0) q[2] = 1; if (i % 4 === 1) q[3] = 1; });   // (the shared shelf about to spill, star coins at the front, some of them X's)
   const { f } = move(mini, 'O', { ph: 100, dp: 300, k: [0, 30, 70] }, E.makeRng('r')), g = f.push;
-  assert.ok(g.scored > 1 && g.pts > g.scored, 'coins over the edge, a star coin among them');
+  assert.ok(g.scored > 1 && g.pts + g.opp > g.scored, 'coins over the edge, a star coin among them');
   assert.ok(pusher.pushPre(f) > 0);
   const rp = PR.pushReplay(PR.pushCfg(mini), g), ss = sounds(pusher, f, mini);
   const drops = rp.events.filter(e => e.kind === 'drop'), offs = rp.events.filter(e => e.kind === 'off');
@@ -168,16 +168,19 @@ test('pusher: someone else\'s move sounds from its events (a clink and a tick a 
   assert.deepEqual(ss.filter(s => s[0] === 'pshTray' || s[0] === 'pshStar').map(s => [s[0], s[1]]), offs.slice(0, 6).map(e => [e.st ? 'pshStar' : 'pshTray', e.t + pusher.PSHT.fall]));
   assert.deepEqual(ss.slice(-1)[0].slice(0, 2), ['ding', g.ms]);
   const html = draw(pusher, mini, { a: f, locked: true, turn: 'O' });
-  assert.match(html, new RegExp(`<b data-psh="sc">${g.before}</b>`), 'their total starts where it was and counts on as coins land (the canvas\'s frames)');
-  assert.match(html, new RegExp(`class="arcres ok appear" style="--t:${g.ms}ms" role="status">\\+${g.pts} · a star!<`));
+  assert.match(html, new RegExp(`<b data-psh="sc-O">${g.before}</b>`), 'the mover\'s total starts where it was and counts on as coins land (the canvas\'s frames)');
+  assert.match(html, new RegExp(`<b data-psh="sc-X">${g.ob}</b>`), 'the other player\'s too: their own coins go over on anyone\'s move');
+  assert.match(html, new RegExp(`class="arcres ok appear" style="--t:${g.ms}ms" role="status">\\+${g.pts}`));
   const mine = move(mini, 'X', { ph: 100, dp: 300, k: [0, 30, 70] }, E.makeRng('r'));
   assert.equal(pusher.pushPre(mine.f), 0); assert.deepEqual(sounds(pusher, mine.f, mini), [], 'a move made here had its sounds live');
   listed(['pshDrop', 'pshTray', 'pshStar', 'pshGone']);
 });
 
-test('pusher: the miniature shows both machines, star coins blue, each tray filling toward the target in its player\'s colour', () => {
+test('pusher: the miniature shows the one machine, each coin in its owner\'s colour (the machine\'s own pale, star coins blue), both players\' points beside it', () => {
   const mini = E.newMini('pusher', E.makeRng('pm')); mini.score.X = 6; mini.score.O = 12;
-  const html = pusher.miniature(mini, false), stars = mini.coins.X.filter(q => q[2]).length + mini.coins.O.filter(q => q[2]).length;
-  assert.equal(count(html, /<circle class="st"/g), stars); assert.equal(count(html, /<circle/g), mini.coins.X.length + mini.coins.O.length + 1, 'every coin, and O\'s mark');
-  assert.match(html, /<g class="tpshm X">.*?<rect class="tpshf" x="1" y="28" width="12\.0" height="4"\/>/); assert.match(html, /<g class="tpshm O">.*?<rect class="tpshf" x="31" y="28" width="24\.0" height="4"\/>/);
+  mini.coins[0][3] = 1; mini.coins[1][3] = 2;
+  const html = pusher.miniature(mini, false), stars = mini.coins.filter(q => q[2]).length;
+  assert.equal(count(html, /<circle class="[nXO] st"/g), stars); assert.equal(count(html, /<circle/g), mini.coins.length, 'every coin');
+  assert.equal(count(html, /<circle class="X/g), 1); assert.equal(count(html, /<circle class="O/g), 1);
+  assert.match(html, /<span class="tsn">6<\/span>.*<span class="tsn">12<\/span>/);
 });

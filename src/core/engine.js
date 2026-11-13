@@ -21,7 +21,7 @@ export { resignLocal, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord,
 export { SC_GAME, newScGame, scSideState, applyScMove, applyScTimeout, applyScBot, applyScBegin, applyScResign, applyScStart, scDue, scPublicState, scSideView, scFinal } from './scgame.js';
 export { onlineCheck, AUTO_FROM_PHONE, TIMED_RUN_TYPES, timedRunMs } from './verify.js';
 export { matchStats, topOpponents, oppTally } from './stats.js';
-export { normTimer, TIMER_OPTIONS, newTimer, PLAY, ANIM, REPLAY_SPEED, replaySpeed, speedMode, setAnimSpeed, setAnimFast, setAnimFx, setAnimMode, moveRate, holdRate, playMs, replayMs, armClock, startClock, clockDeadline, CLOCK, turnSecs, turnLimit, turnOpen, turnBegan, timerSpec, specParts, setupSpec, turnSecsOf, timerKind, timerLabel, TIMER_SPECS, PLAYER_TIMERS, TIMER_DEFAULT, clockOn, matchClock, settleClock, holdClock, clockLeft } from './timer.js';
+export { normTimer, TIMER_OPTIONS, newTimer, PLAY, ANIM, REPLAY_SPEED, replaySpeed, speedMode, setAnimSpeed, setAnimFast, setAnimFx, setAnimMode, moveRate, holdRate, dur, durRate, playMs, replayMs, armClock, startClock, clockDeadline, CLOCK, turnSecs, turnLimit, turnOpen, turnBegan, timerSpec, specParts, setupSpec, turnSecsOf, timerKind, timerLabel, TIMER_SPECS, PLAYER_TIMERS, TIMER_DEFAULT, clockOn, matchClock, settleClock, holdClock, clockLeft } from './timer.js';
 export { REP, repNorm, repMove, repOf } from './replay.js';
 export { clamp01, r2, r3, other } from './util.js';
 export { BJ, BJT, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs } from '../games/bj/rules.js';

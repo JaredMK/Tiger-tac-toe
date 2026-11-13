@@ -1,5 +1,5 @@
 // Backgammon Lite: the screen, the miniature, the move's words and sounds, and the inputs.
-import { BGL, BGLT, bglCan, bglDice, bglHome, bglMoves, bglStep, bglTimes, bglTo, bglV2 } from './rules.js';
+import { BGL, BGLT, bglDice, bglHome, bglLegal, bglPlayable, bglStep, bglTimes, bglTo, bglV2 } from './rules.js';
 import { N, REDUCED, mv, state, waitLine, zoomedType } from '../../ui/app.js';
 import { dieFace } from '../../ui/art.js';
 import { DIE_BOUNCE, die3d } from '../../ui/dice.js';
@@ -13,7 +13,7 @@ import { attemptMove } from '../../net/moves.js';
 import { blocked } from '../../net/room.js';
 import { haptic } from '../../net/platform.js';
 import { SND } from '../../audio/sound.js';
-import { ANIM } from '../../core/timer.js';
+import { ANIM, dur, durRate } from '../../core/timer.js';
 
 // The board: a wooden frame round the track's n points in a row, with a tray at each end: the left one holds O's pieces
 // borne off (and, on a square from before, X's waiting to start at its top), the right one X's off (O's waiting). Each
@@ -54,7 +54,7 @@ function cloneMini(mini) { return { type: mini.type, v: mini.v, tune: mini.tune,
 // The square with the draft's steps played.
 function played(mini, dr) { const c = cloneMini(mini); for (const s of dr.steps) bglStep(c, dr.p, s.d, s.k); return c; }
 const allOff = (c, p) => c.pos[p].every(a => a > c.n);
-const optsOf = (c, p) => (c.dice && c.dice.by === p && !allOff(c, p) ? bglMoves(c, p) : []);
+const optsOf = (c, p) => (c.dice && c.dice.by === p && !allOff(c, p) ? bglPlayable(c, p) : []);   // (the engine's playable steps: the server's own test)
 // The piece a tap on a stack moves: its top one (the last index at that place; pieces alike move alike).
 function topAt(c, p, a) { let k = -1; c.pos[p].forEach((x, j) => { if (x === a) k = j; }); return k; }
 // Where piece k can go: one place a die value, { d, v, to }; bearing off by several dice: the smallest.
@@ -64,7 +64,7 @@ function dests(c, p, k) {
   for (const d of order) {
     const v = dc.v[d];
     if (seen.has(v)) continue; seen.add(v);
-    if (!bglCan(c, p, k, v)) continue;
+    if (!bglLegal(c, p, d, k)) continue;
     const to = bglTo(c, p, c.pos[p][k], v);
     if (to > c.n && out.some(x => x.to > c.n)) continue;
     out.push({ d, v, to });
@@ -83,12 +83,12 @@ function newDraft(sq, p, mini, r) { return { sq, p, sig: sigOf(mini), steps: [],
 // A step added to the draft (a tap on a ring, a forced step, or a replayed one): false if it is not legal there.
 function addStep(dr, mini, d, k, auto) {
   const c = played(mini, dr);
-  if (!c.dice || !(d >= 0 && d < c.dice.v.length) || c.dice.used[d] || !c.dice.v[d] || !(k >= 0 && k < BGL.pieces) || allOff(c, dr.p) || !bglCan(c, dr.p, k, c.dice.v[d])) return false;
+  if (!c.dice || c.dice.by !== dr.p || !bglLegal(c, dr.p, d, k)) return false;
   dr.from = bglCells(c.pos, c.n);
   const res = bglStep(c, dr.p, d, k);
   dr.steps.push({ d, k, auto: !!auto }); dr.at = performance.now(); dr.pick = null;
   dr.hit = res.hit ? other(dr.p) + res.hit.k : null; dr.off = res.to > c.n;
-  const S = ANIM.speed || 1, at = ms => ({ at: ms / 1000 / S });
+  const S = durRate('ui'), at = ms => ({ at: dur(ms) / 1000 });
   SND.play('pieceSlide');
   SND.play('clack', at(BGLT.slide - 60));
   if (res.hit) SND.play('thud', at(BGLT.slide + 40));
@@ -114,7 +114,7 @@ function canAct(dr) {
   const sq = state.squares[dr.sq];
   return !!sq && sigOf(sq.mini) === dr.sig;
 }
-const pace = ms => ms / (ANIM.speed || 1);
+const pace = ms => dur(ms);
 // After a step here: once no die is left to use, the turn goes in a beat after its slide.
 function afterStep(dr, mini) {
   const c = played(mini, dr);

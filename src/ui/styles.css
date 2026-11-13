@@ -5745,6 +5745,8 @@ button.pokc:focus-visible { outline: 3px solid var(--paper); outline-offset: 3px
 .tpshc { fill: #5b4a8c; stroke: var(--ink); stroke-width: .8; } .tpshs { fill: #2f7f86; } .tpshb { fill: #e3dccb; } .tpsht { fill: #241f38; }
 .tpshm.X .tpshf { fill: var(--x); } .tpshm.O .tpshf { fill: var(--o); }   /* the tray filling toward the target, in its player's colour */
 .tpshk circle { fill: #f2c14e; stroke: #a8781c; stroke-width: .5; } .tpshk circle.st { fill: #9fd4f5; stroke: #2f6f9e; }
+.tpshk circle.n { fill: #cfd6de; stroke: #6f7a87; } .tpshk circle.X { fill: #e5604a; stroke: #8e2414; } .tpshk circle.O { fill: #f2c14e; stroke: #a8781c; } .tpshk circle.st { fill: #9fd4f5; stroke-width: .7; }   /* the shared machine (v 3): each coin in its owner's colour, the machine's own pale; a star coin blue inside its owner's rim */
+.tart.tpshw:has(.tpsh.one) .tpic { width: 46cqw; }
 .pshsc b.pshbump { display: inline-block; animation: pshbump .3s cubic-bezier(.3, 1.6, .5, 1) both; }   /* the mover's total as a coin lands in the tray (view.js liveNow) */
 @keyframes pshbump { 0% { transform: scale(1); } 40% { transform: scale(1.45); } 100% { transform: scale(1); } }
 .tpshm.X .tmk { stroke: var(--x); } .tpshm.O .tmk { stroke: var(--o); }

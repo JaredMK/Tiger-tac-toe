@@ -245,3 +245,128 @@ test('bglite: a random move is a whole legal turn; an older client\'s single ste
   assert.ok(E.applyMove(m, 'X', { steps: [[1, 1]] }, lcg(1)).ok, 'the rest of the turn as a whole turn');
   assert.equal(m.dice, null);
 });
+
+// ----- the rules audit (November 2026): each rule and its edges, on the engine the page, the computer and the server share -----
+const turn = (m, p, steps) => E.applyMove(m, p, { steps }, lcg(9));
+test('bglite audit: each side moves its own way (X rightwards, O leftwards: board points)', () => {
+  const n = 8, m = laid({ X: [2, 1, 1], O: [2, 1, 1] }, 'X', [3, 1]);
+  assert.ok(turn(m, 'X', [[0, 0], [1, 0]]).ok);
+  assert.equal(R.bglPoint('X', m.pos.X[0], n), 6, 'X: point 2 + 3 + 1 = point 6');
+  const o = laid({ X: [1, 1, 1], O: [2, 1, 1] }, 'O', [3, 1]);
+  assert.ok(turn(o, 'O', [[0, 0], [1, 0]]).ok);
+  assert.equal(R.bglPoint('O', o.pos.O[0], n), 3, 'O: point 7 - 3 - 1 = point 3');
+});
+test('bglite audit: each die once, a double four times; a die used twice or a fifth step is refused', () => {
+  let m = laid({ X: [1, 1, 1], O: [1, 1, 1] }, 'X', [2, 3]);
+  assert.equal(turn(m, 'X', [[0, 0], [0, 1]]).ok, false, 'the same die twice');
+  assert.ok(turn(m, 'X', [[0, 0], [1, 1]]).ok);
+  m = laid({ X: [1, 1, 1], O: [1, 1, 1] }, 'X', R.bglRollDice(mini(), 1, 1));
+  assert.deepEqual(m.dice.v, [1, 1, 1, 1], 'a double: four moves');
+  assert.equal(turn(m, 'X', [[0, 0], [1, 0], [2, 0]]).ok, false, 'three of a double\'s four, the fourth still playable: not played out');
+  assert.ok(turn(m, 'X', [[0, 0], [1, 0], [2, 0], [3, 1]]).ok);
+  assert.equal(E.applyMove(laid({ X: [1, 1, 1], O: [1, 1, 1] }, 'X', [1, 1, 1, 1]), 'X', { steps: [[0, 0], [1, 0], [2, 0], [3, 0], [0, 1]] }, lcg(1)).ok, false, 'never a fifth');
+});
+test('bglite audit: a point holding 2 or more enemy pieces is closed; one enemy piece is hit back to its start', () => {
+  const n = 8;
+  let m = laid({ X: [1, 1, 1], O: [6, 6, 1] }, 'X', [2, 5]);       // two O on point 3 (O's progress 6)
+  assert.equal(R.bglCan(m, 'X', 0, 2), false, 'the block');
+  assert.equal(turn(m, 'X', [[0, 0], [1, 0]]).ok, false);
+  m = laid({ X: [1, 1, 1], O: [6, 1, 1] }, 'X', [2, 5]);           // one O on point 3
+  assert.ok(turn(m, 'X', [[0, 0], [1, 1]]).ok);
+  assert.equal(m.pos.O[0], 1, 'hit: back to its own start point'); assert.equal(R.bglPoint('X', m.pos.X[0], n), 3);
+  m = laid({ X: [1, 1, 1], O: [1, 7, 7] }, 'X', [1, 3]);           // two O on point 2: X's 1 is closed, the 3 jumps it
+  assert.ok(turn(m, 'X', [[1, 0], [0, 0]]).ok, 'the 3 first, then the 1 from point 4');
+  assert.equal(R.bglPoint('X', m.pos.X[0], n), 5);
+});
+test('bglite audit: bearing off only once every piece is in the home zone, and then with any roll that reaches or passes the end', () => {
+  let m = laid({ X: [6, 7, 2], O: [4, 9, 9] }, 'X', [3, 1]);       // a piece out of home (progress 2): no piece may bear off (O's start point left open)
+  assert.equal(R.bglCan(m, 'X', 1, 3), false, 'progress 7 + 3 passes the end, but a piece is still out of home');
+  assert.equal(R.bglCan(m, 'X', 0, 2), true, 'progress 6 + 2 = 8: lands on the last point while one is out');
+  m = laid({ X: [6, 7, 9], O: [1, 1, 1] }, 'X', [2, 5]);           // all home or off
+  assert.equal(R.bglTo(m, 'X', 6, 2), 9, 'exactly the last point: off'); assert.equal(R.bglTo(m, 'X', 7, 5), 9, 'past it: off');
+  const r = turn(m, 'X', [[0, 0], [1, 1]]);
+  assert.ok(r.ok); assert.equal(r.outcome, 'win', 'all three off');
+});
+test('bglite audit: both dice must be used whenever some order allows it', () => {
+  const n = 8;
+  // X's one piece on the board at progress 1 (two off), dice 6 and 1: the 6 first lands on 7, then the 1 on 8 (the last
+  // point: bearing off needs every piece home); the 1 first to 2 leaves the 6 blocked by two O on X's 8? set O there.
+  let m = laid({ X: [1, 9, 9], O: [2, 2, 1] }, 'X', [1, 6]);     // two O on point 7 (O's progress 2): X's 6 from 1 lands on 7: closed
+  assert.equal(R.bglCan(m, 'X', 0, 6), false);
+  // the 1 first (to 2), then the 6 (to 8: two pieces off, this one home only once it stands there: it lands on 8)
+  assert.equal(R.bglMaxUse(m, 'X'), 2, 'the 1 then the 6: both used');
+  assert.deepEqual(R.bglPlayable(m, 'X').map(s => m.dice.v[s.d]), [1], 'only the 1 may go first');
+  // a case where a first move kills the second die: X pieces at 1 and 1, O block on X's point 4 (O progress 5, two pieces)
+  m = laid({ X: [1, 1, 9], O: [5, 5, 1] }, 'X', [3, 2]);
+  // the 3 to point 4: closed. The 2 to point 3, then the 3 from 3 to 6: both used. The 2 then the 3 on the other piece (1 -> 4): closed.
+  assert.equal(R.bglMaxUse(m, 'X'), 2);
+  assert.equal(turn(laid({ X: [1, 1, 9], O: [5, 5, 1] }, 'X', [3, 2]), 'X', [[1, 0]]).ok, false, 'the 2 alone, the 3 still playable after it: refused');
+  assert.ok(turn(laid({ X: [1, 1, 9], O: [5, 5, 1] }, 'X', [3, 2]), 'X', [[1, 0], [0, 0]]).ok);
+  // a step that would leave the other die unusable while another order uses both: dice 4 and 2, X at progress 1 and 4 (one
+  // off), two O on X's point 7 (O progress 2): the 2 on the piece at 4 (to 6), then the 4 on the piece at 1 (to 5): both. The
+  // 4 on the piece at 1 first (to 5) then the 2 on the 5 (to 7: closed) or on the 4 (to 6): both too. The 4 on the piece at
+  // 4 (to 8, the last point: not every piece home) then the 2: the piece at 1 to 3: both. Every order uses both here.
+  m = laid({ X: [1, 4, 9], O: [2, 2, 1] }, 'X', [4, 2]);
+  assert.equal(R.bglMaxUse(m, 'X'), 2);
+  assert.equal(R.bglPlayable(m, 'X').length, R.bglMoves(m, 'X').length, 'no step loses a die');
+  // no die usable at all: double 1s, X's last piece at progress 2, two O on X's point 3 (O progress 6): the roll is lost.
+  m = laid({ X: [2, 9, 9], O: [6, 6, 1] }, 'X', [1, 1, 1, 1]);
+  assert.equal(R.bglMaxUse(m, 'X'), 0);
+  void n;
+});
+test('bglite audit: a step that leaves the other die unusable is refused when another order uses both, and the computer, the random mover and the replays never play one', () => {
+  // X at progress 5 (two off), dice 3 and 1, O pieces: two on X's point 7 (O progress 2). The 3 first: 5 -> 8 (the last
+  // point; every piece home -> off: the win). Bearing off with a die counts as every die used: fine.
+  // The constructed trap: X at 1 and 1 (one off), two O on X's point 5 (O progress 4), dice 4 and 1. The 4 first on either
+  // piece lands on 5: closed. The 1 first (1 -> 2), then the 4 (2 -> 6): both. So the 1 must come first.
+  const m = laid({ X: [1, 1, 9], O: [4, 4, 1] }, 'X', [4, 1]);
+  assert.deepEqual(R.bglPlayable(m, 'X').map(s => m.dice.v[s.d]), [1]);
+  // A position where the 1 first kills the 4: X at 4 alone (two off), O blocks on X's 6 (O 3, two) and nothing else:
+  // the 1 first (4 -> 5), then the 4 (5 -> 9: off? every piece home: progress 5 is not home (home is 6..8): lands... 9 > 8
+  // with a piece out of home: not allowed) -> the 4 is lost; the 4 first (4 -> 8: the last point, not home before the
+  // move -> lands on 8), then the 1 (8 -> off: home now): both. So only the 4 may go first.
+  const t = laid({ X: [4, 9, 9], O: [3, 3, 1] }, 'X', [4, 1]);
+  assert.equal(R.bglMaxUse(t, 'X'), 2);
+  assert.deepEqual(R.bglPlayable(t, 'X').map(s => t.dice.v[s.d]), [4], 'the 1 first would lose the 4');
+  assert.equal(E.applyMove(laid({ X: [4, 9, 9], O: [3, 3, 1] }, 'X', [4, 1]), 'X', { steps: [[1, 0]] }, lcg(1)).ok, false, 'the server refuses it');
+  assert.equal(E.applyMove(laid({ X: [4, 9, 9], O: [3, 3, 1] }, 'X', [4, 1]), 'X', { d: 1, k: 0 }, lcg(1)).ok, false, 'an older client\'s single step too');
+  const ok = E.applyMove(laid({ X: [4, 9, 9], O: [3, 3, 1] }, 'X', [4, 1]), 'X', { steps: [[0, 0], [1, 0]] }, lcg(1));
+  assert.ok(ok.ok); assert.equal(ok.outcome, 'win');
+  for (const level of ['easy', 'normal', 'hard']) {
+    const b = A.best(laid({ X: [4, 9, 9], O: [3, 3, 1] }, 'X', [4, 1]), 'X', lcg(3), null, { level, until: null });
+    assert.deepEqual(b.move.steps.map(s => s[0]), [0, 1], `${level}: the 4 first`);
+  }
+  for (let s = 0; s < 20; s++) assert.deepEqual(R.randomMove(laid({ X: [4, 9, 9], O: [3, 3, 1] }, 'X', [4, 1]), 'X', lcg(s)).steps.map(x => x[0]), [0, 1], 'the random mover too');
+});
+test('bglite audit: the turn ends once no legal move remains; a roll no die can use ends it at once', () => {
+  const m = laid({ X: [2, 9, 9], O: [6, 6, 1] }, null, []);
+  m.pos.O = [6, 6, 1];                                               // two O on X's point 3 (O progress 6)
+  const r = E.applyMove(m, 'X', 'roll', fixed(1 / 6 + 0.01));        // a double of 2s: 2 -> 4? (point 4 open) ... use a closed roll below
+  assert.ok(r.ok);
+  const s = laid({ X: [2, 9, 9], O: [6, 6, 1] }, 'X', [1, 1, 1, 1]); // 1s: point 3 closed, nothing else on the board
+  assert.equal(R.bglMoves(s, 'X').length, 0, 'no legal step');
+  const t = laid({ X: [1, 1, 1], O: [1, 1, 1] }, 'X', [2, 3]);
+  const done = turn(t, 'X', [[0, 0], [1, 1]]);
+  assert.ok(done.ok); assert.equal(t.dice, null, 'both used: the turn is over'); assert.notEqual(done.again, true);
+});
+test('bglite audit: thousands of random turns from random positions: every turn the computer, the random mover and the draft make is one the server takes, and it uses as many dice as can be used', () => {
+  const r = lcg(77);
+  let n = 0;
+  for (let g = 0; g < 60; g++) {
+    const m = mini('a' + g);
+    for (let t = 0, p = 'X'; t < 80; t++, p = R.bglOther(p)) {
+      E.applyMove(m, p, 'roll', r);
+      if (!m.dice) continue;
+      const max = R.bglMaxUse(m, p), b = A.best(m, p, r, null, { level: ['easy', 'normal', 'hard'][t % 3], until: () => 0 });
+      const c = JSON.parse(JSON.stringify(m)), res = E.applyMove(c, p, b.move, r);
+      assert.ok(res.ok, 'the computer\'s turn is legal');
+      const won = c.pos[p].every(a => a > c.n);
+      assert.ok(won || b.move.steps.length === max, `as many dice as can be used (${b.move.steps.length} of ${max})`);
+      const rm = R.randomMove(m, p, r);
+      assert.ok(E.applyMove(JSON.parse(JSON.stringify(m)), p, rm, r).ok, 'the random mover\'s too');
+      E.applyMove(m, p, b.move, r); n++;
+      if (m.pos.X.every(a => a > m.n) || m.pos.O.every(a => a > m.n)) break;
+    }
+  }
+  assert.ok(n > 200, String(n));
+});
