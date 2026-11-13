@@ -470,3 +470,15 @@ main.scr.cc { overflow: clip; }
 .cc .timerrow { padding-left: 6px; }
 .cc .timerrow > .seg:first-of-type { flex: 2 1 0; }
 .cc .room .row .btn { white-space: nowrap; font-size: 17px !important; padding-left: 10px; padding-right: 10px; }
+/* every target 44 px or more: the small "?" and the credits' links take a larger hit area, nothing moves */
+.cc button.qbtn.sm { width: 44px; height: 44px; margin: -2px; }
+.cc .rulecard.credits a { display: inline-block; padding: 13px 4px; margin: -13px -4px; }
+@media (max-height: 760px) { .cpuset:has(.adv.open) .vscard { display: none; } }
+.cc .chk span { font: 400 17px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; padding-top: 2px; }
+.cc .chk { gap: 7px; padding-left: 10px; padding-right: 8px; }
+.cc .chk span { white-space: normal; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1; font-size: 16px; overflow-wrap: break-word; }
+.cc .chk .gic { width: 28px; height: 28px; } .cc .chk .gic > svg { width: 17px; height: 17px; }
+.cc .chk { padding-right: 24px; } .cc .chk span { overflow-wrap: normal; }
+@media (max-width: 440px) { .cc .chk .gic { display: none; } }
+.cc .chk span { letter-spacing: .02em; } .cc .chk { padding-right: 20px; }
+@media (max-width: 340px) { .cc .adv .games { grid-template-columns: minmax(0, 1fr); } }

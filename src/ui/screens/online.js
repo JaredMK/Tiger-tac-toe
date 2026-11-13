@@ -40,7 +40,7 @@ export function renderJoin() {
       <div class="field"><span>Opponent</span><div class="namebox">${esc(hostName || 'the host')}</div></div>
       ${sc ? '' : `<div class="field"><span>Timer</span><div class="namebox">${timerLabel(timer)}</div></div>`}
       <div class="adv jgames${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(games.length, pool.length)}</small><i class="chev">${CHEV}</i></button>
-        ${advOpen ? `<div class="games">${list.map(t => `<div class="chk ro${on.has(t) ? '' : ' off'}"><input type="checkbox" disabled${on.has(t) ? ' checked' : ''} aria-label="${esc(INFO[t].name)}: ${on.has(t) ? 'on' : 'off'}">${gameIcon(t)}<span>${INFO[t].name}</span></div>`).join('')}</div>` : ''}</div>
+        ${advOpen ? `<div class="games">${list.map(t => `<div class="chk ro${on.has(t) ? '' : ' off'}"><input type="checkbox" disabled${on.has(t) ? ' checked' : ''} aria-label="${esc(INFO[t].name)}: ${on.has(t) ? 'on' : 'off'}">${gameIcon(t)}<span>${INFO[t].name.replace(/\//g, '/<wbr>')}</span></div>`).join('')}</div>` : ''}</div>
     </div>` : '';
   const status = net.status === 'error' ? `<div class="warn">${esc(net.msg)}</div>`
     : seated && room ? `${info}<div class="status ok">Waiting for <b>${esc(hostName || 'the host')}</b> to start…</div>`
