@@ -127,3 +127,10 @@ test('type sized to fit: shrunk in steps of 2 until it fits, never below the min
   assert.equal(fitSize(measure, 'Somebody with a very long name beat somebody else', 980, 66), 32);
   assert.equal(fitSize(measure, 'x'.repeat(400), 980, 66, 30), 30, 'the floor');
 });
+
+test('the card is Comic Chaos: Bangers for the headline, Comic Neue for small text, an ink-outlined panel, bursts, no rematch code', async () => {
+  const fs = await import('node:fs');
+  const src = fs.readFileSync(new URL('../../src/ui/sharecard.js', import.meta.url), 'utf8');
+  assert.match(src, /'Bangers'/); assert.match(src, /'Comic Neue'/); assert.match(src, /burstPath/); assert.match(src, /halftone/);
+  assert.doesNotMatch(src, /rematch\s*code|\?room=/i);
+});

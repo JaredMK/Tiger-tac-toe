@@ -1,4 +1,4 @@
-// The growth loop's result card: a match's result as a square picture (1080 x 1080: the board is square, and a square
+// The growth loop's result card (Comic Chaos, December 2026: an ink-outlined comic panel, the headline on a burst, the # board with comic claim bursts, X red and O yellow, Bangers and Comic Neue): a match's result as a square picture (1080 x 1080: the board is square, and a square
 // fills a chat bubble, a feed or a story without cropping; 1200 x 630 is the link preview's shape, not a picture's) with
 // the final board, both names, the result and the site's address (no rematch code: November 2026). The win screen's Share result makes it on a canvas and hands it to the share sheet as a PNG
 // (net/platform.js shareFile); where there is none it is saved and its text copied. The text and the layout are worked
@@ -14,7 +14,7 @@ import { render } from './render.js';
 
 export const CARD = 1080;                          // the picture's side, in pixels
 export const CARD_FILE = 'tic-tac-chaos-result.png';
-const LG = "'Luckiest Guy', 'Arial Black', sans-serif", PH = "'Patrick Hand', 'Comic Sans MS', cursive";
+const LG = "'Bangers', 'Luckiest Guy', 'Arial Black', sans-serif", PH = "'Comic Neue', 'Comic Sans MS', cursive";   // (Comic Chaos: Bangers for the headline, Comic Neue for small text)
 
 // ----- what the card says (pure) -----
 // The side this phone played: ours online, the person's against the computer, none on a shared phone.
@@ -79,11 +79,12 @@ export function palette() {
 
 // ----- the layout (one square: every box in card pixels) -----
 export const LAYOUT = {
-  logoY: 116, logoSize: 84,
-  titleY: 230, titleSize: 66, titleW: 980,
-  board: { top: 300, cell: 174, gap: 14 },     // 174 * 3 + 14 * 2 = 550 wide, centred
-  namesY: 898, nameSize: 44, nameW: 330, toon: 66,
-  tagY: 1016, tagH: 66, tagSize: 38,
+  frame: { inset: 22, line: 10 },                 // the comic panel's ink outline
+  logoY: 112, logoSize: 84,
+  burst: { y: 150, h: 190, w: 900 }, titleY: 262, titleSize: 76, titleW: 640,
+  board: { top: 372, cell: 156, gap: 12 },        // 156 * 3 + 12 * 2 = 492 wide, in a white panel, centred
+  namesY: 942, nameSize: 46, nameW: 330, toon: 66,
+  tagY: 1008, tagH: 58, tagSize: 36,
 };
 
 // ----- the drawing (the browser only) -----
@@ -134,53 +135,82 @@ export function clear(col) {
   const m = c.match(/rgba?\(([^)]+)\)/); if (m) { const v = m[1].split(/[ ,/]+/).filter(Boolean).slice(0, 3); return `rgba(${v.join(',')},0)`; }
   return 'rgba(255,255,255,0)';
 }
+// A comic burst (spikes) about (x, y): the same 12-point shape as the page's (fx.js burstSvg), pseudo-random by seed.
+function burstPath(ctx, x, y, rx, ry, seed) {
+  let sd = seed * 7919 + 13; const r = () => { sd = (sd * 16807) % 2147483647; return (sd - 1) / 2147483646; };
+  const n = 12; ctx.beginPath();
+  for (let k = 0; k < n * 2; k++) {
+    const a = k * Math.PI / n - Math.PI / 2, f = k % 2 === 0 ? 0.88 + r() * 0.12 : 0.62 + r() * 0.08;
+    const px = x + Math.cos(a) * rx * f, py = y + Math.sin(a) * ry * f;
+    if (k) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+  }
+  ctx.closePath();
+}
+// A light halftone fading out from a corner (decoration: dots, never a pattern a tap could mean).
+function halftone(ctx, x0, y0, dx, dy, pal) {
+  ctx.save(); ctx.fillStyle = pal.ink; ctx.globalAlpha = 0.13;
+  for (let i = 0; i < 16; i++) for (let j = 0; j < 16; j++) {
+    const fade = 1 - (i + j) / 22; if (fade <= 0) continue;
+    ctx.beginPath(); ctx.arc(x0 + dx * i * 16, y0 + dy * j * 16, 6.5 * fade, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
 // The whole card on a 2d context (CARD x CARD): d from cardData, pal from palette, imgs the two characters' Images (or null).
+// Comic Chaos: a panel with a thick ink outline on cream paper, a light halftone, the headline on a burst, the # board
+// on a white panel with a comic burst behind each claimed square, both names with their characters, the logo and the link.
 export function paintCard(ctx, d, pal, imgs) {
   const L = LAYOUT, W = CARD, cx = W / 2;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = pal.bg; ctx.fillRect(0, 0, W, W);
-  // the rays behind everything, as on the share image
-  ctx.save(); ctx.translate(cx, L.board.top + 275); ctx.fillStyle = pal.o; ctx.globalAlpha = 0.16;
-  for (let k = 0; k < 24; k++) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 1200, k * Math.PI / 12, k * Math.PI / 12 + Math.PI / 24); ctx.closePath(); ctx.fill(); }
+  ctx.fillStyle = pal.ink; ctx.fillRect(0, 0, W, W);                          // (the page the panel sits on)
+  const f = L.frame.inset, fw = W - 2 * f;
+  ctx.fillStyle = pal.bg; ctx.fillRect(f, f, fw, fw);
+  ctx.save(); ctx.beginPath(); ctx.rect(f, f, fw, fw); ctx.clip();
+  halftone(ctx, f + 6, f + 6, 1, 1, pal); halftone(ctx, W - f - 6, W - f - 6, -1, -1, pal);
   ctx.restore();
+  ctx.lineWidth = L.frame.line; ctx.strokeStyle = pal.ink; ctx.lineJoin = 'miter'; ctx.strokeRect(f, f, fw, fw);
   // TIC TAC CHAOS
   outlined(ctx, 'TIC TAC CHAOS', cx, L.logoY, L.logoSize, pal.o, pal, 14, [4, 6]);
-  // the result
-  const tSize = fitSize(measurer(ctx, LG), d.title, L.titleW, L.titleSize, 30);
-  ctx.font = font(LG, tSize); ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = pal.ink;
-  ctx.fillText(d.title, cx, L.titleY);
-  // the board
-  // the board: the # (ui/hash.js, as on the page), each claim a soft glow in its space with its character over it, the
-  // winning line's spaces a stronger glow in the winner's colour
+  // the headline on a burst: the winner's colour (a draw: white)
+  const b = L.burst, bc = d.winner === 'X' ? pal.x : d.winner === 'O' ? pal.o : '#ffffff', by = b.y + b.h / 2;
+  ctx.save(); ctx.lineJoin = 'round';
+  ctx.fillStyle = pal.ink; burstPath(ctx, cx + 8, by + 10, b.w / 2, b.h / 2, 3); ctx.fill();
+  ctx.fillStyle = bc; burstPath(ctx, cx, by, b.w / 2, b.h / 2, 3); ctx.fill(); ctx.lineWidth = 7; ctx.strokeStyle = pal.ink; ctx.stroke();
+  ctx.restore();
+  const tSize = fitSize(measurer(ctx, LG), d.title, L.titleW, L.titleSize, 34);
+  outlined(ctx, d.title.toUpperCase(), cx, L.titleY, tSize, '#ffffff', pal, 12, [3, 5]);
+  // the board: a white comic panel, each claimed square a small burst in its colour under its character, the winning
+  // line's bursts in the full colour; the # (ui/hash.js, as on the page) over them
   const { cell, gap, top } = L.board, size = cell * 3 + gap * 2, left = (W - size) / 2, sp = size / 3;
-  const glow = (cxp, cyp, r, col, a) => { const g = ctx.createRadialGradient(cxp, cyp, 0, cxp, cyp, r); g.addColorStop(0, col); g.addColorStop(0.62, col); g.addColorStop(1, clear(col)); ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cxp, cyp, r, 0, Math.PI * 2); ctx.fill(); ctx.restore(); };
+  box(ctx, left - 28, top - 26, size + 56, size + 52, [6, 6, 6, 6], '#ffffff', pal, 8);
   for (let i = 0; i < 9; i++) {
     const own = d.owners[i]; if (!own) continue;
-    const r = Math.floor(i / 3), c = i % 3, mx = left + c * sp + sp / 2, my = top + r * sp + sp / 2;
-    glow(mx, my, sp * 0.44, own === 'X' ? pal.xs : pal.os, 1);
-    if (d.winLine.includes(i)) glow(mx, my, sp * 0.46, own === 'X' ? pal.x : pal.o, 0.35);
+    const r = Math.floor(i / 3), c = i % 3, mx = left + c * sp + sp / 2, my = top + r * sp + sp / 2, win = d.winLine.includes(i);
+    ctx.save(); ctx.lineJoin = 'round';
+    ctx.fillStyle = win ? (own === 'X' ? pal.x : pal.o) : (own === 'X' ? pal.xs : pal.os);
+    burstPath(ctx, mx, my, sp * 0.5, sp * 0.5, i + 1); ctx.fill(); ctx.lineWidth = win ? 5 : 3; ctx.strokeStyle = pal.ink; ctx.stroke();
+    ctx.restore();
   }
-  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = pal.ink; ctx.lineWidth = 15;
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = pal.ink; ctx.lineWidth = 14;
   hashPath(ctx, left, top, size); ctx.stroke(); ctx.restore();
   for (let i = 0; i < 9; i++) {
     const own = d.owners[i]; if (!own) continue;
     const r = Math.floor(i / 3), c = i % 3, x = left + c * sp, y = top + r * sp;
-    mark(ctx, own, imgs && imgs[own], x + sp * 0.14, y + sp * 0.14, sp * 0.72, pal);
+    mark(ctx, own, imgs && imgs[own], x + sp * 0.17, y + sp * 0.17, sp * 0.66, pal);
   }
   // both names, each beside their character
   const nm = measurer(ctx, LG), tn = L.toon;
   const side = (p, right) => {
     const s = fitSize(nm, d.names[p], L.nameW, L.nameSize, 26);
     ctx.font = font(LG, s); ctx.fillStyle = p === 'X' ? pal.x : pal.o; ctx.textBaseline = 'middle'; ctx.lineWidth = 8; ctx.strokeStyle = pal.ink; ctx.lineJoin = 'round';
-    const wN = ctx.measureText(d.names[p]).width, x0 = right ? W - 120 - tn - 14 - wN : 120 + tn + 14;
+    const wN = ctx.measureText(d.names[p]).width, x0 = right ? W - 100 - tn - 14 - wN : 100 + tn + 14;
     ctx.textAlign = 'left'; ctx.strokeText(d.names[p], x0, L.namesY); ctx.fillText(d.names[p], x0, L.namesY);
-    mark(ctx, p, imgs && imgs[p], right ? W - 120 - tn : 120, L.namesY - tn / 2, tn, pal);
+    mark(ctx, p, imgs && imgs[p], right ? W - 100 - tn : 100, L.namesY - tn / 2, tn, pal);
   };
   side('X', false); side('O', true);
-  ctx.font = font(PH, 40); ctx.fillStyle = pal.muted; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('vs', cx, L.namesY);
+  ctx.font = `bold ${40}px ${PH}`; ctx.fillStyle = pal.ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('VS', cx, L.namesY);
   // the site's address, in a tag
-  ctx.font = font(PH, L.tagSize); const tw = ctx.measureText(d.host).width + 72;
-  box(ctx, cx - tw / 2, L.tagY - L.tagH / 2, tw, L.tagH, [24, 18, 22, 16], pal.paper, pal);
+  ctx.font = `bold ${L.tagSize}px ${PH}`; const tw = ctx.measureText(d.host).width + 72;
+  box(ctx, cx - tw / 2, L.tagY - L.tagH / 2, tw, L.tagH, [4, 4, 4, 4], pal.o, pal, 6);
   ctx.fillStyle = pal.ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(d.host, cx, L.tagY + 2);
 }
 const wait = ms => new Promise(res => setTimeout(res, ms));
@@ -188,7 +218,7 @@ const wait = ms => new Promise(res => setTimeout(res, ms));
 function fontsReady() {
   try {
     if (!document.fonts || !document.fonts.load) return Promise.resolve();
-    return Promise.all([document.fonts.load(`${LAYOUT.logoSize}px 'Luckiest Guy'`), document.fonts.load(`${LAYOUT.tagSize}px 'Patrick Hand'`)]).catch(() => {});
+    return Promise.all([document.fonts.load(`${LAYOUT.logoSize}px 'Bangers'`), document.fonts.load(`bold ${LAYOUT.tagSize}px 'Comic Neue'`)]).catch(() => {});
   } catch (e) { return Promise.resolve(); }
 }
 function toonImage(p, pal) {
