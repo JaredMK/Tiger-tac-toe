@@ -515,3 +515,30 @@ main.scr.cc { overflow: clip; }
 .settings .build { margin: 14px 0 0; text-align: center; font: 700 12px/1.2 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--muted); opacity: 1; letter-spacing: .04em; }
 .cc .title .ttop { font-family: 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .06em; font-size: clamp(46px, 8.2vh, 60px); }   /* the logo's TIC TAC in the display face, as CHAOS! and the link preview */
 .hdr:not(.mclock) .tside .nm { grid-row: 1 / span 2; }   /* no match clock: the name alone, centred beside its character */
+
+/* ---------- The live layer (December 2026, net/live.js) ----------
+   The square the other side has open on their turn glows in their colour with a live dot ("[name] is here": flat
+   information, never a panel); the waiting bar under the board carries Watch (tappable: a small skewed panel, 44px). */
+.board .sq.livesq::before { inset: 5%; border-radius: 14px; opacity: 1; box-shadow: 0 0 0 3px var(--ink), 0 0 0 6px var(--lv, var(--x)); animation: cclive 1.4s ease-in-out infinite; }
+.board .sq.live-X { --lv: var(--x); } .board .sq.live-O { --lv: var(--o); }
+@keyframes cclive { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+.live-lab { position: absolute; left: 50%; transform: translateX(-50%); bottom: 7%; max-width: 94%; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 4px; pointer-events: none;
+  border: 2.5px solid var(--ink); background: #fff; padding: 3px 4px 1px; font: 400 max(16px, 13cqw)/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; padding: 3px 7px 1px; color: var(--ink);
+  white-space: nowrap; }
+.live-lab .ldot { flex: none; width: .55em; height: .55em; border-radius: 50%; background: #e5432a; box-shadow: 0 0 0 2px var(--ink); animation: ldot 1s ease-in-out infinite; }
+@keyframes ldot { 50% { opacity: .25; } }
+.foot .wband.haswatch { padding-right: 4px; }
+.foot .wband .wwatch { pointer-events: auto; flex: none; margin-left: auto; min-width: 44px; height: 34px; min-height: 0; display: flex; align-items: center; gap: 5px; padding: 3px 10px 0;
+  border: 2.5px solid var(--ink); border-radius: 2px; background: var(--o); color: var(--ink); box-shadow: 3px 3px 0 var(--ink); transform: skew(var(--cc-skew));
+  font: 400 17px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; cursor: pointer; position: relative; }
+.foot .wband .wwatch::after { content: ''; position: absolute; inset: -6px -4px; }   /* (a 44px hit area round its 34px face) */
+.foot .wband .wwatch:active { transform: skew(var(--cc-skew)) translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.foot .wband .wwatch .weye { width: 20px; height: 14px; color: var(--ink); margin-top: -3px; }
+@media (prefers-reduced-motion: reduce) { .board .sq.livesq::before, .live-lab .ldot { animation: none; } }
+/* the host's Start, at once (net/room.js startShuffle): the two marks swap places on each side while the sides are drawn */
+.vsintro.shuffle { cursor: default; }
+.vsintro .vsflip { position: relative; display: block; width: 64px; height: 64px; }
+.vsintro .vsflip > * { position: absolute; inset: 0; width: 64px; height: 64px; animation: vsflip .5s steps(1, end) infinite; }
+.vsintro .vsflip > :last-child { animation-delay: .25s; opacity: 0; }
+@keyframes vsflip { 0% { opacity: 1; } 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .vsintro .vsflip > * { animation: none; } .vsintro .vsflip > :last-child { display: none; } }

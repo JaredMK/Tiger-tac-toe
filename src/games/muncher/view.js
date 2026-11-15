@@ -1,4 +1,5 @@
 // Muncher: the screen, the miniature, the move's words and sounds, and the inputs.
+import { liveRun } from '../../net/live.js';
 import { DIRS, MUN, MUN_VIEW, cellAt, layoutOf, munAte, munCell, munGh, munInput, munMove, munMs, munPos, munRawMs, munScore, munSimScore, munStart, munStep, munTarget, munUnlog, munVer } from './rules.js';
 import { SND, ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
@@ -72,6 +73,7 @@ function munFrame(now) {
     while (fd.acc >= STEP - 1e-9 && !sim.end) { fd.acc -= STEP; if (fd.want >= 0) munInput(sim, fd.want); munLoud(sim); munNote(sim, now); }
     if (sim.end) { fd.phase = 'end'; fd.end = sim.end; fd.endAt = now; fd.ptr = null; }
     munHud(fd);
+    liveRun(fd.sq, () => munMove(fd.sim));                                        // (the run so far, for the other phone watching: net/live.js)
   } else if (now - fd.endAt >= MUN_END) { munFinish(true); return; }
   const cv = app.querySelector('canvas[data-mun="cv"]');
   if (cv) munDraw(cv, munDraftView(fd, now), now);

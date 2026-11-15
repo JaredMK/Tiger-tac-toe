@@ -7,6 +7,7 @@
 // is in flashMs, so the server reckons the playback), then the result; the phone that flew a run has seen
 // it already, so it takes its own move's flash straight to the result (skipFlash). While a run is on, the
 // page keeps a copy of it (SW_KEY): after a reload or a send that never arrived, it goes in from where it stood.
+import { liveRun } from '../../net/live.js';
 import { SW, swClampX, swarmGoal, swarmMs, swarmRaw, swarmResult, swarmStart, swarmStep } from './rules.js';
 import { fingLog, fingRecorder, fingUnlog } from '../shared/finger.js';
 import { RUNT } from '../shared/runner.js';
@@ -75,6 +76,7 @@ function swFrame(now) {
     if (fd.sim.end) swEnd(fd, fd.sim.end, now);
     if (now - fd.keptAt > 500) swKeep(fd, false);
     swHud(fd);
+    liveRun(fd.sq, () => swMove(fd));                                             // (the run so far, for the other phone watching: net/live.js)
   } else if (now - fd.endAt >= SW_END) { swFinish(); return; }
   const cv = app.querySelector('canvas[data-sw="cv"]');
   if (cv) swDraw(cv, swDraftView(fd, now), now);

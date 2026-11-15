@@ -1,5 +1,6 @@
 // The runner framework (Dash, Lane Rush, Flap, Chopper): the run in real time, its inputs, the canvas
 // and the result bars.
+import { liveRun } from '../net/live.js';
 import { RUN, RUNT, RUN_TYPES, runCourse, runJump, runLane, runRelease, runLimit, runReplayTo, runReplayer, runResult, runStart, runStep, runStepOf, runUnlog, setRunConfig } from '../games/shared/runner.js';
 import { drawCave } from '../games/chopper/view.js';
 import { drawDash } from '../games/dash/view.js';
@@ -128,6 +129,7 @@ function runFrame(now) {
     runStep(rd.sim, dt);
     for (const s of runEvents(rd.sim, rd.ev)) SND.play(s);                        // a landing, an obstacle cleared: each once, as it happens
     runHud(rd.sim, rd.p, Infinity);
+    liveRun(rd.sq, () => runResult(rd.sim, true));                               // (the run so far, for the other phone watching: net/live.js)
     if (rd.sim.t >= 1.6 && !rd.hintGone) { rd.hintGone = true; const h = app.querySelector('.rhint'); if (h) h.remove(); }
     const left = clockLeft();
     if (rd.sim.crash) { rd.phase = 'crash'; rd.at = now; runRotor(false); SND.play('crash'); haptic('error'); }   // (this phone's own run: its buzz with its sound)

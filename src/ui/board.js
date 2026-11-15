@@ -2,6 +2,7 @@
 import { hashSvg } from './hash.js';
 import { isRace, raceView } from '../core/race.js';
 import { playerName } from '../core/match.js';
+import { liveSquare } from '../net/live.js';
 import { fullState } from '../core/records.js';
 import { ANIM, dur, durRate } from '../core/timer.js';
 import { INFO, viewOf } from '../games/index.js';
@@ -28,6 +29,7 @@ import { cpuTurn } from './turns.js';
 // when the wait starts and out when it ends, timed from that moment so a redraw does not restart it. Super Chaos shows
 // the same band over a mini-game where the player waits in their square (a Mini Golf shot or a Bump spin locked in:
 // ui/mini.js).
+const EYE = '<svg class="weye" viewBox="0 0 24 16" aria-hidden="true"><path d="M2 8c3-5 7-7 10-7s7 2 10 7c-3 5-7 7-10 7S5 13 2 8z" fill="#fff" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="8" r="3.6" fill="currentColor"/></svg>';
 let band = null;                                   // { key, side, txt, at, out }: the band on show, or fading out
 export function waitBand(spot) {
   const sc = state.sc, live = !state.winner && !state.flash && !state.done;
@@ -42,7 +44,8 @@ export function waitBand(spot) {
   else if (band && !band.out) { band.out = true; band.at = now; }
   if (!band || (band.out && now - band.at > 400)) return { on: false, html: '' };
   const left = !band.out ? clockLeft() : null;
-  const html = `<div class="wband ${band.side}${band.out ? ' out' : ''}" role="status" aria-live="polite"${fxAttr(band.at)}><span class="wtoon">${toon(band.side)}</span><span class="wtxt">${band.txt}</span>${left != null ? `<span class="wleft">${fmtClock(left)}</span>` : ''}</div>`;
+  const lv = !sc && !band.out ? liveSquare() : null;            // (the square they have open: Watch takes this phone there, read-only, net/live.js)
+  const html = `<div class="wband ${band.side}${band.out ? ' out' : ''}${lv != null ? ' haswatch' : ''}" role="status" aria-live="polite"${fxAttr(band.at)}><span class="wtoon">${toon(band.side)}</span><span class="wtxt">${band.txt}</span>${left != null ? `<span class="wleft">${fmtClock(left)}</span>` : ''}${lv != null ? `<button class="wwatch" data-act="watch" aria-label="Watch ${esc(playerName(state, band.side))} play">${EYE}Watch</button>` : ''}</div>`;
   return { on: !band.out, html };
 }
 // The squares as they ended, every secret included (online, the unclaimed squares' secrets come from the room).
@@ -62,7 +65,7 @@ const HASH_SVG = hashSvg('hash', 7);   // the board's #: drawn over the spaces, 
 export const DRAW_MS = 1150;
 export const DRAW_SHUFFLE = [620, 760];          // the old game flicks away, the new one deals in (ms after the stamp starts)
 export function renderBoard(review) {
-  const spot = review ? null : state.spot;
+  const spot = review ? null : state.spot, liveAt = review ? null : liveSquare();
   // A fresh claim stamps in once, from the moment it landed on the board (stampFx). A re-render while it
   // plays carries it on from there; after that the owner's mark simply sits there. Nothing replays it.
   const stampAt = !review && state.stamp != null && state.squares[state.stamp] && state.squares[state.stamp].owner ? fxAt('stamp', state.stampId) : null;
@@ -85,6 +88,8 @@ export function renderBoard(review) {
     if (sq.owner) cls.push('own-' + sq.owner);
     else if (!lastP && i === state.lastSquare && state.lastBy && !(spot && spot.square === i)) { cls.push('last-' + state.lastBy); if (!review) lastCap = `<span class="lastcap ${state.lastBy}" aria-hidden="true">${toon(state.lastBy)}</span>`; }   // (Comic Chaos: their character in a disc on the square's corner; no text, so nothing it can overlap)
     if (spot && spot.square === i) cls.push('spot', 'spot-' + spot.by);
+    const lvHere = !review && !spot && liveAt === i;                 // the other side has this square open on their turn (net/live.js): it glows in their colour, live
+    if (lvHere) cls.push('livesq', 'live-' + state.turn);
     const info = INFO[sq.mini.type];
     const drew = i === drawI && !sq.owner && !vd && !(spot && spot.square === i);   // just drawn and reset: its Draw stamp and shuffle (not under a glow: the next move's square)
     if (drew) cls.push('drawfx');
@@ -96,6 +101,7 @@ export function renderBoard(review) {
       + (lastP && (lastP.X === i || lastP.O === i) ? `<div class="lpbs" aria-hidden="true">${['X', 'O'].filter(p => lastP[p] === i).map(p => `<i class="lpb ${p}">${p}</i>`).join('')}</div>` : '')   // (both players' badges at once, in a fixed corner: nothing moves)
       + (vd ? vd.html : '')
       + lastCap
+      + (lvHere ? `<div class="live-lab ${state.turn}" role="status" aria-label="${esc(playerName(state, state.turn))} is playing here"><i class="ldot" aria-hidden="true"></i>Live</div>` : '')
       + (spot && spot.square === i ? `<div class="spot-lab ${spot.by}${spot.html ? ' sc' : ''}" role="status">${spot.html ? spot.html : `${cpuPlays(spot.by) ? CPU_ICON : ''}${esc(spot.label)}`}</div>` : '');
     const lastTxt = lastP ? ['X', 'O'].filter(p => lastP[p] === i).map(p => `, ${esc(playerName(state, p))} played here last`).join('') : '';
     const label = (sq.owner ? `Square ${i + 1}: ${info.name}, won by ${esc(playerName(state, sq.owner))}. Tap to view` : `Square ${i + 1}: ${info.name}${drew ? ', a draw: a new game' : ''}`) + lastTxt;

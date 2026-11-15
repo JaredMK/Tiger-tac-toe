@@ -20,9 +20,10 @@ import { reactCooling, rx, sendReact } from '../net/reactions.js';
 import { scMode, scPicked, setMode, visibleTypes } from '../net/releases.js';
 import {
   dbSetup, hostRoom, isHost, joinCode, joinName, joinRoom, leaveLobby, leaveLoses,
-  leaveRoom, lockMine, mySide, pinned, remoteTurn, quitMatch, rematchCancel, rematchOnline, room, setJoinCode, setJoinName,
+  applyMatch, leaveRoom, lockMine, presenting, mySide, pinned, remoteTurn, quitMatch, rematchCancel, rematchOnline, room, setJoinCode, setJoinName,
   setNet, shareRoom, copyInvite, startOnline, validCode
 } from '../net/room.js';
+import { liveSquare, liveUnwatch, liveWatch, setWatch } from '../net/live.js';
 import { reportLocal, trackEnd, trackStart } from '../net/tracking.js';
 import {
   RNG, advOpen, app, commit, cpuPlan, cpuTimer, flashReady, menuNote, menuOpen, menuStep, save, setAdvOpen,
@@ -158,7 +159,7 @@ export function init() {
     if (act === 'pause-leave') { quitMatch(); return; }
     if (act === 'pause-report') { openReport(); return; }                            // (a dialog of its own over the menu: ui/report.js)
     if (menuOpen) return;                         // the menu is up: nothing underneath reacts
-    if (state.flash && !free.includes(act)) {         // everything else waits for the result to clear...
+    if (state.flash && !state.flash.live && !free.includes(act)) {         // everything else waits for the result to clear... (the other side's attempt streamed here, net/live.js, is not a result: the watcher's own taps go on)
       if (!ownResult() || Date.now() < flashReady) return;
       dismissFlash();                                 // ...except your own, once its animation is over and it can be read: a tap goes on at once
       if (state.flash || state.screen !== 'mini') return;   // (the turn passed: the tap took you back to the board; a result kept on show (Find the Pair's cards): nothing more)
@@ -176,12 +177,16 @@ export function init() {
       if (state.practice && i !== PRACTICE_SQ) { SND.play('error'); return; }   // (a practice match: the centre square alone)
       if (lockMine() && state.lock !== i) { SND.play('error'); return; }
       state.screen = 'mini'; state.zoom = i; state.draft = ''; state.sel = []; state.notice = null; setHpSel(null); SND.play('tap'); haptic('tap');   // (a plain tap: no whoosh into the square; the app buzzes once with it)
+      if (remoteTurn() && (liveSquare() === i || state.lock === i)) { setWatch({ sq: i }); if (room && !presenting()) applyMatch(room); }   // the square the other side is playing, opened: watched (net/live.js), its turn so far played in it
       if (!state.online) { state.pick = null; state.pickSq = null; }
       const sq = state.squares[i];                // online, a game with time of its own (60 s): opening it gives the turn that time and holds it there
       if (isMM() && !state.sc && state.turn === mySide() && !sq.owner && turnSecs(sq.mini.type) && turnOpen(state, i)) dbOpen(i);
       commit();
+    } else if (act === 'watch') {                // the board's waiting bar: Watch, the other side's square, live and read-only (net/live.js)
+      if (liveWatch()) { SND.play('tap'); haptic('tap'); if (room && !presenting()) applyMatch(room); commit(); }
     } else if (act === 'back') {
       if (lockMine() || pinned()) return;
+      liveUnwatch();
       if (state.done || state.practice) return;                  // (a practice match never leaves its square)
       state.screen = 'board'; state.zoom = null; state.draft = ''; state.sel = []; state.notice = null; state.stamp = null;
       if (!state.online) { state.pick = null; state.pickSq = null; }

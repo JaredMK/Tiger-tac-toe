@@ -195,7 +195,7 @@ export function holdOf(f) {
 // and then clears as ever (and a tap once it has landed takes it away at once).
 export function skipFlash() {
   const f = state.flash;
-  if (!f || fxAt('move', f) == null) return;
+  if (!f || f.live || fxAt('move', f) == null) return;   // (the other side's attempt streamed here: theirs, still going)
   const sp = (fx.move && fx.move.rate) || 1, hr = Math.max(sp, durRate('ui'));
   SND.cut(f); cutHaptics();
   startFx('move', f, performance.now() - animMs(f) * Math.max(1, sp));   // (past its end at any speed)
@@ -224,6 +224,7 @@ export function dismissFlash() {
   clearTimeout(flashTimer); setFlashTimer(null);
   const f = state.flash;
   if (!f) return;
+  if (f.live) { state.flash = null; render(); return; }   // (the other side's attempt streamed here, net/live.js: let go, nothing to finish)
   if (rep && rep.f === f) repStop();                 // the replay is over with its move
   const hold = f.type === 'memory' && f.kind === 'move' && !state.winner;   // let the two cards turn back over first
   const from = { turn: state.turn, mini: state.screen === 'mini' }, quiet = !!(fx.move && fx.move.key === f && fx.move.quiet);

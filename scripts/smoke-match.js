@@ -72,7 +72,7 @@ async function call(idToken, name, data) {
   } finally {                                            // nothing left behind: the room, the match, its presence and log, the seats
     const up = { [`active/${hostUid}`]: null, [`active/${guestUid}`]: null };
     if (code) { up[`rooms/${code}`] = null; up[`presence/${code}`] = null; }
-    if (game) for (const p of [`games/${game}`, `gpresence/${game}`, `matchLogs/m${game}`, `matchLogIndex/m${game}`, `matchLogs/${game}`, `matchLogIndex/${game}`]) up[p] = null;
+    if (game) for (const p of [`games/${game}`, `gpresence/${game}`, `glive/${game}`, `matchLogs/m${game}`, `matchLogIndex/m${game}`, `matchLogs/${game}`, `matchLogIndex/${game}`]) up[p] = null;
     await db.ref().update(up).catch(e => console.log('::warning::smoke match: could not clean up: ' + e.message));
   }
   console.log(`Call timings (the first call to each function is its cold start): ${timings.join(', ')}`);

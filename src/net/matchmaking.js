@@ -2,6 +2,7 @@
 import { SND } from '../audio/sound.js';
 import { acct, connectQuiet, loggedIn, needAccount } from './accounts.js';
 import { call, fb } from './connect.js';
+import { liveListen } from './live.js';
 import { listenReacts } from './reactions.js';
 import {
   applyMatch, awayNote, leaveRoom, moveTimer, moveWait, net, pendingRoom, presUnsub, presence, presenceUp,
@@ -167,6 +168,7 @@ export function listenGame(id) {
   }, () => {});
   setPresUnsub(fb.m.onValue(fb.m.ref(fb.db, `gpresence/${id}`), s => { setPresence(s.val()); noteNet(); if (state.online) render(); }));
   listenReacts(id);
+  liveListen(id);                                                // the other side's turn as it happens (net/live.js)
 }
 // A match holding a mini-game this client lacks (core/client.js lackedTypes: unknown to it, or newer than it), which only a
 // client older than it was can meet (the app reinstalled older, an old page from a cache), on every way in (Find Match's

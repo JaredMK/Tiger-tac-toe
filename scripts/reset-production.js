@@ -17,7 +17,7 @@ const zlib = require('node:zlib');
 const crypto = require('node:crypto');
 
 const START_RATING = 1200;                                              // (functions/serverRules.js START_RATING)
-const DELETE = ['rooms', 'games', 'gpresence', 'presence', 'reacts', 'active', 'queue', 'botGames', 'history', 'localHistory',
+const DELETE = ['rooms', 'games', 'gpresence', 'glive', 'presence', 'reacts', 'active', 'queue', 'botGames', 'history', 'localHistory',
   'matchLogs', 'matchLogIndex', 'matchLogRoom', 'stats', 'statsSeen', 'localStats', 'oppStats', 'leaderboard', 'botStats',
   'alertLog', 'alertStats', 'alertState', 'botsLock', 'devices', 'devlog', 'lastSeen', 'reports', 'rate'];
 const KEEP = ['users', 'profiles', 'usernames', 'admin', 'config', 'releases', 'features', 'bots', 'meta', 'review', 'rate', 'prefs', 'templates'];   // (prefs: a player's own settings, the Animation choice; templates: the admin's game templates)

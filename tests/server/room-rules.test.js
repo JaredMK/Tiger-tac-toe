@@ -151,6 +151,13 @@ test('room rules: presence has a shape, is the seat\'s own, and is read by the t
   await denied(host.write('gpresence/g1/X', { online: 1, at: t }), 'game presence out of shape');
   await denied(host.write('gpresence/g1/X', { online: true, extra: 'x' }), 'game presence with more in it');
   await denied(stranger.read('gpresence/g1'), "a stranger reading a game's presence");
+  // the live layer (December 2026, net/live.js): the square a player has open and their run as it goes; each seat writes its own, the two players read
+  await host.write('glive/g1/X', { sq: 4, at: t, n: 3, mv: '{"log":"a"}', t0: t });
+  await host.write('glive/g1/X', { sq: -1, at: t });
+  await denied(host.write('glive/g1/O', { sq: 4, at: t }), "the other side's live square");
+  await denied(host.write('glive/g1/X', { sq: 9, at: t }), 'a live square off the board');
+  await denied(host.write('glive/g1/X', { sq: 4, at: t, extra: 1 }), 'the live node with more in it');
+  await denied(stranger.read('glive/g1'), "a stranger reading a game's live layer");
 });
 test('match rules: a game\'s sides (games/{id}/sides/{side}: a hand, a rack, a race\'s own part) are each that seat\'s alone to read; nobody but the server writes any of the match', async () => {
   const x = client('uid-sx'), o = client('uid-so'), stranger = client('uid-ss');

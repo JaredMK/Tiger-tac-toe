@@ -1,5 +1,6 @@
 // The finger-game framework (Sky Hop, Scoop Stack, Pinball): Start, the inputs from anywhere on the
 // screen, the attempt, replays and the shared table.
+import { liveRun } from '../net/live.js';
 import { attStart } from '../games/shared/attention.js';
 import { FING, FINGER_TYPES, HOP, fingAt, fingGoal, fingLog, fingMs, fingRaw, fingRecorder, fingUnlog } from '../games/shared/finger.js';
 import { PHYSICS, physicsReady } from '../games/shared/physics.js';
@@ -129,6 +130,7 @@ export function fingFrame(now) {
     if (now - fd.keptAt > 500) fingKeep(fd, false);
     if (!fd.hintGone && now - fd.at > 1800) { fd.hintGone = true; const h = app.querySelector('.fhint'); if (h) h.remove(); }
     fingHud(fd);
+    liveRun(fd.sq, () => fingMove(fd));                                           // (the attempt so far, for the other phone watching: net/live.js)
   } else if (now - fd.endAt >= FING_END[fd.type]) { fingFinish(); return; }
   const cv = app.querySelector('canvas[data-fing="cv"]');
   if (cv) fingDraw(cv, fingDraftView(fd, now), now);

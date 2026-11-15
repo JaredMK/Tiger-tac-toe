@@ -110,6 +110,12 @@ const GAME_KEEP_MS = 24 * 3600 * 1000;   // finished games are deleted after a d
 // keys exist (README: App Check); the database's own enforcement is a console switch.
 const APP_CHECK = process.env.TTC_APPCHECK === 'enforce';
 const CALL = { cors: true, enforceAppCheck: APP_CHECK };
+// Warm instances (December 2026): the calls a player waits on to start and play (startRoom, move, findMatch) keep
+// TTC_WARM instances running (functions/.env.<project>: 1 on staging to compare, 0 on production), so the first tap after
+// a quiet spell skips the cold start (a new instance loads the engine and every game's rules: 3.4-5 s measured live at
+// 256 MiB, against about 70 ms warm). Each costs its idle rate around the clock (CLAUDE.md Latency).
+const WARM = Math.max(0, Math.min(3, Number(process.env.TTC_WARM) || 0));
+const HOT = WARM ? Object.assign({}, CALL, { minInstances: WARM }) : CALL;
 // The alert keys (Twilio, Resend) from Secret Manager (firebase functions:secrets:set TWILIO_SID ...), bound to the
 // functions that send alerts once TTC_SECRETS=on in the project's .env file (the deploy's service account needs the
 // Secret Manager Admin role for the binding; README: Deploying). admin/secrets on the database is read where a
@@ -427,7 +433,7 @@ exports.deleteAccount = onCall(CALL, async req => {
 // Searching alone (no other live searcher): after a few seconds the admin is alerted (when alerts are on),
 // and once the player's own randomized wait is over (40 to 70 seconds by default), a free bot is paired
 // with them (when bots are on). Anyone else searching meanwhile is paired with them as usual first.
-exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async req => {
+exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async req => {
   const uid = await needAccount(req), client = await needCurrent(req);
   const isAdmin = !!(req.auth.token && req.auth.token.admin === true);
   const key = R.queueKey(req.data && req.data.mode, SC_OK());   // Classic (the Super Chaos queue: kept as code, for the tests)
@@ -1070,7 +1076,7 @@ async function changeGame(id, uid, step, what) {   // what: the kind of change, 
   return out;
 }
 // A move (or Find the Pair's first card, kind 'pick'; Trivia's question turned up, kind 'reveal'; an attention game's Start, kind 'start') from the player on the move.
-exports.move = onCall(CALL, async req => {
+exports.move = onCall(HOT, async req => {
   const uid = needUid(req), d = req.data || {}, id = gameId(d.game);
   const i = d.square;
   if (!Number.isInteger(i) || i < 0 || i > 8) return { ok: false, reason: 'bad' };
@@ -1344,7 +1350,7 @@ function drawSeats(players, host) {
 }
 // The match starts: by the host from the lobby, or by either player once both want a rematch (the flags on the room).
 // One match at a time: a lock on the room while it is made (two phones starting the rematch at once make one).
-exports.startRoom = onCall(CALL, async req => {
+exports.startRoom = onCall(HOT, async req => {
   const uid = needUid(req), code = roomCodeOf((req.data || {}).code), client = await needCurrent(req);
   if (!roomCodeOk(code)) return { ok: false, reason: 'code' };
   const room = (await db.ref(`rooms/${code}`).get()).val();
@@ -1409,7 +1415,7 @@ async function sweep() {
   const up = {};
   let deleted = 0;
   const rooms = await sweepRooms(t, up).catch(e => { logger.error('room sweep', e); return 0; });
-  for (const [id, g] of Object.entries(old)) if (g.pub && g.pub.recorded && g.pub.recorded.done) { up[`games/${id}`] = null; up[`gpresence/${id}`] = null; up[`botGames/${id}`] = null; up[`reacts/${id}`] = null; deleted++; }
+  for (const [id, g] of Object.entries(old)) if (g.pub && g.pub.recorded && g.pub.recorded.done) { up[`games/${id}`] = null; up[`gpresence/${id}`] = null; up[`glive/${id}`] = null; up[`botGames/${id}`] = null; up[`reacts/${id}`] = null; deleted++; }
   await pruneSeen(t, up).catch(e => logger.error('stats prune', e));
   await pruneRate(t, up).catch(e => logger.error('rate prune', e));
   const logs = await pruneLogs(t, up).catch(e => { logger.error('match log prune', e); return 0; });

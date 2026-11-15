@@ -219,6 +219,33 @@
         }
       }
     },
+    "glive": {
+      "$id": {
+        ".read": "auth != null && (root.child('games').child($id).child('pub/players/X/uid').val() === auth.uid || root.child('games').child($id).child('pub/players/O/uid').val() === auth.uid)",
+        "$side": {
+          ".write": "auth != null && $side.matches(/^[XO]$/) && root.child('games').child($id).child('pub/players').child($side).child('uid').val() === auth.uid",
+          ".validate": "newData.hasChildren(['sq', 'at'])",
+          "sq": {
+            ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 8 && newData.val() % 1 === 0"
+          },
+          "at": {
+            ".validate": "newData.isNumber()"
+          },
+          "n": {
+            ".validate": "newData.isNumber()"
+          },
+          "mv": {
+            ".validate": "newData.isString() && newData.val().length <= 60000"
+          },
+          "t0": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
     "reacts": {
       "$key": {
         ".validate": "$key.matches(/^[-\\w]{5,40}$/)",

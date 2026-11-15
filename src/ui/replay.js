@@ -1,7 +1,7 @@
 // Opponent replays, one system for every game (CLAUDE.md): a move the other side made (the computer's, the
-// other phone's) is shown as they made it. The square as they found it; their inputs pressed and typed in
-// turn, from the move's log (core/replay.js: the letters, the pegs, the numbers, the cards, the aim, or just
-// the one control that made the move); then the move itself, with its usual animation and result. A run,
+// other phone's) is shown as it was committed. The square as they found it; the move's inputs pressed in, from
+// the move itself (a view's replay.synth: the word, the pegs, the cards, the tiles) or the one control that made
+// it (WHAT A REPLAY SHOWS, below); then the move itself, with its usual animation and result. A run,
 // an attempt, a reveal or a round is in the move already (its log or recording): those views play the
 // mover's screen from the flash themselves (OWN), so here only the control is pressed, if that. A Skip
 // button comes up two seconds into any replay and jumps to the result. The same module logs this phone's
@@ -23,6 +23,13 @@ import { skipFlash } from './turns.js';
 import { isRace } from '../core/race.js';
 
 const OWN = new Set([...RUN_TYPES, ...FINGER_TYPES, ...ATT_TYPES, 'echo', 'oddone', 'trivia', 'bullseye', 'pong', 'muncher']);   // their views play the mover's screen from the flash (the run, the attempt, the reveal, the taps, the throw; Muncher's run from the move's inputs: its Start is never pressed here)
+// WHAT A REPLAY SHOWS (December 2026): the committed result of the other side's turn and what this phone needs to know of
+// it, never their drafting: a draft game's inputs are pressed in from the move itself (its view's replay.synth: the
+// word that was played, the cards thrown, the pegs placed, the tiles laid; none picked up and put back, no letter typed
+// and deleted), else the one control that made the move. Only where the logged inputs are the attempt itself are they
+// played as they were: Bowling's three meter stops in time, Snake's run in chunks (and the runs, attempts, shots and
+// throws in OWN, which play from the move).
+const KEEP_LOG = new Set(['bowling', 'snake']);
 const PRESS_SOUND = { key: 'key', bksp: 'key', enter: 'key', mmcol: 'peg', mmslot: 'peg', rlnum: 'peg', rlgrp: 'peg', rlzero: 'peg', 'hc-key': 'key', 'snap-cell': 'mark', bowl: 'mark', hpsel: 'tap' };   // a logged input's own sound as it is pressed here (a move's sounds come with the move)
 export let rep = null;     // the opponent's move playing here: { sq, by, type, list, k, at, speed, lead, stage: 'inputs' | 'move', onMove, f, timer, pressed, cpu }
 let note = null;           // this phone's inputs for the move it is making: { sq, p, moves, list }
@@ -53,9 +60,10 @@ function repList(o) {
   const sq = state.squares && state.squares[o.sq];
   if (sq && isRace(sq.mini) && (sq.mini.rv !== 2 || !((viewOf(o.type) || {}).replay || {}).race)) return [];   // a race square: the move lands on the mover's own (smaller) board, from its flash; a view may opt in to its inputs there (replay.race)
   const hooks = (viewOf(o.type) || {}).replay || {};
-  if (o.list && o.list.length) return o.list;
+  if (KEEP_LOG.has(o.type) && o.list && o.list.length) return o.list;   // (the inputs are the attempt itself: the meters' stops in time, the run's chunks)
   if (o.move === undefined) return [];
-  if (hooks.synth) { const l = hooks.synth(o.move, o.mini, o); if (l) return l; }
+  if (hooks.synth) { const l = hooks.synth(o.move, o.mini, o); if (l) return l; }   // the committed move, pressed in cleanly (the word played, the cards thrown, the pegs placed)
+  if (o.list && o.list.length) { const e = o.list[o.list.length - 1]; return [[0].concat(e.slice(1))]; }   // the control that made the move, alone
   return [[0, 'move', repOf(o.move)]];
 }
 // Start: o = { sq, by, type, mini (as the mover found it), move, list, timeout, cpu, speed, lead, gap, onMove }.

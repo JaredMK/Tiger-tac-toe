@@ -1,4 +1,5 @@
 // Snake: the screen, the miniature, the move's words and sounds, and the inputs (swipes, taps and the arrow keys).
+import { liveRun } from '../../net/live.js';
 import { fingUnlog } from '../shared/finger.js';
 import { RUNT } from '../shared/runner.js';
 import { DIRS, SNAKE, SNAKE_REP, snakeChunkParse, snakeChunkVals, snakeFeed, snakeGoal, snakeHeading, snakeQueue, snakeReplay, snakeResult, snakeShown, snakeStart, snakeSynthList, snakeTick, snakeTickMs } from './rules.js';
@@ -102,6 +103,7 @@ function stepDraft(fd, now) {
       tickEvents(fd, fd.sim, now, true, true);
     }
     if (fd.sim.k > 0 && now - fd.chunkAt >= SNAKE_REP.chunkMs) noteChunk(fd, false, now);
+    if (fd.sim.k > 0) liveRun(fd.sq, () => snakeResult(fd.sim));             // (the run so far, for the other phone watching: net/live.js)
     if (fd.sim.end) { fd.phase = 'end'; fd.endAt = now; fd.acc = 0; endEvents(fd, fd.sim, now, true, true); }
     return;
   }

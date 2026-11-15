@@ -1,6 +1,7 @@
 // The Find Match screen and its intro.
 import { acct } from '../../net/accounts.js';
 import { mmIntro, search } from '../../net/matchmaking.js';
+import { startShuffle } from '../../net/room.js';
 import { net } from '../../net/room.js';
 import { esc, state } from '../app.js';
 import { CHEV, toon } from '../art.js';
@@ -9,6 +10,9 @@ import { RATINGS_ENABLED } from '../config.js';
 import { record } from './profile.js';
 
 export function renderIntro() {
+  const sh = !mmIntro ? startShuffle() : null;
+  if (sh) return `<div class="vsintro shuffle" role="dialog" aria-label="Drawing sides"><div class="vscard"><h2 class="vstitle">Drawing sides…</h2><div class="vsp"><span class="vsflip a">${toon('X')}${toon('O')}</span><b>${esc(sh.a)}</b></div><div class="vsmid">VS</div><div class="vsp"><span class="vsflip b">${toon('O')}${toon('X')}</span><b>${esc(sh.b)}</b></div>
+    <p class="hint">Starting the match…</p></div></div>`;   // the host's Start, at once: the sides drawn while the server makes the match (net/room.js startShuffle)
   if (!mmIntro || state.screen !== 'board') return '';
   const me = mmIntro.me;
   const side = s => { const p = mmIntro.players[s] || {}; return `<div class="vsp ${s}">${toon(s)}<b>${esc(p.name || s)}</b>${p.record ? `<small>${record(p.record)}</small>` : ''}${me === s ? '<i>You</i>' : ''}</div>`; };

@@ -18,7 +18,8 @@ import { acct, connectQuiet, loggedIn, setAfterLogin } from './accounts.js';
 import { call, connectFirebase, connected, fb, serverNow } from './connect.js';
 import { isMM, listenGame, onGameValue, resignMM } from './matchmaking.js';
 import { scFollow } from './chaos.js';
-import { predicted, setPredicted, showNotice } from './moves.js';
+import { moveSeen, predicted, setPredicted, showNotice } from './moves.js';
+import { liveElapsed, liveSeen, liveStop, watch } from './live.js';
 import { listenReacts, stopReacts } from './reactions.js';
 import { scMode, timerDefault, visibleTypes } from './releases.js';
 import { matchLog, reportLocal, trackEnd } from './tracking.js';
@@ -39,7 +40,8 @@ import { physJoin } from '../ui/physics.js';
 import { noteNet } from '../ui/turnbar.js';
 import { cpuTurn, playFlash, turnAlert } from '../ui/turns.js';
 
-const REPLAY_MAX = 6;                              // at most this many missed moves are played back after a time away
+const REPLAY_MAX = 6;
+const TURN_MAX = 16;                               // a turn of many actions (rolls, draws): played back whole up to this many                              // at most this many missed moves are played back after a time away
 export let net = { status: 'idle', msg: '' };             // 'idle' | 'connecting' | 'waiting' | 'connected' | 'error'
 export let room = null, pendingRoom = null, roomUnsub = null, presUnsub = null;   // the room (the lobby, then the match the server runs for it) as last read; one that arrived mid-playback
 export let lobby = null, lobbyUnsub = null;        // a friend room's own node (rooms/{code}: the seats, the setup, the match's id, the rematch flags, who left), kept while the match plays
@@ -114,7 +116,7 @@ export function stopListening() {                                 // (the match'
   mySides = null;
   if (roomUnsub) roomUnsub();
   if (presUnsub) presUnsub();
-  stopReacts();
+  stopReacts(); liveStop();
   roomUnsub = presUnsub = null; room = pendingRoom = null; presence = null;
 }
 
@@ -164,6 +166,14 @@ export async function dbSetup(patch) {
 // server's answer, then to the board) goes to the match log (`note` 'start': the admin's Match inspector).
 let startBusy = false, startTap = null, startNote = null;
 export const starting = () => startBusy;
+// The host's Start, shown at once (December 2026): the moment it is tapped, the side reveal comes up drawing the sides
+// (both names, the marks shuffling between them) while the server makes the match in the background; the real "You are
+// X/O" takes its place the moment the match lands (showSides), or it goes with the error if the server says no.
+export function startShuffle() {
+  const o = state.online;
+  if (!startBusy || !o || !o.me || state.screen !== 'setup') return null;
+  return { a: playerName(state, o.me) || 'You', b: playerName(state, other(o.me)) || 'Friend' };
+}
 export async function startOnline() {
   const o = state.online;
   if (!fb || !isHost() || !lobby || !o.joined || !connected || startBusy) return;
@@ -273,7 +283,7 @@ function enterRoomGame(id, mine) {
 }
 // The room's match is over (the result on show, a rematch possible).
 const matchOver = r => !!(r && r.game && isMM() && state.online.game === r.game && state.winner);
-export function presenting() { return !!(state.flash || state.done || state.spot || presentingSeq != null || stampLeft() > 0); }   // (presentingSeq covers a replay's inputs playing before the move)
+export function presenting() { return !!((state.flash && !state.flash.live) || state.done || state.spot || presentingSeq != null || stampLeft() > 0); }   // (presentingSeq covers a replay's inputs playing before the move)
 // A square's stamp still playing on the board (ms left): the next move played back waits for it.
 function stampLeft() {
   const at = state.stamp != null ? fxAt('stamp', state.stampId) : null, dat = state.drawStamp != null ? fxAt('draw', state.drawId) : null;   // (a drawn square's Draw stamp and shuffle too: ui/board.js DRAW_MS)
@@ -288,6 +298,7 @@ export function applyMatch(r) {
   if (!rec) return;
   const st = rec.state;
   if (st.sc && st.sc.online) { scFollow(rec); return; }          // Super Chaos: both move at once (net/chaos.js)
+  moveSeen(st);                                                   // (this phone's move in the record: the next tap can go, the call's answer or not)
   if (predicted && st.seq >= predicted.seq) {     // the server has the move that was shown here: confirmed (shown already) or corrected
     if (JSON.stringify(st.squares) === predicted.squares) o.shownSeq = Math.max(o.shownSeq || 0, predicted.seq);
     setPredicted(null);
@@ -295,11 +306,29 @@ export function applyMatch(r) {
   if (o.matchId !== st.id) { o.matchId = st.id; o.shownSeq = st.seq; presentingSeq = null; moveWait = null; state.endPick = null; }   // a new match: nothing to play back
   if (o.shownSeq == null) o.shownSeq = st.seq;
   let missed = (st.recent || []).filter(e => e.seq > o.shownSeq).sort((a, b) => a.seq - b.seq);
-  const skipped = Math.max(0, st.seq - o.shownSeq - Math.min(missed.length, REPLAY_MAX));
-  if (missed.length > REPLAY_MAX) missed = missed.slice(-REPLAY_MAX);
+  // The other side's turn still under way (their last action kept the turn, held to its square: Risky Rolls' rolls, a
+  // card taken, a hit) and this phone not watching it: the board shows each action at once (the square's miniature as
+  // it stands, its glow: ui/board.js), nothing played back yet; the whole turn plays back once it is over. Watching it
+  // (net/live.js watch), each action plays in the square as it lands, so a turn watched whole is never replayed.
+  const by = missed.length ? missed[missed.length - 1].by : null;
+  if (missed.length && !st.winner && by !== o.me && st.turn === by && st.lock != null && missed.every(e => e.by === by) && !(watch && watch.sq === st.lock)) { showLive(st); return; }
+  let run = 0; for (let k = missed.length - 1; k >= 0 && missed[k].by === missed[missed.length - 1].by; k--) run++;   // (the last turn's actions: played back whole, up to TURN_MAX)
+  const cap = Math.max(REPLAY_MAX, Math.min(TURN_MAX, run));
+  const skipped = Math.max(0, st.seq - o.shownSeq - Math.min(missed.length, cap));
+  if (missed.length > cap) missed = missed.slice(-cap);
   if (skipped > 0) { o.shownSeq = missed.length ? missed[0].seq - 1 : st.seq; sayAway(`${skipped} move${skipped === 1 ? '' : 's'} happened while you were away`); }
   if (missed.length) { presentEntry(st, missed[0], missed.slice(1)); return; }
   showLatest(st);
+}
+// The other side's turn under way, not watched: the record as it stands on the board (their square's miniature with
+// each action, the turn held there), nothing marked as seen: the turn's actions play back once it is over.
+function showLive(st) {
+  const scr = state.screen, zoom = state.zoom;
+  takeFields(st);
+  state.flash = state.flash && state.flash.live ? null : state.flash; state.done = null; state.spot = null;
+  state.screen = ['board', 'mini'].includes(scr) ? scr : 'board'; state.zoom = state.screen === 'mini' ? zoom : null;
+  if (state.screen === 'mini' && (state.zoom == null || state.zoom === st.lock)) { state.screen = 'board'; state.zoom = null; }   // (their square is theirs to play: looked at, it is watched, above)
+  save(); liveSeen();
 }
 function sayAway(text) {
   awayNote = text; noteNet(); render();
@@ -329,7 +358,7 @@ export function showLatest(st) {
   if (state.screen === 'mini' && state.zoom == null) state.screen = 'board';
   sayMissed(st);
   turnAlert();                                                    // (the turn come round here without a replay: a missed turn, a move while away)
-  save(); render();
+  save(); liveSeen();
 }
 // A turn's time ran out (core/board.js timeoutMove): both phones say so once (the record's timer.miss).
 let missSeen = null;                                              // `${match}:${n}`: the last one seen here
@@ -371,8 +400,9 @@ export function presentEntry(st, e, rest) {
     // square as the move left it and the move's own animation.
     const mini0 = before ? clone(before) : null;
     if (mini0) { state.squares[e.square] = clone(mini0); mergeMySides(); }   // (this side's own part goes on the square as it was, too: its hand or rack is not the other player's move's to change, and never turns to backs while their move replays)
-    const start = () => repStart({ sq: e.square, by: e.by, type: f.type, mini: mini0 ? mini0.mini : state.squares[e.square].mini, move: f.m, list: mini0 ? f.rep : null, timeout: !!f.timeout, speed: replaySpeed(),
-      onMove: () => { state.squares[e.square] = clone(e.after); mergeMySides(); state.flash = f; state.done = done; state.draft = ''; state.notice = null; playFlash(); save(); render(); } });
+    const el = liveElapsed(e);                                   // (watched live as it went: the move carries on from where it was shown, at its own speed)
+    const start = () => repStart({ sq: e.square, by: e.by, type: f.type, mini: mini0 ? mini0.mini : state.squares[e.square].mini, move: f.m, list: mini0 ? f.rep : null, timeout: !!f.timeout, speed: el ? 1 : replaySpeed(),
+      onMove: () => { state.squares[e.square] = clone(e.after); mergeMySides(); state.flash = f; state.done = done; state.draft = ''; state.notice = null; if (el) playFlash(false, 1, undefined, undefined, el); else playFlash(); save(); render(); } });
     showRemoteMove(e.square, moveLabel(e), mini0, start);
   }
   save(); render();

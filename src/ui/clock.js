@@ -1,4 +1,5 @@
 // The turn clock on screen: one deadline a turn, counted the same on both phones; timeouts.
+import { liveTick } from '../net/live.js';
 import { applyOnlineTimeout } from '../core/records.js';
 import { armClock, clockDeadline, clockLeft as timesLeft, matchClock, turnLimit } from '../core/timer.js';
 import { SND } from '../audio/sound.js';
@@ -53,7 +54,7 @@ export function fmtClock(ms) { const sec = Math.ceil(ms / 1000); return `${Math.
 // Runs four times a second: keeps the clock on screen current and, online, calls time when it is up.
 let tickSec = null;
 export function tick() {
-  stuckWatch();
+  stuckWatch(); liveTick();
   const w = search.on && document.getElementById('mmwait');
   if (w) w.textContent = fmtClock(Date.now() - search.since);
   const el = document.getElementById('clock');
@@ -117,7 +118,7 @@ export const STUCK_MS = 4000;
 let stuckSince = 0;
 function stuckWatch() {
   if (!state.online || state.sc) { stuckSince = 0; return; }
-  const flashStuck = !!state.flash && !flashTimer && !repActive() && !physPendOn() && flashLeft() <= 0;
+  const flashStuck = !!state.flash && !state.flash.live && !flashTimer && !repActive() && !physPendOn() && flashLeft() <= 0;
   const spotStuck = !!state.spot && !spotTimer;
   if (!flashStuck && !spotStuck) { stuckSince = 0; return; }
   if (!stuckSince) { stuckSince = Date.now(); return; }

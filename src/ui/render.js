@@ -1,4 +1,5 @@
 // Rendering: everything drawn from state, kept in place (no element is replaced when it need not be).
+import { liveNote } from '../net/live.js';
 import { busFly } from '../games/bus/view.js';
 import { cardFly } from './cardfly.js';
 import { refusedNote } from '../net/moves.js';
@@ -50,6 +51,7 @@ export function render() {
       try { renderNow(); renderFails = 0; } catch (e2) { renderFails++; fallback(e2); }
     } else fallback(e);
   } finally { rendering = 0; }
+  try { liveNote(); } catch (e) { /* (the live layer is a nicety: never what breaks a render) */ }   // this phone's open square, for the other side (net/live.js)
 }
 function fallback(e) {
   app.innerHTML = `<main class="scr"><div class="card" style="margin:24px auto;max-width:360px;padding:20px;text-align:center"><b>Something went wrong drawing this screen.</b><p class="muted" style="margin:10px 0 16px">${esc(String(e && e.message || e).slice(0, 120))}</p><button class="primary" data-act="${state.online ? 'leave' : 'menu'}">Main menu</button></div></main>`;

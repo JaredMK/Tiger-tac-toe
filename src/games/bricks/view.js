@@ -5,6 +5,7 @@
 // fixed steps, the finger's place recorded as it changes), so it goes in as its inputs and the server plays them
 // through again. Someone else's go (the computer's, the other phone's) plays here first, from its inputs, then the
 // result; the go this phone just played is not replayed to it (its last moment stays while the result shows).
+import { liveRun } from '../../net/live.js';
 import { tune } from '../../core/tune.js';
 import { BRK, brkBroken, brkClampX, brkLog, brkMs, brkRaw, brkRecorder, brkResult, brkStart, brkStep, brkTotal, brkUnlog } from './rules.js';
 import { SND, ownPress } from '../../audio/sound.js';
@@ -71,6 +72,7 @@ function brkFrame(now) {
     while (fd.acc >= BRK.step - 1e-9 && !fd.sim.end) { fd.acc -= BRK.step; brkTick(fd, fd.sim, fd.rec.at(fd.sim.n, fd.tx), fd.voice); }
     if (fd.sim.end) brkEnd(fd, fd.sim.end, now);
     brkHud(fd);
+    liveRun(fd.sq, () => brkMove(fd));                                            // (the go so far, for the other phone watching: net/live.js)
   } else if (now - fd.endAt >= (BRK.end[fd.end] || 500)) { brkFinish(); return; }
   const cv = app.querySelector('canvas[data-brk="cv"]');
   if (cv) brkDraw(cv, brkDraftView(fd, now), now);

@@ -2,6 +2,8 @@
 // instant moves shown at once and rolled back if refused.
 import { playMove } from '../core/board.js';
 import { applyOnlineMove } from '../core/records.js';
+import { isRace } from '../core/race.js';
+import { GAMES, rulesOf } from '../games/index.js';
 import { makeRng } from '../core/random.js';
 import { PHYS_TYPES, physicsReady } from '../games/shared/physics.js';
 import { setTriviaFlip, triviaFlip } from '../games/trivia/view.js';
@@ -36,17 +38,41 @@ export function attemptMove(m) {
 // same rules the server runs, and shown straight away; the server's record then confirms it, or corrects it. A
 // move the server refuses is taken back, with a note. The mini-games whose result is hidden or random are sent
 // as before, and show their result when the server has it.
+// December 2026: every move the phone can work out alone is shown at once, not only those four: a game with nothing
+// hidden (no secret, no per-side part, not a race square), neither a physics shot (shotPredict, below) nor a real-time
+// attempt (played live already), whose move comes out the same under two different draws of chance (Districts, Roads,
+// Flood, Takeover, a Backgammon turn, a Dice Combo claim, a Shut the Box flip...). A move that rolls, spins or deals is
+// left to the server, as before, its control shown pressed until the record lands.
 const PREDICT = ['ttt', 'c4', 'hex', 'hexapawn'];
 export let predicted = null;                            // { seq, entry, squares }: the move shown here, not yet confirmed
+function predictable(mini) {
+  if (PREDICT.includes(mini.type)) return true;
+  const R = rulesOf(mini.type), meta = (GAMES[mini.type] || {}).meta || {};
+  return !!R && !R.secret && !R.hide && !R.sidePart && !meta.realTime && !PHYS_TYPES.includes(mini.type) && !isRace(mini);
+}
 function predictMove(i, m, rep) {
   const sq = state.squares && state.squares[i];
-  if (!sq || !PREDICT.includes(sq.mini.type) || !state.online) return null;
+  if (!sq || !state.online || !predictable(sq.mini)) return null;
   const rec = parseMatch(room && room.match);
   if (!rec) return null;
-  const r = applyOnlineMove(Object.assign({ secrets: {} }, rec), state.online.me, i, m, RNG, { rep });
-  if (!r.ok) return { ok: false, reason: r.reason };
+  let r = null, r2 = null;
+  try { r = applyOnlineMove(Object.assign({ secrets: {} }, rec), state.online.me, i, m, makeRng('pa'), { rep }); } catch (e) { return null; }
+  if (!r.ok) return PREDICT.includes(sq.mini.type) ? { ok: false, reason: r.reason } : null;   // (refused here: the four sure games say so at once; the others let the server judge)
   if (r.entries[0] && r.entries[0].kind === 'draw') return null;   // a draw deals the square a random new game: the server's draw is the one shown
+  if (!PREDICT.includes(sq.mini.type)) {                           // chance in it: left to the server
+    try { r2 = applyOnlineMove(Object.assign({ secrets: {} }, parseMatch(room.match)), state.online.me, i, m, makeRng('pb'), { rep }); } catch (e) { return null; }
+    if (!r2 || !r2.ok || JSON.stringify(r2.rec.state.squares) !== JSON.stringify(r.rec.state.squares) || JSON.stringify(r2.entries) !== JSON.stringify(r.entries)) return null;
+  }
   return { ok: true, seq: r.rec.state.seq, entry: r.entries[0], squares: JSON.stringify(r.rec.state.squares), rec: r.rec };
+}
+// The move on its way, until the server's record shows it (net/room.js applyMatch lets this phone go on from then: the
+// call's own answer can come later, after the server's log writes).
+export let sendSeq = null, moveTok = 0;
+export function moveSeen(st) {
+  if (sendSeq == null || !st || st.seq <= sendSeq || !moveWait) return false;
+  if (!(st.recent || []).some(e => e.seq > sendSeq && e.by === state.online.me)) return false;
+  sendSeq = null; setMoveWait(null); clearTimeout(moveTimer);
+  return true;
 }
 // ---- physics shots: played here at once, and the server still decides ----
 // Mini Golf, Pool and Bowling online: the shot is worked out here exactly as the server will work it out (the same
@@ -91,9 +117,11 @@ export async function dbMove(i, m, rep) {
   if (pr && !pr.ok) { setMoveWait(null); moveRejected(pr.reason); render(); return true; }   // refused by the rules here: nothing is sent
   if (pr) { predicted = { seq: pr.seq, entry: pr.entry, squares: pr.squares }; presentEntry(pr.rec.state, pr.entry, []); }   // shown now
   clearTimeout(moveTimer); setMoveTimer(setTimeout(() => { if (moveWait) { setMoveWait(null); render(); } }, NET_MS.call));
+  const tok = ++moveTok; sendSeq = (parseMatch(room.match) || { state: { seq: 0 } }).state.seq;
   try { const r = await call('move', Object.assign({ game: state.online.game, square: i, move: m }, rep ? { rep } : {})); if (!r.ok) { rollbackMove(r.reason); matchLog({ k: 'reject', q: i, why: r.reason || 'refused' }); } }
   catch (e) { rollbackMove('network'); matchLog({ k: 'reject', q: i, why: String((e && (e.code || e.message)) || 'network').slice(0, 60) }); }
-  clearTimeout(moveTimer); setMoveWait(null); render();
+  if (tok !== moveTok) return true;                              // (a later move already on its way: its own wait stands)
+  sendSeq = null; clearTimeout(moveTimer); setMoveWait(null); render();
   return true;
 }
 // A tap the phone could not send (the move before still on its way, the other side on the move, the line down): the error
