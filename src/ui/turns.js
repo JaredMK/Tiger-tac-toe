@@ -14,7 +14,7 @@ import {
 import { STAMP_MS } from './board.js';
 import { chaosStep } from './chaos.js';
 import { explainT } from './explainer.js';
-import { animMs, confetti, turnBurst, drawFx, drawLeft, fx, fxAt, momentPower, shake, stampFx, startFx, zoomBusy, zoomLeft } from './fx.js';
+import { animMs, confetti, myTurnFx, drawFx, drawLeft, fx, fxAt, momentPower, shake, stampFx, startFx, zoomBusy, zoomLeft } from './fx.js';
 import { joinAsk } from './input.js';
 import { render } from './render.js';
 import { rep, repActive, repStart, repStop } from './replay.js';
@@ -43,7 +43,7 @@ export function turnAlert(prev, stamped) {
     if (state.winner || state.turn !== me || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return;
     SND.play('yourTurn');
     haptic('turn');
-    if (state.screen === 'board') turnBurst(me);                      // (the comic YOUR TURN! burst over the board, about a second)
+    myTurnFx(me); render();                                            // (the # lines' flash and the character's pop: ui/fx.js myTurnFx)
   };
   const z = zoomLeft();                                               // (back from a square: once the board is back, its stamp's thump after that)
   if (stamped) setTimeout(go, z + dur(TURN_AFTER_STAMP_MS)); else if (z > 0) setTimeout(go, z); else go();

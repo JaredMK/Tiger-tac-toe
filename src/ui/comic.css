@@ -586,12 +586,17 @@ main.scr.cc { overflow: clip; }
 .gsh-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 14px 16px 24px; }
 .gsh-body > .tpls { margin-bottom: 14px; }
 .cc .gsum small { white-space: nowrap; }
-/* Your turn (fx.js turnBurst): a burst over the board, this player's character bouncing on it; about a second, no taps. */
-.ccturn { position: fixed; z-index: 70; translate: -50% -50%; pointer-events: none; aspect-ratio: 300 / 190; animation: cctbIn var(--tb, 1000ms) cubic-bezier(.3,1.4,.5,1) both; }
-.ccturn .ctb svg { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(5px 5px 0 var(--ink)); }
-.ccturn .bursttxt { font-family: 'Bangers', 'Luckiest Guy', sans-serif; fill: #fff; stroke: var(--ink); stroke-width: 4px; paint-order: stroke fill; letter-spacing: .03em; }
-.ccturn .ctc { position: absolute; left: 50%; top: -12%; width: 26%; aspect-ratio: 1; translate: -50% 0; border-radius: 50%; background: #fff; border: 3px solid var(--ink); display: grid; place-items: center; animation: cctbHop calc(var(--tb, 1000ms) / 3) ease-in-out 3 both; }
-.ccturn .ctc .pc { width: 86%; height: 86%; }
-.ccturn.still, .ccturn.still .ctc { animation: none; }
-@keyframes cctbIn { 0% { scale: .2; rotate: -14deg; opacity: 0; } 18% { scale: 1.08; rotate: 3deg; opacity: 1; } 30% { scale: 1; rotate: 0deg; } 82% { scale: 1; opacity: 1; } 100% { scale: .85; opacity: 0; } }
-@keyframes cctbHop { 0%, 100% { translate: -50% 0; } 45% { translate: -50% -28%; } 60% { translate: -50% -22%; } }
+/* Your turn (fx.js myTurnNow, December 2026: the owner's pick, options 1 and 3 of the mock-ups): the # lines flash in
+   this player's colour once and then hold a soft tint while it's their turn; their character in the top bar pops. Never
+   over the board, never a tap. The flash and the pop run from the turn's event (data-fx), the tint from the state alone. */
+.board.myturn.my-X .hash { color: color-mix(in srgb, var(--x) 62%, var(--ink)); }
+.board.myturn.my-O .hash { color: color-mix(in srgb, #e0a400 70%, var(--ink)); }
+.board.myturn .hash[data-fx] { animation: myHashGlow .9s ease-out both; }
+.board.myturn .hash[data-fx] path { animation: myHash .9s cubic-bezier(.2, .8, .2, 1) both; }
+.board.myturn.my-X .hash[data-fx] path { --mt: var(--x); } .board.myturn.my-O .hash[data-fx] path { --mt: #f0b400; }
+@keyframes myHash { 0% { stroke: var(--ink); stroke-width: 7; } 18% { stroke: var(--mt); stroke-width: 13; } 100% { stroke: currentColor; stroke-width: 7; } }
+@keyframes myHashGlow { 0% { filter: none; } 18% { filter: drop-shadow(0 0 6px var(--mt, var(--x))); } 100% { filter: none; } }
+.board.myturn.my-X .hash[data-fx] { --mt: var(--x); } .board.myturn.my-O .hash[data-fx] { --mt: #f0b400; }
+.hdr .tside.mypop .pc[data-fx] { animation: myPop .75s cubic-bezier(.3, 1.6, .5, 1) both; transform-origin: 50% 90%; }
+@keyframes myPop { 0% { transform: none; } 30% { transform: translateY(-10px) scale(1.6) rotate(-8deg); } 60% { transform: translateY(0) scale(1.2); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .board.myturn .hash[data-fx], .board.myturn .hash[data-fx] path, .hdr .tside.mypop .pc[data-fx] { animation: none; } }

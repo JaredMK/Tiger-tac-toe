@@ -15,7 +15,7 @@ import { scHeld, scHint, scLastPlayed, scRecapStage, scShown, scVerdict } from '
 import { clockLeft, fmtClock } from './clock.js';
 import { scHuman } from '../core/chaos.js';
 import { other, PRACTICE_SQ } from '../core/util.js';
-import { BURST_MS, burstPick, burstSvg, drawOld, fxAt, fxAttr } from './fx.js';
+import { BURST_MS, burstPick, burstSvg, drawOld, fxAt, fxAttr, myTurnNow } from './fx.js';
 import { pauseMenu } from './mini.js';
 import { reviewCtx } from './screens/profile.js';
 import { netBar } from './turnbar.js';
@@ -119,7 +119,9 @@ export function renderBoard(review) {
   // Classic: whose move it is as a small bar under the board, in the foot's own room (the hint's place: nothing moves);
   // Super Chaos keeps its band across the board.
   const sc = !!state.sc, under = !sc && w.html;
-  return `<main class="scr board-scr${sc && w.on ? ' waiting' : ''}">${netBar()}<div class="board">${sqs}${HASH_SVG}${pow}${sc ? w.html : ''}</div>
+  const mt = myTurnNow();                                         // your turn: the # tinted in your colour, flashed once as it came round (ui/fx.js myTurnNow)
+  const hash = mt ? HASH_SVG.replace('<svg ', `<svg${mt.at != null ? fxAttr(mt.at) : ''} `) : HASH_SVG;
+  return `<main class="scr board-scr${sc && w.on ? ' waiting' : ''}">${netBar()}<div class="board${mt ? ` myturn my-${mt.me}` : ''}">${sqs}${hash}${pow}${sc ? w.html : ''}</div>
     <div class="foot${under ? ' fwait' : ''}">${under ? w.html : `<span class="hint">${hint}</span>`}</div>${pauseMenu()}</main>`;
 }
 // A drawn square's overlay on the board: the old game's tile (its label and miniature as the draw left them), and the

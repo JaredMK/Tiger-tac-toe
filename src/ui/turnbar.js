@@ -7,7 +7,7 @@ import { N, NAV_SCREENS, esc, menuOpen, state, isYou } from './app.js';
 import { toon } from './art.js';
 import { scTurnText } from './chaos.js';
 import { clockText, incShow, matchLeft, fmtClock } from './clock.js';
-import { animMs, fx, fxAt, fxAttr, startFx } from './fx.js';
+import { animMs, fx, fxAt, fxAttr, myTurnNow, startFx } from './fx.js';
 import { flashLine } from './mini.js';
 import { practiceBack } from './explainer.js';
 
@@ -28,7 +28,8 @@ export function renderHeader() {
   const pclk = p => (ml ? `<b class="pclk${p === state.turn && !state.winner ? ' on' : ''}${ml[p] <= 30000 && p === state.turn && !state.winner ? ' low' : ''}" id="pclk-${p}" aria-label="${p}'s time left">${fmtClock(ml[p])}</b>${inc(p)}` : '');
   // the reaction bubble hangs by the sender's character; the bubble is always there (hidden when empty), so the bar's shape stays the same
   const card = p => (rx.card && rx.card.side === p && !menuOpen ? rx.card : null);   // (not over the in-game menu)
-  const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}"><span class="tg">${toon(p)}<span class="rbub${card(p) ? ' on' : ''}"${card(p) ? fxAttr(card(p).at, 'rt') : ''} aria-live="polite">${card(p) ? card(p).e : ''}</span></span><b class="nm">${N(p)}</b>${pclk(p)}</div>`;
+  const mt = myTurnNow();                                         // your turn come round: your character pops (ui/fx.js myTurnNow), once
+  const side = p => `<div class="tside ${p}${p === t ? ' on' : ''}${mt && mt.me === p && mt.at != null ? ' mypop' : ''}"><span class="tg">${mt && mt.me === p && mt.at != null ? toon(p).replace('<svg ', `<svg${fxAttr(mt.at)} `) : toon(p)}<span class="rbub${card(p) ? ' on' : ''}"${card(p) ? fxAttr(card(p).at, 'rt') : ''} aria-live="polite">${card(p) ? card(p).e : ''}</span></span><b class="nm">${N(p)}</b>${pclk(p)}</div>`;
   return `<header class="hdr t-${t}${clock || ml ? ' has-clock' : ''}${ml ? ' mclock' : ''}">
     <div class="hdrrow">${practiceBack() || '<button class="menubtn" data-act="pause" aria-label="Menu">Menu</button>'}<div class="tbar">${side('X')}${side('O')}</div></div>
     <div class="hdrrow2"><div class="turn" aria-live="polite">${resultLine(drawn ? `<span class="who">Draw · ${state.winReason === 'both' ? 'both made a line' : 'no line left'}</span>` : won ? `<span class="g">${t}</span><span class="who">${isYou(t) ? 'You win!' : `${N(t)} wins!`}</span>` : sc ? scTurnText() : `<span class="g">${t}</span><span class="who">${isYou(t) ? 'Your move!' : `${N(t)}<i class="suf">'s move</i>`}</span>`)}</div><span class="clockbox">${clock}</span></div>
