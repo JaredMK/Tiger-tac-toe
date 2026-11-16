@@ -96,9 +96,7 @@ function loadModel(read, oldTypes) {
   const hl = '<div class="games-h"><span>(.*?)</span>';
   sec('howto', 'howto-screen', 'How to Play screen', [
     fld('Modes heading', region(EXPLAINER, new RegExp(hl + '<small>.*?</small></div>\\n\\s+<div class="games howlist"><button'), 'tpl')),
-    fld('Modes hint', region(EXPLAINER, new RegExp(hl.replace('(.*?)', '.*?') + '<small>(.*?)</small></div>\\n\\s+<div class="games howlist"><button'), 'tpl')),
     fld('Mini-games heading', region(EXPLAINER, new RegExp(hl + '<small>.*?</small></div>\\n\\s+<div class="games howlist">\\$\\{visibleTypes'), 'tpl')),
-    fld('Mini-games hint', region(EXPLAINER, new RegExp(hl.replace('(.*?)', '.*?') + '<small>(.*?)</small></div>\\n\\s+<div class="games howlist">\\$\\{visibleTypes'), 'tpl')),
     fld('Credits heading', region(EXPLAINER, new RegExp(hl + '</div><div class="rulecard credits">'), 'tpl')),
   ]);
   // Modes
@@ -173,7 +171,6 @@ function loadModel(read, oldTypes) {
     fld('Practice button', region(EXPLAINER, /data-act="practice" data-t="\$\{explainT\}">(.*?)<\/button>/, 'tpl')),
     fld('Back button', region(EXPLAINER, /data-act="practice-back" aria-label="Back to How to Play">\$\{CHEV\}<span>(.*?)<\/span>/, 'tpl')),
     fld('Practice again', region(EXPLAINER, /data-act="practice" data-t="\$\{t\}" style="--k:6"><b>(.*?)<\/b>/, 'tpl')),
-    fld('Practice again note', region(EXPLAINER, /data-act="practice" data-t="\$\{t\}" style="--k:6"><b>[^<]*<\/b><small>(.*?)<\/small>/, 'tpl')),
     fld('End screen back', region(EXPLAINER, /smallPanel\('practice-back', CICON\.help, '([^']*)'/, 'sq')),
   ]);
   sec('other', 'credits', 'Credits', [

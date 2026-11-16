@@ -5,7 +5,7 @@ export const info = { name: 'Claw Machine', hint: 'The claw sweeps by itself. Dr
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const minVersion = '1.17.0';   // (1.17.0: the first version with its rules as they are now, December 2026 audit; was 1.11.0); the oldest client version that has this game (core/client.js)
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const explainer = { name: 'Claw Machine', play: 'One machine for you both. The claw sweeps by itself and swings as it goes. Tap Drop to grab the prize under it: the better it is centred, the better the grip. A prize can still slip on the way to the chute.{goAgain}', win: 'Win {goal} prizes.' };
+export const explainer = { name: 'Claw Machine', play: 'The claw sweeps and swings. Drop it on a prize: the more centred, the better the grip. Prizes can slip on the way to the chute.{goAgain}', win: 'Win {goal} prizes.' };
 // {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).
 export const goAgainText = { on: ' Win one? Go again.', off: '' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with clawCfg(mini). The shared case (100 units wide)

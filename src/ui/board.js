@@ -109,9 +109,9 @@ export function renderBoard(review) {
   }).join('');
   if (review) return `<main class="scr board-scr review-scr"><div class="revhead"><button class="back" data-act="${reviewCtx.back}" aria-label="${reviewCtx.backAria}">${CHEV}${reviewCtx.backLabel}</button>
       <div class="ttl"><b>${reviewCtx.title}</b><small>Tap any square to see how it ended</small></div></div><div class="board">${sqs}${HASH_SVG}</div>
-    <div class="foot"><span class="hint">Every hidden word, number, card and ship is shown</span></div>${pauseMenu()}</main>`;
+    <div class="foot"><span class="hint"></span></div>${pauseMenu()}</main>`;
   const hint = state.sc && !state.winner ? scHint() : spot ? (cpuPlays(spot.by) ? CPU_ICON : '') + esc(spot.label) : cpuTurn() ? `${N(state.turn)} is thinking…` : remoteTurn() ? `Waiting for ${N(state.turn)}…`
-    : state.moves ? 'Tap any open square to make a move' : `${N(state.turn)}: tap a square to start`;
+    : '';   // (your move: the header's bubble says so; the open squares are plain to see)
   const st = el < BOARD_BURST[1] + BURST_MS ? state.stamp : null;    // a fresh claim: two bursts around it, gone after about a second
   const bw = st == null ? null : burstPick('board:' + state.stampId), bend = k => Math.round(stampAt + dur(BOARD_BURST[k] + BURST_MS));
   const pow = st == null ? '' : `<div class="pow-b c${st % 3}" style="grid-row:${Math.floor(st / 3) + 1} / span 1;grid-column:${st % 3 + 1} / span 1"${fxAttr(stampAt)} aria-hidden="true">${el < BOARD_BURST[0] + BURST_MS ? `<span class="b1" data-bend="${bend(0)}">${burstSvg(bw.words[0], 'y', 150, 110, 34)}</span>` : ''}<span class="b2" data-bend="${bend(1)}">${burstSvg(bw.words[1], 'r', 160, 104, 28)}</span></div>`;

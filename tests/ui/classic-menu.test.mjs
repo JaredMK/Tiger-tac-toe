@@ -73,7 +73,7 @@ test('Play Computer: its setup screen: You vs Computer, your side (Random), Mini
   state.setup.vs = 'cpu'; state.setup.vsCpu = null;
   for (const t of E.TYPES) state.setup.games[t] = true;
   const html = renderSetup();
-  assert.match(html, /<b>Play Computer<\/b><small>You vs Computer<\/small>/);
+  assert.match(html, /<b>Play Computer<\/b><\/div>/);
   assert.match(html, /data-act="cside" data-side="random" aria-pressed="true"/, 'your side: Random by default');
   assert.match(html, /data-act="cside" data-side="X"/); assert.match(html, /data-act="cside" data-side="O"/);
   assert.match(html, /<b>You<\/b>/); assert.match(html, /<b>Computer<\/b>/, 'You vs Computer');

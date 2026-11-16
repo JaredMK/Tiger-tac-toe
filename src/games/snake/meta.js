@@ -8,7 +8,7 @@ export const turnSecs = 60;   // an online turn's time in this game (core/timer.
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds (each player's runs and apples are their own)
 export const realTime = true;   // its move plays back in real time (a run): never sped up past the replay's own speed (core/timer.js moveRate)
-export const explainer = { name: 'Snake', play: 'Tap Start, then swipe to turn. Red food is X\'s, yellow is O\'s. Eat your own colour for a point; the other colour gives the other player a point. The wall, a bomb or your own tail ends the run.', win: 'First to {target} points.' };
+export const explainer = { name: 'Snake', play: 'Swipe to turn. Eat your colour for a point; the other colour scores for the other player. The wall, a bomb or your tail ends the run.', win: 'First to {target} points.' };
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17c0-2.2 1.8-4 4-4h8a3 3 0 0 0 0-6H9"/><circle cx="4.6" cy="17" r="2.1" fill="currentColor" fill-opacity=".35"/><circle cx="18.5" cy="6" r="2.2" fill="currentColor"/><path d="M18.5 3.8V2.6"/></svg>';
 // Its settings (the admin's Mini-game Settings; core/tune.js): the points to win, the food of each colour on the
 // grid, the snake's pace (a cell every `tick` ms at the start of a run, `speedUp` ms less per food eaten in it,

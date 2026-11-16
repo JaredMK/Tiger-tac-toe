@@ -6,7 +6,7 @@ export const minVersion = '1.14.0';   // (1.14.0: the first version with its rul
 export const turnSecs = 60;   // an online turn's time in this game (core/timer.js turnSecs): 60 seconds, against the match's 30
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
-export const explainer = { name: 'Echo', play: 'Tap Play pattern to watch it once, then tap it back.', win: 'Beat all four patterns.' };   // ({start}, {add}: its settings, TUNE below)
+export const explainer = { name: 'Echo', play: 'Watch the pattern once, then tap it back.', win: 'Beat all four patterns.' };   // ({start}, {add}: its settings, TUNE below)
 export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2" opacity=".55"/><rect x="3" y="13" width="8" height="8" rx="2" opacity=".55"/><rect x="13" y="13" width="8" height="8" rx="2" opacity=".3"/></svg>';
 // Its settings (the admin's Mini-game Settings; core/tune.js): the lengths dealt into each square (its pattern's length).
 export const TUNE = [

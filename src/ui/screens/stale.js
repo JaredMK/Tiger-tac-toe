@@ -24,7 +24,7 @@ export function renderStale() {
   const buttons = over ? `<p class="hint center">${result}</p><button class="primary" data-act="stale-menu">Main menu</button>`
     : staleConfirm ? `<p class="hint center"><b>Leave and take the loss?</b></p><div class="row2"><button class="btn" data-act="stale-stay"${dis}>Stay</button><button class="btn go" data-act="stale-leave-yes"${dis}>${busy ? 'Leaving…' : 'Leave match'}</button></div>`
     : `<button class="primary" data-act="stale-update"${dis}>Update</button><p class="hint">${NATIVE ? 'Update opens the App Store.' : 'Update loads the latest version of the page.'} The match waits for you: its clock keeps running.</p>
-      <button class="btn" data-act="stale-leave"${dis}>Leave match</button><p class="hint">Leaving counts as a loss, as leaving a match always does.</p>`;
+      <button class="btn" data-act="stale-leave"${dis}>Leave match</button><p class="hint">Leaving counts as a loss.</p>`;
   return `<main class="scr setup acct-scr stale-scr">
     <div class="bar"><div class="ttl"><b>${over ? 'Match over' : 'Please update'}</b><small>${over ? 'This match has ended' : 'This version cannot play this match'}</small></div></div>
     <div class="setup-box"><div class="searching" role="status"><div class="spinner still" aria-hidden="true">${toon('X')}${toon('O')}</div>

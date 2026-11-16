@@ -72,7 +72,7 @@ test('lobby: a player host sees No limit and a match clock of 3, 5 or 10 minutes
 });
 test('the timer "?": minutes for the whole game, +5 s a move, run out and you lose', async () => {
   const { explainOf } = await import('../../src/ui/explainer.js');
-  assert.equal(explainOf('timer').text, 'Minutes each player has for the whole game. +5s is added after each move. Run out of time and you lose.');
+  assert.equal(explainOf('timer').text, 'Your time for the whole game. +5s a move. Run out and you lose.');
   assert.deepEqual(E.PLAYER_TIMERS, ['off', 'm3+5', 'm5+5', 'm10+5']); assert.equal(E.TIMER_DEFAULT, 'm5+5');
 });
 test('the increment shows as a brief "+5" on the mover\'s clock, once, when the clock hands over', async () => {

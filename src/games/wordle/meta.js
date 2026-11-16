@@ -6,8 +6,8 @@ export const release = 'released';   // the default (the admin's dashboard can c
 export const minVersion = '1.14.0';   // (1.14.0: the first version with its rules as they are now, December 2026 audit; was 1.0.0); the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
-export const explainer = { name: 'Five Letters', play: "Guess a 5-letter word. Green is correct letter placement, yellow is in the word but different position, grey isn't in it.", win: 'Guess the word. Use up {limit} guesses and you lose the square.' };   // ({limit}: its setting, TUNE below)
-export const raceExplainer = { name: 'Five Letters', play: "You each have your own 5-letter word. Green is correct letter placement, yellow is in the word but different position, grey isn't in it. You can see the other player's guesses.", win: 'Guess your word first. No guess limit.' };   // Race mode (core/race.js, rv 2)
+export const explainer = { name: 'Five Letters', play: "Guess a 5-letter word. Green: right spot. Yellow: wrong spot. Grey: not in the word.", win: 'Guess the word. Use up {limit} guesses and you lose the square.' };   // ({limit}: its setting, TUNE below)
+export const raceExplainer = { name: 'Five Letters', play: "You each have your own 5-letter word. Green: right spot. Yellow: wrong spot. Grey: not in the word.", win: 'Guess your word first. No guess limit.' };   // Race mode (core/race.js, rv 2)
 export const scExplainer = { name: 'Five Letters', play: "Guess a 5-letter word.", win: 'Guess the word. Use up {limit} guesses and you lose the square.' };   // in Super Chaos
 // Its settings (the admin's Mini-game Settings; core/tune.js): the mode and the guesses each, dealt into each square (mode, limit); the rest read through tune(mini).
 export const TUNE = [

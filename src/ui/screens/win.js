@@ -77,8 +77,8 @@ function againBtns() {
   if (!state.online) return BIG('rematch', 'Rematch!', 'same again?');
   if (!lobby || lobby.status === 'over' || lobby.left) return '';   // the room closed (a forfeit), or the other player left: no rematch
   const me = state.online.me, rm = lobby.rematch || {};
-  if (rm[me]) return `<span class="rmwrap"><button class="pn y big rmbtn" disabled style="--k:6"><b>Waiting for ${esc(N(other(me)))}…</b><small>they tap Rematch too</small></button></span>`;   // (the same size as Rematch: .rmbtn)
-  return `<span class="rmwrap">${panel('rematch', 'Rematch!', { tag: 'again?', sub: 'same again?', cls: 'y big rmbtn', k: 6, attrs: !connected ? ' disabled' : '' })}</span>`;
+  if (rm[me]) return `<span class="rmwrap"><button class="pn y big rmbtn" disabled style="--k:6"><b>Waiting for ${esc(N(other(me)))}…</b></button></span>`;   // (the same size as Rematch: .rmbtn)
+  return `<span class="rmwrap">${panel('rematch', 'Rematch!', { tag: 'again?', cls: 'y big rmbtn', k: 6, attrs: !connected ? ' disabled' : '' })}</span>`;
 }
 // Under the big action, in a friend room, a line always there (so nothing moves): Cancel while this side waits, or the
 // other side's request in a speech bubble.

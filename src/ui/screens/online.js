@@ -20,9 +20,9 @@ export function renderFriend() {
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
       <div class="ttl"><b>Play a Friend</b></div></div>
     <div class="online-mid" data-keep-scroll="friend"><div class="menu-card">
-    <p class="ccfr" aria-hidden="true"><span class="pal X">${toon('X')}</span>${bubble('One hosts, one joins!', '', 'ccpunch')}<span class="pal O">${toon('O')}</span></p>
-    ${panel('host', 'Host game', { tag: 'make a room', sub: 'you get a code to share', cls: 'y', k: 1 })}
-    ${panel('join-go', 'Join game', { tag: 'got a code?', sub: 'type in the code you were sent', cls: 'c fr', k: 2 })}
+    <p class="ccfr" aria-hidden="true"><span class="pal X">${toon('X')}</span><span class="pal O">${toon('O')}</span></p>
+    ${panel('host', 'Host game', { tag: 'make a room', cls: 'y', k: 1 })}
+    ${panel('join-go', 'Join game', { tag: 'code', cls: 'c fr', k: 2 })}
     <button class="link wide same" data-act="same-go">Same phone</button>
   </div></div></main>`;
 }
@@ -50,7 +50,7 @@ export function renderJoin() {
     <label class="field"><span>Room code</span><input id="jcode" class="codein" value="${esc(joinCode)}" maxlength="5" placeholder="ABCDE" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="latin"></label>`;
   return `<main class="scr setup cc calm join-scr">
     <div class="bar"><button class="back" data-act="lobby-back" aria-label="${o ? 'Leave the room and go back' : 'Back to Play a Friend'}">${CHEV}Back</button>
-      <div class="ttl"><b>Join game</b><small>${o ? `Room ${esc(o.code)}` : 'Enter the code the host shared'}</small></div></div>
+      <div class="ttl"><b>Join game</b><small>${o ? `Room ${esc(o.code)}` : ''}</small></div></div>
     <div class="setup-box" data-keep-scroll="setup">${form}${status}${o && net.status === 'error' ? '<button class="primary" data-act="rejoin">Try again</button>' : ''}</div>
     ${o ? '' : `<div class="setup-foot"><button class="primary" data-act="join">Join</button></div>`}</main>`;
 }

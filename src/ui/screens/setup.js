@@ -62,7 +62,7 @@ export function renderSetup() {
   const ready = setupReady(s);
   const vsCpu = !host && s.vs === 'cpu';
   const title = host ? 'Host game' : vsCpu ? 'Play Computer' : 'Same phone';
-  const sub = host ? 'Share the code, then start' : vsCpu ? 'You vs Computer' : 'Two players, one phone';
+  const sub = '';   // (December 2026's copy sweep: the title says it; the screen shows the rest)
   // Same phone: two people on this phone; player 1 picks X, O or Random, player 2 takes the other side. (The computer is
   // Play Computer's, from the main menu: no Human/Computer choice here.)
   const L = host ? null : normLocal(s), s1 = L && L.pick !== 'random' ? L.pick : null, s2 = s1 ? other(s1) : null;
@@ -72,7 +72,7 @@ export function renderSetup() {
     return `<div class="slot ${s1 || 'R'} p1">
       <div class="who-p">${face(s1)}</div>
       <div class="sides three lside" role="group" aria-label="Player 1's side">${pick('X')}${pick('O')}${pick('random')}</div>
-      <label class="field ${s1 || ''}"><span>Player 1 name${L.pick === 'random' ? ' · X or O, drawn every match' : ''}</span><input data-ln="n1" value="${esc(L.n1)}" maxlength="${NAME_MAX}" placeholder="${s1 || 'X or O'}" autocomplete="off" autocapitalize="words" aria-label="Player 1 name"></label></div>
+      <label class="field ${s1 || ''}"><span>Player 1 name</span><input data-ln="n1" value="${esc(L.n1)}" maxlength="${NAME_MAX}" placeholder="${s1 || 'X or O'}" autocomplete="off" autocapitalize="words" aria-label="Player 1 name"></label></div>
     <div class="slot ${s2 || 'R'} p2">
       <div class="who-p">${face(s2)}</div>
       <label class="field ${s2 || ''}"><span>Player 2 name</span><input data-ln="n2" value="${esc(L.n2)}" maxlength="${NAME_MAX}" placeholder="${s2 || 'X or O'}" autocomplete="off" autocapitalize="words" aria-label="Player 2 name"></label></div>`;
@@ -95,7 +95,7 @@ export function renderSetup() {
     const meter = n => `<i class="lvm" aria-hidden="true">${[1, 2, 3].map(j => `<i class="${j <= n ? 'on' : ''}"></i>`).join('')}</i>`;
     return `<main class="scr setup cc calm cpuset">
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
-      <div class="ttl"><b>Play Computer</b><small>You vs Computer</small></div></div>
+      <div class="ttl"><b>Play Computer</b></div></div>
     <div class="setup-box" data-keep-scroll="setup">
       <div class="vscard ccpunch"><div class="vsme">${who(c1, 0)}<b>${esc(you)}</b></div><span class="vsv" aria-hidden="true">${burstSvg('VS', 'w', 120, 80, 40)}</span><div class="vsme">${who(c2, 1)}<b>${CPU_NAME}</b></div></div>
       <div class="pickrow" role="group" aria-label="You play as">${cap('your side')}<div class="opts">${['X', 'O', 'random'].map((v, k) => opt('cside', 'data-side', v, v === 'random' ? 'Random' : v, C.pick === v, k + 1)).join('')}</div></div>
@@ -207,21 +207,30 @@ export const gamesCount = (on, n) => (on === n ? 'All' : `${on}/${n}`);
 // The summary the setup's Mini-games row shows (December 2026): "All 17", or "5 of 17".
 export const gamesSummary = (on, n) => (on === n ? `All ${n}` : `${on} of ${n}`);
 // The Mini-games row and its sheet (December 2026): one summary row on the setup screen ("Mini-games  All 17 ›"), so the
-// screen fits on one page; a tap opens a full-screen sheet with the templates at the top (an admin's), Select / Deselect
-// all and the checklist below, and Done, the one way back (the same data-act as the row: setAdvOpen in ui/input.js).
+// screen fits on one page; a tap opens a sheet that slides up over the dimmed setup screen, drawn outside the screen's
+// <main> (renderGameSheet, from ui/render.js beside the explainer: nothing of the screen, its transforms or its clipping
+// reaches it, and no Menu inside it): its own title and count, Done (the one way back; a tap on the dimmed screen too:
+// the same data-act as the row, setAdvOpen in ui/input.js), the templates at the top (an admin's), Select / Deselect all
+// and the checklist below, scrolling within the sheet. It slides up once, as it opens (`sheetAt`, its animations anchored there: ui/fx.js anchorFx), never on a redraw.
+let sheetHtml = '', sheetWas = false, sheetAt = 0;
 function gamesPanel(VT, on, chk) {
   const row = `<button class="adv-h gsum" data-act="adv" aria-haspopup="dialog" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesSummary(on, VT.length)}</small><i class="chev">${CHEV}</i></button>`;
-  if (!advOpen) return `<div class="adv">${row}</div>`;
-  return `<div class="adv">${row}</div><div class="gsheet" role="dialog" aria-modal="true" aria-label="Mini-games"><div class="gsh-bar"><b>Mini-games</b><small class="gsh-n">${gamesSummary(on, VT.length)}</small><button class="pn y gdone" data-act="adv"><b>Done</b></button></div>
-      <div class="gsh-body" data-keep-scroll="gsheet">${templatesRow(VT)}<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div></div></div>`;
+  if (advOpen && !sheetWas) sheetAt = performance.now();
+  sheetWas = advOpen;
+  const kind = isHost() ? 'hostset' : state.setup.vs === 'cpu' ? 'cpuset' : 'sameset';   // (the screen's own classes on the sheet's root, display: contents: the checklist keeps the screen's look)
+  sheetHtml = !advOpen ? '' : `<div class="gsheet-root setup cc calm ${kind}"${fxAttr(Math.round(sheetAt))}><div class="gsheet-dim" data-act="adv" aria-hidden="true"></div><div class="gsheet in" role="dialog" aria-modal="true" aria-label="Mini-games"><div class="gsh-bar"><b>Mini-games</b><small class="gsh-n">${gamesSummary(on, VT.length)}</small><button class="pn y gdone" data-act="adv"><b>Done</b></button></div>
+      <div class="gsh-body" data-keep-scroll="gsheet">${templatesRow(VT)}<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div></div></div></div>`;
+  return `<div class="adv">${row}</div>`;
 }
+// The sheet, drawn after the screen (ui/render.js): only while a setup screen with it open is on show.
+export function renderGameSheet() { return state.screen === 'setup' && advOpen ? sheetHtml : ''; }
 // The Mini-games checklist: one list in alphabetical order (a game's kind, meta.js category, is in its "?").
 export const byName = types => types.slice().sort((a, b) => INFO[a].name.localeCompare(INFO[b].name));
 // Start opens once at least one mini-game is on (online, also once the friend is in).
 const onGames = s => enabledGames(s).filter(t => setupTypes().includes(t));   // the games on, among those this player may see (Super Chaos: its own)
 function setupReady(s) { const on = onGames(s).length; return isHost() ? !!(on && state.online.joined && connected) : !!on; }
-const CPU_HINT = 'three in a row takes the match';   // Play Computer's foot with nothing to warn of
-function setupWarn(s) { return !onGames(s).length ? 'pick a mini-game or two' : isHost() && !setupReady(s) ? "Start opens once your friend's in" : ''; }
+const CPU_HINT = '';   // Play Computer's foot with nothing to warn of: nothing (the rules are How to Play's)
+function setupWarn(s) { return !onGames(s).length ? 'pick a mini-game or two' : ''; }   // (the host waiting: the friend's slot says so)
 // Ticking a mini-game (or Select all) changes the screen in place, with no re-render, so the list
 // stays exactly where it was scrolled and Mini-games stays open. The choice is saved for the next match.
 export function setGames(change) {

@@ -18,7 +18,8 @@ const E = require('../engine.js');
 const MM = await import('../../src/net/matchmaking.js');
 const { renderMenu } = await import('../../src/ui/screens/menu.js');
 const { renderWin } = await import('../../src/ui/screens/win.js');
-const { renderSetup } = await import('../../src/ui/screens/setup.js');
+const { renderSetup: renderScreen, renderGameSheet } = await import('../../src/ui/screens/setup.js');
+const renderSetup = () => renderScreen() + renderGameSheet();   // (the Mini-games sheet is drawn after the screen, outside its <main>: ui/render.js)
 const { state } = await import('../../src/ui/app.js');
 const { renderHowTo } = await import('../../src/ui/explainer.js');
 const ROOT = new URL('../../', import.meta.url);
@@ -34,12 +35,12 @@ test('the stylesheet and the two faces are the page\'s', () => {
   assert.match(fonts, /Open Font License/);
 });
 
-test('the main menu: a panel with a caption tag and a line for each way to play; Find Match a small "soon" tag while off', () => {
+test('the main menu: a panel with a caption tag for each way to play (no second line: the copy sweep); Find Match a small "soon" tag while off', () => {
   Object.assign(state, board(), { screen: 'menu', online: null });
   MM.setFindOn(true);
   let html = renderMenu();
   assert.match(html, /<main class="scr menu cc loud">/);
-  for (const [act, b, tag] of [['cpu-go', 'Play Computer', '1 player'], ['friend-go', 'Play a Friend', '2 players'], ['find-go', 'Find Match', 'online']]) assert.match(html, new RegExp(`class="pn [^"]*" data-act="${act}"[^>]*><i class="ptag" aria-hidden="true">${tag}</i><b>${b}</b><small>[^<]+</small>`), b);
+  for (const [act, b, tag] of [['cpu-go', 'Play Computer', '1 player'], ['friend-go', 'Play a Friend', '2 players'], ['find-go', 'Find Match', 'online']]) assert.match(html, new RegExp(`class="pn [^"]*" data-act="${act}"[^>]*><i class="ptag" aria-hidden="true">${tag}</i><b>${b}</b></button>`), b);
   assert.deepEqual(panels(html).map(p => p.act), ['cpu-go', 'friend-go', 'find-go', 'howto', 'settings']);
   MM.setFindOn(false);
   html = renderMenu();

@@ -15,9 +15,7 @@ Rule 3: Three squares in a row wins the match. No line left for anyone? A draw.
 
 ## How to Play screen [howto-screen]
 Modes heading: Modes
-Modes hint: Tap for its rules
 Mini-games heading: Mini-games
-Mini-games hint: Tap one for its rules
 Credits heading: Credits
 
 # Modes
@@ -33,7 +31,7 @@ Super Chaos: X and O move at the same time.
 Classic: X goes first, then you take turns.
 
 ## Timer (the host's "?") [timer]
-Text: Minutes each player has for the whole game. +5s is added after each move. Run out of time and you lose.
+Text: Your time for the whole game. +5s a move. Run out and you lose.
 
 # Mini-games
 
@@ -63,7 +61,7 @@ Win: Move all 3 of your pieces off first.
 
 ## Bingo [bingo]
 Category: More luck
-Play: Tap Pick numbers and {offer} balls roll out. Call one: it marks every card it is on, yours and theirs.
+Play: Pick numbers: {offer} balls roll out. Call one; it marks every card it's on.
 Win: Complete a line on your card first.
 
 ## Bowling [bowling]
@@ -73,7 +71,7 @@ Win: {target} pins.{evenText}
 
 ## Brick Break [bricks]
 Category: More skill
-Play: Tap Start, then drag to move the paddle. Bounce the ball into the bricks. Bricks you break stay broken; the ball past the paddle ends your go.
+Play: Drag the paddle to bounce the ball into the bricks. Broken bricks stay broken. Miss the ball and your go ends.
 Win: Clear your wall first.
 
 ## Bullseye [bullseye]
@@ -100,7 +98,7 @@ Win: Reach 1,000 m first.
 
 ## Claw Machine [claw]
 Category: More skill
-Play: One machine for you both. The claw sweeps by itself and swings as it goes. Tap Drop to grab the prize under it: the better it is centred, the better the grip. A prize can still slip on the way to the chute.{goAgain}
+Play: The claw sweeps and swings. Drop it on a prize: the more centred, the better the grip. Prizes can slip on the way to the chute.{goAgain}
 Win: Win {goal} prizes.
 
 ## Codebreaker [mastermind]
@@ -119,22 +117,22 @@ Win: All {n} coins show your side.
 
 ## Coin Pusher [pusher]
 Category: More luck
-Play: One machine for both. Tap to drop a coin where the dropper is as it slides: {perMove} coins a go, in your colour. Your coins score for you whenever they go over the front edge, on anyone's turn. The machine's own silver coins score for whoever pushes them off. A star coin is worth {starWorth}. Off the sides, they are gone.{goAgain}
-Win: First to {target} wins, the moment the coin lands.
+Play: Tap to drop {perMove} coins a go from the sliding dropper. Your coins score whenever they fall off the front, on anyone's turn. Silver coins score for whoever pushes them off. Stars are worth {starWorth}.{goAgain}
+Win: First to {target}.
 
 ## Cup Pong [pong]
 Category: More skill
-Play: Flick up to throw: aim with the angle, throw harder with a faster flick.{goAgain}
+Play: Flick up to throw. A faster flick goes further.{goAgain}
 Win: Sink all 3 of your cups.
 
 ## Dash [dash]
 Category: More skill
-Play: Tap to jump, hold to jump higher. Avoid obstacles.
+Play: Tap to jump, hold to jump higher.
 Win: Reach the finish first.
 
 ## Dice Combo [combo]
 Category: More luck
-Play: Roll five dice up to {rolls} times. Tap dice to hold them between rolls. Then claim a combo not yet on your card. Nothing fits? Your turn ends.{goAgain}
+Play: Roll five dice up to {rolls} times, holding any you like. Then claim a combo not yet on your card.{goAgain}
 Win: Claim {goal} combos.
 List k3: Three of a kind: three dice the same (like 4-4-4).
 List k4: Four of a kind: four dice the same.
@@ -155,7 +153,7 @@ Win: Empty your hand first. If the game blocks, the fewest pips in hand wins.
 
 ## Echo [echo]
 Category: More brain
-Play: Tap Play pattern to watch it once, then tap it back.
+Play: Watch the pattern once, then tap it back.
 Win: Beat all four patterns.
 
 ## Find the Pair [memory]
@@ -167,16 +165,16 @@ Race Win: Find a matching pair first.
 
 ## Five Letters [wordle]
 Category: More brain
-Play: Guess a 5-letter word. Green is correct letter placement, yellow is in the word but different position, grey isn't in it.
+Play: Guess a 5-letter word. Green: right spot. Yellow: wrong spot. Grey: not in the word.
 Win: Guess the word. Use up {limit} guesses and you lose the square.
 Super Chaos Play: Guess a 5-letter word.
 Super Chaos Win: Guess the word. Use up {limit} guesses and you lose the square.
-Race Play: You each have your own 5-letter word. Green is correct letter placement, yellow is in the word but different position, grey isn't in it. You can see the other player's guesses.
+Race Play: You each have your own 5-letter word. Green: right spot. Yellow: wrong spot. Grey: not in the word.
 Race Win: Guess your word first. No guess limit.
 
 ## Flap [flap]
 Category: More skill
-Play: Tap to flap through the gaps. Avoid obstacles.
+Play: Tap to flap through the gaps.
 Win: Reach the finish first.
 
 ## Flash [flash]
@@ -224,14 +222,14 @@ Race Win: Guess your number first. No guess limit.
 
 ## Hook-a-Duck [duck]
 Category: More luck
-Play: You both fish in the same pond. Tap a duck to hook it: it is gone for both of you. Its bottom shows 1 to 5 points, or a boot worth nothing. An empty pond fills up again.{goAgain}
+Play: Hook a duck from the shared pond. It scores 1 to 5, or a boot scores nothing.{goAgain}
 Win: First to {target} points.
 
 ## Krabs [craps]
 Category: More luck
-Play: Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.{goAgain}
+Play: Roll until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.{goAgain}
 Win: Win {goal} rounds.
-Super Chaos Play: Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.
+Super Chaos Play: Roll until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.
 Super Chaos Win: Win {goal} rounds.
 
 ## Lane Rush [lane]
@@ -255,17 +253,17 @@ Super Chaos Win: Sink your ball.
 
 ## Muncher [muncher]
 Category: More skill
-Play: Tap Start, then swipe to steer through the maze and eat the dots. A turn pressed early is taken at the next opening; the side tunnels lead round to the other side. A power pellet turns the spooks blue for a moment: eat one for {ghostDots} dots. A spook catches you and the run ends, but what you ate stays eaten.
+Play: Swipe to steer and eat the dots. Side tunnels wrap round. A power pellet turns the spooks blue: eat one for {ghostDots} dots. A spook ends your run; what you ate stays eaten.
 Win: Eat {target} dots first.
 
 ## Odd One Out [oddone]
 Category: More skill
-Play: Tap Reveal to show the grid, then tap the tile that's a different shade within {secs} seconds.{goAgain}
+Play: Reveal, then tap the odd shade within {secs} seconds.{goAgain}
 Win: Find {goal}.
 
 ## Patterns [patterns]
 Category: More brain
-Play: Pick what comes next, or what's missing. Wrong answers get crossed out.
+Play: Pick what comes next, or what's missing.
 Win: Get {goal} right.
 Super Chaos Play: Pick what comes next, or what's missing.
 Super Chaos Win: Get {goal} right.
@@ -274,8 +272,8 @@ Race Win: Be the first to get {goal} right.
 
 ## Peg Drop [plinko]
 Category: More luck
-Play: Drop the chip from an open slot. Score points based on the bin's value plus the gold bonus peg.
-Win: First to the target score wins.
+Play: Drop the chip from an open slot. Score the bin, plus the gold peg's bonus.
+Win: Reach the target score first.
 Super Chaos Play: Drop the chip from an open slot. The gold bonus peg adds points.
 Super Chaos Win: First to the target score.
 
@@ -286,7 +284,7 @@ Win: Light every target first.
 
 ## Poker Hands [poker]
 Category: More luck
-Play: Tap Deal for five cards. Tap any you want to throw away, then Draw once to replace them. Your hand scores points by what it makes.{goAgain}
+Play: Deal five cards, throw any away, then draw once. Your hand scores by what it makes.{goAgain}
 Win: First to {target} points.
 List pr: Pair (1): two cards of one rank.
 List tp: Two pair (2): two pairs of different ranks.
@@ -314,7 +312,7 @@ Win: Bank {target} first.
 
 ## Risky Spins [wheels]
 Category: More luck
-Play: Pick the safe wheel or the risky one and spin. Keep spinning to build your points, then bank. Land on a skull and you lose them. The risky wheel pays more but has more skulls.
+Play: Spin the safe wheel or the risky one. Keep spinning to build points, then bank. A skull loses them. The risky wheel pays more, with more skulls.
 Win: Reach {target} first.
 
 ## Roads [roads]
@@ -324,12 +322,12 @@ Win: Have the longest unbroken road. The square ends early once the other player
 
 ## Rock Paper Scissors [rps]
 Category: More luck
-Play: Pick rock, paper or scissors against the house. The house throws at random. Tie? Throw again.{goAgain}
+Play: Pick rock, paper or scissors against the house. Tie? Throw again.{goAgain}
 Win: Win {goal} throws.
 
 ## Rummy Lite [rummy]
 Category: More luck
-Play: Take the top card of the pile (maybe the one the other player threw) or of the deck, then throw one card onto the pile. A meld is three of a kind, or three in a row in one suit (an ace is low or high). Your hand is yours alone.{goAgain}
+Play: Take the top card of the pile or the deck, then throw one onto the pile. A meld is three of a kind, or three in a row in one suit (an ace is low or high).{goAgain}
 Win: Hold {melds} melds.
 
 ## Scoop Stack [scoop]
@@ -339,7 +337,7 @@ Win: Stack to the target first.
 
 ## Scratch & Match [scratch]
 Category: More luck
-Play: Scratch a panel on your card to show its picture. Three of the same picture always sit in a line, so two matching pictures in a line point at the third.
+Play: Scratch a panel on your card. Three of a kind always sit in a line.
 Win: Show three of a kind first.
 
 ## Sea Battle [bs]
@@ -378,7 +376,7 @@ Win: Reach the top first.
 
 ## Snake [snake]
 Category: More skill
-Play: Tap Start, then swipe to turn. Red food is X's, yellow is O's. Eat your own colour for a point; the other colour gives the other player a point. The wall, a bomb or your own tail ends the run.
+Play: Swipe to turn. Eat your colour for a point; the other colour scores for the other player. The wall, a bomb or your tail ends the run.
 Win: First to {target} points.
 
 ## Snakes and Ladders [snakes]
@@ -388,7 +386,7 @@ Win: Reach the top first.
 
 ## Snapshot [snapshot]
 Category: More brain
-Play: Memorise the pattern in 5 seconds. Wait out the countdown, then tap it back in and Submit.
+Play: Memorise the pattern, then tap it back and Submit.
 Win: Get 3 right. The grid gets bigger each time.
 
 ## Sniff [sniff]
@@ -407,7 +405,7 @@ Win: {need} in a row.
 
 ## Star Swarm [swarm]
 Category: More skill
-Play: Tap Start, then drag to fly your ship. It fires by itself. Every enemy you shoot down scores: jellies 1, darts 2, saucers 3. One hit ends your turn, but your points carry over.
+Play: Drag to fly; your ship fires by itself. Jellies score 1, darts 2, saucers 3. One hit ends your turn; your points stay.
 Win: Score {target} first.
 
 ## Takeover [takeover]
@@ -417,13 +415,13 @@ Win: Own the most when the board is full.
 
 ## Thirty-One [t31]
 Category: More luck
-Play: One deck (7 to ace) and one pile for both. You hold 3 cards, yours alone. Take the top card of the pile or of the deck, then let one go. Only your best suit counts: ace 11, ten and pictures 10, others their number.{goAgain}
+Play: You hold 3 cards. Take the top card of the pile or the deck, then let one go. Only your best suit counts: ace 11, ten and pictures 10, others their number.{goAgain}
 Win: Reach {target} in one suit.
 
 ## Tic-tac-toe [ttt]
 Category: More brain
 Play: Place your mark.
-Win: Three in a row. Once nobody can get three in a row, the square resets.
+Win: Three in a row. No line left? The square resets.
 
 ## Treasure Hunt [hunt]
 Category: More luck
@@ -445,12 +443,12 @@ Race Win: Be the first to get {goal} right.
 
 ## War [war]
 Category: More luck
-Play: Tap Flip: your card against the dealer's, and the higher card wins the round. A tie goes to war: three cards down each, then flip again. A war won counts {warWorth}.{goAgain}
+Play: Flip your card against the dealer's; the higher card wins the round. A tie goes to war: three cards down each, then flip again. A war won counts {warWorth}.{goAgain}
 Win: Win {goal} rounds.
 
 ## Word Tiles [wtiles]
 Category: More brain
-Play: Make one word from your tiles on the shared board, in a row or a column. The first goes through the centre; every other word joins the tiles already there. Tinted squares count extra. Your tiles are yours alone. No word? Swap your tiles.{goAgain}
+Play: Make one word from your tiles on the shared board, in a row or a column. The first goes through the centre; every other word joins the tiles already there. Tinted squares count extra. No word? Swap your tiles.{goAgain}
 Win: First to {target} points. If neither of you can play (two swaps each in a row), the higher score wins.
 List dl: Double letter: that tile counts twice.
 List tl: Triple letter: that tile counts three times.
@@ -483,7 +481,6 @@ Close hint: Tap anywhere to close
 Practice button: Practice
 Back button: Back to How to Play
 Practice again: Practice again
-Practice again note: another go
 End screen back: How to play
 
 ## Credits [credits]

@@ -72,7 +72,7 @@ export function renderVerify() {
 export function renderUsername() {
   return `<main class="scr setup acct-scr">
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
-      <div class="ttl"><b>Pick a username</b><small>It is how other players see you, and it can't be changed later</small></div></div>
+      <div class="ttl"><b>Pick a username</b><small>You can't change it later</small></div></div>
     <div class="setup-box" data-keep-scroll="username">
       <label class="field"><span>Username</span><input id="uname" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(unameDraft)}"></label>
       <p class="hint">3 to 16 letters, numbers or underscores.</p>

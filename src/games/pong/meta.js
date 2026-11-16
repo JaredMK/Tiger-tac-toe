@@ -6,7 +6,7 @@ export const release = 'admin';   // the default (the admin's dashboard can chan
 export const minVersion = '1.8.0';   // (1.8.0: the first version with its rules as they are now, December 2026 audit; was 1.0.0); the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
-export const explainer = { name: 'Cup Pong', play: 'Flick up to throw: aim with the angle, throw harder with a faster flick.{goAgain}', win: 'Sink all 3 of your cups.' };
+export const explainer = { name: 'Cup Pong', play: 'Flick up to throw. A faster flick goes further.{goAgain}', win: 'Sink all 3 of your cups.' };
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M4 3h7l-1 10H5z"/><path d="M13 3h7l-1 10h-5z"/><path d="M8.5 13h7l-1 8h-5z"/><circle cx="12" cy="20.5" r="1.4" fill="currentColor" stroke="none"/></svg>';
 // Its settings (the admin's Mini-game Settings; core/tune.js): the throw's scatter and the rim, the flick's feel (how
 // fast a flick throws near and far, the angle's gain: rules.js pongFlick), and the computer's aim.

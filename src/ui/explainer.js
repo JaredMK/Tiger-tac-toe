@@ -38,7 +38,7 @@ const SC_EXPLAIN = { name: 'Super Chaos', play: "Both players move at the same t
 // The Mode selector's "?": the two modes, one plain line each.
 const MODE_EXPLAIN = { name: 'Mode', lines: [['Super Chaos', 'X and O move at the same time.'], ['Classic', 'X goes first, then you take turns.']] };
 // The host's Timer "?" (ui/screens/setup.js timerRows): the match clock, one plain paragraph.
-const TIMER_EXPLAIN = { name: 'Timer', text: 'Minutes each player has for the whole game. +5s is added after each move. Run out of time and you lose.' };
+const TIMER_EXPLAIN = { name: 'Timer', text: 'Your time for the whole game. +5s a move. Run out and you lose.' };
 const CLOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>';
 const SC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round"><path d="M13.5 2 5 13.5h6L9.5 22 19 9.5h-6z"/></svg>';
 const scNow = () => !!(state.sc && ['board', 'mini'].includes(state.screen)) || (state.screen === 'setup' && chaosSetup());
@@ -134,7 +134,7 @@ export function renderPracticeEnd() {
     const tr = `<div class="endgo"><button class="pn y big" data-act="test-again" style="--k:6"><b>Play again</b><small>same game, same settings</small></button></div><div class="ccsmall endsmall">${smallPanel('test-back', CICON.home, 'Back to admin', { k: 7 })}</div>`;
     return renderWin(tr);
   }
-  const row = `<div class="endgo"><button class="pn y big" data-act="practice" data-t="${t}" style="--k:6"><b>Practice again</b><small>another go</small></button></div><div class="ccsmall endsmall">${smallPanel('practice-back', CICON.help, 'How to play', { k: 7, aria: 'Back to How to Play' })}</div>`;
+  const row = `<div class="endgo"><button class="pn y big" data-act="practice" data-t="${t}" style="--k:6"><b>Practice again</b></button></div><div class="ccsmall endsmall">${smallPanel('practice-back', CICON.help, 'How to play', { k: 7, aria: 'Back to How to Play' })}</div>`;
   return renderWin(row);
 }
 // Opened and closed in place: the screen underneath is not drawn again (no scroll jump, no move used).
@@ -170,9 +170,9 @@ export function renderHowTo() {
       <div class="ttl"><b>How to Play</b></div></div>
     <div class="setup-box" data-keep-scroll="howto">
       ${howPanels()}
-      ${SUPER_CHAOS_ENABLED ? `<div class="games-h"><span>Modes</span><small>Tap for its rules</small></div>
+      ${SUPER_CHAOS_ENABLED ? `<div class="games-h"><span>Modes</span><small></small></div>
       <div class="games howlist"><button class="pn gt w" data-act="explain" data-t="superchaos" aria-label="How to play Super Chaos">${gameIcon('superchaos', SC_ICON)}<b>Super Chaos</b></button></div>` : ''}
-      <div class="games-h"><span>Mini-games</span><small>Tap one for its rules</small></div>
+      <div class="games-h"><span>Mini-games</span><small></small></div>
       <div class="games howlist">${visibleTypes().filter(t => SUPER_CHAOS_ENABLED || !SC_ONLY.includes(t)).sort((a, b) => EXPLAIN[a].name.localeCompare(EXPLAIN[b].name, undefined, { numeric: true, sensitivity: 'base' })).map(t => `<button class="pn gt w" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${gameIcon(t)}<b>${EXPLAIN[t].name.replace(/\//g, '/<wbr>')}</b>${testBadge(t)}</button>`).join('')}</div>
       <div class="games-h"><span>Credits</span></div><div class="rulecard credits">${visibleTypes().includes('trivia') ? '<p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>' : ''}${visibleTypes().some(t => PHYS_TYPES.includes(t) || t === 'pinball') ? '<p>Mini Golf, Pool, Bowling and Pinball run on <a href="https://brm.io/matter-js" target="_blank" rel="noopener noreferrer">Matter.js</a> (MIT licence).</p>' : ''}${visibleTypes().includes('wtiles') ? '<p>Word Tiles checks its words against the ENABLE word list (public domain).</p>' : ''}<p>Fonts: Luckiest Guy, Patrick Hand, Bangers and Comic Neue (SIL Open Font License).</p><p class="priv">What the game keeps about you, and how to delete your account: <a href="${privacyUrl()}" target="_blank" rel="noopener noreferrer">Privacy policy</a></p></div>
     </div></main>`;

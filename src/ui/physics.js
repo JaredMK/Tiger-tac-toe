@@ -92,7 +92,7 @@ export function physResult(f, long) {
 }
 export function physTable(mini, a, o) {
   const type = mini.type, turn = o.turn;
-  if (!physicsReady()) return `<div class="g-arc"><div class="phys"><div class="pscene ${type} wait"><p class="arcnote">Loading the table… (needs a connection the first time)</p></div></div></div>`;
+  if (!physicsReady()) return `<div class="g-arc"><div class="phys"><div class="pscene ${type} wait"><p class="arcnote">Loading the table…</p></div></div></div>`;
   const ph = a && a.phys ? a.phys : null, l = mini.last, mover = ph ? a.by : turn;
   const fresh = p => !!(ph && a.by === p);
   const tal = type === 'golf' ? p => { const n = mini.shots[p]; return arcTally(p, o, `<b class="dbig gshots" aria-label="${n} shot${n === 1 ? '' : 's'}${mini.holed[p] ? ', in the cup' : ''}"><span>${n}</span><small>${n === 1 ? 'shot' : 'shots'}</small></b>`); }   // the strokes so far, big

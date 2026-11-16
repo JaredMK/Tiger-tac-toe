@@ -18,7 +18,7 @@ export function renderIntro() {
   const side = s => { const p = mmIntro.players[s] || {}; return `<div class="vsp ${s}">${toon(s)}<b>${esc(p.name || s)}</b>${p.record ? `<small>${record(p.record)}</small>` : ''}${me === s ? '<i>You</i>' : ''}</div>`; };
   const title = me ? `You are ${me}` : `${esc((mmIntro.players.X || {}).name || 'X')} is X · ${esc((mmIntro.players.O || {}).name || 'O')} is O`;
   return `<div class="vsintro" data-act="intro-close" role="dialog" aria-label="${me ? `You are ${me}` : 'Who plays X and O'}"><div class="vscard"><h2 class="vstitle">${title}</h2>${side('X')}<div class="vsmid">VS</div>${side('O')}
-    <p class="hint">${me === 'X' ? 'You go first' : `${esc((mmIntro.players.X || {}).name || 'X')} goes first`} · tap to start</p></div></div>`;
+    <p class="hint">${me === 'X' ? 'You go first' : `${esc((mmIntro.players.X || {}).name || 'X')} goes first`}</p></div></div>`;
 }
 export function renderFind() {
   const p = acct.profile || {};

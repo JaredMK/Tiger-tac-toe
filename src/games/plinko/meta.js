@@ -5,7 +5,7 @@ export const release = 'admin';   // the default (the admin's dashboard can chan
 export const minVersion = '1.14.0';   // (1.14.0: the first version with its rules as they are now, December 2026 audit; was 1.0.0); the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
-export const explainer = { name: 'Peg Drop', play: 'Drop the chip from an open slot. Score points based on the bin\'s value plus the gold bonus peg.', win: 'First to the target score wins.' };
+export const explainer = { name: 'Peg Drop', play: 'Drop the chip from an open slot. Score the bin, plus the gold peg\'s bonus.', win: 'Reach the target score first.' };
 export const scExplainer = { name: 'Peg Drop', play: 'Drop the chip from an open slot. The gold bonus peg adds points.', win: 'First to the target score.' };   // in Super Chaos
 export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="3.5" r="2.2"/><circle cx="7" cy="9" r="1.5"/><circle cx="12" cy="9" r="1.5"/><circle cx="17" cy="9" r="1.5"/><circle cx="9.5" cy="14" r="1.5"/><circle cx="14.5" cy="14" r="1.5"/><path d="M3 18.5h18v3H3z"/><path d="M11 18.5h2v3h-2z" fill="var(--paper)"/></svg>';
 export const PLINKO_DEFAULTS = { target: 12 };

@@ -20,9 +20,9 @@ export function renderMenu() {
   return `<main class="scr menu cc loud">${rays()}${menuTop()}<div class="menu-card">
     <h1 class="title ccpunch"><span class="sr">Tic Tac Chaos</span><span class="ttop wob" aria-hidden="true">${'TIC TAC'.split('').map((c, k) => c === ' ' ? '<span>&nbsp;</span>' : `<span style="animation-delay:${(k * .09).toFixed(2)}s">${c}</span>`).join('')}</span><span class="chaos wob">${burstSvg('CHAOS!', 'w', 300, 150, 54)}</span></h1>
     <div class="ccpals" aria-hidden="true"><span class="pal X">${toon('X')}</span>${bubble("Who's playing?", '', 'ccpunch')}<span class="pal O">${toon('O')}</span></div>${menuNote ? `<div class="notice" role="status">${esc(menuNote)}</div>` : ''}
-    ${resumable ? panel('resume', 'Resume match', { tag: 'live', sub: 'pick up where you left off', cls: 'g', k: 1, attrs: resumeBusy ? ' disabled' : '' }) : ''}
-    ${panel('cpu-go', 'Play Computer', { tag: '1 player', sub: 'you vs the machine', cls: 'k', k: 2 })}
-    ${panel('friend-go', 'Play a Friend', { tag: '2 players', sub: 'share a code, or pass the phone', cls: 'r fr', k: 3 })}
+    ${resumable ? panel('resume', 'Resume match', { tag: 'live', cls: 'g', k: 1, attrs: resumeBusy ? ' disabled' : '' }) : ''}
+    ${panel('cpu-go', 'Play Computer', { tag: '1 player', cls: 'k', k: 2 })}
+    ${panel('friend-go', 'Play a Friend', { tag: '2 players', cls: 'r fr', k: 3 })}
     ${findBtn()}
     <div class="ccsmall">${smallPanel('howto', CICON.help, 'How to play', { k: 5 })}${smallPanel('settings', CICON.cog, 'Settings', { cls: 'w fr', k: 6 })}</div>
   </div><div class="menu-foot"><a class="credit" href="${JARHEAD_URL}" target="_blank" rel="noopener noreferrer" aria-label="by JarHead Labs, on X (opens in a new tab)">${JARHEAD_LOGO}<span>by JarHead Labs</span></a><a class="privacy" href="${privacyUrl()}" target="_blank" rel="noopener noreferrer" aria-label="Privacy policy (opens in a new tab)">Privacy</a></div></main>`;
@@ -31,8 +31,8 @@ export function renderMenu() {
 // admin has it off, a small flat "soon" tag (still a disabled button: the menu's controls keep their order).
 function findBtn() {
   const back = activeElsewhere();
-  if (back) return panel('find-go', 'Back to your match', { tag: 'online', sub: "it's still on", cls: 'c', k: 4 });
-  if (findOn) return panel('find-go', 'Find Match', { tag: 'online', sub: 'meet a rival', cls: 'c', k: 4 });
+  if (back) return panel('find-go', 'Back to your match', { tag: 'online', cls: 'c', k: 4 });
+  if (findOn) return panel('find-go', 'Find Match', { tag: 'online', cls: 'c', k: 4 });
   return '<button class="soon" data-act="find-go" disabled aria-label="Find Match: coming soon">Find Match<small>soon</small></button>';
 }
 // The main menu's top row: My Stats (or the leaderboard, with ratings on), and the account (Log in, or your username).

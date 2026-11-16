@@ -6,7 +6,7 @@ export const minVersion = '1.14.0';   // (1.14.0: the first version with its rul
 export const turnSecs = 60;   // an online turn's time in this game (core/timer.js turnSecs): 60 seconds, against the match's 30
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = false;   // Super Chaos: never dealt there (a run is a real-time attempt of its own)
-export const explainer = { name: 'Star Swarm', play: 'Tap Start, then drag to fly your ship. It fires by itself. Every enemy you shoot down scores: jellies 1, darts 2, saucers 3. One hit ends your turn, but your points carry over.', win: 'Score {target} first.' };
+export const explainer = { name: 'Star Swarm', play: 'Drag to fly; your ship fires by itself. Jellies score 1, darts 2, saucers 3. One hit ends your turn; your points stay.', win: 'Score {target} first.' };
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13.5l-4.5 7h9z" fill="currentColor" fill-opacity=".35"/><path d="M12 13.5V10"/><circle cx="7" cy="4.5" r="1.9" fill="currentColor"/><circle cx="12" cy="3.5" r="1.9" fill="currentColor"/><circle cx="17" cy="4.5" r="1.9" fill="currentColor"/></svg>';
 // Its settings (the admin's Mini-game Settings; core/tune.js; every one read by the square as it was dealt: rules.js
 // tune(mini)): the target, the waves (how often enemies come at the start and after the ramp, how fast, the saucers'

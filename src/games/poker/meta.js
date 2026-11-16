@@ -8,7 +8,7 @@ export const category = 'luck';   // the game's kind, shown in its "?" explainer
 export const superChaos = false;   // (not dealt in Super Chaos)
 // The hands, one line each, under Play and Win in the "?" (ui/explainer.js: a game's explainerList, "Label: meaning"; the points are the defaults).
 export const explainerList = { pr: 'Pair (1): two cards of one rank.', tp: 'Two pair (2): two pairs of different ranks.', tk: 'Three of a kind (3): three cards of one rank.', st: 'Straight (4): five ranks in a row (an ace can be low: A-2-3-4-5).', fl: 'Flush (5): all five of one suit.', fh: 'Full house (6): three of one rank plus two of another.', fk: 'Four of a kind (8): four cards of one rank.', sf: 'Straight flush (10): five in a row, all of one suit.' };
-export const explainer = { name: 'Poker Hands', play: 'Tap Deal for five cards. Tap any you want to throw away, then Draw once to replace them. Your hand scores points by what it makes.{goAgain}', win: 'First to {target} points.' };   // ({target}: its setting, TUNE below)
+export const explainer = { name: 'Poker Hands', play: 'Deal five cards, throw any away, then draw once. Your hand scores by what it makes.{goAgain}', win: 'First to {target} points.' };   // ({target}: its setting, TUNE below)
 // {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).
 export const goAgainText = { on: ' Scored? Go again.', off: '' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with tune(mini). The target tuned by

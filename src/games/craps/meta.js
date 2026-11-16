@@ -6,8 +6,8 @@ export const release = 'admin';   // the default (the admin's dashboard can chan
 export const minVersion = '1.14.0';   // (1.14.0: the first version with its rules as they are now, December 2026 audit; was 1.0.0); the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
-export const explainer = { name: 'Krabs', play: 'Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.{goAgain}', win: 'Win {goal} rounds.' };   // ({goal}: its setting, TUNE below)
-export const scExplainer = { name: 'Krabs', play: 'Tap Roll: the dice keep rolling until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.', win: 'Win {goal} rounds.' };   // in Super Chaos (one round a round: no going again)
+export const explainer = { name: 'Krabs', play: 'Roll until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.{goAgain}', win: 'Win {goal} rounds.' };   // ({goal}: its setting, TUNE below)
+export const scExplainer = { name: 'Krabs', play: 'Roll until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.', win: 'Win {goal} rounds.' };   // in Super Chaos (one round a round: no going again)
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with tune(mini).
 // {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).
 export const goAgainText = { on: ' Win? Go again.', off: '' };

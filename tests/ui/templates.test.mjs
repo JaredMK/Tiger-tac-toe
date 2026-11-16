@@ -16,7 +16,8 @@ const require = createRequire(import.meta.url);
 const E = require('../engine.js');
 const C = await import('../../src/net/connect.js');
 const A = await import('../../src/net/accounts.js');
-const { renderSetup, setupTypes, tpl, tplAct, tplMatch } = await import('../../src/ui/screens/setup.js');
+const { renderSetup: renderScreen, renderGameSheet, setupTypes, tpl, tplAct, tplMatch } = await import('../../src/ui/screens/setup.js');
+const renderSetup = () => renderScreen() + renderGameSheet();   // (the Mini-games sheet is drawn after the screen, outside its <main>: ui/render.js)
 const { SC_ONLY, TYPES } = await import('../../src/games/index.js');
 const { state, setAdvOpen } = await import('../../src/ui/app.js');
 

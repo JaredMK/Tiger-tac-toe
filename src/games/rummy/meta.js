@@ -6,7 +6,7 @@ export const samePhone = false;   // never two people on one phone: each hand wo
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const minVersion = '1.17.0';   // (1.17.0: the first version with its rules as they are now, December 2026 audit; was 1.11.0); the oldest client version that has this game (core/client.js)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
-export const explainer = { name: 'Rummy Lite', play: 'Take the top card of the pile (maybe the one the other player threw) or of the deck, then throw one card onto the pile. A meld is three of a kind, or three in a row in one suit (an ace is low or high). Your hand is yours alone.{goAgain}', win: 'Hold {melds} melds.' };
+export const explainer = { name: 'Rummy Lite', play: 'Take the top card of the pile or the deck, then throw one onto the pile. A meld is three of a kind, or three in a row in one suit (an ace is low or high).{goAgain}', win: 'Hold {melds} melds.' };
 // {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).
 export const goAgainText = { on: ' Made a new meld? Go again.', off: '' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with rmyCfg(mini) (rules.js). `ranks`: the ranks in
