@@ -3,10 +3,10 @@ import { AGAIN_TUNE } from '../../core/tune.js';
 
 export const info = { name: 'Backgammon Lite', hint: 'Roll and race your 3 pieces off the far end' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.12.0';   // (1.12.0: the turn sent whole, { steps }) the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const minVersion = '1.19.0';   // (1.19.0: the bar, a hit piece waiting off the board and coming back in first; 1.12.0: the turn sent whole, { steps }) the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = false;   // never in Super Chaos (one shared track: the pieces meet)
-export const explainer = { name: 'Backgammon Lite', play: 'Your 3 pieces start on your first point. Roll two dice (the very first roll: one). Each die moves a piece that many points; a double moves four times. Land on a lone enemy piece to send it back to its start. Two of your pieces on a point block it. Once all your pieces are in your home zone, the last {home} points, any roll that reaches the end bears a piece off.{goAgain}', win: 'Move all 3 of your pieces off first.' };
+export const explainer = { name: 'Backgammon Lite', play: 'Your 3 pieces start on your first point. Roll two dice. Each die moves a piece that many points; a double moves four times. Land on a lone enemy piece to knock it onto the bar. A piece on the bar must come back in before any other piece moves: it enters on the point the die shows, counted from its own start, unless two or more enemy pieces hold that point. No way in? The turn ends. Two of your pieces on a point block it. Once all your pieces are in your home zone, the last {home} points, any roll that reaches the end bears a piece off.{goAgain}', win: 'Move all 3 of your pieces off first.' };
 // {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).
 export const goAgainText = { on: ' Move a piece off? Roll again.', off: '' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with tune(mini). The track's length is dealt into

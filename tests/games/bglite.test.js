@@ -13,14 +13,14 @@ const mini = seed => E.newMini('bglite', E.makeRng(seed || 'bgl'));
 // A square laid out by hand: positions (progress, each side's own count) and the dice in play for p (v: a v 1 square, from before the rework).
 function laid(pos, p, v, ver) {
   const m = mini();
-  m.pos = { X: pos.X.slice(), O: pos.O.slice() }; m.rolled = true; if (ver) m.v = ver;
+  m.pos = { X: pos.X.slice(), O: pos.O.slice() }; m.rolled = true; m.v = ver || 2;   // (v 2, the rules before the bar, unless a version is given: the bar's own tests lay v 3)
   m.dice = p ? { by: p, v: v.slice(), used: v.map(x => !x), off: 0 } : null;
   return m;
 }
 
 test('bglite: a fresh square: an 8-point track, three pieces each on their own first point, no dice; Roll first, and the opening roll is two dice like any other', () => {
   const m = mini();
-  assert.equal(m.n, 8); assert.equal(m.v, 2); assert.deepEqual(m.pos, { X: [1, 1, 1], O: [1, 1, 1] }); assert.equal(m.dice, null);
+  assert.equal(m.n, 8); assert.equal(m.v, 3); assert.deepEqual(m.pos, { X: [1, 1, 1], O: [1, 1, 1] }); assert.equal(m.dice, null);
   assert.equal(R.bglPoint('X', 1, 8), 1); assert.equal(R.bglPoint('O', 1, 8), 8, "O's first point is the rightmost");
   for (const bad of [{ d: 0, k: 0 }, 'bank', null, 3, { d: 4, k: 0 }]) assert.equal(E.applyMove(mini(), 'X', bad, lcg(1)).ok, false);
   const r = E.applyMove(m, 'X', 'roll', lcg(2));
@@ -366,4 +366,77 @@ test('bglite audit: thousands of random turns from random positions: every turn 
     }
   }
   assert.ok(n > 200, String(n));
+});
+
+// ---------- the bar (December 2026, v 3): a hit piece waits off the board and comes in first ----------
+const sortA = a => a.slice().sort((x, y) => x - y);
+test('bglite bar: a hit piece goes to the bar (progress 0), not back to its start point; a v 2 square still sends it to its start', () => {
+  const m = laid({ X: [2, 1, 1], O: [6, 1, 1] }, 'X', [1, 5], 3);        // X's piece on point 2 takes a 1 onto point 3, where O's lone piece (its progress 6) stands
+  assert.equal(R.bglBar(m), true); assert.equal(R.bglStart(m), 0);
+  const s = R.bglStep(m, 'X', 0, 0);
+  assert.deepEqual(s.hit, { k: 0, from: 6 }); assert.deepEqual(m.pos.O, [0, 1, 1], 'O is on the bar'); assert.equal(R.bglAt(m, 'O', 3), 0, 'off the board');
+  const old = laid({ X: [2, 1, 1], O: [6, 1, 1] }, 'X', [1, 5], 2); R.bglStep(old, 'X', 0, 0);
+  assert.deepEqual(old.pos.O, [1, 1, 1], 'v 2: back to the start point');
+  assert.equal(R.bglPips(m, 'O') - R.bglPips(laid({ X: [1, 1, 1], O: [1, 1, 1] }, null, [], 3), 'O') > 0, true, 'the bar is behind the start');
+});
+test('bglite bar: entry: a die d brings a bar piece in on the point of its own count d from its start (X from the left, O from the right)', () => {
+  const m = laid({ X: [0, 1, 1], O: [0, 1, 1] }, 'X', [3, 4], 3);
+  assert.deepEqual(R.bglMoves(m, 'X').map(x => [x.d, x.k]), [[0, 0], [1, 0]], 'only the bar piece may move, with either die');
+  R.bglStep(m, 'X', 0, 0); assert.equal(m.pos.X[0], 3); assert.equal(R.bglAt(m, 'X', 3), 1, 'X: point 3 from the left');
+  const o = laid({ X: [1, 1, 1], O: [0, 1, 1] }, 'O', [3, 4], 3); R.bglStep(o, 'O', 0, 0);
+  assert.equal(o.pos.O[0], 3); assert.equal(R.bglPoint('O', 3, o.n), 6, "O: point 3 from the right is point 6 from the left");
+  assert.deepEqual(R.bglMoves(m, 'X').map(x => x.k).filter(k => k !== 0).length > 0, true, 'once it is in, the other pieces may move');
+  const hit = laid({ X: [0, 1, 1], O: [7, 1, 1] }, 'X', [2, 6], 3);      // O's lone piece on point 2 (its progress 7): entering with the 2 hits it
+  const r = R.bglStep(hit, 'X', 0, 0); assert.deepEqual(hit.pos.O, [0, 1, 1]); assert.deepEqual(r.hit, { k: 0, from: 7 });
+});
+test('bglite bar: a blocked entry (2 or more enemy pieces on the point) loses that die; every die blocked ends the turn', () => {
+  const m = laid({ X: [0, 1, 1], O: [6, 6, 1] }, 'X', [3, 5], 3);        // two O pieces on point 3
+  assert.deepEqual(R.bglMoves(m, 'X').map(x => [x.d, x.k]), [[1, 0]], 'the 3 is blocked, the 5 enters');
+  assert.equal(R.bglLegal(m, 'X', 0, 0), false); assert.equal(R.bglLegal(m, 'X', 1, 0), true);
+  const t = laid({ X: [0, 4, 5], O: [6, 6, 1] }, null, [], 3);           // a roll of 3 and 3 (a double): every entry blocked, the other pieces may not move
+  const r = E.applyMove(t, 'X', 'roll', fixed(0.4));
+  assert.deepEqual([r.ok, r.outcome, r.note], [true, 'continue', 'stuck']); assert.equal(t.dice, null, 'the turn ends'); assert.deepEqual(t.pos.X, [0, 4, 5], 'nothing moved');
+  assert.deepEqual([t.last.stuck, t.last.bar], [true, true]);
+  const three = laid({ X: [0, 1, 1], O: [1, 1, 1] }, null, [], 3);        // three O pieces on their start (point 8): a die of 8 is no die, but a start point holding 3 closes entry for X only at point 8
+  assert.equal(R.bglCan(three, 'X', 0, 6), true);
+});
+test('bglite bar: priority: nothing else moves while a piece is on the bar; the turn is checked in that order', () => {
+  const m = laid({ X: [0, 4, 5], O: [1, 1, 1] }, 'X', [2, 3], 3);
+  assert.deepEqual(R.bglMoves(m, 'X').filter(x => x.k !== 0), [], 'only piece 0');
+  assert.equal(R.bglLegal(m, 'X', 0, 1), false, 'the 2 on another piece: refused'); assert.equal(R.bglLegal(m, 'X', 0, 0), true);
+  const bad = laid({ X: [0, 4, 5], O: [1, 1, 1] }, 'X', [2, 6], 3);
+  assert.equal(E.applyMove(bad, 'X', { steps: [[0, 1], [1, 0]] }, lcg(1)).ok, false, 'another piece first: refused'); assert.deepEqual(bad.pos.X, [0, 4, 5], 'the square untouched');
+  const good = laid({ X: [0, 4, 5], O: [1, 1, 1] }, 'X', [2, 6], 3);
+  const r = E.applyMove(good, 'X', { steps: [[1, 0], [0, 1]] }, lcg(1));    // in with the 6 (point 6), then the 2 on another piece
+  assert.equal(r.ok, true, JSON.stringify(r)); assert.deepEqual(good.pos.X, [6, 6, 5]);
+  const one = laid({ X: [0, 4, 5], O: [1, 1, 1] }, 'X', [2, 3], 3);        // a single move of an older client: the bar piece first too
+  assert.equal(E.applyMove(one, 'X', { d: 0, k: 2 }, lcg(1)).ok, false); assert.equal(E.applyMove(one, 'X', { d: 0, k: 0 }, lcg(1)).ok, true);
+});
+test('bglite bar: doubles give up to four entries or moves, bar pieces first', () => {
+  const m = laid({ X: [0, 0, 3], O: [1, 1, 1] }, 'X', [2, 2, 2, 2], 3);
+  assert.deepEqual(sortA([...new Set(R.bglMoves(m, 'X').map(x => x.k))]), [0], 'two on the bar, alike: the first of them');
+  assert.ok(R.bglMoves(m, 'X').every(x => x.k !== 2), 'the third piece waits while two are on the bar');
+  const r = E.applyMove(m, 'X', { steps: [[0, 0], [1, 1], [2, 2], [3, 0]] }, lcg(1));
+  assert.equal(r.ok, true, JSON.stringify(r)); assert.deepEqual(sortA(m.pos.X), [2, 4, 5]);   // 0->2->4, 0->2, 3->5
+  const three = laid({ X: [0, 0, 0], O: [2, 2, 2] }, 'X', [4, 4, 4, 4], 3);
+  assert.equal(E.applyMove(three, 'X', { steps: [[0, 0], [1, 1], [2, 2]] }, lcg(1)).ok, false, 'a die left with a move: the turn is not played out');
+  assert.equal(E.applyMove(three, 'X', { steps: [[0, 0], [1, 1], [2, 2], [3, 0]] }, lcg(1)).ok, true); assert.deepEqual(sortA(three.pos.X), [4, 4, 8], 'three in at 4, one on to 8 (the last point)');
+});
+test('bglite bar: the computer brings the bar piece in first, at every level, and plans only legal turns', () => {
+  for (const level of ['easy', 'normal', 'hard']) {
+    const m = laid({ X: [0, 4, 5], O: [8, 1, 1] }, 'X', [2, 6], 3);
+    const r = A.best(m, 'X', E.makeRng('bar-' + level), {}, { level });
+    assert.ok(r.move && Array.isArray(r.move.steps), level); assert.equal(r.move.steps[0][1], 0, level + ': the first step is the bar piece');
+    const c = laid({ X: [0, 4, 5], O: [8, 1, 1] }, 'X', [2, 6], 3); assert.equal(E.applyMove(c, 'X', r.move, lcg(2)).ok, true, level);
+  }
+  const blocked = laid({ X: [0, 4, 5], O: [6, 6, 1] }, 'X', [3, 3, 3, 3], 3);
+  assert.deepEqual(A.bglPlans(blocked, 'X').map(p => p.steps.length), [0], 'nothing playable: one empty plan');
+  for (let g = 0; g < 200; g++) {                                         // whole squares at random: every turn the server takes, a bar piece never idle while others move
+    const sq = E.newMini('bglite', E.makeRng('bar-g' + g)); let p = 'X', rng = lcg(g + 1);
+    for (let t = 0; t < 300; t++) {
+      const roll = E.applyMove(sq, p, 'roll', rng); assert.ok(roll.ok);
+      if (sq.dice) { const bar0 = sq.pos[p].includes(0), mv = A.best(sq, p, E.makeRng('g' + g + t), {}, { level: 'normal' }).move, first = mv.steps[0]; if (bar0) assert.equal(sq.pos[p][first[1]], 0, 'bar first'); assert.ok(E.applyMove(sq, p, mv, rng).ok); }
+      if (sq.pos[p].every(a => a > sq.n)) break; p = p === 'X' ? 'O' : 'X';
+    }
+  }
 });

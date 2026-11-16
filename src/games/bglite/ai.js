@@ -44,7 +44,7 @@ export function bglValue(m, me, c) {
       let miss = 1;
       const a = bglPoint(me, b, n);
       if (a === 1 && (m.v || 1) >= 2) continue;                       // (a lone piece on its own start point is never hit)
-      for (const e of new Set(m.pos[o])) { const d = tO - e; if (d >= 1 && d <= 24) miss *= 1 - SHOT[d]; }   // (each enemy piece behind it: its chance of a shot)
+      for (const e of new Set(m.pos[o])) { const d = tO - e; if (d >= 1 && d <= 24) miss *= 1 - (e === 0 && (m.v || 1) >= 3 ? (d <= 6 ? 11 / 36 : 0) : SHOT[d]); }   // (a piece on the bar can only come in on a die of its own count: 11 in 36)   // (each enemy piece behind it: its chance of a shot)
       v -= (1 - miss) * (a - ((m.v || 1) >= 2 ? 1 : 0) + c.aiBlot);
     } else if (m.pos[o].some(a => a < tO)) v += c.aiBlock;
   }

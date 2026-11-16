@@ -58,7 +58,7 @@ Win: Empty your tree first.
 
 ## Backgammon Lite [bglite]
 Category: More luck
-Play: Your 3 pieces start on your first point. Roll two dice (the very first roll: one). Each die moves a piece that many points; a double moves four times. Land on a lone enemy piece to send it back to its start. Two of your pieces on a point block it. Once all your pieces are in your home zone, the last {home} points, any roll that reaches the end bears a piece off.{goAgain}
+Play: Your 3 pieces start on your first point. Roll two dice. Each die moves a piece that many points; a double moves four times. Land on a lone enemy piece to knock it onto the bar. A piece on the bar must come back in before any other piece moves: it enters on the point the die shows, counted from its own start, unless two or more enemy pieces hold that point. No way in? The turn ends. Two of your pieces on a point block it. Once all your pieces are in your home zone, the last {home} points, any roll that reaches the end bears a piece off.{goAgain}
 Win: Move all 3 of your pieces off first.
 
 ## Bingo [bingo]

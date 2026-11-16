@@ -1,5 +1,5 @@
 // Backgammon Lite: the screen, the miniature, the move's words and sounds, and the inputs.
-import { BGL, BGLT, bglDice, bglHome, bglLegal, bglPlayable, bglStep, bglTimes, bglTo, bglV2 } from './rules.js';
+import { BGL, BGLT, bglDice, bglBar, bglHome, bglLegal, bglPlayable, bglStep, bglTimes, bglTo, bglV2 } from './rules.js';
 import { N, REDUCED, mv, state, waitLine, zoomedType } from '../../ui/app.js';
 import { dieFace } from '../../ui/art.js';
 import { DIE_BOUNCE, die3d } from '../../ui/dice.js';
@@ -286,12 +286,16 @@ function table(mini, a, o) {
   let bams = '';
   if (anim) bams = tb.steps.map((s, i) => { if (!s.hit) return ''; const [col, slot] = bglCells(stepPos(tb, i + 1), n)[tb.by + s.k]; return `<i class="bglbam" style="${cellStyle(col, slot, c)};--t:${Math.round(T.steps[i].hitAt)}ms" aria-hidden="true"></i>`; }).join('');
   else if (dr && dr.hit && dr.at != null && dr.steps.length && !REDUCED) { const [col, slot] = now[dr.p + dr.steps[dr.steps.length - 1].k]; bams = `<i class="bglbam" style="${cellStyle(col, slot, c)};--t:${BGLT.slide}ms" aria-hidden="true"></i>`; }
-  const v2 = bglV2(mini), wd = (100 / c).toFixed(3);
+  const v2 = bglV2(mini), v3 = bglBar(mini), wd = (100 / c).toFixed(3);
   const pts = Array.from({ length: n }, (_, i) => `<i class="bglpt${i % 2 ? ' b' : ''}" style="left:${((i + 1) * 100 / c).toFixed(3)}%;width:${wd}%"></i>`).join('');
   // the trays: the left one O's, the right one X's, each with its owner's mark and a socket a piece (a square from before: plain, its top the other side's waiting pieces)
-  const tray = (side, p) => `<i class="bglz ${side} ${p}${offOf(p) >= BGL.pieces ? ' full' : ''}" style="width:${wd}%">${v2 ? markSvg(p) : ''}</i>`;
+  const tray = (side, p) => `<i class="bglz ${side} ${p}${offOf(p) >= BGL.pieces ? ' full' : ''}" style="width:${wd}%">${v2 && !v3 ? markSvg(p) : ''}</i>`;
   const sockets = v2 ? ['X', 'O'].map(p => [0, 1, 2].map(i => `<i class="bglso" style="${cellStyle(p === 'X' ? n + 1 : 0, SLOTS - 1 - i, c)}"></i>`).join('')).join('') : '';
-  const zones = tray('l', 'O') + tray('r', 'X')
+  // the bar (v 3): X's at the top of the left tray, O's at the top of the right, each a framed place in its owner's colour
+  // labelled BAR, framed solid with pieces on it; the trays' lower halves, OFF, are where pieces borne off go (the owner's colour too)
+  const onBar = p => view.pos[p].filter(x => x <= 0).length;
+  const bar = v3 ? ['X', 'O'].map(p => `<i class="bglbr ${p}${onBar(p) ? ' on' : ''}" style="${cellStyle(p === 'X' ? 0 : n + 1, 0, c)};height:${(300 / SLOTS).toFixed(3)}%"><b>BAR</b></i><i class="bglof ${p}" style="${cellStyle(p === 'X' ? n + 1 : 0, 3, c)};height:${(300 / SLOTS).toFixed(3)}%"><b>OFF</b></i>`).join('') : '';
+  const zones = tray('l', 'O') + tray('r', 'X') + bar
     + (v2 ? ['X', 'O'].map(p => { const h = bglHome(mini), from = p === 'X' ? n - h + 1 : 1; return `<i class="bglhm ${p}" style="left:${(from * 100 / c).toFixed(3)}%;width:${(h * 100 / c).toFixed(3)}%"></i>`; }).join('') : '');   // each side's home zone: its last points tinted in its colour over a band along the bottom
   const host = !b && dr && dr.at != null ? fxAttr(dr.at) : '';    // (the draft's step: its slide timed from the tap)
   const board = `<div class="bglw"><div class="bglb" style="--c:${c}"${host} role="img" aria-label="The track: ${n} points">${zones}${pts}${sockets}${trail}${pieces}${rings}${bams}</div></div>`;
@@ -319,16 +323,16 @@ function table(mini, a, o) {
   const offAt = anim ? T.offAt : dr && dr.off && dr.at != null && !REDUCED ? BGLT.slide - 60 : null, offBy = anim ? tb.by : dr ? dr.p : null;
   const tal = p => arcTally(p, o, pips(p, offOf(p), BGL.pieces, offAt != null && offBy === p, offAt));
   let say = '', ok = '', sayAt = null;
-  if (b && b.kind === 'roll') { if (b.stuck) ok = 'no'; say = b.stuck ? 'No move: the turn passes' : b.one ? `Opening roll: ${b.v[0]}` : b.v.length === 4 ? `Double ${b.v[0]}: four moves` : `${W(b.by)} rolled ${b.v[0]} and ${b.v[1]}`; sayAt = rollNow ? BGLT.roll : null; }
+  if (b && b.kind === 'roll') { if (b.stuck) ok = 'no'; say = b.stuck ? (b.bar ? 'Blocked: no way in. The turn passes' : 'No move: the turn passes') : b.one ? `Opening roll: ${b.v[0]}` : b.v.length === 4 ? `Double ${b.v[0]}: four moves` : `${W(b.by)} rolled ${b.v[0]} and ${b.v[1]}`; sayAt = rollNow ? BGLT.roll : null; }
   else if (tb) {
     const hi = tb.steps.findIndex(s => s.hit), oi = tb.steps.findIndex(s => s.off);
-    if (hi >= 0) { say = 'Hit! Back to the start'; ok = 'ok'; sayAt = T.steps[hi].hitAt; }
+    if (hi >= 0) { say = bglBar(mini) ? 'Hit! Onto the bar' : 'Hit! Back to the start'; ok = 'ok'; sayAt = T.steps[hi].hitAt; }
     else if (oi >= 0) { say = champ === tb.by ? 'Last piece off!' : tb.steps.filter(s => s.off).length > 1 ? 'Pieces off!' : 'A piece off!'; ok = 'ok'; sayAt = champ === tb.by ? T.slid : T.steps[oi].land; }
     else if (tb.lost.length) { say = deadLine(tb.v, tb.lost); sayAt = T.deadAt; }
     else if (tb.again) { say = 'Roll again'; sayAt = T.slid; }
     if (!anim) sayAt = null;
   } else if (dr) {
-    if (dr.hit && dr.steps.length) { say = 'Hit! Back to the start'; ok = 'ok'; sayAt = dr.at != null && !REDUCED ? BGLT.slide : null; }   // (the draft's step: said as the piece lands)
+    if (dr.hit && dr.steps.length) { say = bglBar(mini) ? 'Hit! Onto the bar' : 'Hit! Back to the start'; ok = 'ok'; sayAt = dr.at != null && !REDUCED ? BGLT.slide : null; }   // (the draft's step: said as the piece lands)
     else if (dr.off && dr.steps.length) { say = champ === dr.p ? 'Last piece off!' : 'A piece off!'; ok = 'ok'; sayAt = dr.at != null && !REDUCED ? BGLT.slide - 60 : null; }
     else if (champ !== dr.p) say = deadLine(view.dice ? view.dice.v : [], deadOf(view, optsOf(view, dr.p)));
   }

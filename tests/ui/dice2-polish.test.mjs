@@ -157,7 +157,8 @@ test('Rock Paper Scissors: both fists pump, open at the show, and the verdict st
 });
 
 // ---------- Backgammon Lite ----------
-const bgl = (pos, dice, last) => { const m = E.newMini('bglite', E.makeRng('b')); m.rolled = true; m.pos = clone(pos); m.dice = dice ? { by: dice.by, v: dice.v, used: dice.v.map(() => false), off: 0 } : null; m.last = last || null; return m; };
+const bgl = (pos, dice, last, ver) => { const m = E.newMini('bglite', E.makeRng('b')); m.v = ver || 2; m.rolled = true;   // (v 2, before the bar, unless a version is given)
+   m.pos = clone(pos); m.dice = dice ? { by: dice.by, v: dice.v, used: dice.v.map(() => false), off: 0 } : null; m.last = last || null; return m; };
 test('Backgammon Lite: the controls are as they were: Roll; a piece that can move is its button; the picked piece\'s rings carry die.piece; Undo in Roll\'s place', () => {
   assert.deepEqual(BV.BGLV, { auto: 400, commit: 450 }, 'the forced step\'s beat and the turn\'s beat before it goes in');
   const m0 = E.newMini('bglite', E.makeRng('b')); here(m0); state.turn = 'X';
@@ -223,4 +224,21 @@ test('Backgammon Lite: the turn before is marked while nothing is under way; the
   // the miniature: the board in its frame, every piece on it, the pips under it
   const mm = BV.miniature(bgl({ X: [9, 7, 4], O: [9, 6, 2] }, null));
   assert.match(mm, /^<div class="tbglm" aria-label="Backgammon Lite: X has 1 of 3 off, O has 1 of 3 off"><svg class="tbgl"/); assert.equal(count(mm, /class="ttok [XO]"/g), 6); assert.equal(count(mm, /class="tbglpt/g), 8); assert.equal(count(mm, /class="tbglh [XO]"/g), 2);
+});
+
+test('Backgammon Lite bar (v 3): a framed BAR at the top of each start-side tray with a hit piece waiting in it; the hit is "Onto the bar"; a blocked roll says so', () => {
+  const m = bgl({ X: [2, 1, 1], O: [0, 1, 1] }, null, null, 3); here(m); state.turn = 'X';
+  const h = screen(BV, m, null, 'X');
+  assert.match(h, /<i class="bglbr X" style="[^"]*"><b>BAR<\/b><\/i>/, "X's bar, empty: dashed");
+  assert.match(h, /<i class="bglbr O on" style="[^"]*"><b>BAR<\/b><\/i>/, "O's bar holds a piece: marked on");
+  assert.match(h, /<i class="bglof X"[^>]*><b>OFF<\/b>/); assert.doesNotMatch(h, /<i class="bglz [^"]*"[^>]*><svg/, 'no owner mark in the trays: the zones name themselves');
+  assert.deepEqual(BV.bglCells({ X: [2, 1, 1], O: [0, 1, 1] }, 8).O0, [9, 0], "O's bar piece in the top slot of the right tray");
+  assert.match(screen(BV, bgl({ X: [2, 1, 1], O: [6, 1, 1] }, null, null, 2), null, 'X'), /<i class="bglhm X"/, 'a v 2 square keeps its own look');
+  assert.doesNotMatch(screen(BV, bgl({ X: [2, 1, 1], O: [6, 1, 1] }, null, null, 2), null, 'X'), /bglbr/, 'and has no bar');
+  const mm = bgl({ X: [2, 1, 1], O: [6, 1, 1] }, { by: 'X', v: [1, 5] }, null, 3); here(mm); state.turn = 'O';
+  const t = play('bglite', mm, 'X', { steps: [[0, 0], [1, 1]] }, E.makeRng('z'));
+  assert.match(screen(BV, t.mini, t.flash, 'O'), /Hit! Onto the bar/);
+  const st = bgl({ X: [0, 4, 5], O: [6, 6, 1] }, null, null, 3); here(st); state.turn = 'X';
+  const sr = play('bglite', st, 'X', 'roll', faces(3, 3));
+  assert.match(screen(BV, sr.mini, sr.flash, 'X'), /Blocked: no way in/);
 });

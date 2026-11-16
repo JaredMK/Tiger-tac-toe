@@ -18,6 +18,13 @@ import { goAgain, tune, tuneLive } from '../../core/tune.js';
 //  - never on a point holding 2 or more enemy pieces (a block; the three on their start point block it at first);
 //  - past the far end: it is borne off (any overshoot; no exact roll needed), but only once every piece of that player
 //    still on the board stands in their home zone.
+// The bar (December 2026, `v: 3`): a hit piece goes to the bar, off the board before the start (progress 0), not back
+// to the start point. While a player has a piece on the bar, no other piece may move: each die must first bring a bar
+// piece in, onto the point of its own count from that player's start (die d: progress d, X's point d from the left, O's
+// from the right), where a point holding 2 or more enemy pieces is closed to it and a lone enemy piece is hit (and goes
+// to the bar in turn, but for one on its own start point, never hit). A die that cannot bring a piece in is lost; with
+// no die able to, the roll ends the turn as it is ('stuck'); a double allows up to four entries or moves (each die, a bar
+// piece first while any is left). A square from before (v 2) sends a hit piece back to its start point and has no bar.
 // A square dealt before the rework (v 1: the pieces waiting off the board at progress 0, entering with a die; doubles two
 // moves; no home zone) plays on under those rules to its end (bglV2).
 // Every roll, the square's first included, is two dice (December 2026: the opener's one-die first roll, which gave back the
@@ -37,7 +44,8 @@ import { goAgain, tune, tuneLive } from '../../core/tune.js';
 // leaves its dice behind with `by`: the next move by anyone else lets them go (the stale dice are nobody's: bglDice).
 export const BGL = { len: 8, pieces: 3, home: 3 };
 export const bglV2 = mini => (mini.v || 1) >= 2;
-export const bglStart = mini => (bglV2(mini) ? 1 : 0);   // where a piece starts and goes back to when hit
+export const bglBar = mini => (mini.v || 1) >= 3;   // the bar: a hit piece waits off the board and must come in first
+export const bglStart = mini => (bglBar(mini) ? 0 : bglV2(mini) ? 1 : 0);   // where a hit piece goes back to (v 3: the bar, progress 0; v 2: its start point; v 1: waiting off the board)
 export const bglHome = mini => Math.max(1, Math.min(mini.n, Math.round(tune(mini).home || BGL.home)));
 // The dice a roll of a and b gives: a double four moves of that number (two on a square from before), else the two.
 export const bglRollDice = (mini, a, b) => (a === b && bglV2(mini) ? [a, a, a, a] : [a, b]);
@@ -80,12 +88,12 @@ export function bglCan(mini, p, k, v) {
 export function bglMoves(mini, p) {
   const dc = bglDice(mini, p), out = [];
   if (!dc) return out;
-  const vals = new Set();
+  const vals = new Set(), onBar = bglBar(mini) && mini.pos[p].includes(0);   // (a piece on the bar: it alone may move)
   for (let d = 0; d < dc.v.length; d++) {
     if (dc.used[d] || !dc.v[d] || vals.has(dc.v[d])) continue;   // (dice alike, a double's: the first unused one alone; the opening single die: no second)
     vals.add(dc.v[d]);
     const seen = new Set();
-    for (let k = 0; k < BGL.pieces; k++) { const a = mini.pos[p][k]; if (seen.has(a)) continue; seen.add(a); if (bglCan(mini, p, k, dc.v[d])) out.push({ d, k }); }
+    for (let k = 0; k < BGL.pieces; k++) { const a = mini.pos[p][k]; if (seen.has(a) || (onBar && a !== 0)) continue; seen.add(a); if (bglCan(mini, p, k, dc.v[d])) out.push({ d, k }); }
   }
   return out;
 }
@@ -123,7 +131,7 @@ export const bglLeft = (mini, p) => mini.pos[p].filter(a => a <= mini.n).length;
 export const bglPips = (mini, p) => mini.pos[p].reduce((s, a) => s + Math.max(0, mini.n + 1 - a), 0);   // the points still to travel
 export function create(type, rng) {
   const n = Math.max(4, Math.round(tuneLive(type).len || BGL.len));   // (the square keeps its length: n)
-  return { type, v: 2, n, pos: { X: [1, 1, 1], O: [1, 1, 1] }, dice: null, rolled: false, last: null };   // (every piece on its own start point)
+  return { type, v: 3, n, pos: { X: [1, 1, 1], O: [1, 1, 1] }, dice: null, rolled: false, last: null };   // (every piece on its own start point)
 }
 // One step for p: the move m played on the square (no checks): what it did.
 export function bglStep(mini, p, d, k) {
@@ -147,7 +155,7 @@ export function apply(mini, p, m, rng, idx) {
     mini.rolled = true;
     mini.dice = { by: p, v, used: v.map((x, i) => one && i === 1), off: 0 };
     const any = bglMoves(mini, p).length > 0;
-    mini.last = { by: p, kind: 'roll', v: v.slice(), one, stuck: !any, pos: { X: mini.pos.X.slice(), O: mini.pos.O.slice() } };
+    mini.last = { by: p, kind: 'roll', v: v.slice(), one, stuck: !any, bar: bglBar(mini) && mini.pos[p].includes(0), pos: { X: mini.pos.X.slice(), O: mini.pos.O.slice() } };
     if (!any) { mini.dice = null; return { ok: true, outcome: 'continue', note: 'stuck' }; }   // no die can be used: the turn ends as it is
     return { ok: true, outcome: 'continue', note: 'roll', again: true };
   }
