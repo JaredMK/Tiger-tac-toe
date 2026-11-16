@@ -167,5 +167,5 @@ export function repSkipBtn() {
   const end = rep.stage === 'move' && rep.f && at != null && fx.move && fx.move.key === rep.f ? fx.move.end : null;   // (when the move's animation is over: ui/turns.js playFlash, at the move's rate)
   if (end != null && performance.now() >= end) return '';   // the result is up: nothing left to skip
   const until = end != null ? Math.max(0, Math.round(end - rep.at)) : null;   // (gone the moment the move's animation ends: the result's line is never under it)
-  return `<button class="rskip${until != null ? ' until' : ''}" data-act="rep-skip" data-fx="${rep.at}" data-fxk="rt"${until != null ? ` style="--u:${until}ms"` : ''} aria-label="Skip the replay">Skip</button>`;
+  return `<button class="rskip${until != null ? ' until' : ''}${rep.cpu ? ' cpu' : ''}" data-act="rep-skip" data-fx="${rep.at}" data-fxk="rt"${until != null ? ` style="--u:${until}ms"` : ''} aria-label="Skip the replay">Skip</button>`;
 }

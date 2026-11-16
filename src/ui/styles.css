@@ -3588,6 +3588,7 @@ main.scr.mini.screplay * { cursor: pointer; }   /* (a tap anywhere skips to the 
 /* Peg Drop: a bonus peg's own "+N" goes as its "+N" pops up from it (one at a time) */
 .pbonus.hit b { animation: tuntil 1ms var(--t, 0ms) both; }
 .rskip.until { animation: skipin .25s ease-out 2s both, tuntil 1ms var(--u, 0ms) both; }   /* gone as the move's animation ends */
+.rskip.cpu { animation-delay: .8s; } .rskip.cpu.until { animation-delay: .8s, 0ms; }   /* the computer's replay: Skip after 0.8 s (CL-1) */
 
 /* the page never scrolls or rubber-bands, on any screen: a fixed full-height layout (100dvh); only the
    designated inner lists scroll, and their overscroll stays inside them */

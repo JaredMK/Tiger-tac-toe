@@ -132,6 +132,7 @@ export function init() {
   app.addEventListener('click', e => {
     if (rx.tray && !e.target.closest('.rtray, [data-act="react-open"]')) { rx.tray = false; render(); }   // a tap elsewhere closes the reaction tray
     if ((scPopup() || scJointFrame()) && e.target.closest('main.screplay') && !e.target.closest('[data-act="explain"]')) { e.preventDefault(); scSkip(); return; }   // Super Chaos's replay: a tap anywhere on it (or its Skip) goes to its end
+    if (rep && rep.cpu && !speedMode() && state.screen === 'mini' && !menuOpen && !explainT && e.target.closest('main.mini') && !e.target.closest('[data-act="explain"], [data-act="pause"], [data-act="rep-skip"], .rxdock')) { e.preventDefault(); repSkip(); return; }   // the computer's replay: a tap anywhere finishes it (CL-1; Speed: any move, below)
     if (speedMode() && state.screen === 'mini' && !menuOpen && !explainT && e.target.closest('main.mini') && !e.target.closest('[data-act="explain"], [data-act="pause"], [data-act="rep-skip"], .rxdock')) {   // Speed: a tap on a move still playing finishes it at once (yours, the computer's, an opponent's replay)
       if (flashAnimating()) { e.preventDefault(); if (rep && rep.f === state.flash) repSkip(); else skipFlash(); return; }
       if (rep && rep.stage === 'inputs') { e.preventDefault(); repSkip(); return; }
@@ -164,11 +165,12 @@ export function init() {
     if (act === 'test-back') { if (sbx.back) sbx.back(); return; }                   // the admin's Test play (ui/sandbox.js): back to the admin page, at any moment
     if (act === 'test-again') { if (sbx.again) sbx.again(); return; }
     if (act === 'practice-back') { practiceEnd(); return; }                             // a practice match's Back to How to Play (ui/explainer.js): at any moment, the computer's turn or a result on show too
-    const free = ['anim-set', 'set-sound', 'set-vib', 'pause-settings', 'pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'copy-invite', 'rematch', 'rematch-cancel', 'share-result', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send', 'del-account', 'del-cancel', 'del-confirm', 'verify-retry', 'verify-resend'];
+    const free = ['anim-set', 'speed-try', 'set-sound', 'set-vib', 'pause-settings', 'pause', 'pause-report', 'pause-resume', 'pause-main', 'pause-back', 'pause-leave', 'leave', 'lobby-back', 'menu', 'find-again', 'profile', 'prof-back', 'prof-hist', 'mystats', 'hist-open', 'hist-sq', 'hist-back', 'hist-close', 'leaderboard', 'rejoin', 'host-retry', 'share', 'copy-invite', 'rematch', 'rematch-cancel', 'share-result', 'timer', 'review', 'review-sq', 'review-back', 'results', 'pview', 'react-open', 'react-send', 'del-account', 'del-cancel', 'del-confirm', 'verify-retry', 'verify-resend'];
     if (act === 'set-sound') { setSound(el.dataset.v === 'on'); return; }            // Settings (ui/settings.js): this phone and the account, any time, the menu open or not
     if (act === 'set-vib') { setVibration(el.dataset.v === 'on'); if (el.dataset.v === 'on') haptic('tap'); return; }
     if (act === 'pause-settings') { setMenuStep('settings'); startFx('menu', menuStep); render(); return; }
-    if (act === 'anim-set') { setPace(el.dataset.v); return; }                       // the player's Animation setting (ui/pace.js): this screen only, any time, the menu open or not   // (the press's own sound came with the press when it was still on)
+    if (act === 'anim-set') { setPace(el.dataset.v); return; }
+    if (act === 'speed-try') { setPace('speed'); state.speedAsk = false; SND.play('tap'); return; }   // the first result's one-time offer (ui/screens/win.js speedOffer)                       // the player's Animation setting (ui/pace.js): this screen only, any time, the menu open or not   // (the press's own sound came with the press when it was still on)
     if (act === 'react-mute') { rx.mute = !rx.mute; if (rx.mute && rx.card && rx.card.side !== mySide()) { clearTimeout(rx.hide); rx.card = null; } render(); return; }   // this match only: the opponent's emoji stop showing and sounding
     if (act === 'pause') { setMenuOpen(true); setMenuStep('main'); startFx('menu', menuStep); render(); scheduleCpu(); return; }
     if (act === 'pause-resume') { closeReport(); setMenuOpen(false); setMenuStep('main'); render(); scheduleCpu(); return; }

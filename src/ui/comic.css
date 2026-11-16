@@ -228,6 +228,7 @@ main.scr.cc { overflow: clip; }
 .cc .pn.big > b { font-size: clamp(32px, 5.6vh, 42px); }
 .cc .rmwrap { display: block; width: 100%; }
 .cc .rmline { height: 52px; display: flex; align-items: center; justify-content: center; }
+.cc .rmline.spdask { gap: 12px; } .cc .rmline.spdask .bub { font-size: 16px; }   /* the first result's Speed offer (win.js speedOffer) */
 .cc .rmline .pn.sm { height: 46px; } .cc .rmline .rmbub { position: static; padding: 0; border: 0; background: none; box-shadow: none; }
 .cc .rmline .rmbub::before, .cc .rmline .rmbub::after { display: none; }
 .cc .endsmall { flex-wrap: nowrap; gap: 14px; }

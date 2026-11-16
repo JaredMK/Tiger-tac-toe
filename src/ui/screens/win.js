@@ -12,6 +12,8 @@ import { record, signed } from './profile.js';
 import { netBar } from '../turnbar.js';
 import { shareBtn, shareLine } from '../sharecard.js';
 import { CICON, bubble, burstBadge, panel, rays, smallPanel } from '../comic.js';
+import { ANIM } from '../../core/timer.js';
+import { markSpeedOffered, matchesDone, speedOffered } from '../onboard.js';
 
 /* ----- win screen ----- */
 // The match-end message: one picked at random per match, from the winner's, the loser's or the tie list,
@@ -89,6 +91,15 @@ function rematchNote() {
     : rm[other(me)] ? `<span class="rmbub" aria-live="polite">${bubble(`${esc(N(other(me)))} wants a rematch!`, 'l')}</span>` : '';
   return `<div class="rmline">${inner}</div>`;
 }
+// After the first match on this phone, once (CL-2): "Too slow?" and Try Speed (the player's Animation setting), in the
+// line under the big action (a local match's: a friend room's rematch note has it otherwise). Offered once: marked as it
+// first shows, kept up while this result screen is.
+function speedOffer() {
+  if (state.online || state.practice || ANIM.mode === 'speed') return '';
+  if (!state.speedAsk && !speedOffered() && matchesDone() === 1) { state.speedAsk = true; markSpeedOffered(); }
+  if (!state.speedAsk) return '';
+  return `<div class="rmline spdask">${bubble('Too slow?', 'r')}${smallPanel('speed-try', '', 'Try Speed', { cls: 'w spdtry', aria: 'Try Speed: faster animations (Settings)' })}</div>`;
+}
 // A Find Match game's next: another one, or a small flat "soon" tag while Find Match is switched off.
 function findAgainBtn() { return findOn ? BIG('find-again', 'Find Match', 'another rival') : '<button class="soon" disabled aria-label="Find Match: coming soon">Find Match<small>soon</small></button>'; }
 // The small panels under it: the board, the main menu, Share result.
@@ -122,7 +133,7 @@ function endScreen(w, title, why, acts) {
     <div class="endhero"><div class="winburst ccpunch">${endBurst(m)}</div>${hero}</div>
     <h1 class="endttl">${bubble(title, '', 'ccpunch')}</h1>
     <div class="endmid">${boardCard(w === 'draw' ? null : state.winLine)}<div class="facts">${facts}</div></div>
-    ${acts == null ? `<div class="endgo">${againBtns()}</div>${rematchNote()}${smallRow()}` : acts}</div></main>`;
+    ${acts == null ? `<div class="endgo">${againBtns()}</div>${rematchNote() || speedOffer()}${smallRow()}` : acts}</div></main>`;
 }
 export function renderWin(acts) {
   const w = state.winner;
