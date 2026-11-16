@@ -38,3 +38,17 @@ test('a friend room: by account, from the room; the head-to-head line', () => {
   assert.equal(S.h2hLine('Sam', { wins: 3, losses: 3 }), 'You and Sam: 3–3');
   assert.equal(S.h2hLine('Sam', null), '');
 });
+test('a shut-out (CL-40): Rematch leads, an encouraging line, and in the first matches the computer goes back to Easy', async () => {
+  const { shutOut } = await import('../../src/ui/screens/win.js');
+  state.squares.forEach(q => { q.owner = null; });
+  for (const i of [0, 4, 8]) state.squares[i].owner = 'O';
+  end('O', 'X', 15); state.setup.vsCpu = { pick: 'random', level: 'hard' }; state.series = S.freshSeries();
+  assert.ok(shutOut());
+  const html = renderWin();
+  assert.match(html, /Tough one!/);
+  assert.match(html, /data-act="rematch"/);
+  assert.equal(state.setup.vsCpu.level, 'easy');
+  state.squares[1].owner = 'X';
+  assert.ok(!shutOut(), 'a square of their own: no shut-out');
+  state.squares.forEach(q => { q.owner = null; });
+});

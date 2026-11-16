@@ -212,6 +212,7 @@ main.scr.cc { overflow: clip; }
 .cc.loss .endhero .big-g .pc { animation-duration: 1.4s; }
 .cc .endttl { margin: 0; padding: 0; font-size: inherit; }
 .cc .endttl .bub { font-size: clamp(21px, 3.8vh, 27px); padding: 6px 14px 3px; animation-delay: .25s; }
+.cc .endttl.cheer .bub { font-size: clamp(17px, 3vh, 21px); max-width: min(330px, 92vw); line-height: 1.15; }   /* a shut-out's encouraging line (win.js shutOut) */
 .cc.tie .endttl { margin-top: 32px; }
 .cc .endmid { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; }
 .cc .endboard { flex: none; background: #fff; border: 3px solid var(--ink); padding: 6px; animation-delay: .35s; }

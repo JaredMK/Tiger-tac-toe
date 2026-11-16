@@ -1,6 +1,6 @@
 // The end of a match: the win, loss and draw screens.
 import { hashSvg } from '../hash.js';
-import { playerName } from '../../core/match.js';
+import { normCpu, playerName } from '../../core/match.js';
 import { other } from '../../core/util.js';
 import { connected } from '../../net/connect.js';
 import { findOn, isMM } from '../../net/matchmaking.js';
@@ -152,13 +152,30 @@ function squaresFact(w) {
 // The results screen (Comic Chaos at full volume): the burst with the winner beside it, the headline in a speech bubble,
 // the board beside the match's facts as burst badges, then the one big action and the small panels. `acts` replaces
 // the actions (Practice's, Test play's). `why` is markup (a name from N(): already escaped, the computer's icon included).
+// A shut-out (CL-40: this phone's player lost without a square): Rematch leads as ever, the headline is one encouraging
+// line, and in a player's first matches on this phone (SHUTOUT_EASY) a match against the computer quietly goes back to
+// Easy for the rematch and the next Play Computer (setup.vsCpu.level).
+export const SHUTOUT_EASY = 5;
+const CHEER = 'Tough one! The next one could be yours.';
+export function shutOut() {
+  const w = state.winner, k = endKind();
+  if (w !== 'X' && w !== 'O' || k.list !== 'loss' || state.practice) return false;
+  return !state.squares.some(q => q.owner === other(w));
+}
+function shutOutEasy() {
+  if (state.online || !state.cpu || state.cpu.length !== 1 || matchesDone() > SHUTOUT_EASY) return;
+  const v = normCpu(state.setup);
+  if (v.level !== 'easy') { v.level = 'easy'; save(); }
+}
 function endScreen(w, title, why, acts) {
+  const shut = acts == null && shutOut();
+  if (shut) { title = CHEER; shutOutEasy(); }
   const m = endMessage(), hero = w === 'draw' ? `<span class="big-g both">${toonT('X')}${toonT('O')}</span>` : `<span class="big-g ${w}">${toonT(w)}</span>`;
   const sv = acts == null ? series() : null;
   const facts = `${burstBadge(why, 'y why', 4)}${sv ? seriesBadge(sv) : burstBadge(squaresFact(w), 'w fsq', 5)}${mmResult() || h2hBadge()}`;   // (a series running: its score in place of the squares)
   return `<main class="scr win-scr cc loud ${m.list}">${netBar()}${celebrate(m.list)}<div class="win-card${isMM() ? ' mm' : ''}">
     <div class="endhero"><div class="winburst ccpunch">${endBurst(m)}</div>${hero}</div>
-    <h1 class="endttl">${bubble(title, '', 'ccpunch')}</h1>
+    <h1 class="endttl${shut ? ' cheer' : ''}">${bubble(title, '', 'ccpunch')}</h1>
     <div class="endmid">${boardCard(w === 'draw' ? null : state.winLine)}<div class="facts">${facts}</div></div>
     ${acts == null ? `<div class="endgo">${againBtns()}</div>${rematchNote() || speedOffer()}${smallRow()}` : acts}</div></main>`;
 }
