@@ -73,6 +73,7 @@ const CSP = (() => {
 // A phone: a browser context at a phone's size, its page errors and console errors kept.
 async function phone(browser, name) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+  await ctx.addInitScript(() => { try { localStorage.setItem('tiger-tac-toe.v4.onboard', JSON.stringify({ done: true, quiet: true, n: 9, speed: true })); } catch (e) { /* (none) */ } });   // (no first-visit menu, tips or offers: src/ui/onboard.js ONBOARD_QUIET)
   const page = await ctx.newPage(), errors = [], calls = [];
   page.on('pageerror', e => errors.push(`${name}: ${String(e.message).slice(0, 200)}`));
   page.on('console', m => { if (m.type() === 'error' && !/favicon|net::ERR|403|404/.test(m.text())) errors.push(`${name} console: ${m.text().slice(0, 200)}`); });

@@ -18,6 +18,7 @@ const E = require('../engine.js');
 const { CARD, cardData, fitSize, perspective, shareBtn, toonSvg, toonUrl, LAYOUT } = await import('../../src/ui/sharecard.js');
 const { renderWin } = await import('../../src/ui/screens/win.js');
 const { renderMenu } = await import('../../src/ui/screens/menu.js');
+(await import('../../src/ui/onboard.js')).obState.done = true;   // (a returning player's menu: the first visit's is tests/ui/onboard.test.mjs)
 const MM = await import('../../src/net/matchmaking.js');
 const { state } = await import('../../src/ui/app.js');
 

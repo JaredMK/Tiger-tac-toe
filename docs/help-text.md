@@ -483,6 +483,14 @@ Back button: Back to How to Play
 Practice again: Practice again
 End screen back: How to play
 
+## First match tips [coach]
+Tap a square (bold): Every square is a mini-game.
+Tap a square: Tap one to play a move in it.
+Your claim (bold): That square is yours!
+Your claim: Claim three in a row to win the match.
+Their claim (bold): Square claimed!
+Their claim: Three in a row wins the match.
+
 ## Credits [credits]
 Trivia: <p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>
 Physics games: <p>Mini Golf, Pool, Bowling and Pinball run on <a href="https://brm.io/matter-js" target="_blank" rel="noopener noreferrer">Matter.js</a> (MIT licence).</p>

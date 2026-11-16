@@ -17,6 +17,7 @@ const require = createRequire(import.meta.url);
 const E = require('../engine.js');
 const MM = await import('../../src/net/matchmaking.js');
 const { renderMenu } = await import('../../src/ui/screens/menu.js');
+(await import('../../src/ui/onboard.js')).obState.done = true;   // (a returning player's menu: the first visit's is tests/ui/onboard.test.mjs)
 const { renderWin } = await import('../../src/ui/screens/win.js');
 const { renderSetup: renderScreen, renderGameSheet } = await import('../../src/ui/screens/setup.js');
 const renderSetup = () => renderScreen() + renderGameSheet();   // (the Mini-games sheet is drawn after the screen, outside its <main>: ui/render.js)

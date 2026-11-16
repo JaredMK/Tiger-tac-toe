@@ -17,6 +17,7 @@ import { scHuman } from '../core/chaos.js';
 import { other, PRACTICE_SQ } from '../core/util.js';
 import { BURST_MS, burstPick, burstSvg, drawOld, fxAt, fxAttr, myTurnNow } from './fx.js';
 import { pauseMenu } from './mini.js';
+import { coachLine } from './onboard.js';
 import { reviewCtx } from './screens/profile.js';
 import { netBar } from './turnbar.js';
 import { cpuTurn } from './turns.js';
@@ -121,8 +122,9 @@ export function renderBoard(review) {
   const sc = !!state.sc, under = !sc && w.html;
   const mt = myTurnNow();                                         // your turn: the # tinted in your colour, flashed once as it came round (ui/fx.js myTurnNow)
   const hash = mt ? HASH_SVG.replace('<svg ', `<svg${mt.at != null ? fxAttr(mt.at) : ''} `) : HASH_SVG;
+  const coach = !under && !spot ? coachLine(state, state.setup && state.setup.human) : '';   // the guided first match's tips (ui/onboard.js): in the hint's room, nothing moves
   return `<main class="scr board-scr${sc && w.on ? ' waiting' : ''}">${netBar()}<div class="board${mt ? ` myturn my-${mt.me}` : ''}">${sqs}${hash}${pow}${sc ? w.html : ''}</div>
-    <div class="foot${under ? ' fwait' : ''}">${under ? w.html : `<span class="hint">${hint}</span>`}</div>${pauseMenu()}</main>`;
+    <div class="foot${under ? ' fwait' : ''}">${under ? w.html : coach ? `<p class="coach" role="status">${coach}</p>` : `<span class="hint">${hint}</span>`}</div>${pauseMenu()}</main>`;
 }
 // A drawn square's overlay on the board: the old game's tile (its label and miniature as the draw left them), and the
 // Draw stamp over it. Each goes off the page once the shuffle is over (data-bend: sweepBursts), animations or none.

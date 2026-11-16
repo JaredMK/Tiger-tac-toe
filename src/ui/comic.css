@@ -179,6 +179,8 @@ main.scr.cc { overflow: clip; }
 .cc .ccpals .pal.O .pc { animation-delay: -.9s; }
 .cc .ccpals .bub { animation-delay: .5s; }
 .cc .menu-card > .pn { height: clamp(58px, 10vh, 78px); }
+.cc.menu.first .menu-card > .pn.firstgo { height: clamp(84px, 15vh, 112px); }
+.cc.menu.first .menu-card > .pn.firstgo > b { font-size: clamp(42px, 12vw, 56px); }   /* a first visit's one big Play (ui/onboard.js) */
 .cc .menu-card > .notice { background: #fff; color: var(--ink); border: 2.5px solid var(--ink); border-radius: 0; font: 400 17px/1 'Bangers', sans-serif; letter-spacing: .05em; padding: 5px 12px 2px; }
 .cc .menu-top .btn { border: 3px solid var(--ink) !important; border-radius: 0 !important; background: #fff; box-shadow: var(--cc-sh) !important; transform: skew(var(--cc-skew));
   font: 400 18px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; padding-top: 3px; animation: ccinR .45s cubic-bezier(.2, 1.3, .4, 1) backwards .1s; }
@@ -613,3 +615,11 @@ main.scr.cc { overflow: clip; }
 :is(.hostset, .sameset, .join-scr) .setup-foot > :nth-child(1) { --k: 8; } :is(.hostset, .sameset, .join-scr) .setup-foot > :nth-child(2) { --k: 9; }
 .cpuset .adv { --k: 7; } .cpuset .setup-foot .warn { --k: 9; }
 @media (prefers-reduced-motion: reduce) { .cpuset .adv, .cpuset .setup-foot .warn, :is(.hostset, .sameset, .join-scr) :is(.setup-box, .setup-foot) > * { animation: none; } }
+
+/* ----- the guided first match's coach (ui/onboard.js coachLine): a flat speech bubble in the board's foot (information) ----- */
+.board-scr .foot .coach { flex: 1; min-width: 0; position: relative; padding: 5px 12px; background: #fff; border: 2.5px solid var(--ink); border-radius: 16px;
+  font: 700 14px/1.2 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); text-align: center; animation: coachin .3s cubic-bezier(.3, 1.4, .5, 1) both; }
+.board-scr .foot .coach b { font: 400 16px/1 'Bangers', sans-serif; letter-spacing: .04em; margin-right: 4px; }
+.board-scr .foot .coach::before { content: ''; position: absolute; left: 50%; top: -9px; width: 14px; height: 14px; margin-left: -7px; background: #fff; border-left: 2.5px solid var(--ink); border-top: 2.5px solid var(--ink); transform: rotate(45deg); }
+@keyframes coachin { from { opacity: 0; transform: translateY(6px) scale(.96); } }
+@media (prefers-reduced-motion: reduce) { .board-scr .foot .coach { animation: none; } }

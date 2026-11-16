@@ -30,6 +30,7 @@ import { renderWin } from './screens/win.js';
 import { renderHeader, renderReactDock } from './turnbar.js';
 import { reactOn } from '../net/reactions.js';
 import { matchEnded, menuShown } from '../net/statscache.js';
+import { matchDone } from './onboard.js';
 import { playFlash } from './turns.js';
 
 // A screen that throws while drawing must never leave the page stuck on what it showed before (a square's view, a
@@ -164,7 +165,7 @@ export function renderMain() {
   if (state.screen === 'profhist') return renderProfHist();
   if (state.screen === 'hreview' || state.screen === 'hreview-mini') return renderHistory();
   if (state.screen === 'win' && state.winner && state.practice) return renderPracticeEnd();   // a practice match's end (How to Play's Practice): Practice again or Back to How to Play
-  if (state.screen === 'win' && state.winner) { matchEnded((state.id || 'm') + ':' + state.moves + ':' + state.winner); return renderWin(); }   // (the player's stats are refreshed in the background once a match is over)
+  if (state.screen === 'win' && state.winner) { if (!state.practice) matchDone((state.id || 'm') + ':' + state.moves + ':' + state.winner); matchEnded((state.id || 'm') + ':' + state.moves + ':' + state.winner); return renderWin(); }   // (the player's stats are refreshed in the background once a match is over)
   if (state.screen === 'review' && state.winner) return renderBoard(true);
   if (state.screen === 'review-mini' && state.winner && state.zoom != null) {
     const sq = reviewSquares()[state.zoom];

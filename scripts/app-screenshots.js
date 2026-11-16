@@ -43,6 +43,7 @@ async function main() {
     const dev = DEVICES[d], dir = path.join(OUT, d);
     fs.mkdirSync(dir, { recursive: true });
     const ctx = await b.newContext({ viewport: { width: dev.w, height: dev.h }, deviceScaleFactor: dev.scale, hasTouch: true, isMobile: d !== 'ipad13' });
+    await ctx.addInitScript(() => { try { localStorage.setItem('tiger-tac-toe.v4.onboard', JSON.stringify({ done: true, quiet: true, n: 9, speed: true })); } catch (e) { /* (none) */ } });   // (no first-visit menu, tips or offers: src/ui/onboard.js ONBOARD_QUIET)
     await ctx.route('**/src/env.js', r => r.fulfill({ contentType: 'application/javascript', body: 'window.TTC_ENV={};' }));   // (no Firebase project: nothing online, nothing reported)
     await ctx.route(/gstatic|firebase|cdnjs|googleapis|recaptcha/, r => r.abort());
     const p = await ctx.newPage();

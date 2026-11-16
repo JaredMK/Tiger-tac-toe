@@ -7,6 +7,7 @@ import { toon } from '../art.js';
 import { RATINGS_ENABLED } from '../config.js';
 import { burstSvg } from '../fx.js';
 import { CICON, bubble, panel, rays, smallPanel } from '../comic.js';
+import { firstVisit } from '../onboard.js';
 
 /* ----- main menu ----- */
 // The studio credit at the foot of the main menu: the JarHead Labs jar (assets/brand/jarhad-labs-logo.svg, the studio's logo, without its background) and a link to its X account.
@@ -17,13 +18,15 @@ export function renderMenu() {
   // either side of a speech bubble, a skewed panel for each way to play with its caption tag and a line of what it is,
   // Find Match a small "soon" tag while the admin has it off, How to Play and Settings as small panels. The order of
   // the controls (and their data-act) is the menu's as ever.
-  return `<main class="scr menu cc loud">${rays()}${menuTop()}<div class="menu-card">
+  const first = !resumable && !activeElsewhere() && !acctLoading && !(acct.user && !acct.ready) && firstVisit(loggedIn() ? acct.profile : null);   // a first visit: one big Play, straight into the starter board (ui/onboard.js)
+  return `<main class="scr menu cc loud${first ? ' first' : ''}">${rays()}${menuTop()}<div class="menu-card">
     <h1 class="title ccpunch"><span class="sr">Tic Tac Chaos</span><span class="ttop wob" aria-hidden="true">${'TIC TAC'.split('').map((c, k) => c === ' ' ? '<span>&nbsp;</span>' : `<span style="animation-delay:${(k * .09).toFixed(2)}s">${c}</span>`).join('')}</span><span class="chaos wob">${burstSvg('CHAOS!', 'w', 300, 150, 54)}</span></h1>
-    <div class="ccpals" aria-hidden="true"><span class="pal X">${toon('X')}</span>${bubble("Who's playing?", '', 'ccpunch')}<span class="pal O">${toon('O')}</span></div>${menuNote ? `<div class="notice" role="status">${esc(menuNote)}</div>` : ''}
-    ${resumable ? panel('resume', 'Resume match', { tag: 'live', cls: 'g', k: 1, attrs: resumeBusy ? ' disabled' : '' }) : ''}
+    <div class="ccpals" aria-hidden="true"><span class="pal X">${toon('X')}</span>${bubble(first ? 'First time?' : "Who's playing?", '', 'ccpunch')}<span class="pal O">${toon('O')}</span></div>${menuNote ? `<div class="notice" role="status">${esc(menuNote)}</div>` : ''}
+    ${first ? `${panel('first-go', 'Play!', { tag: 'start here', cls: 'k firstgo', k: 2, aria: 'Play: you against the computer' })}
+    ${panel('friend-go', 'Play a Friend', { tag: '2 players', cls: 'r fr', k: 3 })}` : `${resumable ? panel('resume', 'Resume match', { tag: 'live', cls: 'g', k: 1, attrs: resumeBusy ? ' disabled' : '' }) : ''}
     ${panel('cpu-go', 'Play Computer', { tag: '1 player', cls: 'k', k: 2 })}
     ${panel('friend-go', 'Play a Friend', { tag: '2 players', cls: 'r fr', k: 3 })}
-    ${findBtn()}
+    ${findBtn()}`}
     <div class="ccsmall">${smallPanel('howto', CICON.help, 'How to play', { k: 5 })}${smallPanel('settings', CICON.cog, 'Settings', { cls: 'w fr', k: 6 })}</div>
   </div><div class="menu-foot"><a class="credit" href="${JARHEAD_URL}" target="_blank" rel="noopener noreferrer" aria-label="by JarHead Labs, on X (opens in a new tab)">${JARHEAD_LOGO}<span>by JarHead Labs</span></a><a class="privacy" href="${privacyUrl()}" target="_blank" rel="noopener noreferrer" aria-label="Privacy policy (opens in a new tab)">Privacy</a></div></main>`;
 }

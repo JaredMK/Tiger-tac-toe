@@ -11,7 +11,7 @@ const { pathToFileURL } = require('url');
 
 const ROOT = path.join(__dirname, '..');
 const DOC = 'docs/help-text.md';
-const EXPLAINER = 'src/ui/explainer.js', ACCOUNT = 'src/ui/screens/account.js', ENVJS = 'src/env.js', SHELL = 'index.html';
+const ONBOARD = 'src/ui/onboard.js', EXPLAINER = 'src/ui/explainer.js', ACCOUNT = 'src/ui/screens/account.js', ENVJS = 'src/env.js', SHELL = 'index.html';
 
 /* ----- reading and writing JS string literals ----- */
 const isQuote = c => c === "'" || c === '"' || c === '`';
@@ -172,6 +172,15 @@ function loadModel(read, oldTypes) {
     fld('Back button', region(EXPLAINER, /data-act="practice-back" aria-label="Back to How to Play">\$\{CHEV\}<span>(.*?)<\/span>/, 'tpl')),
     fld('Practice again', region(EXPLAINER, /data-act="practice" data-t="\$\{t\}" style="--k:6"><b>(.*?)<\/b>/, 'tpl')),
     fld('End screen back', region(EXPLAINER, /smallPanel\('practice-back', CICON\.help, '([^']*)'/, 'sq')),
+  ]);
+  // The guided first match's coach (ui/onboard.js coachLine): three tips in the board's foot, the first match only.
+  sec('other', 'coach', 'First match tips', [
+    fld('Tap a square (bold)', region(ONBOARD, /return '<b>([^<']*)<\/b> Tap one/, 'sq')),
+    fld('Tap a square', region(ONBOARD, /mini-game\.<\/b> ([^<']*)';/, 'sq')),
+    fld('Your claim (bold)', region(ONBOARD, /mine \? '<b>([^<']*)<\/b>/, 'sq')),
+    fld('Your claim', region(ONBOARD, /mine \? '<b>[^<']*<\/b> ([^<']*)' :/, 'sq')),
+    fld('Their claim (bold)', region(ONBOARD, /' : '<b>([^<']*)<\/b>/, 'sq')),
+    fld('Their claim', region(ONBOARD, /' : '<b>[^<']*<\/b> ([^<']*)';/, 'sq')),
   ]);
   sec('other', 'credits', 'Credits', [
     fld('Trivia', after(EXPLAINER, /visibleTypes\(\)\.includes\('trivia'\) \? (?=')/)),

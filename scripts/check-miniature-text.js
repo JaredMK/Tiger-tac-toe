@@ -14,6 +14,7 @@ const srv = http.createServer((req, res) => { let p = decodeURIComponent(new URL
   const { chromium } = require('playwright'); const b = await chromium.launch(); let fails = 0;
   for (const [W, H] of SIZES) {
   const ctx = await b.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+  await ctx.addInitScript(() => { try { localStorage.setItem('tiger-tac-toe.v4.onboard', JSON.stringify({ done: true, quiet: true, n: 9, speed: true })); } catch (e) { /* (none) */ } });   // (no first-visit menu, tips or offers: src/ui/onboard.js ONBOARD_QUIET)
   await ctx.route('**/src/env.js', r => r.fulfill({ contentType: 'application/javascript', body: 'window.TTC_ENV={};' }));
   await ctx.route(/gstatic|firebase|cdnjs|googleapis|recaptcha/, r => r.abort());
   const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));

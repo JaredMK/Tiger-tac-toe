@@ -81,6 +81,7 @@ async function main() {
   try { ({ chromium } = require('playwright')); } catch (e) { console.log('FAIL Playwright is not installed (npm i --no-save playwright && npx playwright install --with-deps chromium)'); process.exit(1); }
   const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.addInitScript(() => { try { localStorage.setItem('tiger-tac-toe.v4.onboard', JSON.stringify({ done: true, quiet: true, n: 9, speed: true })); } catch (e) { /* (none) */ } });   // (no first-visit menu, tips or offers: src/ui/onboard.js ONBOARD_QUIET)
   const csp = [], loaded = [];
   // every page and frame reports its own violations (and the console says so too): all of them counted
   await ctx.addInitScript(() => document.addEventListener('securitypolicyviolation', e => console.error(`[csp] ${e.violatedDirective} blocked ${e.blockedURI || '(inline)'}`)));

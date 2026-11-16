@@ -33,6 +33,7 @@ import { RATINGS_ENABLED } from './config.js';
 import { closeExplain, explainT, openExplain, practiceEnd, practiceStart } from './explainer.js';
 import { fingGo } from './finger.js';
 import { myTurnStop, startFx, tapPop } from './fx.js';
+import { STARTER, coachOpen, seenOnce } from './onboard.js';
 import { setPace } from './pace.js';
 import { backspace, submitWord, typeLetter } from './keyboard.js';
 import { render } from './render.js';
@@ -97,6 +98,23 @@ function revealSides() {
 }
 // Play Computer's start (its setup screen's Start, and the rematch): you against the computer, your side as picked
 // (Random drawn again each time), its level, the mini-games ticked.
+// The guided first match (ui/onboard.js): the starter board, the player X and moving first, the computer on Easy; the
+// setup's own checklist, side and level left as they were. coach: the first match's three tips (its rematches: none).
+export function playStarter(coach) {
+  const s = state.setup, keep = { games: s.games, vsCpu: s.vsCpu, vs: s.vs, mode: s.mode };
+  s.vs = 'cpu'; s.mode = 'two';
+  s.games = Object.fromEntries(TYPES.map(t => [t, STARTER.includes(t)]));
+  s.vsCpu = { pick: 'X', level: 'easy' };
+  const name = (loggedIn() ? acct.profile.username : '') || 'You';
+  setMode('classic');
+  restrictGames(s.games, visibleTypes());
+  const ok = startCpu(state, RNG, name);
+  Object.assign(s, keep);
+  if (!ok) return false;
+  state.starter = true; state.guided = coach ? { step: 0 } : null;
+  trackStart(); revealSides(); commit();
+  return true;
+}
 export function playComputer() {
   const name = (loggedIn() ? acct.profile.username : '') || 'You';
   setMode('classic');
@@ -177,12 +195,14 @@ export function init() {
       if (state.practice && i !== PRACTICE_SQ) { SND.play('error'); return; }   // (a practice match: the centre square alone)
       if (lockMine() && state.lock !== i) { SND.play('error'); return; }
       myTurnStop();                                // (your turn's pulse stops as you open a square: ui/fx.js)
+      coachOpen(state);                            // (the first match's tips move on: ui/onboard.js)
       state.screen = 'mini'; state.zoom = i; state.draft = ''; state.sel = []; state.notice = null; setHpSel(null); SND.play('tap'); haptic('tap');   // (a plain tap: no whoosh into the square; the app buzzes once with it)
       if (remoteTurn() && (liveSquare() === i || state.lock === i)) { setWatch({ sq: i }); if (room && !presenting()) applyMatch(room); }   // the square the other side is playing, opened: watched (net/live.js), its turn so far played in it
       if (!state.online) { state.pick = null; state.pickSq = null; }
       const sq = state.squares[i];                // online, a game with time of its own (60 s): opening it gives the turn that time and holds it there
       if (isMM() && !state.sc && state.turn === mySide() && !sq.owner && turnSecs(sq.mini.type) && turnOpen(state, i)) dbOpen(i);
       commit();
+      if (!sq.owner && !state.practice && !remoteTurn() && !cpuTurn() && seenOnce(sq.mini.type)) openExplain(sq.mini.type);   // each game's "?" once, the first time this phone opens it on its own turn (ui/onboard.js)
     } else if (act === 'watch') {                // the board's waiting bar: Watch, the other side's square, live and read-only (net/live.js)
       if (liveWatch()) { SND.play('tap'); haptic('tap'); if (room && !presenting()) applyMatch(room); commit(); }
     } else if (act === 'back') {
@@ -194,6 +214,8 @@ export function init() {
       commit();
     } else if (act === 'resume') {               // the main menu: back into the online match this phone was playing (held at the page's load)
       resumeMatch();
+    } else if (act === 'first-go') {             // a first visit's one big Play (ui/onboard.js): the starter board, at once
+      playStarter(true);
     } else if (act === 'cpu-go') {               // the main menu: Play Computer, its setup (You vs Computer, your side, mini-games, level), then Start
       state.setup.mode = 'two'; state.setup.vs = 'cpu'; normSetup(state.setup); normCpu(state.setup); state.screen = 'setup'; setAdvOpen(false); commit();
     } else if (act === 'same-go') {              // Play a Friend: Same phone, two people on this phone (its setup: names, sides, mini-games)
@@ -233,6 +255,7 @@ export function init() {
       if (isHost()) { state.setup.clock = timerSpec(el.dataset.v); commit(); dbSetup({ clock: state.setup.clock }); }
     } else if (act === 'rematch') {               // the same settings again (a Random side drawn again)
       if (state.online) { rematchOnline(); return; }
+      if (state.starter && !state.sc) { playStarter(false); return; }   // (the starter board's: another, no tips)
       if (state.quick && !state.sc) { playComputer(); return; }   // (Play Computer's: another, the side drawn again)
       seatLocal(state.setup, RNG);
       if (state.sc ? startChaos(state, RNG) : startMatch(state, RNG)) { trackStart(); if (!state.sc) revealSides(); commit(); }   // (a Super Chaos match: another)

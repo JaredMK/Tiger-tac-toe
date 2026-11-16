@@ -33,6 +33,7 @@ async function page(browser, base, init) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   await ctx.route('**/src/env.js', r => r.fulfill({ contentType: 'application/javascript', body: 'window.TTC_ENV={};' }));
   await ctx.route(/gstatic|firebase|cdnjs|googleapis|recaptcha/, r => r.abort());
+  await ctx.addInitScript(() => { try { localStorage.setItem('tiger-tac-toe.v4.onboard', JSON.stringify({ done: true, quiet: true, n: 9, speed: true })); } catch (e) { /* (none) */ } });   // (no first-visit menu: src/ui/onboard.js ONBOARD_QUIET)
   await ctx.addInitScript(init);
   const p = await ctx.newPage(), errors = [];
   p.on('pageerror', e => errors.push(String(e.message)));

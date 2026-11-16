@@ -19,6 +19,7 @@ const require = createRequire(import.meta.url);
 const E = require('../engine.js');
 const MM = await import('../../src/net/matchmaking.js');
 const { renderMenu } = await import('../../src/ui/screens/menu.js');
+(await import('../../src/ui/onboard.js')).obState.done = true;   // (a returning player's menu: the first visit's is tests/ui/onboard.test.mjs)
 const { renderFriend, renderJoin } = await import('../../src/ui/screens/online.js');
 const { renderIntro } = await import('../../src/ui/screens/find.js');
 const { renderSetup } = await import('../../src/ui/screens/setup.js');

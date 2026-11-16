@@ -16,6 +16,7 @@ srv.listen(0, '127.0.0.1', async () => {
   let total = 0;
   for (const W of WS) {
     const ctx = await b.newContext({ viewport: { width: W, height: Math.round(W * 16 / 9) }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+    await ctx.addInitScript(() => { try { localStorage.setItem('tiger-tac-toe.v4.onboard', JSON.stringify({ done: true, quiet: true, n: 9, speed: true })); } catch (e) { /* (none) */ } });   // (no first-visit menu, tips or offers: src/ui/onboard.js ONBOARD_QUIET)
     await ctx.route('**/src/env.js', r => r.fulfill({ contentType: 'application/javascript', body: 'window.TTC_ENV={};' }));
     await ctx.route(/gstatic|firebase|cdnjs|googleapis|recaptcha/, r => r.abort());
     const p = await ctx.newPage(); p.on('pageerror', e => console.log('ERR', e.message));
