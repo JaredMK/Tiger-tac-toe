@@ -1178,7 +1178,11 @@ async function finishGame(id) {
     if (!bg) oppUp(up, me.uid, opp, R.resultFor(st, s), t);   // (a game against a bot: no one's Top opponents)
     if (!friend) up[`active/${me.uid}`] = null;
   }
-  if (friend && pub.room && st.winReason === 'timeout') up[`rooms/${pub.room}/status`] = 'over';   // a forfeit: the room is closed (both phones show the result; no rematch)
+  if (friend && pub.room && st.winReason === 'timeout') up[`rooms/${pub.room}/status`] = 'over';
+  if (friend && pub.room) {                                      // the room's best-of-3 (CL-23): a match win to the winner's account, every finished match counted; reset by the next start once decided (startRoom)
+    up[`rooms/${pub.room}/series/n`] = ServerValue.increment(1);
+    if (result.winner) up[`rooms/${pub.room}/series/${pub.players[result.winner].uid}`] = ServerValue.increment(1);
+  }   // a forfeit: the room is closed (both phones show the result; no rematch)
   up[`games/${id}/pub/result`] = result;
   up[`games/${id}/pub/final`] = JSON.stringify(final);
   up[`games/${id}/pub/recorded`] = { at: now(), done: true };
@@ -1381,7 +1385,9 @@ exports.startRoom = onCall(HOT, async req => {
     const id = db.ref('games').push().key;
     const ok = await makeGame(null, id, at('X'), at('O'), { friend: { code, setup: room.setup || {}, admin } });
     if (!ok) { await db.ref(`rooms/${code}/starting`).remove(); return { ok: false, reason: 'games' }; }   // (no game left to deal: the setup refused)
+    const sr = room.series || {}, decided = Object.entries(sr).some(([k, v]) => k !== 'n' && v >= 2);   // (a best-of-3 decided, or a first match: a new series)
     const up = { [`rooms/${code}/game`]: id, [`rooms/${code}/status`]: 'playing', [`rooms/${code}/rematch`]: null, [`rooms/${code}/left`]: null, [`rooms/${code}/starting`]: null, [`rooms/${code}/players/${side}/client`]: client };
+    if (!rematch || decided) up[`rooms/${code}/series`] = null;
     if (seats.swapped) { up[`rooms/${code}/players`] = seats.players; up[`rooms/${code}/setup/hostSide`] = seats.hostSide; delete up[`rooms/${code}/players/${side}/client`]; }   // (the seats written whole carry the client)
     await db.ref().update(up);
     return { ok: true, started: true, game: id };

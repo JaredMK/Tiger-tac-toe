@@ -197,7 +197,8 @@ export function startMatch(state, rng, only) {   // only: the games this kind of
   state.sc = null;                                            // (a Super Chaos match: core/chaos.js, startChaos)
   state.quick = false;                                        // (Play Computer's match: startCpu marks it after)
   state.practice = null;                                      // (a practice match: startPractice marks it after)
-  state.starter = false; state.guided = null; state.speedAsk = false;                 // (the guided first match's starter board and its coach: ui/onboard.js, marked after)
+  state.starter = false; state.guided = null; state.speedAsk = false;
+  state.series = { a: 0, b: 0, n: 0, last: null };             // (a best-of-3 starts with every match from the menus; a rematch carries the one still running: ui/series.js)                 // (the guided first match's starter board and its coach: ui/onboard.js, marked after)
   markCoins(state, 'X', rng);
   return true;
 }

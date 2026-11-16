@@ -34,6 +34,7 @@ import { closeExplain, explainT, openExplain, practiceEnd, practiceStart } from 
 import { fingGo } from './finger.js';
 import { myTurnStop, startFx, tapPop } from './fx.js';
 import { STARTER, coachOpen, seenOnce } from './onboard.js';
+import { nextSeries } from './series.js';
 import { setPace } from './pace.js';
 import { backspace, submitWord, typeLetter } from './keyboard.js';
 import { render } from './render.js';
@@ -100,7 +101,7 @@ function revealSides() {
 // (Random drawn again each time), its level, the mini-games ticked.
 // The guided first match (ui/onboard.js): the starter board, the player X and moving first, the computer on Easy; the
 // setup's own checklist, side and level left as they were. coach: the first match's three tips (its rematches: none).
-export function playStarter(coach) {
+export function playStarter(coach, then) {
   const s = state.setup, keep = { games: s.games, vsCpu: s.vsCpu, vs: s.vs, mode: s.mode };
   s.vs = 'cpu'; s.mode = 'two';
   s.games = Object.fromEntries(TYPES.map(t => [t, STARTER.includes(t)]));
@@ -112,14 +113,16 @@ export function playStarter(coach) {
   Object.assign(s, keep);
   if (!ok) return false;
   state.starter = true; state.guided = coach ? { step: 0 } : null;
+  if (then) then();
   trackStart(); revealSides(); commit();
   return true;
 }
-export function playComputer() {
+export function playComputer(then) {
   const name = (loggedIn() ? acct.profile.username : '') || 'You';
   setMode('classic');
   restrictGames(state.setup.games, visibleTypes());           // never a game this player may not see
   if (!startCpu(state, RNG, name)) return false;
+  if (typeof then === 'function') then();
   trackStart(); revealSides(); commit();
   return true;
 }
@@ -257,10 +260,12 @@ export function init() {
       if (isHost()) { state.setup.clock = timerSpec(el.dataset.v); commit(); dbSetup({ clock: state.setup.clock }); }
     } else if (act === 'rematch') {               // the same settings again (a Random side drawn again)
       if (state.online) { rematchOnline(); return; }
-      if (state.starter && !state.sc) { playStarter(false); return; }   // (the starter board's: another, no tips)
-      if (state.quick && !state.sc) { playComputer(); return; }   // (Play Computer's: another, the side drawn again)
+      const ser = state.series;                    // the best-of-3 carried (ui/series.js): a decided one starts afresh
+      const carry = () => { state.series = nextSeries(ser); };
+      if (state.starter && !state.sc) { playStarter(false, carry); return; }   // (the starter board's: another, no tips)
+      if (state.quick && !state.sc) { playComputer(carry); return; }   // (Play Computer's: another, the side drawn again)
       seatLocal(state.setup, RNG);
-      if (state.sc ? startChaos(state, RNG) : startMatch(state, RNG)) { trackStart(); if (!state.sc) revealSides(); commit(); }   // (a Super Chaos match: another)
+      if (state.sc ? startChaos(state, RNG) : startMatch(state, RNG)) { carry(); trackStart(); if (!state.sc) revealSides(); commit(); }   // (a Super Chaos match: another)
     } else if (act === 'rematch-cancel') {        // the rematch asked for, taken back
       rematchCancel();
     } else if (act === 'friend-go') {             // the main menu: Play a Friend (Host, Join, or Same phone)

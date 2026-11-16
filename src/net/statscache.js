@@ -67,3 +67,25 @@ export function matchEnded(id) {
   setTimeout(() => refreshStats(true), 2500);
   setTimeout(() => refreshStats(true), 9000);
 }
+// The head-to-head with this match's opponent (CL-23: "You lead Sam 7–4" on the results screen): this player's tally
+// against them (oppStats/{me}/{them}: owner-read, counted by the server once a match is recorded), fetched after the
+// match as the stats are (the tally lands a moment after the end: twice). An opponent without an account: none.
+let h2h = { key: null, them: null, rec: null };
+export function headToHead(them, key) {
+  if (!them || !loggedIn() || !acct.user || them === acct.user.uid) return null;
+  if (h2h.key !== key) {
+    h2h = { key, them, rec: null };
+    for (const ms of [2500, 9000]) setTimeout(() => fetchH2H(them, key), ms);
+  }
+  return h2h.them === them ? h2h.rec : null;
+}
+async function fetchH2H(them, key) {
+  if (h2h.key !== key || !acct.user) return;
+  try {
+    if (!(await connectQuiet())) return;
+    const m = fb.m, v = (await m.get(m.ref(fb.db, `oppStats/${acct.user.uid}/${them}`))).val();
+    if (h2h.key !== key || !v) return;
+    h2h.rec = { wins: v.wins || 0, losses: v.losses || 0, draws: v.draws || 0 };
+    render();
+  } catch (e) { /* (offline: no line) */ }
+}

@@ -14,6 +14,9 @@ import { shareBtn, shareLine } from '../sharecard.js';
 import { CICON, bubble, burstBadge, panel, rays, smallPanel } from '../comic.js';
 import { ANIM } from '../../core/timer.js';
 import { markSpeedOffered, matchesDone, speedOffered } from '../onboard.js';
+import { h2hLine, seriesView } from '../series.js';
+import { headToHead } from '../../net/statscache.js';
+import { acct } from '../../net/accounts.js';
 
 /* ----- win screen ----- */
 // The match-end message: one picked at random per match, from the winner's, the loser's or the tie list,
@@ -71,16 +74,39 @@ function mmResult() {
   const mine = recs ? burstBadge(`you're ${record(recs[me])}`, 'w rrec', 8) : pub.recorded && pub.recorded.done ? '' : burstBadge('updating records…', 'w wait', 8);   // (a game that ended before records: nothing to wait for)
   return `${r}${mine}<span class="endvs">${smallPanel('profile', '', `vs ${esc(opp.name)}`, { cls: 'w fr opp', k: 9, attrs: ` data-uid="${esc(opp.uid)}"`, aria: `${opp.name}'s profile` })}${recs ? `<small class="orec">${record(recs[other(me)])}</small>` : ''}</span>`;
 }
+// The best-of-3 as this phone sees it (ui/series.js), with the names: this phone's player and the other.
+function series() {
+  const opp = state.online && room && room.pub && room.pub.players ? room.pub.players[other(state.online.me)] : null;
+  const v = seriesView(state, lobby, acct.user && acct.user.uid, opp && opp.uid);
+  if (!v) return null;
+  const one = state.setup && state.setup.human;
+  const meName = state.online || (state.cpu && state.cpu.length === 1) ? 'You' : esc(playerName(state, one));
+  const themName = state.online ? esc(opp.name) : esc(playerName(state, other(one)));
+  return Object.assign(v, { meName, themName, decider: !v.over && v.me === 1 && v.them === 1 });
+}
+function seriesBadge(v) {
+  if (v.over) { const a = v.me > v.them, n = a ? v.meName : v.themName; return burstBadge(`${n} win${n === 'You' ? '' : 's'} the series ${Math.max(v.me, v.them)}–${Math.min(v.me, v.them)}`, 'y series', 5); }
+  return burstBadge(`Best of 3 · ${v.me}–${v.them}`, 'w series', 5);
+}
+// The head-to-head (online, an opponent with an account): "You lead Sam 7–4" (net/statscache.js headToHead).
+function h2hBadge() {
+  if (!state.online || !room || !room.pub || !room.pub.players) return '';
+  const opp = room.pub.players[other(state.online.me)];
+  const line = opp && opp.uid ? h2hLine(esc(opp.name), headToHead(opp.uid, String(room.pub.created || '') + ':' + opp.uid)) : '';
+  return line ? burstBadge(line, 'w h2h', 6) : '';
+}
+const bigSub = v => (!v ? 'same again?' : v.over ? 'new series' : v.decider ? 'winner takes it' : 'best of 3');
 // The one big action (Comic Chaos's results: Rematch dominant): Find Match again after a matchmaking game; a friend
 // room's Rematch, which both players have to tap (the requester waits, and can cancel); a local match's Rematch.
 const BIG = (act, b, sm, extra = '') => panel(act, b, { tag: 'again?', sub: sm, cls: `y big${extra}`, k: 6 });
 function againBtns() {
   if (isMM() && !state.online.room) return findAgainBtn();
-  if (!state.online) return BIG('rematch', 'Rematch!', 'same again?');
+  const v = series();
+  if (!state.online) return BIG('rematch', v && v.decider ? 'Decider!' : 'Rematch!', bigSub(v));
   if (!lobby || lobby.status === 'over' || lobby.left) return '';   // the room closed (a forfeit), or the other player left: no rematch
   const me = state.online.me, rm = lobby.rematch || {};
   if (rm[me]) return `<span class="rmwrap"><button class="pn y big rmbtn" disabled style="--k:6"><b>Waiting for ${esc(N(other(me)))}…</b></button></span>`;   // (the same size as Rematch: .rmbtn)
-  return `<span class="rmwrap">${panel('rematch', 'Rematch!', { tag: 'again?', cls: 'y big rmbtn', k: 6, attrs: !connected ? ' disabled' : '' })}</span>`;
+  return `<span class="rmwrap">${panel('rematch', v && v.decider ? 'Decider!' : 'Rematch!', { tag: v ? bigSub(v) : 'again?', cls: 'y big rmbtn', k: 6, attrs: !connected ? ' disabled' : '' })}</span>`;
 }
 // Under the big action, in a friend room, a line always there (so nothing moves): Cancel while this side waits, or the
 // other side's request in a speech bubble.
@@ -128,7 +154,8 @@ function squaresFact(w) {
 // the actions (Practice's, Test play's). `why` is markup (a name from N(): already escaped, the computer's icon included).
 function endScreen(w, title, why, acts) {
   const m = endMessage(), hero = w === 'draw' ? `<span class="big-g both">${toonT('X')}${toonT('O')}</span>` : `<span class="big-g ${w}">${toonT(w)}</span>`;
-  const facts = `${burstBadge(why, 'y why', 4)}${burstBadge(squaresFact(w), 'w fsq', 5)}${mmResult()}`;
+  const sv = acts == null ? series() : null;
+  const facts = `${burstBadge(why, 'y why', 4)}${sv ? seriesBadge(sv) : burstBadge(squaresFact(w), 'w fsq', 5)}${mmResult() || h2hBadge()}`;   // (a series running: its score in place of the squares)
   return `<main class="scr win-scr cc loud ${m.list}">${netBar()}${celebrate(m.list)}<div class="win-card${isMM() ? ' mm' : ''}">
     <div class="endhero"><div class="winburst ccpunch">${endBurst(m)}</div>${hero}</div>
     <h1 class="endttl">${bubble(title, '', 'ccpunch')}</h1>
