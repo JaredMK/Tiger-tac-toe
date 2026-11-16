@@ -20,13 +20,13 @@ async function main() {
   const { Storage } = require(path.join(__dirname, '..', 'functions', 'node_modules', '@google-cloud', 'storage'));
   const bucket = new Storage({ projectId: PROJECT }).bucket(`${PROJECT}-backups`);
   if (arg === 'list') {
-    const [files] = await bucket.getFiles({ prefix: 'backups/' });
+    const [files] = [[].concat((await bucket.getFiles({ prefix: 'backups/' }))[0], (await bucket.getFiles({ prefix: 'daily/' }))[0])];   // (the launch reset's and the daily ones: scripts/backup-db.js)
     for (const f of files) console.log(`${f.name}  ${(Number(f.metadata.size) / 1048576).toFixed(2)} MB  ${f.metadata.timeCreated}`);
     if (!files.length) console.log(`No backups in gs://${PROJECT}-backups.`);
     return;
   }
   if (process.env.CONFIRM !== 'RESTORE-PRODUCTION') throw new Error('Type RESTORE-PRODUCTION to confirm (the workflow\'s confirm input).');
-  if (!/^backups\/[\w.-]+\.json\.gz$/.test(arg)) throw new Error('The name looks like backups/2026-11-01-1200Z.json.gz ("list" shows them).');
+  if (!/^(backups|daily)\/[\w.-]+\.json\.gz$/.test(arg)) throw new Error('The name looks like backups/2026-11-01-1200Z.json.gz or daily/2026-11-01-0317Z.json.gz ("list" shows them).');
   const [buf] = await bucket.file(arg).download();
   const json = zlib.gunzipSync(buf).toString('utf8'), data = JSON.parse(json);
   const [meta] = await bucket.file(arg).getMetadata();

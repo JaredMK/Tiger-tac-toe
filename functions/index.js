@@ -290,7 +290,7 @@ exports.stagingAllowChanged = onValueWritten({ ref: '/admin/staging/allow/{key}'
 
 // A caller's own id for the limits: the account, or the signed-in guest (a phone signs in, anonymously at least, before
 // it reports anything: no login, no write).
-const TRACK_PER_MIN = 30, DEVLOG_PER_MIN = 60, DEVICES_PER_DAY = 500;
+const TRACK_PER_MIN = 30, DEVLOG_PER_MIN = 60, DEVICES_PER_DAY = 20000, DEVICES_WARN = 0.8;   // new devices a day: a circuit breaker for a script making up ids (December 2026: 500 → 20,000, the admin alerted at 80% and at the cap; to go once App Check is on)
 exports.track = onCall(CALL, async req => {
   const uid = needUid(req), d = req.data || {}, t = now();
   if (!(await rateOk('track', uid, TRACK_PER_MIN))) throw new HttpsError('resource-exhausted', 'Too many reports.');
@@ -323,7 +323,7 @@ exports.track = onCall(CALL, async req => {
 // first opened with (?t=sam) and is kept from the first event that carries one. A logged-in player's
 // event also moves their account's last activity on (lastSeen), which stays apart from the device.
 const DEV_CAP = 20000;                                         // events kept per device: enough for any playtest
-exports.devlog = onCall(CALL, async req => {
+exports.devlog = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async req => {
   const uid = needUid(req), t = now(), c = S.checkDev(req.data, t);
   if (!c) throw new HttpsError('invalid-argument', 'Not an event.');
   if (!(await rateOk('devlog', uid, DEVLOG_PER_MIN))) throw new HttpsError('resource-exhausted', 'Too many events.');
@@ -331,11 +331,15 @@ exports.devlog = onCall(CALL, async req => {
   const seen = (await db.ref(`devices/${c.h}/n`).get()).val();
   if (seen >= DEV_CAP) return { ok: false };
   if (seen == null) {                                             // a device never seen: so many new ones a day, no more (a loop making up ids stops here)
-    const day = await db.ref(`devicesDay/${S.periodKeys(t).d}`).transaction(cur => ((cur || 0) >= DEVICES_PER_DAY ? undefined : (cur || 0) + 1), undefined, false);
-    if (!day.committed) return { ok: false };
+    const dk = S.periodKeys(t).d;
+    const day = await db.ref(`devicesDay/${dk}`).transaction(cur => ((cur || 0) >= DEVICES_PER_DAY ? undefined : (cur || 0) + 1), undefined, false);
+    if (!day.committed) { await opsAlert(`devices-cap-${dk}`, 'New-device cap reached', `Tic Tac Chaos: ${DEVICES_PER_DAY} new devices today (${dk}): the cap is reached, so new devices' play logs are not kept until tomorrow (their games are unaffected). If this is real traffic, raise DEVICES_PER_DAY in functions/index.js or turn App Check on.`).catch(e => logger.error('ops alert', e)); return { ok: false }; }
+    if (day.snapshot.val() === Math.ceil(DEVICES_PER_DAY * DEVICES_WARN)) await opsAlert(`devices-warn-${dk}`, 'New devices near the cap', `Tic Tac Chaos: ${day.snapshot.val()} new devices today (${dk}), ${Math.round(DEVICES_WARN * 100)}% of the daily cap of ${DEVICES_PER_DAY}. Past it, new devices' play logs are not kept until tomorrow.`).catch(e => logger.error('ops alert', e));
   }
   const tx = await db.ref(`devlog/${c.h}/${c.k}`).transaction(cur => (cur ? undefined : c.ev), undefined, false);
   if (!tx.committed) return { ok: true, seen: true };          // sent before (a retry or a reload)
+  const hu = S.healthUpdates(c, t);                              // opens and errors per day, by build and platform (the admin's Overview)
+  if (Object.keys(hu).length) await db.ref().update(statsUp(hu)).catch(e => logger.error('stats', e));
   await clientLog(c, t);
   await db.ref(`devices/${c.h}`).transaction(cur => {
     const d = cur || {};
@@ -1017,6 +1021,17 @@ async function sendAlert(ac, msg) {
   }));
   await Promise.all(jobs);
   return out;
+}
+// An operations alert to the admin (December 2026: the new-device cap, a player's report): the alert channels set on the
+// dashboard (email and/or SMS), whether or not the empty-queue alert is switched on; at most once per `key` (a marker under
+// alertOps/), logged with the others (alertLog, `ops`).
+async function opsAlert(key, subject, text) {
+  const mark = await db.ref(`alertOps/${key.replace(/[.$#\[\]\/]/g, '_')}`).transaction(cur => (cur ? undefined : now()), undefined, false);
+  if (!mark.committed) return null;
+  const ac = B.alertConfig(await adminConfig());
+  const res = await sendAlert(ac, { subject: `Tic Tac Chaos: ${subject}`, text });
+  await db.ref('alertLog').push({ at: now(), ops: key, channels: res });
+  return res;
 }
 // The dashboard's "Send a test alert": the channels as set (or as asked), whatever the limits.
 exports.testAlert = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async req => {

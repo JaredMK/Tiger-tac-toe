@@ -215,5 +215,19 @@ function checkDev(d, t) {
   return out;
 }
 
-module.exports = { MODES, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, PERIOD_NODE, PERIOD_PATH, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates, timerStartUpdates, timerEndUpdates,
+// ---------- health (December 2026): app opens and errors per day, by build and platform (the admin's Overview error rate) ----------
+// stats/health/{day}/opens, /errors, /v/{build}/{opens|errors}, /p/{web|ios} (opens). Counted once per event kept (devlog's own
+// dedupe: a retry or a reload never counts twice).
+const keyOf = v => String(v).replace(/[.$#\[\]\/]/g, '_').slice(0, 24);
+function healthUpdates(c, t) {
+  const ev = c && c.ev && c.ev.ev, what = ev === 'open' ? 'opens' : ev === 'error' ? 'errors' : null;
+  if (!what) return {};
+  const d = periodKeys(t).d, up = { [`health/${d}/${what}`]: 1 };
+  if (c.v) up[`health/${d}/v/${keyOf(c.v)}/${what}`] = 1;
+  if (ev === 'open' && c.ev.p) up[`health/${d}/p/${c.ev.p}`] = 1;
+  if (ev === 'open' && c.ev.cv) up[`health/${d}/cv/${keyOf(c.ev.cv)}`] = 1;
+  return up;
+}
+
+module.exports = { MODES, healthUpdates, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, PERIOD_NODE, PERIOD_PATH, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates, timerStartUpdates, timerEndUpdates,
   DEV_EVENTS, DEV_MODES, TAG_RE, tagOk, devHash, checkDev };

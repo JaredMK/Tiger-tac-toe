@@ -224,7 +224,25 @@ export async function flushLocal() {
 }
 
 // Its listeners: main.js calls this once, in the page's original order of listeners.
+// Every uncaught error and rejected promise on the page (December 2026: the launch's error rate): to the device's log as a
+// devError ('js' or 'promise', its message and where), each distinct one once a visit and at most ERR_MAX a visit, so a
+// loop that throws every frame cannot flood the log. The server counts them per day and build (statsRules.js
+// healthUpdates: the admin's Overview error rate).
+const ERR_MAX = 20, errSeen = new Set();
+export function catchError(kind, msg, where) {
+  const line = `${String(msg || 'unknown').slice(0, 110)}${where ? ' @' + where : ''}`;
+  if (errSeen.has(line) || errSeen.size >= ERR_MAX) return false;
+  errSeen.add(line);
+  try { devError(kind, line); } catch (e) { /* (never an error from the catcher itself) */ }
+  return true;
+}
+function errWhere(f, l) { if (!f) return ''; const s = String(f).replace(/^.*\/(?=[^/]+$)/, ''); return `${s}:${l || 0}`; }
+export function catchErrors(win) {
+  win.addEventListener('error', e => { if (e && (e.error || e.message)) catchError('js', (e.error && e.error.message) || e.message, errWhere(e.filename, e.lineno)); });
+  win.addEventListener('unhandledrejection', e => { const r = e && e.reason; catchError('promise', r && r.message ? r.message : String(r)); });
+}
 export function init() {
+  catchErrors(window);
   document.addEventListener('visibilitychange', () => {   // back after half an hour away: a new visit
     if (document.visibilityState === 'visible' && devLast && Date.now() - devLast > 30 * 60000) devOpen();
     if (document.visibilityState === 'visible') flushOutbox();   // reports still waiting go now

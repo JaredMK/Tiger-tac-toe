@@ -1,0 +1,41 @@
+# The daily database backup (scripts/backup-db.js): production's whole database, gzipped, to
+# gs://tic-tac-chaos-backups/daily/, read back and checked, the daily backups older than 30 days deleted.
+# Every day at 03:17 UTC (a schedule runs from the default branch, main: it starts with the release that brings it),
+# or by hand from the Actions tab. Restore one with the "Restore production" workflow ("list" shows them).
+name: Back up production
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-data
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install
+        run: npm ci --prefix functions
+      - name: Credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then echo "::error::The FIREBASE_SERVICE_ACCOUNT secret is missing."; exit 1; fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+          echo "TTC_PROJECT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.firebaserc','utf8')).projects.production)")" >> "$GITHUB_ENV"
+      - name: Check the key
+        run: node scripts/check-key.js
+      - name: Back up
+        run: node scripts/backup-db.js

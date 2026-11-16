@@ -1050,6 +1050,34 @@ test('back-fill: games played as X and as O recounted from the history (Find Mat
 });
 
 /* ===================================== playtest activity and accounts ===================================== */
+test('health: opens and errors counted per day and build; new devices near and at the daily cap alert the admin, once each', async () => {
+  await put('admin/config', null); await put('test/alertsSent', null); await put('alertOps', null);
+  await put('admin/secrets', { resendKey: 're_test' });
+  await put('admin/config/alerts', { enabled: false, sms: false, email: true, to: 'ops@example.com' });   // (the empty-queue alert off: operations alerts still come)
+  const guest = await player(null, { anonymous: true }), d = S.periodKeys(Date.now()).d;
+  const h0 = (await get(`stats/health/${d}`)) || {};
+  const dev = 'h' + Date.now().toString(16) + 'bb22';
+  assert.deepEqual(await guest.call('devlog', { dev, ev: 'open', o: 'hopen001', v: 'b1.2', client: { v: '1.21.0', p: 'web' } }), { ok: true });
+  assert.deepEqual(await guest.call('devlog', { dev, ev: 'error', o: 'herr0001', msg: 'js: boom @main.js:1', v: 'b1.2' }), { ok: true });
+  await guest.call('devlog', { dev, ev: 'error', o: 'herr0001', msg: 'js: boom @main.js:1', v: 'b1.2' });   // (sent again: counted once)
+  const h1 = await get(`stats/health/${d}`);
+  assert.equal((h1.opens || 0) - (h0.opens || 0), 1);
+  assert.equal((h1.errors || 0) - (h0.errors || 0), 1);
+  assert.ok(h1.v.b1_2.errors >= 1 && h1.p.web >= 1 && h1.cv['1_21_0'] >= 1, 'by build, platform and client version');
+  // the cap: 80% alerts once, the cap itself alerts once and refuses the new device
+  await put(`devicesDay/${d}`, 15999);
+  await guest.call('devlog', { dev: dev + 'n1', ev: 'open', o: 'hopen002' });
+  await guest.call('devlog', { dev: dev + 'n2', ev: 'open', o: 'hopen003' });
+  let s = Object.values((await get('test/alertsSent')) || {});
+  assert.deepEqual(s.map(m => m.subject), ['Tic Tac Chaos: New devices near the cap'], 'once, at 80%');
+  await put(`devicesDay/${d}`, 20000);
+  assert.deepEqual(await guest.call('devlog', { dev: dev + 'n3', ev: 'open', o: 'hopen004' }), { ok: false }, 'past the cap: not kept');
+  await guest.call('devlog', { dev: dev + 'n4', ev: 'open', o: 'hopen005' });
+  s = Object.values((await get('test/alertsSent')) || {});
+  assert.equal(s.filter(m => /cap reached/.test(m.subject)).length, 1, 'the cap alert once');
+  await put(`devicesDay/${d}`, null); await put('admin/config', null); await put('admin/secrets', null); await put('test/alertsSent', null); await put('alertOps', null);
+});
+
 test('playtest: a device\'s opens and matches are logged under a hash of its random id, each once; the tester tag is kept from its first link; nothing personal', async () => {
   const guest = await player(null, { anonymous: true }), acct = await player('Tester_Tam');
   const dev = 'd' + Date.now().toString(16) + 'aa11', h = S.devHash(dev);

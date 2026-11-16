@@ -23,6 +23,24 @@ const PT = window.Playtest;
 // ---------- the numbers ----------
 const n = v => (Number.isFinite(v) ? v : 0);
 const ratio = (a, b) => (b ? a / b : null);
+// The page's health (December 2026, stats/health/{day}, functions/statsRules.js healthUpdates): app opens and uncaught
+// errors a day (the page's global catcher: ui errors, rejected promises, and the hand-placed devError logs), errors per
+// 100 opens, by build; opens by platform and client version.
+function healthCard() {
+  const h = (stats && stats.health) || {}, days = Object.keys(h).sort().slice(-7).reverse();
+  if (!days.length) return '<div class="card"><h2>Errors and platforms</h2><p class="note">Nothing yet: counted from December 2026.</p></div>';
+  const rate = r => (r && r.opens ? (100 * (r.errors || 0) / r.opens).toFixed(1) : '–');
+  const sum = (key, f) => { const o = {}; for (const d of days) for (const [k, v] of Object.entries((h[d] || {})[key] || {})) o[k] = (o[k] || 0) + f(v); return o; };
+  const builds = {}; for (const d of days) for (const [b, v] of Object.entries((h[d] || {}).v || {})) { const x = builds[b] || (builds[b] = { opens: 0, errors: 0 }); x.opens += n(v.opens); x.errors += n(v.errors); }
+  const plat = sum('p', n), cv = sum('cv', n), tot = Object.values(plat).reduce((a, b) => a + b, 0);
+  const rows = days.map(d => `<tr><td>${d}</td><td>${n((h[d] || {}).opens)}</td><td>${n((h[d] || {}).errors)}</td><td>${rate(h[d])}</td></tr>`).join('');
+  const brows = Object.entries(builds).sort((a, b) => b[1].opens - a[1].opens).slice(0, 8).map(([b, x]) => `<tr><td>${esc(b)}</td><td>${x.opens}</td><td>${x.errors}</td><td>${rate(x)}</td></tr>`).join('');
+  return `<div class="grid2"><div class="card"><h2>Errors, last 7 days</h2><table class="tbl"><thead><tr><th>Day</th><th>Opens</th><th>Errors</th><th>per 100 opens</th></tr></thead><tbody>${rows}</tbody></table>
+      <h2 style="margin-top:12px">By build</h2><table class="tbl"><thead><tr><th>Build</th><th>Opens</th><th>Errors</th><th>per 100</th></tr></thead><tbody>${brows || '<tr><td colspan="4" class="dim">None</td></tr>'}</tbody></table>
+      <p class="note">Every uncaught error and rejected promise on a phone (each distinct one once a visit), and the game's own error logs. Detail: Playtesters & Devices.</p></div>
+    <div class="card"><h2>Platforms and versions, last 7 days</h2><table class="tbl"><thead><tr><th>Platform</th><th>Opens</th><th>Share</th></tr></thead><tbody>${Object.entries(plat).sort((a, b) => b[1] - a[1]).map(([p, v]) => `<tr><td>${p === 'ios' ? 'iOS app' : 'Web'}</td><td>${v}</td><td>${pct(ratio(v, tot))}</td></tr>`).join('') || '<tr><td colspan="3" class="dim">None</td></tr>'}</tbody></table>
+      <table class="tbl" style="margin-top:12px"><thead><tr><th>Client version</th><th>Opens</th></tr></thead><tbody>${Object.entries(cv).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<tr><td>${esc(k.replace(/_/g, '.'))}</td><td>${v}</td></tr>`).join('') || '<tr><td colspan="2" class="dim">None</td></tr>'}</tbody></table></div></div>`;
+}
 const pct = v => (v == null ? '–' : `${Math.round(v * 100)}%`);
 const num = (v, d = 1) => (v == null ? '–' : (Math.round(v * 10 ** d) / 10 ** d).toLocaleString());
 const pad = x => String(x).padStart(2, '0');
@@ -197,7 +215,8 @@ function draw() {
       ${kpi('Avg finished match', `${num(ratio(t.doneTurns, t.done))} turns`, `${num(mins(t.doneMs, t.doneTimed))} minutes`)}
       ${kpi('First player (X) wins', pct(ratio(t.xWins, t.xWins + t.oWins)), `${t.xWins} of ${t.xWins + t.oWins} decided`)}
     </div>
-    <div class="grid2"><div class="card"><h2>Players per day, ${ovName}</h2>${players}</div><div class="card"><h2>Matches finished per day, ${ovName}</h2>${matches}</div></div>`,
+    <div class="grid2"><div class="card"><h2>Players per day, ${ovName}</h2>${players}</div><div class="card"><h2>Matches finished per day, ${ovName}</h2>${matches}</div></div>
+    ${healthCard()}`,
     players: () => `${accountsCard()}${flaggedCard()}
     <div class="card"><div class="row"><h2>Players over time</h2><div class="tabs">${[['d', 'Days'], ['w', 'Weeks'], ['m', 'Months']].map(([k, l]) => `<button data-period="${k}" aria-pressed="${period === k}">${l}</button>`).join('')}</div></div>${ptable}</div>`,
     playtest: () => playCard(),

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       backup:
-        description: 'The backup (backups/....json.gz), or list'
+        description: 'The backup (backups/....json.gz or daily/....json.gz), or list'
         required: true
         default: list
         type: string
