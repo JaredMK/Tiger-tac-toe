@@ -18,6 +18,9 @@ import { other, PRACTICE_SQ } from '../core/util.js';
 import { BURST_MS, burstPick, burstSvg, drawOld, fxAt, fxAttr, myTurnNow } from './fx.js';
 import { pauseMenu } from './mini.js';
 import { coachLine } from './onboard.js';
+import { needsOf } from '../core/ai.js';
+import { publicMini } from '../core/minis.js';
+import { LINES } from '../core/board.js';
 import { reviewCtx } from './screens/profile.js';
 import { netBar } from './turnbar.js';
 import { cpuTurn } from './turns.js';
@@ -48,6 +51,28 @@ export function waitBand(spot) {
   const lv = !sc && !band.out ? liveSquare() : null;            // (the square they have open: Watch takes this phone there, read-only, net/live.js)
   const html = `<div class="wband ${band.side}${band.out ? ' out' : ''}${lv != null ? ' haswatch' : ''}" role="status" aria-live="polite"${fxAttr(band.at)}><span class="wtoon">${toon(band.side)}</span><span class="wtxt">${band.txt}</span>${left != null ? `<span class="wleft">${fmtClock(left)}</span>` : ''}${lv != null ? `<button class="wwatch" data-act="watch" aria-label="Watch ${esc(playerName(state, band.side))} play">${EYE}Watch</button>` : ''}</div>`;
   return { on: !band.out, html };
+}
+// Match drama (December 2026, CL-3): a square that would complete a line for a side (its two partners in a line that
+// side's) glows and carries a "Match point!" caption in that side's colour (both: both); and every open square's
+// miniature carries a small pip for the side ahead in it (fewer moves still needed, by its ai.js needs on the public
+// view: never a secret), none while level. Classic only, never in a review.
+export function matchPoint(squares, i) {
+  if (squares[i].owner) return '';
+  const pts = ['X', 'O'].filter(p => LINES.some(l => l.includes(i) && l.every(k => k === i || squares[k].owner === p)));
+  return pts.join('');
+}
+const leadMemo = new WeakMap();
+export function leader(mini) {
+  const key = JSON.stringify(mini.last || null) + (mini.moves || '') + (mini.turns || '');   // (a cheap stamp: worked out again when the square changes)
+  const m = leadMemo.get(mini);
+  if (m && m.key === key) return m.who;
+  let who = '';
+  try {
+    const pm = publicMini(mini, null), x = needsOf(pm, 'X'), o = needsOf(pm, 'O');
+    if (Number.isFinite(x) || Number.isFinite(o)) who = x < o ? 'X' : o < x ? 'O' : '';
+  } catch (e) { who = ''; }
+  leadMemo.set(mini, { key, who });
+  return who;
 }
 // The squares as they ended, every secret included (online, the unclaimed squares' secrets come from the room).
 export function reviewSquares() {
@@ -91,6 +116,9 @@ export function renderBoard(review) {
     if (spot && spot.square === i) cls.push('spot', 'spot-' + spot.by);
     const lvHere = !review && !spot && liveAt === i;                 // the other side has this square open on their turn (net/live.js): it glows in their colour, live
     if (lvHere) cls.push('livesq', 'live-' + state.turn);
+    const drama = !review && !state.sc && !state.winner && !sq.owner && !plock;
+    const mp = drama ? matchPoint(state.squares, i) : '', lead = drama ? leader(sq.mini) : '';
+    if (mp) cls.push('mp', 'mp-' + mp);
     const info = INFO[sq.mini.type];
     const drew = i === drawI && !sq.owner && !vd && !(spot && spot.square === i);   // just drawn and reset: its Draw stamp and shuffle (not under a glow: the next move's square)
     if (drew) cls.push('drawfx');
@@ -101,10 +129,13 @@ export function renderBoard(review) {
       + (sq.owner ? `<div class="own-ov${stampOn && stamped(i) ? ' stamp' : ''}"${stampOn && stamped(i) ? fxAttr(stampAt) : ''} aria-hidden="true">${toon(sq.owner)}<b class="sr">${esc(sq.owner)}</b></div>` : '')   // a fresh claim stamps in
       + (lastP && (lastP.X === i || lastP.O === i) ? `<div class="lpbs" aria-hidden="true">${['X', 'O'].filter(p => lastP[p] === i).map(p => `<i class="lpb ${p}">${p}</i>`).join('')}</div>` : '')   // (both players' badges at once, in a fixed corner: nothing moves)
       + (vd ? vd.html : '')
+      + (lead ? `<i class="leadp ${lead}" aria-hidden="true"></i>` : '')
+      + (mp && !lvHere && !(spot && spot.square === i) ? `<div class="mpcap ${mp}" aria-hidden="true">Match point!</div>` : '')
       + (lvHere ? `<div class="live-lab ${state.turn}" role="status" aria-label="${esc(playerName(state, state.turn))} is playing here"><i class="ldot" aria-hidden="true"></i>Live</div>` : '')
       + (spot && spot.square === i ? `<div class="spot-lab ${spot.by}${spot.html ? ' sc' : ''}" role="status">${spot.html ? spot.html : `${cpuPlays(spot.by) ? CPU_ICON : ''}${esc(spot.label)}`}</div>` : '');
     const lastTxt = lastP ? ['X', 'O'].filter(p => lastP[p] === i).map(p => `, ${esc(playerName(state, p))} played here last`).join('') : '';
-    const label = (sq.owner ? `Square ${i + 1}: ${info.name}, won by ${esc(playerName(state, sq.owner))}. Tap to view` : `Square ${i + 1}: ${info.name}${drew ? ', a draw: a new game' : ''}`) + lastTxt;
+    const label = (sq.owner ? `Square ${i + 1}: ${info.name}, won by ${esc(playerName(state, sq.owner))}. Tap to view` : `Square ${i + 1}: ${info.name}${drew ? ', a draw: a new game' : ''}`) + lastTxt
+      + (mp ? `, match point for ${[...mp].map(p => esc(playerName(state, p))).join(' and ')}` : '') + (lead ? `, ${esc(playerName(state, lead))} ahead` : '');
     if (review) return `<button class="${cls.join(' ')}" data-act="${reviewCtx.sq}" data-i="${i}" aria-label="${label}. Tap to see it">${body}</button>`;
     return `<button class="${cls.join(' ')}" data-act="zoom" data-i="${i}" aria-label="${label}"${spot && spot.square === i ? fxAttr(fxAt('spot', spot)) : vd && vd.at != null ? fxAttr(vd.at) : ''}${cpuTurn() || rc || plock ? ' disabled' : ''}${plock ? ' aria-disabled="true"' : ''}>${body}</button>`;
   }).join('');
