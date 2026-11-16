@@ -186,6 +186,25 @@ export function devWatch() {
   devEvent({ ev: quit ? 'leave' : 'finish', mode: m.mode, g: m.g });
 }
 // Still playing: every 10 minutes while a match is under way on screen, so a long match stays one session.
+// The first-run funnel and the growth events (December 2026; functions/statsRules.js growthMarks): a funnel step once per
+// device (tap: the first square opened on the board; move: the first move made in a mini-game; claim: the first square
+// claimed in a match on screen), kept here so it is sent once; an event (a rematch, a share, an invite sent by its channel,
+// a join link opened, a room joined, a first match from an invite finished) each time.
+const FUNNEL_KEY = KEY + '.funnel';
+export function devStep(step) {
+  let f = {};
+  try { f = JSON.parse(localStorage.getItem(FUNNEL_KEY) || '{}') || {}; } catch (e) { f = {}; }
+  if (f[step]) return false;
+  f[step] = 1;
+  try { localStorage.setItem(FUNNEL_KEY, JSON.stringify(f)); } catch (e) { /* no storage: the server keeps it once anyway (its key) */ }
+  devEvent({ ev: 'step', step });
+  return true;
+}
+const inviteDoneSeen = new Set();
+export function devAct(act, ch) {
+  if (act === 'invite-done') { if (inviteDoneSeen.has(ch)) return; inviteDoneSeen.add(ch); ch = undefined; }   // (once per room this visit: its first match finished)
+  devEvent(Object.assign({ ev: 'act', act, o: randHex(8) }, ch ? { ch } : {}));
+}
 export function devPulse() {
   if (document.visibilityState !== 'visible' || !devLast || Date.now() - devLast < 10 * 60000) return;
   const m = devMatch();

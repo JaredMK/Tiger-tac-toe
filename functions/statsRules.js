@@ -175,7 +175,7 @@ function periodUpdates(what, t) {
 // person is sent or kept. k: one per app open and per 'live' (sent every 10 minutes while a match is
 // under way on screen, so a long match stays one session), and one start and one end per match, so an
 // event sent twice (a retry, a reload) is kept once.
-const DEV_EVENTS = ['open', 'live', 'start', 'finish', 'leave', 'error', 'report', 'mlog', 'audio'];   // (error: something went wrong on the phone, a short line, with its match where there was one; audio: the phone's sound went down or came back, or failed, a short line)
+const DEV_EVENTS = ['open', 'live', 'start', 'finish', 'leave', 'error', 'report', 'mlog', 'audio', 'step', 'act'];   // (step: a first-run funnel step, once per device; act: a rematch, share or invite event)   // (error: something went wrong on the phone, a short line, with its match where there was one; audio: the phone's sound went down or came back, or failed, a short line)
 const DEV_MODES = ['local', 'cpu', 'cvc', 'friend', 'match', 'chaos'];
 const TAG_RE = /^[a-z0-9][a-z0-9_-]{0,23}$/;
 const tagOk = v => typeof v === 'string' && TAG_RE.test(v);
@@ -196,6 +196,13 @@ function checkDev(d, t) {
     ev.msg = d.msg.replace(/[^\x20-\x7e]/g, '?').slice(0, 160);
     if (match()) { ev.m = d.mode; ev.g = d.g; }
     k = (d.ev === 'audio' ? 'a' : 'x') + d.o;
+  } else if (d.ev === 'step') {                                   // a first-run step (tap, move, claim): once per device (its key)
+    if (!STEPS.includes(d.step)) return null;
+    ev.step = d.step; k = 'f' + d.step;
+  } else if (d.ev === 'act') {                                    // a rematch, share or invite event (counted per day: actUpdates)
+    if (!idOk(d.o) || !ACTS.includes(d.act)) return null;
+    ev.act = d.act; if (CHANNELS.includes(d.ch)) ev.ch = d.ch;
+    k = 'q' + d.o;
   } else if (d.ev === 'report' || d.ev === 'mlog') {               // a "Report a problem" (its note), or an event for the match's log only: always with its match
     if (!idOk(d.o) || !match()) return null;
     ev.m = d.mode; ev.g = d.g;
@@ -215,6 +222,44 @@ function checkDev(d, t) {
   return out;
 }
 
+// ---------- growth (December 2026): the first-run funnel, retention by install cohort, rematch/share/invite events, sources ----------
+// A device's install cohort is the day it was first seen (devices/{h}/first, New York time). stats/cohorts/{day}: n (devices
+// first seen that day), d1, d7, d30 (of them, seen again exactly 1, 7 and 30 days later: each counted once per device,
+// flags r1/r7/r30 on the device). stats/funnel/{day} (the same cohort): opened, tap (the first tap on the board), move (the
+// first move made in a mini-game), claim (the first square claimed by anyone in their match), finished (the first match
+// finished), second (a second match started). stats/acts/{day}/{act}[_{ch}]: rematch, share (a result shared), invite
+// (sent: _share or _copy), invite-open (a join link opened), invite-join (joined a room), invite-done (a first match from an
+// invite finished). stats/sources/{tag}: devices (first seen with ?t=tag), signups (accounts made by them, users/{uid}/src).
+const STEPS = ['tap', 'move', 'claim'];
+const ACTS = ['rematch', 'share', 'invite', 'invite-open', 'invite-join', 'invite-done'];
+const CHANNELS = ['share', 'copy'];
+const RETAIN = [1, 7, 30];
+const dayNum = d => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 86400000;
+// A kept event on the device (its record before, the record being written): its marks on the record (mutated) and the
+// counts to add. Pure.
+function growthMarks(dev, c, t, isNew) {
+  const up = {}, today = periodKeys(t).d, cohort = periodKeys(dev.first || t).d, ev = c.ev.ev;
+  if (isNew) { dev.ct = 1; up[`cohorts/${cohort}/n`] = 1; up[`funnel/${cohort}/opened`] = 1; if (c.tag) up[`sources/${c.tag}/devices`] = 1; }
+  if (ev === 'act') up[`acts/${today}/${c.ev.act}${c.ev.ch ? '_' + c.ev.ch : ''}`] = 1;
+  if (!dev.ct) return up;                                        // (a device first seen before cohorts were kept: in no cohort)
+  const off = dayNum(today) - dayNum(cohort);
+  if (RETAIN.includes(off) && !dev['r' + off]) { dev['r' + off] = 1; up[`cohorts/${cohort}/d${off}`] = 1; }
+  if (ev === 'step') up[`funnel/${cohort}/${c.ev.step}`] = 1;
+  if (ev === 'start') { dev.ms = (dev.ms || 0) + 1; if (dev.ms === 2) up[`funnel/${cohort}/second`] = 1; }
+  if (ev === 'finish') { dev.mf = (dev.mf || 0) + 1; if (dev.mf === 1) up[`funnel/${cohort}/finished`] = 1; }
+  return up;
+}
+
+// Find Match's waits (December 2026): stats/find/{day}: people (searchers paired with a person), peopleMs (their waits
+// summed), bot (searchers who took the computer), botMs, cancel (searches given up), cancelMs, and w/{bucket} the people's
+// waits by bucket (u10, u20, u30, u60, o60: seconds). The bot fill rate is bot / (people + bot).
+const WAIT_BUCKETS = [[10, 'u10'], [20, 'u20'], [30, 'u30'], [60, 'u60']];
+function findUpdates(kind, ms, t) {
+  const d = periodKeys(t).d, w = Math.max(0, Math.round(ms || 0)), up = { [`find/${d}/${kind}`]: 1, [`find/${d}/${kind}Ms`]: w };
+  if (kind === 'people') { const b = WAIT_BUCKETS.find(([s]) => w < s * 1000); up[`find/${d}/w/${b ? b[1] : 'o60'}`] = 1; }
+  return up;
+}
+
 // ---------- health (December 2026): app opens and errors per day, by build and platform (the admin's Overview error rate) ----------
 // stats/health/{day}/opens, /errors, /v/{build}/{opens|errors}, /p/{web|ios} (opens). Counted once per event kept (devlog's own
 // dedupe: a retry or a reload never counts twice).
@@ -229,5 +274,5 @@ function healthUpdates(c, t) {
   return up;
 }
 
-module.exports = { MODES, healthUpdates, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, PERIOD_NODE, PERIOD_PATH, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates, timerStartUpdates, timerEndUpdates,
+module.exports = { MODES, healthUpdates, findUpdates, growthMarks, STEPS, ACTS, CHANNELS, RETAIN, dayNum, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, PERIOD_NODE, PERIOD_PATH, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates, timerStartUpdates, timerEndUpdates,
   DEV_EVENTS, DEV_MODES, TAG_RE, tagOk, devHash, checkDev };

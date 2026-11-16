@@ -61,7 +61,7 @@ async function inviteCheck(ctx) {
   await p.addInitScript(() => { window.__got = []; Object.defineProperty(navigator, 'share', { value: async d => { window.__got.push(['share', d]); }, configurable: true }); Object.defineProperty(navigator, 'clipboard', { value: { writeText: async t => { window.__got.push(['copy', t]); } }, configurable: true }); });
   await p.goto(`${SITE}/join/${code}`, { waitUntil: 'load', timeout: 30000 });
   await p.waitForFunction(() => typeof state !== 'undefined' && state.screen === 'join', null, { timeout: 20000 }).catch(() => {});
-  const j = await p.evaluate(async () => ({ screen: state.screen, code: (await import('/src/net/room.js')).joinCode }));
+  const j = await p.evaluate(() => ({ screen: state.screen, code: window.joinCode }));   // (the page's own module: the site is bundled, ui/debug.js puts it on window)
   check(j.screen === 'join' && j.code === code, `a /join/${code} link opens the join flow for its code (${JSON.stringify(j)})`);
   await p.evaluate(c => { state.online = { role: 'host', code: c, me: 'X', joined: false }; state.screen = 'setup'; state.setup.vs = null; render(); }, code);
   // (staging's gate stands over every screen for anyone not on its list: there, the buttons' own handlers are called, the
@@ -69,7 +69,7 @@ async function inviteCheck(ctx) {
   if (await p.isVisible('[data-act="share"]').catch(() => false)) {
     await p.click('[data-act="share"]'); await p.waitForTimeout(300);
     await p.click('[data-act="copy-invite"]'); await p.waitForTimeout(300);
-  } else await p.evaluate(async () => { const R = await import('/src/net/room.js'); await R.shareRoom(); await R.copyInvite(); });
+  } else await p.evaluate(async () => { await window.shareRoom(); await window.copyInvite(); });
   const got = await p.evaluate(() => window.__got);
   const want = `Join my Tic Tac Chaos game! Code: ${code} ${SITE}/join/${code}`;
   check(JSON.stringify(got) === JSON.stringify([['share', { text: want }], ['copy', want]]), `Share invite and Copy invite hand over the one text with the code and the /join link (${JSON.stringify(got).slice(0, 200)})`);

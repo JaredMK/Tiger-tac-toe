@@ -31,6 +31,7 @@ import { renderHeader, renderReactDock } from './turnbar.js';
 import { reactOn } from '../net/reactions.js';
 import { matchEnded, menuShown } from '../net/statscache.js';
 import { matchDone } from './onboard.js';
+import { devAct } from '../net/tracking.js';
 import { VIEWS } from '../games/index.js';
 import { seriesRecord } from './series.js';
 import { playFlash } from './turns.js';
@@ -170,7 +171,7 @@ export function renderMain() {
   if (state.screen === 'profhist') return renderProfHist();
   if (state.screen === 'hreview' || state.screen === 'hreview-mini') return renderHistory();
   if (state.screen === 'win' && state.winner && state.practice) return renderPracticeEnd();   // a practice match's end (How to Play's Practice): Practice again or Back to How to Play
-  if (state.screen === 'win' && state.winner) { if (!state.practice) { seriesRecord(state); } if (!state.practice) matchDone((state.id || 'm') + ':' + state.moves + ':' + state.winner); matchEnded((state.id || 'm') + ':' + state.moves + ':' + state.winner); return renderWin(); }   // (the player's stats are refreshed in the background once a match is over)
+  if (state.screen === 'win' && state.winner) { if (!state.practice) { seriesRecord(state); } if (!state.practice) matchDone((state.id || 'm') + ':' + state.moves + ':' + state.winner); if (state.online && state.online.room && state.online.role === 'guest') devAct('invite-done', state.online.code); matchEnded((state.id || 'm') + ':' + state.moves + ':' + state.winner); return renderWin(); }   // (the player's stats are refreshed in the background once a match is over)
   if (state.screen === 'review' && state.winner) return renderBoard(true);
   if (state.screen === 'review-mini' && state.winner && state.zoom != null) {
     const sq = reviewSquares()[state.zoom];

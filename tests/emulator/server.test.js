@@ -1064,6 +1064,18 @@ test('health: opens and errors counted per day and build; new devices near and a
   assert.equal((h1.opens || 0) - (h0.opens || 0), 1);
   assert.equal((h1.errors || 0) - (h0.errors || 0), 1);
   assert.ok(h1.v.b1_2.errors >= 1 && h1.p.web >= 1 && h1.cv['1_21_0'] >= 1, 'by build, platform and client version');
+  // growth: the cohort, the funnel's steps once each, a match finished, the events a day
+  const c0 = (await get(`stats/cohorts/${d}`)) || {}, f0 = (await get(`stats/funnel/${d}`)) || {}, a0 = (await get(`stats/acts/${d}`)) || {};
+  const nd = dev + 'g1';
+  await guest.call('devlog', { dev: nd, ev: 'open', o: 'gopen001', tag: 'reddit' });
+  await guest.call('devlog', { dev: nd, ev: 'step', step: 'tap' }); await guest.call('devlog', { dev: nd, ev: 'step', step: 'tap' });
+  await guest.call('devlog', { dev: nd, ev: 'start', mode: 'cpu', g: 'lgrow0001' }); await guest.call('devlog', { dev: nd, ev: 'finish', mode: 'cpu', g: 'lgrow0001' });
+  await guest.call('devlog', { dev: nd, ev: 'act', act: 'invite', ch: 'copy', o: 'gact0001' });
+  const c1 = await get(`stats/cohorts/${d}`), f1 = await get(`stats/funnel/${d}`), a1 = await get(`stats/acts/${d}`);
+  assert.equal(c1.n - (c0.n || 0), 1, 'one new device in today\'s cohort');
+  assert.deepEqual([f1.opened - (f0.opened || 0), f1.tap - (f0.tap || 0), (f1.finished || 0) - (f0.finished || 0)], [1, 1, 1], 'opened, the first tap once, a match finished');
+  assert.equal(a1.invite_copy - (a0.invite_copy || 0), 1, 'an invite copied');
+  assert.ok((await get('stats/sources/reddit/devices')) >= 1, 'its source tag');
   // the cap: 80% alerts once, the cap itself alerts once and refuses the new device
   await put(`devicesDay/${d}`, 15999);
   await guest.call('devlog', { dev: dev + 'n1', ev: 'open', o: 'hopen002' });
@@ -1093,7 +1105,7 @@ test('playtest: a device\'s opens and matches are logged under a hash of its ran
   const d = await get(`devices/${h}`), log = await get(`devlog/${h}`);
   assert.equal(d.tag, 'sam', 'the first tag stays');
   assert.equal(d.n, 4); assert.ok(d.first <= d.last);
-  assert.deepEqual(Object.keys(d).sort(), ['cv', 'first', 'last', 'n', 'p', 'tag'], 'only times, a count, the tag and the client it last opened (its platform and version, as every page sends them)');
+  assert.deepEqual(Object.keys(d).sort(), ['ct', 'cv', 'first', 'last', 'mf', 'ms', 'n', 'p', 'tag'], 'only times, counts (events, matches started and finished), the cohort mark, the tag and the client it last opened (its platform and version, as every page sends them)');
   assert.deepEqual([d.p, d.cv], ['web', E.CLIENT_VERSION]);
   assert.deepEqual(Object.keys(log).sort(), ['elgame0001', 'oopen0001', 'plive0001', 'slgame0001'], 'an open, a start, an end and a live');
   for (const e of Object.values(log)) assert.ok(Object.keys(e).every(k => ['t', 'ev', 'm', 'g', 'p', 'cv'].includes(k)), 'an event: its time, kind, mode and match, and (an open) the client: ' + Object.keys(e).join(' '));
@@ -1151,6 +1163,8 @@ test('bots: never paired unasked (no hidden bots); a lone searcher who asks gets
   const b = await player('Lonely_B');
   const g = await pairUp(b, a);
   assert.equal(await get(`botGames/${g.id}`), null, 'two people: no bot');
+  const fd = await get(`stats/find/${S.periodKeys(Date.now()).d}`);
+  assert.ok(fd && fd.people >= 2 && fd.peopleMs >= 0, 'both waits counted');
   await a.call('resign', { game: g.id }); await recorded(g.id);
   const ska = await get(`skill/${a.uid}`), skb = await get(`skill/${b.uid}`);
   assert.ok(ska < 1000 && skb > 1000, `the hidden skill moved by the result (${ska}, ${skb})`);
@@ -1160,6 +1174,7 @@ test('bots: never paired unasked (no hidden bots); a lone searcher who asks gets
   const c = await player('Lonely_C');
   const r = await soloUntilBot(c);
   assert.ok(await get(`botGames/${r.game}`), 'the computer, asked for');
+  assert.ok((await get(`stats/find/${S.periodKeys(Date.now()).d}/bot`)) >= 1, 'the computer filling in, counted');
   await c.call('resign', { game: r.game }); await recorded(r.game);
   await put('admin/config', null);
 });

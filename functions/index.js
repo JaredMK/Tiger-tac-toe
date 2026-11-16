@@ -341,13 +341,16 @@ exports.devlog = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async r
   const hu = S.healthUpdates(c, t);                              // opens and errors per day, by build and platform (the admin's Overview)
   if (Object.keys(hu).length) await db.ref().update(statsUp(hu)).catch(e => logger.error('stats', e));
   await clientLog(c, t);
+  let grow = {};
   await db.ref(`devices/${c.h}`).transaction(cur => {
-    const d = cur || {};
+    const d = cur || {}, isNew = !cur || !cur.first;
     d.first = Math.min(d.first || t, t); d.last = Math.max(d.last || 0, t); d.n = (d.n || 0) + 1;
+    grow = S.growthMarks(d, c, t, isNew);                         // the funnel, retention and events (statsRules.js): marks on the device, counts to add (the committed run's)
     if (!d.tag && c.tag) d.tag = c.tag;
     if (c.ev.p) { d.p = c.ev.p; d.cv = c.ev.cv || null; }        // the client it last opened (web or ios, its version)
     return d;
   }, undefined, false);
+  if (Object.keys(grow).length) await db.ref().update(statsUp(grow)).catch(e => logger.error('stats', e));
   if (!isAnon(req)) await db.ref(`lastSeen/${req.auth.uid}`).set(t);
   return { ok: true };
 });
@@ -355,7 +358,7 @@ exports.devlog = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async r
 /* ===================== accounts ===================== */
 exports.claimUsername = onCall(CALL, async req => {
   const uid = await needAccount(req);
-  const name = String((req.data && req.data.username) || '').trim();
+  const name = String((req.data && req.data.username) || '').trim(), src = S.tagOk(req.data && req.data.tag) ? req.data.tag : null;
   const problem = R.usernameProblem(name);
   if (problem) return { ok: false, reason: problem };
   const have = (await db.ref(`users/${uid}/username`).get()).val();
@@ -365,11 +368,11 @@ exports.claimUsername = onCall(CALL, async req => {
   if (!claim.committed) return { ok: false, reason: 'That username is taken' };
   const made = await db.ref(`users/${uid}`).transaction(cur => {
     if (cur && cur.username) return undefined;
-    return { username: name, rating: R.START_RATING, wins: 0, losses: 0, draws: 0, games: 0, joined: now() };
+    return Object.assign({ username: name, rating: R.START_RATING, wins: 0, losses: 0, draws: 0, games: 0, joined: now() }, src ? { src } : {});   // (src: the ?t= tag the phone first opened with: where this player came from)
   }, undefined, false);
   if (!made.committed) { await db.ref(`usernames/${lower}`).remove(); return { ok: false, reason: 'You already have a username' }; }
   await syncProfile(uid);
-  await db.ref().update(statsUp(S.periodUpdates('newAccounts', now()))).catch(e => logger.error('stats', e));
+  await db.ref().update(statsUp(Object.assign(S.periodUpdates('newAccounts', now()), src ? { [`sources/${src}/signups`]: 1 } : {}))).catch(e => logger.error('stats', e));
   return { ok: true, username: name };
 });
 
@@ -460,9 +463,9 @@ exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async
   const conf = await adminConfig(), ac = B.alertConfig(conf);
   const wantBot = !!(req.data && req.data.bot === true);          // the player took the search screen's offer (about 20 s in): the computer, labelled as such
   const free = wantBot && prev && !prev.game ? await freeBots() : [];
-  let made = [], mine = null, alone = false, entry = null, botGame = null, vanished = false;
+  let made = [], mine = null, alone = false, entry = null, botGame = null, vanished = false, waits = [];
   await db.ref(`queue/${key}`).transaction(cur => {
-    made = []; mine = null; alone = false; botGame = null; vanished = false;
+    made = []; mine = null; alone = false; botGame = null; vanished = false; waits = [];
     const t = now(), q = cur || {};
     // Our entry was there a moment ago and is gone: paired and the game made since (or cancelled meanwhile).
     // Never put it back, or the player would wait in the queue while in a game.
@@ -475,6 +478,7 @@ exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async
       q[a] = Object.assign(q[a], { game: id, side: xFirst ? 'X' : 'O', vs: b, at: t });
       q[b] = Object.assign(q[b], { game: id, side: xFirst ? 'O' : 'X', vs: a, at: t });
       made.push({ id, a, b });
+      waits.push(['people', t - q[a].since], ['people', t - q[b].since]);
     }
     if (!q[uid].game) {
       alone = !Object.entries(q).some(([u, e]) => u !== uid && e && !e.game);
@@ -482,6 +486,7 @@ exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async
         const bot = free[crypto.randomInt(free.length)], id = db.ref('games').push().key;
         q[uid] = Object.assign(q[uid], { game: id, side: crypto.randomInt(2) === 0 ? 'X' : 'O', vs: bot.uid, at: t });
         botGame = { id, bot };
+        waits.push(['bot', t - q[uid].since]);
       }
     }
     entry = Object.assign({}, q[uid]);
@@ -492,6 +497,7 @@ exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async
     const act2 = await activeGame(uid);
     return act2 ? matchedOf(act2) : { status: 'searching' };
   }
+  if (waits.length) { const fu = {}; for (const [k, ms] of waits) for (const [p, n] of Object.entries(S.findUpdates(k, ms, now()))) fu[p] = (fu[p] || 0) + n; await db.ref().update(statsUp(fu)).catch(e => logger.error('stats', e)); }   // Find Match's waits and the bot fill rate (statsRules.js findUpdates)
   for (const p of made) await createGame(key, p.id).catch(e => logger.error('createGame', p.id, e));
   if (botGame) await createBotGame(key, uid, botGame.id, botGame.bot).catch(e => logger.error('createBotGame', botGame.id, e));
   if (!mine) {
@@ -504,13 +510,15 @@ exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async
 });
 exports.cancelSearch = onCall(CALL, async req => {
   const uid = needUid(req);
-  let game = null;
+  let game = null, since = null;
   for (const key of Object.keys(R.QUEUES).concat(OLD_QUEUES)) {
     await db.ref(`queue/${key}/${uid}`).transaction(cur => {
       if (cur && cur.game) { game = { game: cur.game, side: cur.side }; return undefined; }   // already paired: too late to cancel
+      if (cur && Number.isFinite(cur.since)) since = cur.since;
       return null;
     }, undefined, false);
   }
+  if (!game && since != null) await db.ref().update(statsUp(S.findUpdates('cancel', now() - since, now()))).catch(e => logger.error('stats', e));
   return game ? Object.assign({ status: 'matched' }, game) : { status: 'cancelled' };
 });
 // Find Match is on only while the admin page has switched it on (features/findMatch true); missing means off.

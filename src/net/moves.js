@@ -20,12 +20,13 @@ import { render } from '../ui/render.js';
 import { physDrop, physLaunch } from '../ui/physics.js';
 import { repTake } from '../ui/replay.js';
 import { playFlash } from '../ui/turns.js';
-import { matchLog } from './tracking.js';
+import { devStep, matchLog } from './tracking.js';
 import { scRequest } from './chaos.js';
 
 // ---------- moves: a request to the server ----------
 // a move request from this phone, or the move itself when the game is played here
 export function attemptMove(m) {
+  devStep('move');                                                // (the first-run funnel: the first move made here, once: net/tracking.js)
   const rep = repTake();                                          // this phone's inputs before the move: they ride with it, for the other side's replay
   if (state.online && state.sc) { scRequest(state.zoom, m, rep); return true; }   // Super Chaos online: the server plays it (net/chaos.js)
   if (state.online) { dbMove(state.zoom, m, rep); return true; }

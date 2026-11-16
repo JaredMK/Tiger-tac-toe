@@ -5,7 +5,7 @@ import { enterMatched, holdResume, search, startSearch, stopSearch } from './mat
 import { hostRoom } from './room.js';
 import { fetchReleases, fetchStagingMode } from './releases.js';
 import { clearStats, refreshStats } from './statscache.js';
-import { devError, flushLocal, pendingLocal, track } from './tracking.js';
+import { devError, flushLocal, pendingLocal, testerTag, track } from './tracking.js';
 import { commit, save, setMenuNote, state } from '../ui/app.js';
 import { KEY } from '../ui/config.js';
 import { applyAccountPrefs } from '../ui/settings.js';
@@ -337,7 +337,7 @@ export async function saveUsername() {
   if (!/^[A-Za-z0-9_]{3,16}$/.test(unameDraft)) { unameMsg = '3 to 16 letters, numbers or underscores.'; render(); return; }
   loginBusy = true; unameMsg = null; render();
   try {
-    const r = await call('claimUsername', { username: unameDraft });
+    const r = await call('claimUsername', Object.assign({ username: unameDraft }, testerTag() ? { tag: testerTag() } : {}));   // (the ?t= tag this phone first opened with: the sign-up's source)
     if (!r.ok) unameMsg = r.reason;
   } catch (e) { unameMsg = "Couldn't save it. Check your connection and try again."; }
   loginBusy = false; render();                   // once saved, the profile arrives and the screen moves on

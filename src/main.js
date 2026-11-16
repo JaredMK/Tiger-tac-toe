@@ -24,7 +24,7 @@ import { init as connectInit } from './net/connect.js';
 import { checkResume, freshVisit, openFind, resumable } from './net/matchmaking.js';
 import { fetchReleases } from './net/releases.js';
 import { closeSeat, init as roomInit, joinCode, joinName, joinRoom, resumeOnline, setJoinCode, setJoinName } from './net/room.js';
-import { devAudio, devError, devOpen, devPulse, init as trackingInit, takeTag } from './net/tracking.js';
+import { devAct, devAudio, devError, devOpen, devPulse, init as trackingInit, takeTag } from './net/tracking.js';
 import { clockTimer, commit, setClockTimer, state } from './ui/app.js';
 import { fetchAttConfig } from './ui/attention.js';
 import { setTunes } from './core/tune.js';
@@ -107,6 +107,7 @@ function boot() {
   setInterval(devPulse, 60000);
   try { setJoinName(localStorage.getItem(KEY + '.name') || ''); } catch (e) { /* no storage */ }
   const url = startLink(), link = linkCode(url);
+  if (link) devAct('invite-open');                             // (the growth events: a join link opened)
   const autoJoin = link ? roomLink(link) : null;
   if (link) tidyLink();                                       // handled once: a reload is not a second link
   if (state.screen !== 'join' && !joinAsk) freshVisit();      // a fresh visit: the main menu (a join link: joining, or its question over the match it would leave)

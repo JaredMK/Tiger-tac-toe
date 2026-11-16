@@ -1,3 +1,4 @@
+import { devAct } from '../net/tracking.js';
 // The growth loop's result card (Comic Chaos, December 2026: an ink-outlined comic panel, the headline on a burst, the # board with comic claim bursts, X red and O yellow, Bangers and Comic Neue): a match's result as a square picture (1080 x 1080: the board is square, and a square
 // fills a chat bubble, a feed or a story without cropping; 1200 x 630 is the link preview's shape, not a picture's) with
 // the final board, both names, the result and the site's address (no rematch code: November 2026). The win screen's Share result makes it on a canvas and hands it to the share sheet as a PNG
@@ -251,6 +252,7 @@ function setNote(text, ms) {
 }
 const cancelled = e => !!e && (e.name === 'AbortError' || /cancel/i.test(String(e.message || '')));
 export async function shareResult() {
+  devAct('share');                                                // (the growth events: a result shared: net/tracking.js)
   if (shareBusy || !state.winner) return;
   shareBusy = true; setNote('Making your card…'); render();
   try {

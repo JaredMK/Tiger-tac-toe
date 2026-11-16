@@ -34,7 +34,7 @@ import { enterMatched, search } from '../net/matchmaking.js';
 import { attemptMove, dbMove, moveRejected, predicted, setMoveRejected } from '../net/moves.js';
 import { reactKey } from '../net/reactions.js';
 import { releases, visibleTypes } from '../net/releases.js';
-import { applyMatch, assignNet, blocked, isHost, leaveRoom, moveWait, net, online, pinned, presence, presentingSeq, room, roomRef } from '../net/room.js';
+import { applyMatch, assignNet, blocked, copyInvite, isHost, joinCode, leaveRoom, moveWait, net, online, pinned, presence, presentingSeq, room, roomRef, shareRoom } from '../net/room.js';
 import { devIdAny, devLast, devPulse, pendingLocal, setDevLast, testerTag, track, trackStart } from '../net/tracking.js';
 import { RNG, app, commit, cpuPlan, cpuTimer, flashReady, menuOpen, mv, save, setCpuPlan, setCpuTimer, setMenuOpen, spotTimer, state } from './app.js';
 import { attDraft, attPre } from './attention.js';
@@ -60,6 +60,7 @@ import { cardData, paintCard, renderCard, shareResult } from './sharecard.js';
 
 const names = {
   state: () => state,
+  joinCode: () => joinCode, shareRoom: () => shareRoom, copyInvite: () => copyInvite,   // (the live checks: the page's own, which a bundled site has nowhere under /src: scripts/smoke-browser.js)
   cpuMove: () => cpuMove, thinkInfo: () => thinkInfo, startChaos: () => startChaos, chaosResolve: () => chaosResolve, chaosNext: () => chaosNext, chaosTimeout: () => chaosTimeout, scCpu: () => scCpu, scTypes: () => scTypes, scUi: () => scUi, scClockLeft: () => scClockLeft,
   KEY: () => KEY,
   commit: () => commit,

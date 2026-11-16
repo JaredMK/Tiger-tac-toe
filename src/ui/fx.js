@@ -1,3 +1,4 @@
+import { devStep } from '../net/tracking.js';
 // Animations: each one started by the event that causes it, exactly once; bursts and count-ups.
 import { ANIM, dur, durRate, playMs } from '../core/timer.js';
 import { ATT, ATT_TYPES, attMs } from '../games/shared/attention.js';
@@ -238,6 +239,7 @@ export function stampFx(elapsed) {                                   // elapsed:
   const z = elapsed ? 0 : zoomLeft();                                 // back from the square: the stamp starts once the zoom-out has landed in it (never under the shrinking view)
   startFx('stamp', state.stampId, elapsed ? performance.now() - elapsed : performance.now() + z);
   if (elapsed > 200) return;
+  devStep('claim');                                                    // (the first-run funnel: the first claim on this phone's screen, once)
   const zs = z / 1000;
   SND.play('stamp', { at: zs }); SND.play('burst', { at: zs + dur(BOARD_BURST[0]) / 1000 }); SND.play('burst', { at: zs + dur(BOARD_BURST[1]) / 1000 });
   const owner = state.squares[state.stamp] && state.squares[state.stamp].owner, i = state.stamp;

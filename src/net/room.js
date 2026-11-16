@@ -22,7 +22,7 @@ import { dbGo, moveSeen, predicted, setPredicted, showNotice } from './moves.js'
 import { liveElapsed, liveSeen, liveStop, watch } from './live.js';
 import { listenReacts, stopReacts } from './reactions.js';
 import { scMode, timerDefault, visibleTypes } from './releases.js';
-import { matchLog, reportLocal, trackEnd } from './tracking.js';
+import { matchLog, reportLocal, trackEnd, devAct } from './tracking.js';
 import {
   NAV_SCREENS, spotMs, commit, cpuPlan, cpuTimer, flashTimer, holdTimer, menuNote, menuOpen, menuStep,
   pickKey, save, setCpuPlan, setCpuTimer, setFlashTimer, setHoldTimer, setMenuNote, setMenuOpen, setMenuStep,
@@ -221,6 +221,7 @@ export async function joinRoom(code, name, resume) {
       commit(); return;
     }
     o.me = r.side;
+    if (!resume) devAct('invite-join');                           // (the growth events: a room joined)
   } catch (e) {
     if (state.online !== o) return;
     setNet('error', e && /permission/i.test(String(e.code)) ? String(e.message) : 'No connection. Check your internet (switching to Wi-Fi helps) and try again.');
@@ -569,13 +570,15 @@ export function quitMatch() {
 // same text. The link joins at once; the code goes in the Join screen.
 export async function shareRoom() {
   const text = buildInvite(state.online.code);
+  devAct('invite', 'share');                                      // (the growth events: an invite sent, by its channel)
   try { if (await shareText(text)) return; }                      // (the share sheet: the app's or the browser's, net/platform.js)
   catch (e) { if (e && (e.name === 'AbortError' || /cancel/i.test(String(e.message || '')))) return; }
-  await copyInvite();                                              // (no share sheet here: the invite is copied instead)
+  await copyInvite(true);                                          // (no share sheet here: the invite is copied instead)
 }
 // Copy invite: the same text, on the clipboard.
-export async function copyInvite() {
+export async function copyInvite(fallback) {
   const text = buildInvite(state.online.code);
+  if (!fallback) devAct('invite', 'copy');
   let note = 'Invite copied';
   try { await copyText(text); } catch (e) { note = text; }
   showNotice(note, 1800);

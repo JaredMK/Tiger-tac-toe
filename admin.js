@@ -23,6 +23,34 @@ const PT = window.Playtest;
 // ---------- the numbers ----------
 const n = v => (Number.isFinite(v) ? v : 0);
 const ratio = (a, b) => (b ? a / b : null);
+// Growth (December 2026, functions/statsRules.js growthMarks, findUpdates): the first-run funnel and retention by install
+// cohort (the day a device was first seen, New York time), the rematch, share and invite events a day, where players came
+// from (?t= tags: devices and sign-ups), Find Match's waits and how often the computer filled in.
+function growthPage() {
+  const st = stats || {}, co = st.cohorts || {}, fu = st.funnel || {}, ac = st.acts || {}, src = st.sources || {}, fd = st.find || {};
+  const days = Object.keys(Object.assign({}, co, fu)).sort().slice(-21).reverse();
+  const share = (a, b) => (b ? `${a} <small class="dim">${pct(ratio(a, b))}</small>` : '–');
+  const STEPS = [['opened', 'Opened'], ['tap', 'First tap'], ['move', 'First move'], ['claim', 'First claim'], ['finished', 'Match finished'], ['second', 'Second match']];
+  const funnel = days.map(d => { const f = fu[d] || {}, o = n(f.opened); return `<tr><td>${d}</td>${STEPS.map(([k]) => `<td>${k === 'opened' ? o : share(n(f[k]), o)}</td>`).join('')}</tr>`; }).join('');
+  const today = periodKeys(Date.now()).d, ago = (d, k) => (Date.parse(today) - Date.parse(d)) / 86400000 >= k;
+  const ret = days.map(d => { const c = co[d] || {}, m = n(c.n); return `<tr><td>${d}</td><td>${m}</td>${[1, 7, 30].map(k => `<td>${ago(d, k) ? share(n(c['d' + k]), m) : '<span class="dim">not yet</span>'}</td>`).join('')}</tr>`; }).join('');
+  const adays = Object.keys(ac).sort().slice(-7), sumA = k => adays.reduce((t, d) => t + n((ac[d] || {})[k]), 0);
+  const ACTS = [['rematch', 'Rematch taps'], ['share', 'Results shared'], ['invite_share', 'Invites sent (share sheet)'], ['invite_copy', 'Invites sent (copied)'], ['invite-open', 'Join links opened'], ['invite-join', 'Rooms joined'], ['invite-done', 'First match from an invite finished']];
+  const acts = ACTS.map(([k, l]) => `<tr><td>${l}</td><td>${sumA(k)}</td><td>${n((ac[today] || {})[k])}</td></tr>`).join('');
+  const srcs = Object.entries(src).sort((a, b) => n(b[1].devices) - n(a[1].devices)).map(([t, v]) => `<tr><td>${esc(t)}</td><td>${n(v.devices)}</td><td>${share(n(v.signups), n(v.devices))}</td></tr>`).join('');
+  const fdays = Object.keys(fd).sort().slice(-7).reverse();
+  const secs = (ms, k) => (k ? `${(ms / k / 1000).toFixed(1)} s` : '–');
+  const finds = fdays.map(d => { const f = fd[d] || {}, w = f.w || {}, p = n(f.people), b = n(f.bot); return `<tr><td>${d}</td><td>${p}</td><td>${secs(n(f.peopleMs), p)}</td><td>${b}</td><td>${pct(ratio(b, p + b))}</td><td>${n(f.cancel)} <small class="dim">${secs(n(f.cancelMs), n(f.cancel))}</small></td><td>${['u10', 'u20', 'u30', 'u60', 'o60'].map(k => n(w[k])).join(' / ')}</td></tr>`; }).join('');
+  const none = c => `<tr><td colspan="${c}" class="dim">Nothing yet</td></tr>`;
+  return `<div class="card"><h2>First-run funnel, by install day</h2><table class="tbl"><thead><tr><th>Day</th>${STEPS.map(([, l]) => `<th>${l}</th>`).join('')}</tr></thead><tbody>${funnel || none(7)}</tbody></table>
+      <p class="note">Devices first seen that day (a browser or the app; no account needed), and how many reached each step at least once. Counted from December 2026.</p></div>
+    <div class="card"><h2>Retention, by install day</h2><table class="tbl"><thead><tr><th>Day</th><th>New devices</th><th>D1</th><th>D7</th><th>D30</th></tr></thead><tbody>${ret || none(5)}</tbody></table>
+      <p class="note">Of the devices first seen that day, how many opened the game again exactly 1, 7 and 30 days later.</p></div>
+    <div class="grid2"><div class="card"><h2>Rematches, shares and invites</h2><table class="tbl"><thead><tr><th></th><th>Last 7 days</th><th>Today</th></tr></thead><tbody>${acts}</tbody></table></div>
+    <div class="card"><h2>Sources (?t= links)</h2><table class="tbl"><thead><tr><th>Tag</th><th>Devices</th><th>Sign-ups</th></tr></thead><tbody>${srcs || none(3)}</tbody></table>
+      <p class="note">A link with ?t=name (e.g. tictacchaos.com/?t=reddit): the devices first opened with it, and the accounts they made.</p></div></div>
+    <div class="card"><h2>Find Match waits</h2><table class="tbl"><thead><tr><th>Day</th><th>Paired with a person</th><th>Average wait</th><th>Took the computer</th><th>Computer fill rate</th><th>Gave up (avg wait)</th><th>Waits: under 10 / 20 / 30 / 60 s / longer</th></tr></thead><tbody>${finds || none(7)}</tbody></table></div>`;
+}
 // The page's health (December 2026, stats/health/{day}, functions/statsRules.js healthUpdates): app opens and uncaught
 // errors a day (the page's global catcher: ui errors, rejected promises, and the hand-placed devError logs), errors per
 // 100 opens, by build; opens by platform and client version.
@@ -222,6 +250,7 @@ function draw() {
     playtest: () => playCard(),
     matches: () => matchCard(),
     games: sub => (sub && GAMES[sub] ? gamePage(sub) : gamesIndex()),
+    growth: () => growthPage(),
     bots: () => `${findCard()}${timerCard()}${botsCard()}${aiCard()}${alertsCard()}`,
     access: () => accessCard(),
     stats: () => `<div class="card"><h2>Matches by mode</h2>${modeTable}</div><div class="card"><h2>Matches by timer</h2>${timerTable}</div>
@@ -247,6 +276,7 @@ const SECTIONS = [
   ['games', 'Games', () => { const ts = Object.keys(GAMES), ch = ts.filter(gameChanged).length, off = ts.filter(iosOff).length, m = ctl.clients || {}, sp = ctl.anim && ctl.anim.speed; return `${ts.length} mini-games · ${ts.filter(isReleased).length} released${ch ? ` · ${ch} changed` : ''}${off ? ` · ${off} off on iOS` : ''}${m.web || m.ios ? ` · minimum ${['web', 'ios'].filter(p => m[p]).map(p => `${p} ${m[p]}`).join(', ')}` : ''}${sp && sp !== 1 ? ` · speed ${sp}×` : ''}`; }],
   ['bots', 'Bot Settings', () => 'Find Match, timer, bots, empty-queue alerts'],
   ['stats', 'Stats', () => 'Matches by mode and timer, moves to win'],
+  ['growth', 'Growth', () => 'First-run funnel, retention, invites, sources, Find Match waits'],
 ].concat(STAGING ? [['access', 'Staging Access', () => ctl.stagingMode === 'open' ? 'Open: anyone with the link' : `Allowlist: ${Object.keys(ctl.allow || {}).length} on the list`]] : []);   // (staging only: who may use it)
 // The Games page took over Mini-game Settings and Releases (November 2026): their old hashes (bookmarks) open it, #settings/<type> the game's page.
 const ALIAS = { settings: 'games', releases: 'games' };
