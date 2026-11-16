@@ -167,12 +167,25 @@ export function matchLog(e) {
 }
 // "Report a problem": the match flagged for the admin's inspector, the moment stamped in its log, with the
 // player's note (at most 140 characters). Only where there is a match on show.
-export const canReport = () => { const m = devMatch(); return !!(m && /^[-\w]{4,60}$/.test(m.g)); };
-export function reportProblem(note) {
-  const m = devMatch();
-  if (!m) return false;
-  devEvent({ ev: 'report', o: 'r' + randHex(8), g: m.g, mode: m.mode, note: String(note || '').trim().slice(0, 140) });
-  return true;
+// "Report a problem" (ui/report.js): from the in-game menu (the match flagged in its log) or from Settings anywhere. The
+// server's `report` keeps it and alerts the admin; true only once it answered ok, so "Thanks" is never shown for a
+// report that did not arrive (no connection, refused, too many in a minute).
+const REPORT_WHERE = { board: 'board', mini: 'mini', win: 'win', review: 'review', 'review-mini': 'review', menu: 'menu', howto: 'howto', profile: 'profile', setup: 'setup', join: 'join', find: 'find' };
+export const reportWhere = () => REPORT_WHERE[state.screen] || (/^(login|signup|verify|username|account|gate)/.test(String(state.screen)) ? 'account' : 'other');
+export const reportMatch = () => devMatch();
+export async function sendReport(note, where) {
+  if (!configured()) return false;
+  const dev = devIdAny();
+  if (!dev) return false;
+  const m = devMatch(), side = state.online ? state.online.me : null;
+  const data = { dev, o: 'r' + randHex(8), note: String(note || '').trim().slice(0, 140), where: where || reportWhere(), v: APP_VERSION };
+  if (m && /^[-\w]{4,60}$/.test(m.g)) { data.g = m.g; data.mode = m.mode; }
+  if (side === 'X' || side === 'O') data.s = side;
+  try {
+    if (!(fb && fb.fns && fb.uid) && !(await connectQuiet())) return false;
+    const r = await call('report', data);
+    return !!(r && r.ok);
+  } catch (e) { return false; }
 }
 const devSent = new Set();
 export function devWatch() {

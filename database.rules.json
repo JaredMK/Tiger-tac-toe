@@ -14,8 +14,7 @@
           "$side": {
             ".write": "auth != null && $side.matches(/^[XO]$/) && !newData.exists() && data.child('uid').val() === auth.uid && root.child('rooms').child($code).child('status').val() === 'lobby'",
             "name": {
-              ".write": "auth != null && data.parent().child('uid').val() === auth.uid",
-              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 12"
+              ".write": false
             }
           }
         },
@@ -349,6 +348,15 @@
       ".indexOn": [
         "at"
       ]
+    },
+    "reports": {
+      ".read": "auth != null && auth.token.admin === true",
+      ".indexOn": [
+        "at"
+      ]
+    },
+    "reportsDay": {
+      ".read": "auth != null && auth.token.admin === true"
     },
     "alertStats": {
       ".read": "auth != null && auth.token.admin === true"

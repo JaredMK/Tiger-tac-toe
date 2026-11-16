@@ -7,7 +7,6 @@ import { INFO, viewOf } from '../games/index.js';
 import { settingsBody } from './settings.js';
 import { isMM } from '../net/matchmaking.js';
 import { rx } from '../net/reactions.js';
-import { canReport } from '../net/tracking.js';
 import { blocked, leaveLoses, lockMine, mySide, pinned, remoteTurn } from '../net/room.js';
 import { N, esc, isYou, menuOpen, menuStep, state, waitsOn , viewer } from './app.js';
 import { CHEV, toon } from './art.js';
@@ -92,7 +91,7 @@ export function pauseMenu() {
   if (menuStep === 'settings') return `<div class="flash pause" role="dialog" aria-label="Settings"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Settings</h2>${settingsBody()}
     <div class="row"><button class="btn go" data-act="pause-back">Back</button></div></div></div>`;
   return `<div class="flash pause" role="dialog" aria-label="Menu"${fxAttr(fxAt('menu', menuStep))}><div class="card"><h2>Menu</h2>${state.online && state.timer.limit ? '<p>The turn clock keeps running.</p>' : state.cpu ? '<p>The computer waits.</p>' : ''}
-    <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div><button class="btn setbtn" data-act="pause-settings">Settings</button>${canReport() ? '<button class="btn repbtn" data-act="pause-report">Report a problem</button>' : ''}${state.online && mySide() ? `<button class="btn react-mute" data-act="react-mute" aria-pressed="${rx.mute}">Mute opponent's reactions: ${rx.mute ? 'On' : 'Off'}</button>` : ''}</div></div>`;
+    <div class="row"><button class="btn go" data-act="pause-resume">Resume</button><button class="btn" data-act="pause-main">Main menu</button></div><button class="btn setbtn" data-act="pause-settings">Settings</button><button class="btn repbtn" data-act="pause-report">Report a problem</button>${state.online && mySide() ? `<button class="btn react-mute" data-act="react-mute" aria-pressed="${rx.mute}">Mute opponent's reactions: ${rx.mute ? 'On' : 'Off'}</button>` : ''}</div></div>`;
 }
 // The end of a square in words, wherever it is said (the result line live and in replays, the held result, a
 // finished square's review): "Won by" and the winner's mark, or "Draw". Nothing more (no word, no score, no reset).

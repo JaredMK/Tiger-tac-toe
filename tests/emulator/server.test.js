@@ -566,7 +566,14 @@ test('friend rooms: opened and joined through the server; only its two players r
   assert.deepEqual(await stranger.call('joinRoom', { code: 'bad code', name: 'Lost' }), { ok: false, reason: 'code' });
   assert.equal((await guest.read(`rooms/${code}`)).players.O.uid, guest.uid, 'the guest reads the room now');
   await denied(stranger.read(`rooms/${code}`), 'still not a stranger');
-  await guest.write(`rooms/${code}/players/O/name`, 'Guesty');
+  await denied(guest.write(`rooms/${code}/players/O/name`, 'Guesty'), 'its own name by hand (the server names the seats)');
+  // a guest's name held to the usernames' filter: refused at the door, nothing seated; a fine one seated under it
+  const code2 = await openRoom(host, { games: only('hilo') });
+  const anon = await player(null, { anonymous: true });
+  for (const bad of ['Admin', 'Sh1t head', 'computer']) assert.deepEqual(await anon.call('joinRoom', { code: code2, name: bad }), { ok: false, reason: 'name' }, bad);
+  assert.equal(((await host.read(`rooms/${code2}`)).players || {}).O, undefined, 'nobody seated');
+  assert.equal((await anon.call('joinRoom', { code: code2, name: 'Scunthorpe' })).ok, true, 'an innocent name that holds a bad word inside');
+  assert.equal((await host.read(`rooms/${code2}`)).players.O.name, 'Scunthorpe');
   await denied(guest.write(`rooms/${code}/players/X/name`, 'Hacked'), "the other's name");
   await denied(guest.write(`rooms/${code}/players/O/uid`, stranger.uid), "the seat's uid");
   await host.write(`rooms/${code}/setup/timer`, 0);
@@ -1088,6 +1095,29 @@ test('health: opens and errors counted per day and build; new devices near and a
   s = Object.values((await get('test/alertsSent')) || {});
   assert.equal(s.filter(m => /cap reached/.test(m.subject)).length, 1, 'the cap alert once');
   await put(`devicesDay/${d}`, null); await put('admin/config', null); await put('admin/secrets', null); await put('test/alertsSent', null); await put('alertOps', null);
+});
+
+test('reports: "Report a problem" from anywhere is kept for the admin, flags its match when there is one, alerts the admin once each; bad ones refused, three a minute', async () => {
+  await put('admin/config', null); await put('test/alertsSent', null); await put('alertOps', null); await put('reports', null);
+  await put('admin/secrets', { resendKey: 're_test' });
+  await put('admin/config/alerts', { enabled: false, sms: false, email: true, to: 'ops@example.com' });
+  const guest = await player(null, { anonymous: true }), dev = 'r' + Date.now().toString(16) + 'cc33';
+  assert.deepEqual(await guest.call('report', { dev, o: 'rep00001', note: 'The menu froze', where: 'settings', v: 'b9' }), { ok: true });
+  assert.deepEqual(await guest.call('report', { dev, o: 'rep00002', note: 'A square stuck', where: 'board', g: 'lrep00001', mode: 'cpu', s: 'X' }), { ok: true });
+  const reps = Object.values((await get('reports')) || {});
+  assert.deepEqual(reps.map(r => [r.where, r.note, r.g || null, r.uid === guest.uid]).sort(), [['board', 'A square stuck', 'lrep00001', true], ['settings', 'The menu froze', null, true]]);
+  assert.ok(!reps.some(r => 'dev' in r), 'the device kept as a hash only');
+  const ix = await get('matchLogIndex/lrep00001');
+  assert.deepEqual([ix.reports, ix.note, typeof ix.reported], [1, 'A square stuck', 'number'], 'the match flagged for the inspector');
+  const sent = Object.values((await get('test/alertsSent')) || {});
+  assert.equal(sent.filter(m => m.subject === 'Tic Tac Chaos: Problem report').length, 2, 'an alert each');
+  assert.ok(sent.some(m => /a guest on the settings screen.*"The menu froze"/.test(m.text)), 'who, where and the note');
+  assert.deepEqual(await guest.call('report', { dev, o: 'rep00003', where: 'menu' }), { ok: true }, 'a third in the minute (no note)');
+  assert.deepEqual(await guest.call('report', { dev, o: 'rep00004', where: 'menu' }), { ok: false, reason: 'rate' }, 'a fourth: too many');
+  await assert.rejects(guest.call('report', { o: 'rep00005' }), /Not a report/, 'no device: refused');
+  await denied(guest.read('reports'), 'a phone reading the reports');
+  await denied(guest.write('reports/x', { note: 'forged' }), 'a phone writing one');
+  await put('admin/config', null); await put('admin/secrets', null); await put('test/alertsSent', null); await put('alertOps', null); await put('reports', null); await put('reportsDay', null);
 });
 
 test('playtest: a device\'s opens and matches are logged under a hash of its random id, each once; the tester tag is kept from its first link; nothing personal', async () => {

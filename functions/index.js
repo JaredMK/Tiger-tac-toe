@@ -355,6 +355,35 @@ exports.devlog = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async r
   return { ok: true };
 });
 
+// "Report a problem" (December 2026): from the in-game menu and from Settings (outside a match too). The phone shows
+// "Thanks" only once this answers ok: the report kept (reports/{id}, the admin's Overview; 90 days), the match flagged
+// in its log when there was one (the Match inspector), and the admin alerted (opsAlert: the dashboard's alert channels,
+// email and/or SMS), at most REPORT_ALERTS a day (after that one alert says more are waiting on the dashboard).
+const REPORT_PER_MIN = 3, REPORT_ALERTS = 40;
+exports.report = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async req => {
+  const uid = needUid(req), t = now(), r = S.checkReport(req.data, t);
+  if (!r) throw new HttpsError('invalid-argument', 'Not a report.');
+  if (!(await rateOk('report', uid, REPORT_PER_MIN))) return { ok: false, reason: 'rate' };
+  const id = `${t.toString(36)}-${r.o}`;
+  const rec = Object.assign({ uid, at: t }, r); delete rec.t; delete rec.o;
+  const made = await db.ref(`reports/${id}`).transaction(cur => (cur ? undefined : rec), undefined, false);
+  if (!made.committed) return { ok: true, seen: true };          // sent before (a retry)
+  if (r.g && ML.keyOk(r.g)) {
+    const dev = r.h.slice(0, 10);
+    await mlogSafe(r.g, [{ t, k: 'report', note: r.note || undefined, v: r.v || undefined, s: r.s || undefined, dev, src: 'cli' }], { mode: r.mode, dev, ver: r.v, report: { t, note: r.note } });
+  }
+  const who = isAnon(req) ? 'a guest' : (await usernameOf(uid)) || 'a player without a username';
+  const env = projectId === 'tic-tac-chaos' ? 'production' : 'staging';
+  const dk = S.periodKeys(t).d;
+  const day = await db.ref(`reportsDay/${dk}`).transaction(cur => (cur || 0) + 1, undefined, false);
+  const n = day.snapshot.val() || 0;
+  try {
+    if (n <= REPORT_ALERTS) await opsAlert(`report-${id}`, 'Problem report', S.reportText(r, who, env));
+    else if (n === REPORT_ALERTS + 1) await opsAlert(`reports-many-${dk}`, 'More problem reports', `Tic Tac Chaos (${env}): more than ${REPORT_ALERTS} problem reports today (${dk}); the rest are on the admin's Overview.`);
+  } catch (e) { logger.error('report alert', e); }               // (the report is kept either way: the dashboard has it)
+  return { ok: true };
+});
+
 /* ===================== accounts ===================== */
 exports.claimUsername = onCall(CALL, async req => {
   const uid = await needAccount(req);
@@ -1308,12 +1337,13 @@ async function pruneLogs(t, up) {
 // exact code (joinRoom: the free seat; no room is ever listed or read before one is seated in it), the host starts it
 // (startRoom: a games/{id} match, as Find Match's, mode 'friend'); the match is then played through the same calls
 // (move, scMove, timeout, resign...), so the server holds every secret, checks every move and credits the records
-// (finishGame). The rules let the players write only their own seat's name, the host the setup, either their rematch
+// (finishGame). The rules let the host write the setup (the seats' names are the server's, filtered), either their rematch
 // flag and their leaving; everything else is written here. A room lives a day (the sweep deletes older ones).
 const ROOM_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ', ROOM_TTL_MS = 24 * 3600 * 1000;   // (no I or O: they look like 1 and 0)
 const roomCodeOk = c => typeof c === 'string' && /^[ABCDEFGHJKLMNPQRSTUVWXYZ]{5}$/.test(c);
 const roomCodeOf = v => String(v || '').toUpperCase().replace(/[^A-Z]/g, '');
-const roomName = (v, dflt) => String(v || '').trim().slice(0, E.NAME_MAX) || dflt;
+const roomName = (v, dflt) => { const n = String(v || '').trim().slice(0, E.NAME_MAX); return n && !R.guestNameProblem(n) ? n : dflt; };   // (a name the filter refuses never reaches a seat)
+const badGuestName = (uname, v) => !uname && !!R.guestNameProblem(String(v || '').trim().slice(0, E.NAME_MAX));
 function newRoomCode() { let c = ''; for (let i = 0; i < 5; i++) c += ROOM_ALPHABET[crypto.randomInt(ROOM_ALPHABET.length)]; return c; }
 // The lobby's setup as the host sends it, checked: the games (true or false by type; a game the host may not deal is off),
 // the time per turn and the Super Chaos switch (only where it is open to them). The host is Player 1 and the friend Player 2:
@@ -1330,7 +1360,9 @@ async function usernameOf(uid) { try { return (await db.ref(`users/${uid}/userna
 exports.openRoom = onCall(CALL, async req => {
   const uid = await needAccount(req), d = req.data || {}, t = now(), client = await needCurrent(req);   // hosting needs an account (as the page asks before Host)
   const admin = !!(req.auth.token && req.auth.token.admin === true);
-  const side = d.side === 'O' ? 'O' : 'X', name = roomName(await usernameOf(uid) || d.name, side);
+  const uname = await usernameOf(uid);
+  if (badGuestName(uname, d.name)) return { ok: false, reason: 'name' };   // (a guest's name held to the usernames' filter)
+  const side = d.side === 'O' ? 'O' : 'X', name = roomName(uname || d.name, side);
   const setup = Object.assign(roomSetupOf(d.setup, await releasesNow(), admin), { hostSide: side });
   for (let k = 0; k < 8; k++) {
     const code = newRoomCode();
@@ -1343,7 +1375,9 @@ exports.openRoom = onCall(CALL, async req => {
 exports.joinRoom = onCall(CALL, async req => {
   const uid = needUid(req), d = req.data || {}, code = roomCodeOf(d.code), client = await needCurrent(req);
   if (!roomCodeOk(code)) return { ok: false, reason: 'code' };
-  const name = roomName(await usernameOf(uid) || d.name, '');
+  const uname = await usernameOf(uid);
+  if (badGuestName(uname, d.name)) return { ok: false, reason: 'name' };
+  const name = roomName(uname || d.name, '');
   let out = { ok: false, reason: 'missing' };
   await db.ref(`rooms/${code}`).transaction(cur => {
     if (cur === null) { out = { ok: false, reason: 'missing' }; return cur; }   // (a first guess from an empty cache: retried with the real value)
@@ -1486,6 +1520,10 @@ async function pruneRetained(t, up) {
   for (const uid of Object.keys(seen)) { up[`lastSeen/${uid}`] = null; n++; }
   const alerts = (await db.ref('alertLog').orderByChild('at').startAt(1).endAt(old).limitToFirst(100).get()).val() || {};
   for (const key of Object.keys(alerts)) { up[`alertLog/${key}`] = null; n++; }
+  const reps = (await db.ref('reports').orderByChild('at').startAt(1).endAt(old).limitToFirst(100).get()).val() || {};
+  for (const key of Object.keys(reps)) { up[`reports/${key}`] = null; n++; }
+  const repDays = (await db.ref('reportsDay').orderByKey().endAt(S.periodKeys(old).d).limitToFirst(50).get()).val() || {};
+  for (const key of Object.keys(repDays)) { up[`reportsDay/${key}`] = null; n++; }
   return n;
 }
 // What the stats have seen, once it can no longer matter: matches after three days, players once their

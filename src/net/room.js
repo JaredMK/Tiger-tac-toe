@@ -141,6 +141,7 @@ export async function hostRoom(code, resume) {
       state.setup.names[o.me] = name;
       const r = await call('openRoom', { name, side: o.me, setup: { games: restrictGames(Object.assign({}, state.setup.games), visibleTypes()), timer: state.setup.timer || 0, clock: setupSpec(state.setup), hostPick: 'random', chaos: !!o.chaos } });
       if (state.online !== o) { if (r && r.ok) closeSeat(r.code, r.side, true); return; }   // went back while the room was opening
+      if (r && r.reason === 'name') { setNet('error', 'Please pick another name.'); commit(); return; }   // (a guest's name the server's filter refused)
       if (!r || !r.ok) throw new Error('refused');
       o.code = r.code; o.me = r.side;
     } catch (e) {
@@ -214,6 +215,7 @@ export async function joinRoom(code, name, resume) {
   try {
     const r = await call('joinRoom', Object.assign({ code: o.code }, resume ? {} : { name: String(o.name || '').trim().slice(0, NAME_MAX) || 'Friend' }));   // the server seats this phone (the free seat, or its own from before)
     if (state.online !== o) { if (r && r.ok && !resume) closeSeat(o.code, r.side, false); return; }   // went back while joining
+    if (r && r.reason === 'name') { state.online = null; setNet('error', 'Please pick another name.'); commit(); return; }   // (a guest's name the server's filter refused: the form again, to change it)
     if (!r || !r.ok) {
       const why = r && r.reason;
       setNet('error', why === 'full' ? 'That room is full: two players are in it already.' : why === 'started' ? 'That match has already started without you.'

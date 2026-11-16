@@ -181,7 +181,8 @@ export function init() {
     if (act === 'pause-main') { setMenuStep('confirm'); startFx('menu', menuStep); render(); return; }
     if (act === 'pause-back') { setMenuStep('main'); startFx('menu', menuStep); render(); return; }
     if (act === 'pause-leave') { quitMatch(); return; }
-    if (act === 'pause-report') { openReport(); return; }                            // (a dialog of its own over the menu: ui/report.js)
+    if (act === 'pause-report') { openReport(); return; }
+    if (act === 'set-report') { openReport('settings'); return; }                     // (Settings: a report from anywhere, outside a match too)                            // (a dialog of its own over the menu: ui/report.js)
     if (menuOpen) return;                         // the menu is up: nothing underneath reacts
     if (state.flash && !state.flash.live && !free.includes(act)) {         // everything else waits for the result to clear... (the other side's attempt streamed here, net/live.js, is not a result: the watcher's own taps go on)
       if (!ownResult() || Date.now() < flashReady) return;

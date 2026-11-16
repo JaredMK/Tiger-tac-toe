@@ -59,6 +59,17 @@ function usernameProblem(name) {
   return null;
 }
 
+// A guest's display name in a friend room (no account, or one without a username): held to the usernames' word filter
+// and reserved names, so nobody plays as "Admin" or worse. Why it cannot be used, or null.
+function guestNameProblem(name) {
+  const n = String(name || '').trim();
+  if (!n) return null;
+  const low = n.toLowerCase().replace(/\s+/g, ''), flat = flatten(n);
+  if (RESERVED.includes(low) || RESERVED.includes(flat)) return 'Please pick another name';
+  if (badWordIn(n.replace(/\s+/g, '_'))) return 'Please pick another name';
+  return null;
+}
+
 // ---------- ratings: standard Elo ----------
 // Ratings and the leaderboard are switched off for now: no rating is calculated, changed or sent, and
 // matchmaking pairs by wait time alone. The Elo and leaderboard code stays, behind this flag (the page
@@ -256,7 +267,7 @@ function stagingAllows(token, open) { return !!open || !!(token && (token.admin 
 module.exports = {
   stagingAllows,
   LOCAL_REASONS, checkLocal, publicProfile, PROFILE_KEYS,
-  USERNAME_RE, usernameProblem, unleet, flatten, badWordIn, BAD, BAD_TOKENS, ALLOW, RATINGS_ENABLED, ELO_K, START_RATING, LEADERBOARD_MIN_GAMES, expected, elo,
+  USERNAME_RE, usernameProblem, guestNameProblem, unleet, flatten, badWordIn, BAD, BAD_TOKENS, ALLOW, RATINGS_ENABLED, ELO_K, START_RATING, LEADERBOARD_MIN_GAMES, expected, elo,
   FIND_MATCH_TIMER, FIND_MATCH_MODES, QUEUES, queueKey, ratingRange, pairQueue, SKILL_START, SKILL_OPEN_MS, skillRange, pairBySkill, skillUpdate, howEnded, resultFor,
   recordDelta, squaresFor, recountHistory, recountSides,
 };

@@ -1,8 +1,8 @@
 'use strict';
 // The friend rooms' security rules on the Realtime Database emulator (npm test): the forgery of a record is closed
 // (security review F1). A room is written only by the server: no phone makes one, seats anyone, writes a match, its
-// status or its game; only its two players read it; nobody lists the rooms. The players write their own seat's name,
-// the host the setup (in the lobby), each their rematch flag and their leaving; presence has a shape.
+// status or its game; only its two players read it; nobody lists the rooms. The server names the seats (a guest's name filtered as a
+// username is); the host writes the setup (in the lobby), each their rematch flag and their leaving; presence has a shape.
 // The emulator: the one the Firebase Emulator Suite runs (npm run test:emulators), else the database emulator's jar
 // from firebase-tools' cache, started here (needs Java). Without either, the test is skipped and says so.
 const test = require('node:test');
@@ -68,7 +68,7 @@ function client(uid) {
 }
 const denied = (promise, what) => assert.rejects(promise, e => /permission[_ ]denied/i.test(String(e.code || e.message)), `${what} should be refused`);
 
-test('room rules: a room is the server\'s to make and run; its two players read it, nobody else; a phone writes only its name, the host\'s setup, a rematch flag and its leaving', async () => {
+test('room rules: a room is the server\'s to make and run; its two players read it, nobody else; a phone writes only the host\'s setup, a rematch flag and its leaving', async () => {
   const host = client('uid-host'), guest = client('uid-guest'), stranger = client('uid-stranger'), victim = client('uid-victim');
   const code = 'RULES', t = Date.now();
   // the room as the server makes it (openRoom, then joinRoom): the host alone in the lobby
@@ -87,7 +87,7 @@ test('room rules: a room is the server\'s to make and run; its two players read 
   await denied(host.write(`rooms/${code}/game`, 'g0000000000'), "the match's id");
   await denied(host.write(`rooms/${code}/host`, victim.uid), 'the host');
   await denied(host.write(`rooms/${code}/created`, 1), 'the creation time');
-  // the guest seated (by the server): now they read it too; the setup is the host's, in the lobby; each writes their own name
+  // the guest seated (by the server): now they read it too; the setup is the host's, in the lobby; the names are the server's
   await owner('PUT', `/rooms/${code}/players/O.json`, JSON.stringify({ uid: guest.uid, name: 'Guesty', joined: t }));
   assert.equal((await guest.read(`rooms/${code}`)).players.O.uid, guest.uid);
   await denied(stranger.read(`rooms/${code}`), 'a stranger still');
@@ -99,7 +99,7 @@ test('room rules: a room is the server\'s to make and run; its two players read 
   await denied(host.write(`rooms/${code}/setup/hostPick`, 'both'), 'a side that is not one');
   await denied(host.write(`rooms/${code}/setup/other`, true), 'a setup field that is not one');
   await denied(host.write(`rooms/${code}/setup/chaos`, true), 'Super Chaos while it is not released (nor the admin)');
-  await guest.write(`rooms/${code}/players/O/name`, 'Gus');
+  await denied(guest.write(`rooms/${code}/players/O/name`, 'Gus'), 'its own name by hand (the server names the seats: openRoom, joinRoom, filtered)');
   await denied(guest.write(`rooms/${code}/players/X/name`, 'Hacked'), "the other player's name");
   await denied(guest.write(`rooms/${code}/players/O/uid`, stranger.uid), "the seat's uid");
   await denied(guest.write(`rooms/${code}/players/O/joined`, 1), "the seat's time");

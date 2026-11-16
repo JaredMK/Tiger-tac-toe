@@ -16,3 +16,6 @@ export const APP_VERSION = 'dev';
 // Ratings and the leaderboard are switched off for now (the Cloud Functions have the same flag): no
 // rating is shown anywhere and the Leaderboard is off the menu. Their code stays, behind this flag.
 export const RATINGS_ENABLED = false;
+
+// Contact support (Settings): the address players write to (December 2026: the privacy address, until a support mailbox exists).
+export const SUPPORT_EMAIL = 'privacy@tictacchaos.com';

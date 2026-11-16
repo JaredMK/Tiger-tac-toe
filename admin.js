@@ -8,7 +8,7 @@ const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', chaos: '#d9622b', cv
 const GAMES = { ttt: 'Tic-tac-toe', c4: 'Four in a Row', bs: 'Sea Battle', wordle: 'Five Letters', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Find the Pair', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Codebreaker', bj: '21', bus: 'Ride the Bus', rl: 'Little Wheel', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Peg Drop', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush', golf: 'Mini Golf', pool: 'Pool', bowling: 'Bowling', craps: 'Krabs', takeover: 'Takeover', flood: 'Flood', seating: 'Seating', districts: 'Districts', shelves: 'Shelves', roads: 'Roads', flap: 'Flap', chopper: 'Chopper', patterns: 'Patterns', wheels: 'Risky Spins', apple: 'Apple Pick', sniff: 'Sniff', clash: 'Standoff Grid', headcount: 'Headcount', flash: 'Flash', snapshot: 'Snapshot', skyhop: 'Sky Hop', scoop: 'Scoop Stack', pinball: 'Pinball', muncher: 'Muncher', swarm: 'Star Swarm', bricks: 'Brick Break', snake: 'Snake', dominoes: 'Dominoes', war: 'War', shut: 'Shut the Box', combo: 'Dice Combo', bglite: 'Backgammon Lite', scc: 'Ship, Captain & Crew', rps: 'Rock Paper Scissors', poker: 'Poker Hands', t31: 'Thirty-One', rummy: 'Rummy Lite', claw: 'Claw Machine', duck: 'Hook-a-Duck', pusher: 'Coin Pusher', wtiles: 'Word Tiles', scratch: 'Scratch & Match', bingo: 'Bingo' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
 const app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-let fb = null, user = null, stats = null, flagged = null, view = { status: 'loading', error: '' };
+let fb = null, user = null, stats = null, flagged = null, reports = [], view = { status: 'loading', error: '' };
 let ctl = { config: {}, secretsSet: {}, bots: {}, botStats: {}, alertLog: [], alertStats: {} }, testResult = null, keyMsg = '';
 // The defaults the server uses for anything not set (functions/bots.js).
 const DEF = { bots: { enabled: false, waitMin: 40, waitMax: 70, countInRecords: true, level: 'normal' }, alerts: { enabled: false, sms: false, email: true, phone: '', to: '', after: 5, cooldownMin: 30, gapMin: 3, dailyCap: 20 } };
@@ -50,6 +50,14 @@ function growthPage() {
     <div class="card"><h2>Sources (?t= links)</h2><table class="tbl"><thead><tr><th>Tag</th><th>Devices</th><th>Sign-ups</th></tr></thead><tbody>${srcs || none(3)}</tbody></table>
       <p class="note">A link with ?t=name (e.g. tictacchaos.com/?t=reddit): the devices first opened with it, and the accounts they made.</p></div></div>
     <div class="card"><h2>Find Match waits</h2><table class="tbl"><thead><tr><th>Day</th><th>Paired with a person</th><th>Average wait</th><th>Took the computer</th><th>Computer fill rate</th><th>Gave up (avg wait)</th><th>Waits: under 10 / 20 / 30 / 60 s / longer</th></tr></thead><tbody>${finds || none(7)}</tbody></table></div>`;
+}
+// "Report a problem" (December 2026, reports/{id}, functions/index.js report): the last 20, newest first: when, the screen or
+// the match (its log in the Match inspector), the note, the build and client. Each one is also alerted (the alert channels).
+function reportsCard() {
+  const when = t => new Date(t).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const rows = reports.map(r => `<tr><td>${esc(when(r.at))}</td><td>${r.g ? `<a href="#matches">${esc(r.mode || '')} ${esc(r.g)}</a>` : esc(r.where || '')}</td><td>${r.note ? esc(r.note) : '<span class="dim">(no note)</span>'}</td><td>${esc([r.p, r.cv, r.v].filter(Boolean).join(' '))}</td></tr>`).join('');
+  return `<div class="card"><h2>Problem reports</h2><table class="tbl"><thead><tr><th>When</th><th>Where</th><th>Note</th><th>Client</th></tr></thead><tbody>${rows || '<tr><td colspan="4" class="dim">None</td></tr>'}</tbody></table>
+    <p class="note">"Report a problem" from the in-game menu or Settings (outside a match too). Each is emailed or texted through the alert channels (Bots: Alerts), at most 40 a day; kept 90 days.</p></div>`;
 }
 // The page's health (December 2026, stats/health/{day}, functions/statsRules.js healthUpdates): app opens and uncaught
 // errors a day (the page's global catcher: ui errors, rejected promises, and the hand-placed devError logs), errors per
@@ -244,7 +252,7 @@ function draw() {
       ${kpi('First player (X) wins', pct(ratio(t.xWins, t.xWins + t.oWins)), `${t.xWins} of ${t.xWins + t.oWins} decided`)}
     </div>
     <div class="grid2"><div class="card"><h2>Players per day, ${ovName}</h2>${players}</div><div class="card"><h2>Matches finished per day, ${ovName}</h2>${matches}</div></div>
-    ${healthCard()}`,
+    ${healthCard()}${reportsCard()}`,
     players: () => `${accountsCard()}${flaggedCard()}
     <div class="card"><div class="row"><h2>Players over time</h2><div class="tabs">${[['d', 'Days'], ['w', 'Weeks'], ['m', 'Months']].map(([k, l]) => `<button data-period="${k}" aria-pressed="${period === k}">${l}</button>`).join('')}</div></div>${ptable}</div>`,
     playtest: () => playCard(),
@@ -1220,6 +1228,7 @@ async function load() {
     const [snap, fl] = await Promise.all([fb.dbM.get(fb.dbM.ref(fb.db, 'stats')), fb.dbM.get(fb.dbM.ref(fb.db, 'review/flaggedNames')).catch(() => null)]);
     stats = snap.val() || {};
     flagged = fl ? fl.val() : null;
+    reports = Object.values((await fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'reports'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(20))).then(s => s.val()).catch(() => null)) || {}).sort((a, b) => b.at - a.at);
     await Promise.all([loadCtl(), loadPeople()]);
     view = { status: 'ready', error: '' };
   } catch (e) {

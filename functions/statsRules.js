@@ -222,6 +222,29 @@ function checkDev(d, t) {
   return out;
 }
 
+// ---------- "Report a problem" (December 2026): from anywhere in the page, a match or not ----------
+// What the phone sends (ui/report.js, net/tracking.js sendReport), checked: a note (up to 140 characters, may be empty),
+// the screen it was sent from (where), the match it was in (g and mode, if any), its side, the app's build and the client.
+const REPORT_WHERE = ['menu', 'board', 'mini', 'win', 'review', 'settings', 'howto', 'profile', 'setup', 'join', 'host', 'find', 'account', 'other'];
+function checkReport(d, t) {
+  if (!d || typeof d !== 'object' || !idOk(d.dev) || !idOk(d.o)) return null;
+  const note = typeof d.note === 'string' ? d.note.trim().replace(/[^\x20-\x7e\u00a0-\uffff]/g, ' ').slice(0, 140) : '';
+  const out = { t, h: devHash(d.dev), o: d.o, note, where: REPORT_WHERE.includes(d.where) ? d.where : 'other' };
+  if (DEV_MODES.includes(d.mode) && typeof d.g === 'string' && /^[-\w]{4,60}$/.test(d.g)) { out.g = d.g; out.mode = d.mode; }
+  if (d.s === 'X' || d.s === 'O') out.s = d.s;
+  if (typeof d.v === 'string' && /^[-\w.]{1,20}$/.test(d.v)) out.v = d.v;
+  const cl = d.client && typeof d.client === 'object' ? d.client : {};
+  if (typeof cl.v === 'string' && /^\d{1,4}(\.\d{1,4}){0,2}$/.test(cl.v)) out.cv = cl.v;
+  if (cl.p === 'web' || cl.p === 'ios') out.p = cl.p;
+  return out;
+}
+// The alert's text: one line the admin can act on (who, where, the note, the match, the build).
+function reportText(r, who, env) {
+  const at = r.g ? `in a ${r.mode} match (${r.g}${r.s ? ', as ' + r.s : ''})` : `on the ${r.where} screen`;
+  const cl = [r.p, r.cv, r.v && 'build ' + r.v].filter(Boolean).join(' ');
+  return `Tic Tac Chaos${env ? ' (' + env + ')' : ''}: a problem report from ${who} ${at}${cl ? ', ' + cl : ''}: ${r.note ? '"' + r.note + '"' : '(no note)'}`;
+}
+
 // ---------- growth (December 2026): the first-run funnel, retention by install cohort, rematch/share/invite events, sources ----------
 // A device's install cohort is the day it was first seen (devices/{h}/first, New York time). stats/cohorts/{day}: n (devices
 // first seen that day), d1, d7, d30 (of them, seen again exactly 1, 7 and 30 days later: each counted once per device,
@@ -274,5 +297,6 @@ function healthUpdates(c, t) {
   return up;
 }
 
-module.exports = { MODES, healthUpdates, findUpdates, growthMarks, STEPS, ACTS, CHANNELS, RETAIN, dayNum, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, PERIOD_NODE, PERIOD_PATH, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates, timerStartUpdates, timerEndUpdates,
+module.exports = {
+  checkReport, reportText, REPORT_WHERE, MODES, healthUpdates, findUpdates, growthMarks, STEPS, ACTS, CHANNELS, RETAIN, dayNum, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, PERIOD_NODE, PERIOD_PATH, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates, timerStartUpdates, timerEndUpdates,
   DEV_EVENTS, DEV_MODES, TAG_RE, tagOk, devHash, checkDev };

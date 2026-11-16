@@ -8,7 +8,7 @@ import { ANIM } from '../core/timer.js';
 import { savePref } from '../net/accounts.js';
 import { canVibrate, setVibOn, vibOn } from '../net/platform.js';
 import { app, esc } from './app.js';
-import { APP_VERSION } from './config.js';
+import { APP_VERSION, SUPPORT_EMAIL } from './config.js';
 import { setPace } from './pace.js';
 import { render } from './render.js';
 import { CHEV } from './art.js';
@@ -17,11 +17,16 @@ const pick = (act, v, on, label) => `<button class="pk${on ? ' on' : ''}" data-a
 const row = (name, body, cls) => `<div class="setrow${cls ? ' ' + cls : ''}" role="group" aria-label="${name}"><span class="setname">${name}</span><span class="setctl">${body}</span></div>`;
 const volPct = () => Math.round(SND.volume * 100);
 // The controls themselves (the Settings screen, and the in-game menu's Settings step).
-export function settingsBody() {
+// Help (December 2026): Report a problem (ui/report.js: from anywhere, the screen it came from noted; the in-game menu has
+// its own button) and Contact support (an email to SUPPORT_EMAIL; the app hands mailto: links to Mail).
+const supportHref = () => `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Tic Tac Chaos support')}&body=${encodeURIComponent(`\n\n(Build ${APP_VERSION})`)}`;
+export function settingsBody(o) {
+  const help = `<div class="sethelp">${o && o.report ? '<button class="btn repset" data-act="set-report">Report a problem</button>' : ''}<a class="btn support" href="${supportHref()}" aria-label="Contact support by email">Contact support</a></div>`;
   return `<div class="settings">${row('Sound', pick('set-sound', 'on', !SND.muted, 'On') + pick('set-sound', 'off', SND.muted, 'Off'))}
     ${row('Volume', `<input id="setvol" class="setvol" type="range" min="0" max="100" step="5" value="${volPct()}" aria-label="Volume"${SND.muted ? ' disabled' : ''}><b class="volnum" aria-hidden="true">${volPct()}</b>`, 'vol')}
     ${row('Animation', pick('anim-set', 'normal', ANIM.mode !== 'speed', 'Normal') + pick('anim-set', 'speed', ANIM.mode === 'speed', 'Speed'))}
     ${canVibrate() ? row('Vibration', pick('set-vib', 'on', vibOn, 'On') + pick('set-vib', 'off', !vibOn, 'Off')) : ''}
+    ${help}
     <p class="build" aria-label="Build ${esc(APP_VERSION)}">Build ${esc(APP_VERSION)}</p></div>`;   // (the build on this phone: a stale page is seen for what it is)
 }
 // The Settings screen, from the main menu.
@@ -29,7 +34,7 @@ export function renderSettings() {
   return `<main class="scr setup settings-scr cc calm">
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
       <div class="ttl"><b>Settings</b></div></div>
-    <div class="setup-box">${settingsBody()}</div></main>`;
+    <div class="setup-box">${settingsBody({ report: true })}</div></main>`;
 }
 // A choice made here: on this device at once, on the account too (fromAccount: the account's own, arriving).
 export function setSound(on, fromAccount) {
