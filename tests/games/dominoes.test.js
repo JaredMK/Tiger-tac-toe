@@ -15,19 +15,22 @@ const sq = o => Object.assign({ type: 'dominoes', pips: 6, line: [], left: 0, ha
 const all = () => Array.from({ length: 28 }, (_, k) => k);
 
 /* ===================================== Dominoes ===================================== */
-test('dominoes: the deal: a double-six set of 28 tiles, three each by default (the opener draws one more), the rest the boneyard; no tile twice; the admin\'s set and hands', () => {
+test('dominoes: the deal: a double-six set of 28 tiles, three each by default, a random starter tile on the table, the rest the boneyard; no tile twice; the admin\'s set and hands', () => {
   assert.equal(R.domSet(6).length, 28); assert.deepEqual(R.domSet(6).slice(0, 5), [[0, 0], [0, 1], [1, 1], [0, 2], [1, 2]]); assert.deepEqual(R.domSet(6)[27], [6, 6]);
   assert.equal(R.domTileCount(5), 21); assert.equal(R.domTileCount(4), 15);
   const m = E.newMini('dominoes', E.makeRng('dm'));
-  assert.equal(m.pips, 6); assert.equal(m.hands.X.length, 3); assert.equal(m.hands.O.length, 3); assert.equal(m.pile.length, 22); assert.equal(m.openDraw, 1);
-  assert.deepEqual([...m.hands.X, ...m.hands.O, ...m.pile].sort((a, b) => a - b), all());
-  assert.deepEqual(m.line, []); assert.equal(m.left, 0); assert.equal(m.last, null);
+  assert.equal(m.pips, 6); assert.equal(m.hands.X.length, 3); assert.equal(m.hands.O.length, 3); assert.equal(m.pile.length, 21); assert.equal(m.openDraw, undefined);
+  assert.equal(m.line.length, 1); assert.equal(m.line[0][2], 0, 'laid by nobody');
+  const starter = R.domSet(6).findIndex(t => (t[0] === m.line[0][0] && t[1] === m.line[0][1]) || (t[1] === m.line[0][0] && t[0] === m.line[0][1]));
+  assert.deepEqual([...m.hands.X, ...m.hands.O, ...m.pile, starter].sort((a, b) => a - b), all());
+  const starters = new Set(Array.from({ length: 40 }, (_, i) => E.newMini('dominoes', E.makeRng('st' + i)).line[0].slice(0, 2).join()));
+  assert.ok(starters.size > 3, 'the starter is random'); assert.equal(m.left, 0); assert.equal(m.last, null);
   assert.ok(m.hands.X.every((k, i) => i === 0 || k > m.hands.X[i - 1]), 'a hand kept sorted');
-  E.setTune('dominoes', { pips: 5, hand: 9, openDraw: 0 });
+  E.setTune('dominoes', { pips: 5, hand: 9 });
   const m5 = E.newMini('dominoes', E.makeRng('dm5'));
   E.setTune('dominoes', null);
-  assert.deepEqual(m5.tune, { pips: 5, hand: 9, openDraw: 0 });
-  assert.equal(m5.pips, 5); assert.equal(m5.hands.X.length, 9); assert.equal(m5.pile.length, 3); assert.equal(m5.openDraw, undefined);
+  assert.deepEqual(m5.tune, { pips: 5, hand: 9 });
+  assert.equal(m5.pips, 5); assert.equal(m5.hands.X.length, 9); assert.equal(m5.pile.length, 2); assert.equal(m5.openDraw, undefined);
   assert.equal(R.domTile(m5, 20)[1], 5);
   for (const bad of ['roll', -1, 28, null, [1], { t: 'x' }, { t: 3, e: 'M' }]) assert.equal(E.applyMove(m, 'X', bad, lcg(1)).ok, false, JSON.stringify(bad));
 });
@@ -114,24 +117,26 @@ test('dominoes: the end: the last tile out wins the square; the game blocked goe
 test('dominoes: the public view carries the line, both counts and the boneyard\'s size, never its tiles (the hands ride it for now: HANDS_PUBLIC); the record hides the boneyard and gives it back whole', () => {
   const m = E.newMini('dominoes', E.makeRng('dm-pub'));
   const pv = E.publicMini(m);
-  assert.equal(pv.pile, undefined); assert.equal(pv.pileN, 22); assert.deepEqual(pv.n, { X: 3, O: 3 }); assert.deepEqual(pv.line, []); assert.equal(pv.openDraw, 1);
+  assert.equal(pv.pile, undefined); assert.equal(pv.pileN, 21); assert.deepEqual(pv.n, { X: 3, O: 3 }); assert.deepEqual(pv.line, m.line); assert.equal(pv.openDraw, 0);
   assert.equal(R.HANDS_PUBLIC, true); assert.deepEqual(pv.hands, m.hands); assert.notEqual(pv.hands.X, m.hands.X, 'a copy');
   assert.deepEqual(E.secretOf(m), { pile: m.pile });
   assert.deepEqual(R.sideView(m, 'O'), { hand: m.hands.O });
   const st = E.newMatch(E.makeRng('dm-rec'), { games: ['dominoes'] });
   const rec = E.matchRecord(st);
-  for (const q of rec.state.squares) { assert.equal(q.mini.pile, undefined); assert.equal(q.mini.pileN, 22); assert.deepEqual(q.mini.n, { X: 3, O: 3 }); }
-  for (let k = 0; k < 9; k++) assert.equal(rec.secrets[k].pile.length, 22);
+  for (const q of rec.state.squares) { assert.equal(q.mini.pile, undefined); assert.equal(q.mini.pileN, 21); assert.deepEqual(q.mini.n, { X: 3, O: 3 }); }
+  for (let k = 0; k < 9; k++) assert.equal(rec.secrets[k].pile.length, 21);
   const full = E.fullState(rec);
   full.squares.forEach((q, k) => { assert.deepEqual(q.mini.pile, st.squares[k].mini.pile); assert.deepEqual(q.mini.hands, st.squares[k].mini.hands); });
-  assert.equal(R.domPile(rec.state.squares[0].mini), 22); assert.equal(R.domPile(full.squares[0].mini), 22);
+  assert.equal(R.domPile(rec.state.squares[0].mini), 21); assert.equal(R.domPile(full.squares[0].mini), 21);
   assert.equal(R.domCount(rec.state.squares[0].mini, 'X'), 3);
   // the counts and the size follow a move through the record
   const side = rec.state.turn, mini0 = E.fullState(rec).squares[0].mini;
-  const mv = E.applyOnlineMove(rec, side, 0, { t: mini0.hands[side][0], e: 'R' }, lcg(4));
+  const mine = R.domMoves(mini0, side)[0];
+  if (!mine) return;                                           // (nothing fits the starter in this deal: the draw path is tested above)
+  const mv = E.applyOnlineMove(rec, side, 0, mine, lcg(4));
   assert.ok(mv.ok, JSON.stringify(mv));
   const q = mv.rec.state.squares[0].mini;
-  assert.equal(q.line.length, 1); assert.equal(q.n[side], 3, 'played one, drew one (the opener)'); assert.equal(q.pileN, 21); assert.equal(mv.rec.secrets[0].pile.length, 21);
+  assert.equal(q.line.length, 2); assert.equal(q.n[side], 2, 'played one, drew none'); assert.equal(q.pileN, 21); assert.equal(mv.rec.secrets[0].pile.length, 21);
   assert.equal(mv.entries[0].dom.kind, 'play'); assert.equal(mv.entries[0].after.mini.pile, undefined);
   assert.equal(E.applyOnlineMove(mv.rec, mv.rec.state.turn, 0, 'auto', lcg(5)).ok, false, 'no automatic move from a phone');
 });

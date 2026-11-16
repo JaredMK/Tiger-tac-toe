@@ -18,21 +18,18 @@ function laid(pos, p, v, ver) {
   return m;
 }
 
-test('bglite: a fresh square: an 8-point track, three pieces each on their own first point, no dice; Roll first, and the opening roll is one die', () => {
+test('bglite: a fresh square: an 8-point track, three pieces each on their own first point, no dice; Roll first, and the opening roll is two dice like any other', () => {
   const m = mini();
   assert.equal(m.n, 8); assert.equal(m.v, 2); assert.deepEqual(m.pos, { X: [1, 1, 1], O: [1, 1, 1] }); assert.equal(m.dice, null);
   assert.equal(R.bglPoint('X', 1, 8), 1); assert.equal(R.bglPoint('O', 1, 8), 8, "O's first point is the rightmost");
   for (const bad of [{ d: 0, k: 0 }, 'bank', null, 3, { d: 4, k: 0 }]) assert.equal(E.applyMove(mini(), 'X', bad, lcg(1)).ok, false);
   const r = E.applyMove(m, 'X', 'roll', lcg(2));
   assert.deepEqual([r.ok, r.outcome, r.again], [true, 'continue', true]);
-  assert.equal(m.dice.v[1], 0, 'the opening roll: one die'); assert.deepEqual(m.dice.used, [false, true]);
+  assert.ok(m.dice.v[1] >= 1, 'the opening roll: two dice'); assert.deepEqual(m.dice.used, [false, false]);
   assert.equal(E.applyMove(m, 'X', 'roll', lcg(2)).ok, false, 'dice to use first');
-  const r2 = E.applyMove(m, 'X', { d: 0, k: 0 }, lcg(3));
-  assert.ok(r2.ok); assert.notEqual(r2.again, true, 'its one die used: the turn ends');
-  assert.equal(m.dice, null);
-  E.applyMove(m, 'O', 'roll', lcg(4)); assert.ok(m.dice.v[0] >= 1 && m.dice.v[1] >= 1, 'every later roll: two dice (or four)');
-  E.setTune('bglite', { len: 11, openOne: 'off' });
-  try { const t = mini('t'); assert.equal(t.n, 11); E.applyMove(t, 'X', 'roll', lcg(5)); assert.ok(t.dice.v[1] >= 1, 'the setting off: two dice from the start'); } finally { E.setTune('bglite', null); }
+  const m2 = mini(); E.applyMove(m2, 'O', 'roll', lcg(4)); assert.ok(m2.dice.v[0] >= 1 && m2.dice.v[1] >= 1, 'every roll: two dice (or four)');
+  E.setTune('bglite', { len: 11 });
+  try { const t = mini('t'); assert.equal(t.n, 11); E.applyMove(t, 'X', 'roll', lcg(5)); assert.ok(t.dice.v[1] >= 1, 'two dice from the start at any length'); } finally { E.setTune('bglite', null); }
 });
 
 test('bglite: X travels left to right and O right to left; both dice on one piece is fine; a lone enemy piece is hit back to its start point; a lone piece on its own start point is never hit', () => {

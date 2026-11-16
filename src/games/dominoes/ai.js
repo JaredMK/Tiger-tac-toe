@@ -153,7 +153,7 @@ export function domBars(pm, you, N) {
   const none = [{ bar: null, w: 1 }], line = pm.line, at = pm.left || 0;
   if (line.length < 2 || at >= line.length) return none;
   const opened = line[at][2] === you ? 1 : 0, played = (pm.played && pm.played[you]) || 0, n = domCount(pm, you);
-  const drawn = n + played - Math.max(1, Math.min(tune(pm).hand, Math.floor((N - 1) / 2))) - (opened && pm.openDraw ? 1 : 0), plays = played - opened;
+  const drawn = n + played - Math.max(1, Math.min(tune(pm).hand, Math.floor((N - (pm.openDraw ? 1 : 2)) / 2))) - (opened && pm.openDraw ? 1 : 0), plays = played - opened;
   if (!(drawn > 0) || plays <= 0) return none;
   // the orders of play: the left end's tiles outwards and the right end's, merged so that the sides take turns
   const out = [], bars = [];

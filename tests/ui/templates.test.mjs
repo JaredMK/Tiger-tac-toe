@@ -18,12 +18,12 @@ const C = await import('../../src/net/connect.js');
 const A = await import('../../src/net/accounts.js');
 const { renderSetup, setupTypes, tpl, tplAct, tplMatch } = await import('../../src/ui/screens/setup.js');
 const { SC_ONLY, TYPES } = await import('../../src/games/index.js');
-const { state } = await import('../../src/ui/app.js');
+const { state, setAdvOpen } = await import('../../src/ui/app.js');
 
 const writes = [];                                   // [path, value] as the SDK would get them (null: removed)
 C.setFb({ fns: {}, uid: 'adm1', fnM: {}, db: {}, m: { ref: (db, p) => p, set: (p, v) => { writes.push([p, JSON.parse(JSON.stringify(v))]); return Promise.resolve(); }, remove: p => { writes.push([p, null]); return Promise.resolve(); }, onValue: () => () => {}, update: () => Promise.resolve() } });
 const board = () => E.newMatch(E.makeRng('tpl'), { games: ['ttt'] });
-const cpuSetup = () => { Object.assign(state, board(), { screen: 'setup', online: null }); state.setup.vs = 'cpu'; for (const t of TYPES) state.setup.games[t] = true; };
+const cpuSetup = () => { setAdvOpen(true); Object.assign(state, board(), { screen: 'setup', online: null }); state.setup.vs = 'cpu'; for (const t of TYPES) state.setup.games[t] = true; };
 const on = () => TYPES.filter(t => state.setup.games[t]);
 
 test('the Templates row shows for an admin alone, on Play Computer, the host\'s lobby and Same phone', () => {
@@ -31,9 +31,11 @@ test('the Templates row shows for an admin alone, on Play Computer, the host\'s 
   A.acct.user = { uid: 'adm1' }; A.acct.profile = { username: 'adm' }; A.acct.admin = false;
   assert.doesNotMatch(renderSetup(), /Templates|tpl-/, 'nobody but the admin sees a trace of it');
   A.acct.admin = true; A.setTemplates({});
+  setAdvOpen(false); assert.doesNotMatch(renderSetup(), /class="tpls"/, 'inside the Mini-games panel: nothing while it is shut');
+  setAdvOpen(true);
   let html = renderSetup();
   assert.match(html, /<div class="tpls" role="group" aria-label="Templates">/);
-  assert.ok(html.indexOf('class="tpls"') < html.indexOf('data-act="adv"'), 'above the Mini-games section');
+  assert.ok(html.indexOf('data-act="adv"') < html.indexOf('class="tpls"') && html.indexOf('class="tpls"') < html.indexOf('class="games-top"'), 'inside the Mini-games panel, above its list');
   assert.match(html, /No templates yet/); assert.match(html, /data-act="tpl-save">Save as template</);
   assert.doesNotMatch(html, /tpl-use/, 'choosing a template applies it: no Use button'); assert.match(html, /data-act="tpl-del" disabled/, 'nothing chosen: Update, Rename and Delete wait');
   state.setup.vs = 'same'; assert.match(renderSetup(), /class="tpls"/, 'Same phone too');

@@ -37,12 +37,11 @@ export const pushHz = c => PUSH.hz * pushPace(c);
 // The square's settings, with its coins' radius `r` (shelf widths): the shared machine's (v 3) is its `coin` setting (bigger
 // coins than before: the shelf holds fewer, so a coin dropped reaches the front edge within a square, and a player's own
 // coins come into play); a square from before keeps PUSH.r.
-// The square's opening move (the first of either player on the shared machine) drops `open` coins (2), the rest
-// `perMove` (3): with the instant win the first mover's head start is otherwise worth 64% (tests/sim/pusher.sim.js).
+// Every move drops `perMove` coins, the square's first included (December 2026: the opening move's two coins, which held
+// the first mover to 53.5% against 64%, are gone; tests/sim/pusher.sim.js measures the rate).
 export const pushCfg = mini => {
   const t = Object.assign({}, tune(mini)), v3 = mini && (mini.v || 0) >= 3;
   t.r = v3 && t.coin > 0 ? t.coin : PUSH.r;
-  if (v3 && mini.moves && !(mini.moves.X + mini.moves.O) && t.open > 0) t.perMove = Math.min(t.perMove, t.open | 0);
   return t;
 };
 export const pushR = c => (c && c.r > 0 ? c.r : PUSH.r);

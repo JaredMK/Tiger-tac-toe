@@ -23,8 +23,8 @@ import { goAgain, tune } from '../../core/tune.js';
 // of one suit, is the most there is. With "Go again on success" on (core/tune.js AGAIN_TUNE), a discard that leaves a
 // higher score than before the take keeps the turn for another take (which says so: off, nothing is said of a score).
 // The deal: three cards of three different suits each (a hand worth 11 at most: nobody starts ahead, and no square is
-// won before each player's second turn), the rest the deck (26), the pile empty: the square's first take is from the
-// deck, and the first discard opens the pile (what keeps the first mover under 60%, tests/sim/t31.sim.js). A timeout
+// won before each player's second turn), one card turned up on the pile and the rest the deck (25): the
+// first take may be either (December 2026: the empty pile that forced the first mover's first take to the deck is gone). A timeout
 // with a card taken discards that card (`timeoutClose`: 'auto'), so the hand is as it was. Never dealt to two people on
 // one phone (meta.js samePhone: false). A square from before the rework (v 1: a 52-card deck and a pile each, open
 // hands) is dealt again as the record is read (`stale`, core/records.js fullState).
@@ -55,6 +55,7 @@ export function create(type, rng) {
     hand[p] = [];
     while (hand[p].length < T31.hand) { let i = d.length - 1; while (i > 0 && hand[p].some(c => c[1] === d[i][1])) i--; hand[p].push(d.splice(i, 1)[0]); }
   }
+  pile.push(d.pop());                                               // the pile opens with a card turned up from the deck (December 2026: either side may take it or the deck's top: no first-take rule favouring the second mover)
   return { type, v: 2, hand, deck: d, pile, left: d.length, hn: { X: T31.hand, O: T31.hand }, seen: { X: [], O: [] }, held: null, turns: { X: 0, O: 0 }, last: null };   // deck: hidden; hand: each side's own; seen: the cards each took off the pile and still holds (public); held: a card taken, waiting for the discard
 }
 export const stale = mini => (mini.v || 1) < 2;                    // (a square from before the rework: dealt again, core/records.js)

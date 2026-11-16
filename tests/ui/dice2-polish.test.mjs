@@ -180,12 +180,12 @@ test('Backgammon Lite: the controls are as they were: Roll; a piece that can mov
 
 test('Backgammon Lite: the roll throws the shared die; a turn played from its flash slides each piece in turn, a hit bursts where it lands and its words are one line', () => {
   const T = BR.BGLT, m0 = E.newMini('bglite', E.makeRng('b')); here(m0); state.turn = 'X';
-  const r = play('bglite', m0, 'X', 'roll', faces(4, 2)); assert.equal(r.flash.bgl.one, true, 'the opening roll: one die');
+  const r = play('bglite', m0, 'X', 'roll', faces(4, 2)); assert.ok(!r.flash.bgl.one, 'the opening roll is two dice like any other');
   let h = screen(BV, m0, r.flash, 'X');
-  assert.deepEqual([...h.matchAll(/<span class="bgldie" role="img" aria-label="(\d)"><span class="d3 d3cube roll v0" style="--dur:(\d+)ms"/g)].map(x => [x[1], Number(x[2])]), [['4', T.land]]);
-  assert.match(h, new RegExp(`<p class="arcres  appear" style="--t:${T.roll}ms" role="status">Opening roll: 4</p>`));
-  assert.deepEqual(sounds(BV, r.flash).map(s => s.slice(0, 2)), [['rattle', 0], ['diceTap', Math.round(T.land * DIE_BOUNCE)], ['thunk', T.land]]); assert.ok(T.land < BR.flashMs(r.flash));
-  const two = play('bglite', r.mini, 'X', { steps: [[0, 0]] }, E.makeRng('z')), d = play('bglite', two.mini, 'O', 'roll', faces(3, 3));
+  assert.deepEqual([...h.matchAll(/<span class="bgldie" role="img" aria-label="(\d)"><span class="d3 d3cube roll v\d" style="--dur:(\d+)ms"/g)].map(x => [x[1], Number(x[2])]), [['4', T.land - T.stag], ['2', T.land]]);
+  assert.match(h, new RegExp(`<p class="arcres  appear" style="--t:${T.roll}ms" role="status"><b class="X">Xena</b> rolled 4 and 2</p>`));
+  assert.deepEqual(sounds(BV, r.flash).map(s => s.slice(0, 2)), [['rattle', 0], ['diceTap', Math.round((T.land - T.stag) * DIE_BOUNCE)], ['thunk', T.land]]); assert.ok(T.land < BR.flashMs(r.flash));
+  const two = play('bglite', r.mini, 'X', { steps: [[0, 0], [1, 0]] }, E.makeRng('z')), d = play('bglite', two.mini, 'O', 'roll', faces(3, 3));
   assert.deepEqual([...screen(BV, two.mini, d.flash, 'O').matchAll(/class="d3 d3cube roll v(\d)" style="--dur:(\d+)ms"/g)].map(x => Number(x[2])), [0, 1, 2, 3].map(k => BV.bglLand(k, 4)), 'a double: four dice, landing one after the other');
   assert.equal(BV.bglLand(3, 4), T.land); assert.equal(BV.bglLand(0, 2), T.land - T.stag);
   // a turn with a hit, played from the flash alone (no draft has shown it)

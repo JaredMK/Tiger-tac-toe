@@ -191,7 +191,7 @@ test('the controls: the deck and the pile to take, a hand card to let go (deck, 
   const m = E.newMini('t31', E.makeRng('ctl'));
   const ctl = html => Object.fromEntries([...html.matchAll(/<button[^>]*data-m='"([a-z0-9]+)"'[^>]*>/g)].map(x => [x[1], !/ disabled/.test(x[0])]));
   let c = ctl(screen(m, null, 'X'));
-  assert.deepEqual(c, { deck: true, pile: false, d0: false, d1: false, d2: false }, 'the first take is from the deck: the pile is empty');
+  assert.deepEqual(c, { deck: true, pile: true, d0: false, d1: false, d2: false }, 'the first take: the deck or the turned-up pile card');
   const t = play(m, 'X', 'deck'); c = ctl(screen(t.mini, null, 'X'));
   assert.deepEqual(c, { deck: false, pile: false, d0: true, d1: true, d2: true, d3: true }, 'a card taken: any of the four goes');
   const d = play(t.mini, 'X', 'd3'); c = ctl(screen(d.mini, null, 'O', { locked: true }));

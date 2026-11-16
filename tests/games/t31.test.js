@@ -58,13 +58,13 @@ test('t31: the score is the best single suit: an ace 11, the ten and the picture
   assert.equal(E.tuneLive('t31').target, 30); assert.equal(E.tuneLive('t31').again, 'off');
 });
 
-test('t31: the deal: 32 cards, three cards of three suits each, the pile empty, the rest the one deck', () => {
+test('t31: the deal: 32 cards, three cards of three suits each, one card turned up on the pile, the rest the one deck', () => {
   for (let g = 0; g < 200; g++) {
     const m = fresh('deal' + g);
     assert.equal(m.v, 2);
     for (const p of ['X', 'O']) { assert.equal(m.hand[p].length, 3); assert.equal(new Set(m.hand[p].map(c => c[1])).size, 3, 'three suits'); assert.ok(R.t31Score(m.hand[p]) <= 11); }
-    assert.deepEqual(m.pile, []); assert.equal(m.deck.length, 26); assert.equal(m.left, 26);
-    assert.equal(new Set([...m.hand.X, ...m.hand.O, ...m.deck]).size, 32, 'every card once');
+    assert.equal(m.pile.length, 1); assert.equal(m.deck.length, 25); assert.equal(m.left, 25);
+    assert.equal(new Set([...m.hand.X, ...m.hand.O, ...m.deck, ...m.pile]).size, 32, 'every card once');
   }
 });
 
@@ -225,7 +225,7 @@ test('t31: the computer: its own hand alone; a winning take and discard always; 
   for (const level of ['easy', 'normal', 'hard']) assert.deepEqual(A.best(pv(a1, 'X'), 'X', E.makeRng('s'), {}, { level }), A.best(pv(a2, 'X'), 'X', E.makeRng('s'), {}, { level }), level);
   assert.equal(A.t31Unseen(pv(a1, 'X'), 'X').length, 32 - 3 - 1);
   const t0 = performance.now(), h = A.best(pv(fresh('q'), 'X'), 'X', E.makeRng('w'), {}, { level: 'hard', until: null });
-  assert.equal(h.move, 'deck', 'the pile is empty at the start'); assert.ok(performance.now() - t0 < 300, 'Hard is quick');
+  assert.ok(['deck', 'pile'].includes(h.move), 'either source at the start: the pile opens with a card'); assert.ok(performance.now() - t0 < 300, 'Hard is quick');
   assert.ok(A.needs(pv(fresh('q'), 'X'), 'X') >= 1); assert.ok(A.needs(pv(fresh('q'), 'X'), 'O') >= 1, 'the other side from public information alone');
 });
 

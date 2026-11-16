@@ -48,8 +48,8 @@ test('dominoes: Hard against Normal: Hard wins more from either seat; Hard again
   assert.ok(hh.first < 0.6, `Hard v Hard first mover (${(100 * hh.first).toFixed(1)}%)`);
 });
 
-test('dominoes: the other settings, for the record: four tiles each; a double-five set; no opener\'s draw', () => {
-  for (const [label, tune] of [['four each', { hand: 4 }], ['double-five, four each', { pips: 5, hand: 4 }], ['no opener draw', { openDraw: 0 }]]) {
+test('dominoes: the other settings, for the record: four tiles each; a double-five set', () => {
+  for (const [label, tune] of [['four each', { hand: 4 }], ['double-five, four each', { pips: 5, hand: 4 }]]) {
     E.setTune('dominoes', tune);
     try { say(label, squares(4000, { X: 'normal', O: 'normal' }, 'dominoes-' + label)); } finally { E.setTune('dominoes', null); }
   }

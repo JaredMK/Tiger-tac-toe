@@ -20,8 +20,8 @@ import { goAgain, tune, tuneLive } from '../../core/tune.js';
 //    still on the board stands in their home zone.
 // A square dealt before the rework (v 1: the pieces waiting off the board at progress 0, entering with a die; doubles two
 // moves; no home zone) plays on under those rules to its end (bglV2).
-// The square's very first roll (the opener's) is one die alone (`openOne`, on by default: a race's opener is half a
-// turn ahead, and this gives it back). A die that no piece can use is lost; with neither usable the roll ends the turn as it is ('stuck'). The first to
+// Every roll, the square's first included, is two dice (December 2026: the opener's one-die first roll, which gave back the
+// first mover's half-turn, is gone). A die that no piece can use is lost; with neither usable the roll ends the turn as it is ('stuck'). The first to
 // bear all 3 pieces off wins the square (anyone alone gets there: a piece at its start can always enter unless
 // the point is blocked, and blocks never last: every piece leaves the board).
 // A turn is two moves (November 2026, the backgammon-app flow, CLIENT_VERSION 1.12.0): Roll, which keeps the turn
@@ -142,8 +142,8 @@ export function apply(mini, p, m, rng, idx) {
   const r = needRng(rng);
   if (m === 'roll' || m === 'auto') {
     if (bglDice(mini, p)) return { ok: false, reason: 'bad' };          // (dice to use first)
-    const one = !mini.rolled && tune(mini).openOne !== 'off';         // the square's first roll: one die (what keeps the first mover under 60%)
-    const v = one ? [1 + randInt(r, 6), 0] : bglRollDice(mini, 1 + randInt(r, 6), 1 + randInt(r, 6));
+    const one = false;
+    const v = bglRollDice(mini, 1 + randInt(r, 6), 1 + randInt(r, 6));
     mini.rolled = true;
     mini.dice = { by: p, v, used: v.map((x, i) => one && i === 1), off: 0 };
     const any = bglMoves(mini, p).length > 0;

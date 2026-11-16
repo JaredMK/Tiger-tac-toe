@@ -52,8 +52,9 @@ main.board-scr::before, main.scr.mini::before { content: ''; position: absolute;
 .foot .wband .wleft { font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; background: var(--ink); color: var(--o); padding: 3px 6px 1px; min-width: 0; letter-spacing: .05em; }
 
 /* the board's marks: the last-played square: its player's character in a disc on the square's corner (flat, no text) */
-.board .lastcap { position: absolute; left: -2px; top: -4px; z-index: 3; width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid var(--ink); display: grid; place-items: center; pointer-events: none; }
-.board .lastcap .pc { width: 24px; height: 24px; }
+.board .lastcap { position: absolute; left: 11px; top: 12px; z-index: 3; width: 28px; height: 28px;   /* (fully inside the space: the # lines run over the space's edges, a disc on the corner went under them) */
+   border-radius: 50%; border: 2.5px solid var(--ink); display: grid; place-items: center; pointer-events: none; }
+.board .lastcap .pc { width: 22px; height: 22px; }
 .board .lastcap.X { background: var(--x-soft); } .board .lastcap.O { background: var(--o-soft); }
 /* the other side's square, about to be played: a ringed, dotted square in their colour and a flat caption */
 .board .sq.spot::before { inset: 5%; border-radius: 14px; opacity: 1;
@@ -62,6 +63,10 @@ main.board-scr::before, main.scr.mini::before { content: ''; position: absolute;
 @keyframes ccspot { 0%, 100% { opacity: .6; scale: .94; } 50% { opacity: 1; scale: 1; } }
 .spot-lab { border: 2.5px solid var(--ink); border-radius: 0; box-shadow: none; padding: 3px 5px 2px; font: 700 clamp(13px, 12cqw, 15px)/1.05 'Comic Neue', 'Patrick Hand', sans-serif; }
 .spot-lab.X { background: var(--x); color: #fff; } .spot-lab.O { background: var(--o); color: var(--ink); }
+/* "[name] plays here" over a space: whole at every width. The computer's little icon never takes a line of its own (the top bar shows who it is),
+   and the words wrap, a long name breaking where it must, three lines at most, "..." only past that. */
+.board .sq .spot-lab:not(.scv) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; max-height: none; overflow: hidden; overflow-wrap: anywhere; font-size: max(13px, 11.5cqw); }
+.board .sq .spot-lab:not(.scv) .cpui { display: none; }
 /* a claim: the mark slams onto its square over a burst, with impact lines; once, from the stamp's event */
 .own-ov.stamp::before, .own-ov.stamp::after { content: ''; position: absolute; pointer-events: none; z-index: -1; }
 .own-ov.stamp::before { inset: -16% -24%; background: var(--cc-burst) center / 100% 100% no-repeat; animation: ccburst .95s cubic-bezier(.3, 1.4, .5, 1) both; }
@@ -89,6 +94,7 @@ main.scr.mini > .bar .back:active:not(:disabled) { transform: skew(var(--cc-skew
 main.scr.mini > .bar .back:disabled { opacity: .45; }
 main.scr.mini > .bar .ttl > b { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: top;
   font: 400 21px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; background: var(--o); border: 2.5px solid var(--ink); padding: 4px 9px 1px; }
+main.scr.mini > .bar .ttl > b.long { white-space: normal; text-wrap: balance; display: -webkit-inline-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: clamp(15px, 4.6vw, 18px); line-height: .98; padding: 3px 8px 1px; }   /* a long name (Backgammon Lite, Ship, Captain & Crew) takes two lines, whole */
 main.scr.mini > .bar .ttl small { font: 700 13px/1.2 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); margin-top: 2px; }
 main.scr.mini > .bar .qbtn { width: 46px; height: 46px; border: 3px solid var(--ink); border-radius: 2px; background: var(--o); box-shadow: var(--cc-sh); transform: skew(var(--cc-skew));
   font: 400 24px/1 'Bangers', 'Luckiest Guy', sans-serif; padding-top: 3px; margin-right: 4px; transition: transform .07s, box-shadow .07s; }
@@ -125,7 +131,7 @@ main.scr.cc { overflow: clip; }
 @keyframes ccinL { from { transform: skew(var(--cc-skew)) translateX(-120vw); } }
 @keyframes ccinR { from { transform: skew(var(--cc-skew)) translateX(120vw); } }
 .cc .pn > b, .cc .pn > small, .cc .pn > svg { transform: skew(7deg); }
-.cc .pn > b { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 clamp(26px, 4.6vh, 34px)/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; padding-top: 4px; }
+.cc .pn > b { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 clamp(26px, 4.6vh, 34px)/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; padding: 4px .16em 0; box-sizing: border-box; }   /* (the inline padding keeps the slanted letters' overhang, and a stroke, inside the box the ellipsis clips to) */
 .cc .pn > small { display: block; font: 700 15px/1.1 'Comic Neue', 'Patrick Hand', sans-serif; margin-top: 2px; }
 .cc .pn:active:not(:disabled) { transform: skew(var(--cc-skew)) translate(4px, 4px); box-shadow: 2px 2px 0 var(--ink); }
 .cc .pn:disabled { opacity: .5; cursor: default; }
@@ -244,7 +250,7 @@ main.scr.cc { overflow: clip; }
 .cpuset .setup-box { max-width: 380px; padding: 6px 10px 12px; gap: clamp(10px, 2vh, 18px); flex: 0 1 auto; overflow-x: clip; }
 .cpuset .vscard { position: relative; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 10px 6px 8px; border: 3.5px solid var(--ink); background: linear-gradient(108deg, var(--x) 0 50%, var(--o) 50%); }
 .cpuset .vsme { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.cpuset .vsme > b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 22px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: #fff; -webkit-text-stroke: 5px var(--ink); paint-order: stroke fill; padding-top: 3px; }
+.cpuset .vsme > b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 22px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: #fff; -webkit-text-stroke: 5px var(--ink); paint-order: stroke fill; padding: 3px .2em 0; box-sizing: border-box; }
 .cpuset .vsface { position: relative; display: block; width: clamp(56px, 10vh, 74px); height: clamp(56px, 10vh, 74px); }
 .cpuset .vsface .pc { width: 100%; height: 100%; animation: bob 1s ease-in-out infinite; transform-origin: 50% 100%; }
 .cpuset .vsface.rflip .pc { position: absolute; inset: 0; animation: bob 1s ease-in-out infinite, ccflipA 2.4s steps(1) infinite; }
@@ -254,11 +260,11 @@ main.scr.cc { overflow: clip; }
 @keyframes ccflipA { 0% { opacity: 1; } 50% { opacity: 0; } } @keyframes ccflipB { 0% { opacity: 0; } 50% { opacity: 1; } }
 .cpuset .vsv { width: 86px; animation: ccvs 1s ease-in-out infinite; }
 .cpuset .vsv svg { width: 100%; height: auto; overflow: visible; }
-.cpuset .vsv .bursttxt { font-family: 'Bangers', 'Luckiest Guy', sans-serif; fill: var(--ink); }
+.cpuset .vsv .bursttxt { font-family: 'Bangers', 'Luckiest Guy', sans-serif; fill: var(--ink); stroke: none; letter-spacing: .04em; }
 @keyframes ccvs { 0%, 100% { transform: scale(1) rotate(-4deg); } 50% { transform: scale(1.08) rotate(3deg); } }
 .cpuset .pickrow { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .cpuset .opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; width: 100%; padding-right: 6px; }
-.cpuset .pn.opt { width: auto; margin: 0; height: clamp(50px, 8.6vh, 62px); padding: 4px 6px 2px; box-shadow: 5px 5px 0 var(--ink); }
+.cpuset .pn.opt { width: auto; margin: 0; height: clamp(50px, 8.6vh, 62px); padding: 4px 2px 2px; box-shadow: 5px 5px 0 var(--ink); }
 .cpuset .pn.opt > b { font-size: clamp(20px, 3.6vh, 24px); display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .cpuset .pn.opt.gX > b { font-size: 34px; color: var(--x); -webkit-text-stroke: 1.5px var(--ink); }
 .cpuset .pn.opt.gO > b { font-size: 34px; color: var(--o); -webkit-text-stroke: 1.5px var(--ink); }
@@ -317,7 +323,7 @@ main.scr.cc { overflow: clip; }
 .howto-scr .howlist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; padding: 4px 8px 6px 2px; }
 .cc .pn.gt { width: auto; margin: 0; flex-direction: row; justify-content: flex-start; gap: 8px; min-height: 56px; padding: 4px 8px 2px 6px; box-shadow: 4px 4px 0 var(--ink); border-width: 3px; animation: none; }
 .cc .pn.gt:active:not(:disabled) { box-shadow: 1px 1px 0 var(--ink); transform: skew(var(--cc-skew)) translate(3px, 3px); }
-.cc .pn.gt > b { flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: normal; text-align: left; font-size: 17px; line-height: 1; padding-top: 3px; }
+.cc .pn.gt > b { flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: normal; overflow: visible; text-overflow: clip; text-align: left; font-size: 17px; line-height: 1; padding: 3px 0 0; }   /* (a name wraps, never an ellipsis; nothing clips its slanted letters) */
 .cc .pn.gt > .tst { position: absolute; right: -4px; top: -11px; transform: skew(7deg); }
 .howto-scr .rulecard.credits { border-width: 2.5px; border-radius: 0; box-shadow: none; }
 @media (prefers-reduced-motion: reduce) { .cc .cpanel, .cc .hwgrid .hsq.lit { animation: none; } }
@@ -542,3 +548,13 @@ main.scr.cc { overflow: clip; }
 .vsintro .vsflip > :last-child { animation-delay: .25s; opacity: 0; }
 @keyframes vsflip { 0% { opacity: 1; } 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .vsintro .vsflip > * { animation: none; } .vsintro .vsflip > :last-child { display: none; } }
+
+/* Apple Pick: the tally's gauge is narrower so a name with the computer's icon ("Computer") keeps its whole room beside it, and the Spin button's name, icon and all, is not cut (December 2026 text audit) */
+.g-apple .wbar { width: clamp(18px, 5.4vw, 40px); }
+.g-apple .wbank .big .bnm { max-width: 8em; }
+
+/* Templates, now the top of the Mini-games panel: clear of the panel's header and its shadow */
+.cc .adv.open > .tpls { margin-top: 16px; }
+.cc .adv.open > .tpls + .games-top { margin-top: 4px; }
+.cc .tpls .games-h { min-height: 34px; align-items: center; }
+.cc .tpls .games-h small { white-space: normal; text-overflow: clip; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.05; overflow-wrap: anywhere; }   /* a note ("“Name” applied") wraps in its reserved two lines, never cut */

@@ -62,7 +62,7 @@ export function renderSetup() {
   const ready = setupReady(s);
   const vsCpu = !host && s.vs === 'cpu';
   const title = host ? 'Host game' : vsCpu ? 'Play Computer' : 'Same phone';
-  const sub = host ? 'Share the code, set up, then start once your friend is in' : vsCpu ? 'You vs Computer' : 'Two players taking turns on this phone';
+  const sub = host ? 'Share the code, then start' : vsCpu ? 'You vs Computer' : 'Two players, one phone';
   // Same phone: two people on this phone; player 1 picks X, O or Random, player 2 takes the other side. (The computer is
   // Play Computer's, from the main menu: no Human/Computer choice here.)
   const L = host ? null : normLocal(s), s1 = L && L.pick !== 'random' ? L.pick : null, s2 = s1 ? other(s1) : null;
@@ -100,9 +100,8 @@ export function renderSetup() {
       <div class="vscard ccpunch"><div class="vsme">${who(c1, 0)}<b>${esc(you)}</b></div><span class="vsv" aria-hidden="true">${burstSvg('VS', 'w', 120, 80, 40)}</span><div class="vsme">${who(c2, 1)}<b>${CPU_NAME}</b></div></div>
       <div class="pickrow" role="group" aria-label="You play as">${cap('your side')}<div class="opts">${['X', 'O', 'random'].map((v, k) => opt('cside', 'data-side', v, v === 'random' ? 'Random' : v, C.pick === v, k + 1)).join('')}</div></div>
       <div class="pickrow" role="group" aria-label="Difficulty">${cap('level')}<div class="opts">${LEVELS.map((v, k) => opt('clevel', 'data-v', v, `${meter(k + 1)}${LEVEL_NAME[v]}`, C.level === v, k + 4)).join('')}</div></div>
-      ${templatesRow(VT)}
       <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(on, VT.length)}</small><i class="chev">${CHEV}</i></button>
-        ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div>` : ''}</div>
+        ${advOpen ? `${templatesRow(VT)}<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div>` : ''}</div>
     </div>
     <div class="setup-foot"><button class="pn y big m-start" data-act="start"${ready ? '' : ' disabled'} style="--k:8"><i class="ptag" aria-hidden="true">go!</i><b>Start!</b></button>${(w => `<small class="warn${w ? '' : ' info'}" role="status">${w || modeNote || CPU_HINT}</small>`)(setupWarn(s))}</div></main>`;
   }
@@ -114,9 +113,8 @@ export function renderSetup() {
     ${host ? `<div class="names">${field(state.online.me)}${field(guest)}</div>` : vsCpu ? cpuSlots() : `<div class="slots">${slots()}</div>`}
     ${SUPER_CHAOS_ENABLED ? modeRow(sc) : ''}
     ${timer}
-    ${templatesRow(VT)}
     <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(on, VT.length)}</small><i class="chev">${CHEV}</i></button>
-      ${advOpen ? `<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div>` : ''}</div>
+      ${advOpen ? `${templatesRow(VT)}<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div>` : ''}</div>
   </div>
   <div class="setup-foot">${host && starting() ? '<button class="primary busy" data-act="start" disabled aria-busy="true" aria-live="polite"><i class="spinr" aria-hidden="true"></i>Starting…</button>' : `<button class="primary" data-act="start"${ready ? '' : ' disabled'}>Start match</button>`}${(w => `<small class="warn${w ? '' : modeNote ? ' info' : ''}" role="status">${w || modeNote}</small>`)(setupWarn(s))}</div></main>`;
 }
@@ -154,7 +152,7 @@ export function tplSync() {
   const base = tpl.sel ? tpl.sel : tpl.base;
   for (const b of app.querySelectorAll('.tplrow')) { const on = b.dataset.id === tpl.sel; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }
   const c = app.querySelector('.tplcus'); if (c) c.classList.toggle('off', !!tpl.sel);
-  if (tpl.note) { tpl.note = ''; const n = app.querySelector('.tpls .games-h small'); if (n) n.textContent = 'Mini-game selections, on your account'; }   // (an "applied" note is about the last tap)
+  if (tpl.note) { tpl.note = ''; const n = app.querySelector('.tpls .games-h small'); if (n) n.textContent = 'On your account'; }   // (an "applied" note is about the last tap)
   for (const a of ['tpl-update', 'tpl-rename', 'tpl-del']) { const b = app.querySelector(`[data-act="${a}"]`); if (b) b.disabled = !(base && templates && templates[base]); }
 }
 // The checklist's selection as a template's games: the games on, among those this screen may deal.
@@ -177,7 +175,7 @@ export function templatesRow(VT) {
       <div class="tplbtns"><button class="btn tplb" data-act="tpl-cancel">No</button><button class="btn tplb go" data-act="tpl-del-yes">Yes, delete</button></div>`;
   else bar = `<div class="tplbtns"><button class="btn tplb" data-act="tpl-update"${cur ? '' : ' disabled'}>Update</button><button class="btn tplb" data-act="tpl-rename"${cur ? '' : ' disabled'}>Rename</button><button class="btn tplb" data-act="tpl-del"${cur ? '' : ' disabled'}>Delete</button></div>
       <div class="tplbtns"><button class="btn tplb wide" data-act="tpl-save">Save as template</button></div>`;
-  return `<div class="tpls" role="group" aria-label="Templates"><div class="games-h"><span>Templates</span><small>${tpl.note ? esc(tpl.note) : 'Mini-game selections, on your account'}</small><em class="tplcus${tpl.sel ? ' off' : ''}">Custom</em></div>
+  return `<div class="tpls" role="group" aria-label="Templates"><div class="games-h"><span>Templates</span><small>${tpl.note ? esc(tpl.note) : 'On your account'}</small><em class="tplcus${tpl.sel ? ' off' : ''}">Custom</em></div>
       <div class="tpllist">${rows}</div><div class="tplbar">${bar}</div></div>`;
 }
 // The Templates row's buttons (ui/input.js hands every tpl-* action here).

@@ -7,8 +7,9 @@ import { tuneLive } from '../../core/tune.js';
 // hand on either end of the line (the first tile starts it; `e`: 'L' or 'R'), or, with nothing that fits, draws from the
 // boneyard until a tile fits (one move, `drew` tiles; then `again`: the turn goes on and a tile is placed; a timeout
 // there ends the turn, nothing placed) or the boneyard runs out (the turn ends, a pass), or, with the boneyard empty
-// already, passes. The line's opener draws one tile with their first move where the square says so (openDraw: the
-// second mover's tempo back; TUNE). The first hand emptied wins the square ('out'); the game blocked (neither can play,
+// already, passes. A random starter tile is on the table from the deal (December 2026: it replaced the opener's draw, so
+// neither side starts the line and no tempo needs giving back; a square dealt before, with an empty line and `openDraw`,
+// plays on under its old rule). The first hand emptied wins the square ('out'); the game blocked (neither can play,
 // the boneyard empty) goes to the fewer pips in hand ('blocked'); equal pips are a draw (the square resets, note 'tie').
 // The line is kept as placed: line[k] = [a, b, by], a the value facing the left end, b the right, by who laid it; `left`
 // counts the tiles placed on the left end (the view's snake keeps the first tile in place and grows both ways from it).
@@ -65,9 +66,10 @@ export const handPips = (mini, p) => (domHand(mini, p) || []).reduce((s, k) => s
 export function create(type, rng) {
   const c = tuneLive(type), pips = c.pips, n = domTileCount(pips);
   const ids = shuffle(Array.from({ length: n }, (_, k) => k), needRng(rng));
-  const each = Math.max(1, Math.min(c.hand, Math.floor((n - 1) / 2)));   // (a boneyard of at least one tile)
+  const each = Math.max(1, Math.min(c.hand, Math.floor((n - 2) / 2)));   // (a boneyard of at least one tile once the starter is out)
   const hands = { X: ids.splice(0, each).sort((a, b) => a - b), O: ids.splice(0, each).sort((a, b) => a - b) };
-  return Object.assign({ type, pips, line: [], left: 0, hands, pile: ids, played: { X: 0, O: 0 }, last: null }, c.openDraw ? { openDraw: 1 } : {});
+  const first = ids.pop(), t = domTile({ pips }, first);   // the starter: a random tile already on the table (laid by nobody), the hands as dealt
+  return { type, pips, line: [[t[0], t[1], 0]], left: 0, hands, pile: ids, played: { X: 0, O: 0 }, last: null };
 }
 // A placement as the move names it: a tile id and an end, or a plain id where one end alone fits (or the first tile).
 function parseMove(mini, m) {
@@ -165,7 +167,7 @@ export function secret(mini) {
 export function hide(m, k, st) {
   if (Array.isArray(m.pile)) m.pileN = m.pile.length;
   delete m.pile;
-  if (!HANDS_PUBLIC && m.hands) { m.n = { X: domCount(m, 'X'), O: domCount(m, 'O') }; delete m.hands; } else if (m.hands && !m.n) m.n = { X: domCount(m, 'X'), O: domCount(m, 'O') };
+  if (!HANDS_PUBLIC && m.hands) { m.n = { X: domCount(m, 'X'), O: domCount(m, 'O') }; delete m.hands; } else if (m.hands) m.n = { X: domCount(m, 'X'), O: domCount(m, 'O') };
   return;
 }
 // How long a move's animation runs: the tile slides to its end and lands, then its result holds; a draw's tiles slide

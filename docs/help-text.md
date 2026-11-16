@@ -119,7 +119,7 @@ Win: All {n} coins show your side.
 
 ## Coin Pusher [pusher]
 Category: More luck
-Play: One machine for both. Tap to drop a coin where the dropper is as it slides: {perMove} coins a go ({open} on the very first), in your colour. Your coins score for you whenever they go over the front edge, on anyone's turn. The machine's own silver coins score for whoever pushes them off. A star coin is worth {starWorth}. Off the sides, they are gone.{goAgain}
+Play: One machine for both. Tap to drop a coin where the dropper is as it slides: {perMove} coins a go, in your colour. Your coins score for you whenever they go over the front edge, on anyone's turn. The machine's own silver coins score for whoever pushes them off. A star coin is worth {starWorth}. Off the sides, they are gone.{goAgain}
 Win: First to {target} wins, the moment the coin lands.
 
 ## Cup Pong [pong]
@@ -150,7 +150,7 @@ Win: Lock 3 regions first.
 
 ## Dominoes [dominoes]
 Category: More brain
-Play: Put down a tile that matches either end of the line. Nothing fits? Draw one from the pile, or pass when it is empty.
+Play: A random tile starts the line. Put down a tile that matches either end of it. Nothing fits? Draw one from the pile, or pass when it is empty.
 Win: Empty your hand first. If the game blocks, the fewest pips in hand wins.
 
 ## Echo [echo]

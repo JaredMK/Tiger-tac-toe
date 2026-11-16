@@ -17,7 +17,6 @@ export const TUNE = [
   AGAIN_TUNE,
   { k: 'len', label: 'Track length (points)', def: 8, min: 5, max: 16, step: 1, group: 'Board' },
   { k: 'home', label: 'Home zone (the last points of the track)', def: 3, min: 1, max: 8, step: 1, group: 'Board' },
-  { k: 'openOne', label: 'The opener\'s first roll is one die', def: 'on', opts: ['on', 'off'], group: 'Rules' },
   { k: 'aiHit', label: 'Computer: worth of a hit (points of race)', def: 6, min: 0, max: 15, step: 0.5, group: 'Computer' },
   { k: 'aiBlot', label: 'Computer: risk of a lone piece (points)', def: 4, min: 0, max: 15, step: 0.5, group: 'Computer' },
   { k: 'aiBlock', label: 'Computer: worth of a block (points)', def: 2, min: 0, max: 10, step: 0.5, group: 'Computer' },

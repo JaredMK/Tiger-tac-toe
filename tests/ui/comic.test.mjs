@@ -120,7 +120,10 @@ test('How to Play: the three rules as drawn comic panels (flat), then every mini
   assert.match(figs[2][1], /Three squares in a row wins the match/);
   const tiles = panels(html).filter(p => p.act === 'explain');
   assert.ok(tiles.length >= 10 && tiles.every(p => /\bgt\b/.test(p.cls)), 'every game a tile');
-  assert.match(html, /<div class="games howlist"><button class="pn gt w" data-act="explain" data-t="ttt"[^>]*><i class="gic g-brain" aria-hidden="true"><svg/, 'the icon in its disc');
+  assert.match(html, /<div class="games howlist"><button class="pn gt w" data-act="explain" data-t="[a-z0-9]+"[^>]*><i class="gic g-(brain|luck|skill)" aria-hidden="true"><svg/, 'the icon in its disc');
+  const names = [...html.matchAll(/<button class="pn gt w" data-act="explain" data-t="[a-z0-9]+"[^>]*>.*?<b>(.*?)<\/b>/g)].map(m => m[1].replace(/<wbr>/g, ''));
+  assert.ok(names.length >= 10, 'the names were read');
+  assert.deepEqual(names, names.slice().sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })), 'the games listed alphabetically');
   const rule = /\.cc \.cpanel \{([^}]*)\}/.exec(CSS)[1];
   assert.doesNotMatch(rule, /box-shadow|skew/, 'the panels are flat');
 });

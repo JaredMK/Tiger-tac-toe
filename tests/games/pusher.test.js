@@ -26,8 +26,8 @@ test('pusher: one shared machine (v 3), its fresh shelf settled and every coin o
     assert.equal(E.applyMove(clone(m), 'X', bad, E.makeRng('x')).ok, false, JSON.stringify(bad));
   assert.ok(E.applyMove(clone(m), 'X', mv([0, 30, R.pushMaxSteps(c)]), E.makeRng('x')).ok, 'the last coin on the limit');
   const op = E.newMini('pusher', E.makeRng('psh-a')), oc = R.pushCfg(op);
-  assert.equal(oc.perMove, 2, 'the square\'s opening move: 2 coins'); assert.equal(E.applyMove(clone(op), 'X', mv([0, 10, 20]), E.makeRng('x')).ok, false);
-  assert.ok(E.applyMove(op, 'X', mv([0, 10]), E.makeRng('x')).ok); assert.equal(R.pushCfg(op).perMove, 3, 'then 3 a move');
+  assert.equal(oc.perMove, 3, 'the square\'s opening move drops the same 3 coins as any other'); assert.equal(E.applyMove(clone(op), 'X', mv([0, 10]), E.makeRng('x')).ok, false);
+  assert.ok(E.applyMove(op, 'X', mv([0, 10, 20]), E.makeRng('x')).ok); assert.equal(R.pushCfg(op).perMove, 3, 'and 3 a move after it');
   E.setTune('pusher', { target: 20, start: 30 });
   try { const t = fresh('b'); assert.ok(t.coins.length > 18 && t.coins.length <= 30); assert.deepEqual(t.tune, { target: 20, start: 30 }); } finally { E.setTune('pusher', null); }
 });
