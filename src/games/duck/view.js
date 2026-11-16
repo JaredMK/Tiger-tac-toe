@@ -3,7 +3,7 @@ import { DUKT, duckCfg, duckShared, duckTimes, pondOf } from './rules.js';
 import { N, REDUCED, mv } from '../../ui/app.js';
 import { cfAnchor, cfFrom } from '../../ui/cardfly.js';
 import { fx, fxAt, fxAttr } from '../../ui/fx.js';
-import { arcTally, lateAt } from '../../ui/progress.js';
+import { arcTally, gaugeBar, lateAt } from '../../ui/progress.js';
 import { markSvgG } from '../../ui/thumbs.js';
 
 // The pond: one pond both players fish in (v 2; on a square from before, the pond of the player on the move or of the
@@ -31,7 +31,7 @@ function pondView(mini, a, o) {
   const by = f ? a.by : mini.last && (o.done || o.view) ? mini.last.by : o.turn;
   const tal = p => {
     const n = Math.min(goal, mini.score[p]), fresh = f && a.by === p && f.from !== f.to;
-    return arcTally(p, o, `<span class="dukt" aria-label="${n} of ${goal} points">${fresh ? `<b class="cnt" data-from="${f.from}" data-delay="${anim ? T.score : 0}">${n}</b>` : `<b>${n}</b>`}<small>/${goal}</small></span>`);
+    return arcTally(p, o, `<span class="wtal">${gaugeBar({ goal, now: n, was: fresh && anim ? Math.min(goal, f.from) : n, at: anim && T ? T.score : 0, ms: 300 })}<span class="dukt" aria-label="${n} of ${goal} points">${fresh ? `<b class="cnt" data-from="${f.from}" data-delay="${anim ? T.score : 0}">${n}</b>` : `<b>${n}</b>`}<small>/${goal}</small></span></span>`);
   };
   const can = !o.view && !o.locked && !f && by === o.turn;
   const at = ([x, y]) => `left:${x}%;top:${y}%;--y:${y}`;

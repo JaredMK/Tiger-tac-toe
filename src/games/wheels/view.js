@@ -3,7 +3,7 @@ import { WHEELT, isSkull, pushYourLuck, setWheelsConfig, wheelsOf } from './rule
 import { FIREBASE_CONFIG, configured } from '../../net/connect.js';
 import { N, mv, state, waitLine } from '../../ui/app.js';
 import { KEY } from '../../ui/config.js';
-import { arcTally, lateAt } from '../../ui/progress.js';
+import { arcTally, lateAt, gaugeBar, miniFill } from '../../ui/progress.js';
 import { spinTicks } from '../../ui/spin.js';
 
 // Risky Spins' points, odds and target (config/wheels, the admin's dashboard): likewise.
@@ -59,7 +59,16 @@ function wheelTable(mini, a, o) {
   const pct = v => (100 * Math.min(1, v / T)).toFixed(1) + '%';
   const tal = p => {                                          // the gauge and the points; both fill to the new total together as the points land (a spin's stop, or a bank), timed from the move (a winning bank's "Won by" waits for it: rules.js flashMs)
     const now = mini.pts[p], add = s && by === p ? (kind === 'bank' ? s.pot : !py && s.v > 0 ? s.v : 0) : 0, was = now - add, at = kind === 'bank' ? WHEELT.bank : landed;
-    return arcTally(p, o, `<span class="wtal"><span class="wbar" aria-hidden="true"><i${add ? ' class="grow"' : ''} style="--w0:${pct(was)};--w1:${pct(now)};--t:${at}ms;--d:${WHEELT.fill}ms"></i></span><small aria-label="${now} of ${T}">${add ? `<b class="cnt" data-from="${was}" data-delay="${at}" data-ms="${WHEELT.fill}">${now}</b>` : now}/${T}</small></span>`);
+    // the turn's pot is pending (it can still be lost): striped beyond the banked fill, growing as each spin's points reach the pot, gone on a bust, taken by the fill on a bank
+    const t0 = mini.turn, mine = s && by === p;
+    let pend = 0, pendWas = 0, fate = '', pAt = 0, pendFrom = now;
+    if (py) {
+      if (mine && kind === 'spin') { pend = s.pot; pendWas = s.pot - s.v; fate = 'grow'; pAt = landed + WHEELT.fly; }
+      else if (mine && kind === 'bust') { pend = s.pot; fate = 'lost'; pAt = landed; }
+      else if (mine && kind === 'bank') { pend = s.pot; fate = 'bank'; pAt = WHEELT.bank; pendFrom = was; }
+      else if (!s && t0 && t0.by === p) pend = t0.pot;
+    }
+    return arcTally(p, o, `<span class="wtal">${gaugeBar({ goal: T, now, was, at, ms: WHEELT.fill, pend, pendWas, pendFrom, fate, pendAt: pAt, pendMs: fate === 'bank' ? WHEELT.fill : 200 })}<small aria-label="${now} of ${T}">${add ? `<b class="cnt" data-from="${was}" data-delay="${at}" data-ms="${WHEELT.fill}">${now}</b>` : now}/${T}</small></span>`);
   };
   // The turn's pot: the spinner's +N (before this spin's points have landed, the old one; a skull strikes it out; a bank sends it over).
   // A spin's points pop out at the pointer as the wheel stops and fly into the pot (.wfly), which takes them as they arrive (WHEELT.fly).

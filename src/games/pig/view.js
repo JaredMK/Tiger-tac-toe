@@ -40,7 +40,7 @@ export const PIG_T = { land: 560 + DIE_MORE, pot: 800 + DIE_MORE, count: 250, ba
 export function miniature(mini, final) {
   const goal = pigGoal(mini), sides = pigSides(mini);
   const tray = `<div class="tmtray" aria-hidden="true"><i class="tmd8${sides === 8 ? '' : ' d6'}">${pigFace(sides === 8 ? null : sides, sides)}</i><i class="tmpot${mini.turn && mini.turn.pot ? ' on' : ''}"></i></div>`;
-  return `<div class="tdice">${tray}${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / goal * 100)}%"></i></div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
+  return `<div class="tdice">${tray}${['X', 'O'].map(p => `<div class="tr ${p}"><b class="${p}">${p}</b><div class="bar"><i style="width:${Math.min(100, mini.bank[p] / goal * 100)}%"></i>${mini.turn && mini.turn.by === p && mini.turn.pot ? `<i class="mp" style="left:${Math.min(100, mini.bank[p] / goal * 100)}%;width:${Math.min(100 - Math.min(100, mini.bank[p] / goal * 100), mini.turn.pot / goal * 100)}%"></i>` : ''}</div><span>${mini.bank[p]}</span></div>`).join('')}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   // Risky Rolls. The two scores, each a bar to the target, the roller's with this turn's points at risk as a striped

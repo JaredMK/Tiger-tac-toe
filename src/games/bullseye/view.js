@@ -10,7 +10,7 @@ import { blocked, moveWait } from '../../net/room.js';
 import { N, REDUCED, app, cpuPlays, state, waitLine } from '../../ui/app.js';
 import { KEY } from '../../ui/config.js';
 import { fx, fxAt } from '../../ui/fx.js';
-import { arcTally, lateAt } from '../../ui/progress.js';
+import { arcTally, gaugeBar, lateAt } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
 import { runCanvas, runColours } from '../../ui/runner.js';
 
@@ -55,7 +55,10 @@ function bullsTable(mini, a, o) {
     const now = Math.min(goal, (g ? g.total : mini.pts)[p] || 0), was = g && a.by === p ? Math.min(goal, Math.max(0, now - g.pts)) : now;
     return was !== now && !still ? `<span class="ppts"><span class="tu" style="--u:${P.hit}ms">${was}</span><span class="tf" style="--f:${P.hit}ms">${now}</span></span>` : `<span class="ppts"><span>${now}</span></span>`;
   };
-  const tal = p => arcTally(p, o, `<span class="plkpts">${score(p)}<small>/${goal}</small></span>`);
+  const tal = p => {                                             // the points are secure: the gauge fills solid as the dart lands, with the count
+    const now = Math.min(goal, (g ? g.total : mini.pts)[p] || 0), was = g && a.by === p ? Math.min(goal, Math.max(0, now - g.pts)) : now;
+    return arcTally(p, o, `<span class="wtal">${gaugeBar({ goal, now, was: still ? now : was, at: P ? P.hit : 0, ms: 300 })}<span class="plkpts">${score(p)}<small>/${goal}</small></span></span>`);
+  };
   const pend = !g && launchOn(o.zoom), mine = !o.view && !g && !o.locked && !o.done && !pend;
   const key = `${o.zoom}:${mini.n || 0}:${turn}`;
   if (aim && (aim.key !== key || (!mine && !pend))) aim = null;     // (the square left, or the turn gone on: a new pair of lines next time)

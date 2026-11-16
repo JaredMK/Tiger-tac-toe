@@ -153,7 +153,10 @@ b.X { color: var(--x); } b.O { color: var(--o); }
 .tdice .tr { display: grid; grid-template-columns: 9cqw 1fr 12cqw; gap: 2cqw; align-items: center; font-weight: 800; font-size: 9cqw; line-height: 1; }
 .tdice .tr span { text-align: right; font-variant-numeric: tabular-nums; }
 .tdice .bar { height: 6cqw; border-radius: 99px; background: var(--panel-2); overflow: hidden; }
+.tdice .bar { position: relative; }
 .tdice .bar i { display: block; height: 100%; }
+.tdice .bar i.mp { position: absolute; top: 0; background: repeating-linear-gradient(-45deg, var(--x) 0 2px, var(--x-soft) 2px 5px); }   /* the turn's points at risk, striped beyond the banked fill (Risky Rolls) */
+.tdice .tr.O .bar i.mp { background: repeating-linear-gradient(-45deg, var(--o) 0 2px, var(--o-soft) 2px 5px); }
 .tdice .X .bar i { background: var(--x); }
 .tdice .O .bar i { background: var(--o); }
 /* the winding tracks (Candy race, Dice race) */
@@ -1289,7 +1292,7 @@ b.O { box-shadow: inset 0 -.38em 0 var(--o-soft); }
 .g-risky .pscore .bar i[style^="width:0.00"] { box-shadow: none; }
 .g-risky .pscore.gain .bar i { animation: fill .5s var(--bank) cubic-bezier(.4, 0, .2, 1) both; }
 .rrgh { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(-45deg, var(--x) 0 3px, var(--x-soft) 3px 7px); }   /* this turn's points on the roller's bar: striped, not banked yet */
-.pscore.O .rrgh { background: repeating-linear-gradient(-45deg, #d9a400 0 3px, var(--o-soft) 3px 7px); }
+.pscore.O .rrgh { background: repeating-linear-gradient(-45deg, var(--o) 0 3px, var(--o-soft) 3px 7px); }
 .rrgh.grow { animation: rrghgrow .25s var(--pot) cubic-bezier(.4, 0, .2, 1) both; }
 .rrgh.lost { animation: rrghlost .4s var(--lose) cubic-bezier(.4, 0, .2, 1) both; }
 @keyframes rrghgrow { from { width: var(--w0); } }
@@ -1858,6 +1861,8 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .ctal .pips i { width: 15px; height: 15px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--paper); }
 .ctal.X .pips i.on { background: var(--x); }
 .ctal.O .pips i.on { background: var(--o); }
+.ctal .pips i.pend { background: repeating-linear-gradient(-45deg, var(--pc, var(--x)) 0 2px, var(--paper) 2px 5px); }   /* points that can still change (a hand dealt, not yet drawn), striped */
+.ctal.X .pips i.pend { --pc: var(--x); } .ctal.O .pips i.pend { --pc: var(--o); }
 .ctal .pips i.fillin { animation: pipfill .4s var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }
 @keyframes pipfill { from { background: var(--paper); transform: none; } 1% { transform: scale(.6); } to { transform: none; } }
 .cbtns { display: grid; gap: 8px; flex: none; }
@@ -2223,7 +2228,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .kcells i.w { background: var(--green); color: #fff; } .kcells i.o { background: var(--ink); color: #fff; }
 .kcells i.x { opacity: .38; }
 .khit { position: absolute; top: -3px; bottom: -3px; width: calc(100% / 11 + 3px); margin-left: calc(-50% / 11 - 1.5px); border: 3.5px solid var(--x); border-radius: 12px 9px 13px 10px; box-shadow: 0 0 0 2px var(--paper); pointer-events: none; }
-.khit.O { border-color: #d9a400; }
+.khit.O { border-color: var(--o); }
 .khit.late { animation: khit .28s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }
 .khit.late.gone { animation: khit .28s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both, tuntil 1ms var(--t2, 0ms) both; }
 @keyframes khit { from { transform: scale(1.7); opacity: 0; } }
@@ -2699,8 +2704,20 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .wbar { position: relative; flex: none; width: clamp(24px, 10vw, 70px); height: 12px; border: 2.5px solid var(--ink); border-radius: 8px; background: var(--paper); overflow: hidden; }
 .wbar i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--w1, 0%); }
 .ctal.X .wbar i { background: var(--x); } .ctal.O .wbar i { background: var(--o); }
+.g-arc .wbar i:not(.grow) { transition: width .2s ease-out; }   /* Coin Pusher's gauge follows its total coin by coin (view.js showPts) */
 .wbar i.grow { animation: wgrow var(--d, .5s) var(--t, 0ms) cubic-bezier(.5, 1, .89, 1) both; }   /* Risky Spins' gauge: from the old total to the new, eased as its number counts (ui/fx.js countTo, an ease-out), together */
 @keyframes wgrow { from { width: var(--w0, 0%); } to { width: var(--w1, 0%); } }
+/* The pending segment of a gauge (ui/progress.js gaugeBar; Risky Rolls' striped stretch): points that can still be lost, striped beyond the banked fill */
+.wbar u.wpend { text-decoration: none; position: absolute; top: 0; bottom: 0; left: var(--pl, 0%); width: var(--pw, 0%); background: repeating-linear-gradient(-45deg, var(--x) 0 3px, var(--x-soft) 3px 7px); }
+.ctal.O .wbar u.wpend { background: repeating-linear-gradient(-45deg, var(--o) 0 3px, var(--o-soft) 3px 7px); }
+.wbar u.wpend.grow { animation: wpgrow var(--d, .25s) var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+.wbar u.wpend.lost { animation: wplost .4s var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
+.wbar u.wpend.bank { animation: wpbank var(--d, .5s) var(--t, 0ms) ease-in both; }
+@keyframes wpgrow { from { width: var(--pw0, 0%); } } @keyframes wplost { to { width: 0; opacity: 0; } } @keyframes wpbank { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .wbar u.wpend.lost, .wbar u.wpend.bank { display: none; } .wbar u.wpend.grow { animation: none; } }
+/* a miniature's bar: the same stripes beyond its fill (--wp) */
+.trun .tr i::before { content: ''; position: absolute; top: 0; bottom: 0; left: var(--w, 0%); width: var(--wp, 0%); background: repeating-linear-gradient(-45deg, var(--x) 0 2px, var(--x-soft) 2px 5px); }
+.trun .tr.O i::before { background: repeating-linear-gradient(-45deg, var(--o) 0 2px, var(--o-soft) 2px 5px); }
 
 /* Apple Pick: the orchard (a framed scene: sky, hills, the one tree and the two buckets; an SVG), the spinner (Risky Spins' wheel parts and its spin: ui/spin.js) and the apples' journeys, each timed from the move (rules.js appleTimes, view.js appleSteps); the miniature's tiny orchard */
 .g-apple { --pc: var(--x); } .g-apple.pc-O { --pc: var(--o); }   /* (--pc: the spinner's colour: the pointer, the wheel's little apples) */
@@ -5215,7 +5232,7 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .cmbc.got .cmbn { opacity: .8; }
 .cmbc .cmbmk { flex: none; height: min(19px, 30%); width: auto; aspect-ratio: 1; }   /* (a claimed cell: its player's mark stamped where the combo's picture was, over its name) */
 .cmbc .cmbmk.X .tmk { stroke: var(--x); } .cmbc .cmbmk.O .tmk { stroke: #b37a00; }   /* (a deeper amber on the card's pale yellow, as Find the Pair's badges) */
-.cmbcard.X .cmbc.got.new { box-shadow: 0 0 0 2.5px var(--x); } .cmbcard.O .cmbc.got.new { box-shadow: 0 0 0 2.5px #d9a400; }   /* each card's newest claim, ringed */
+.cmbcard.X .cmbc.got.new { box-shadow: 0 0 0 2.5px var(--x); } .cmbcard.O .cmbc.got.new { box-shadow: 0 0 0 2.5px var(--o); }   /* each card's newest claim, ringed */
 .cmbc.can { background: #fff7c2; box-shadow: 0 0 0 3px var(--green) inset; animation: cmbglow 1.2s ease-in-out infinite alternate; }
 button.cmbc.can { cursor: pointer; } button.cmbc.can:active { transform: translateY(2px) scale(.97); }
 .cmbc.can.soon { animation: cmbsoon .24s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }   /* a roll playing: what it makes lights up as its last die lands */
@@ -5270,6 +5287,8 @@ button.cmbd { cursor: pointer; } button.cmbd:active .d3 { transform: scale(.93);
 .sccbar { display: block; position: relative; flex: 1; min-width: 0; height: 13px; box-sizing: border-box; border: 2.5px solid var(--ink); border-radius: 8px; background: #fff; overflow: hidden; }
 .sccbar > b { position: absolute; inset: 0 auto 0 0; background: var(--x); box-shadow: 2px 0 0 var(--ink); }
 .sccbar > b[style^="width:0.0%"] { box-shadow: none; }
+.sccbar > u.sccpend { text-decoration: none; position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(-45deg, var(--x) 0 3px, var(--x-soft) 3px 7px); }
+.sccbar.O > u.sccpend { background: repeating-linear-gradient(-45deg, var(--o) 0 3px, var(--o-soft) 3px 7px); }
 .sccbar.O > b { background: var(--o); }
 .sccbar > b.grow { animation: sccgrow .45s var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
 @keyframes sccgrow { from { width: var(--w0); box-shadow: 2px 0 0 var(--ink); } }
@@ -5438,7 +5457,7 @@ button.cmbd { cursor: pointer; } button.cmbd:active .d3 { transform: scale(.93);
 .thumb svg.tshut { width: 94cqw; height: auto; max-height: 72cqh; display: block; overflow: visible; }
 .tshut .tshw { fill: #bd7d43; stroke: var(--ink); stroke-width: 1.6; } .tshut .tsht { fill: #fcefd2; stroke: var(--ink); stroke-width: 1.1; } .tshut .tshg { fill: #573517; stroke: var(--ink); stroke-width: 1.1; }
 .tshut .tshb.X .tsht.on { fill: var(--x); } .tshut .tshb.O .tsht.on { fill: var(--o); }
-.tshut .tshb.X .tmk { stroke: var(--x); } .tshut .tshb.O .tmk { stroke: #d9a400; }
+.tshut .tshb.X .tmk { stroke: var(--x); } .tshut .tshb.O .tmk { stroke: var(--o); }
 /* ---------- Backgammon Lite (November 2026, src/games/bglite/view.js; the polish sweep, round 2) ---------- */
 /* Times: --t a hop's start (a slide, a hit piece flying home, the picked piece's look), a flash ring's or a burst's moment; --ts a die
    spent or crossed (never --t on a die: the shared die's own); --tw the winner's pieces hopping. --pc: the colour of whoever's turn it shows. */
@@ -5508,7 +5527,7 @@ button.bglg i { animation: bglring 1s ease-in-out infinite alternate; } button.b
 .bglar span { display: flex; align-items: center; gap: 5px; }
 .bglar svg { width: 40px; height: 12px; fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 .bglar .X svg { stroke: var(--x); } .bglar .O svg { stroke: #b8860b; }
-.bglar svg.bglmk { width: 13px; height: 13px; } .bglar .bglmk.O .tmk { stroke: #d9a400; }
+.bglar svg.bglmk { width: 13px; height: 13px; } .bglar .bglmk.O .tmk { stroke: var(--o); }
 /* the dice (the shared 3-D die, its size the row's --ds): spent ones dimmed, one no piece can use crossed out, the ones the picked piece can use ringed */
 .bgldice { --ds: 40px; flex: none; height: 58px; display: flex; align-items: center; justify-content: center; gap: 18px; }
 .bgldice:has(> :nth-child(4)) { --ds: 34px; gap: 12px; }
@@ -5928,7 +5947,7 @@ button.dukd:active .dukf, .dukd.rpress .dukf { scale: .88; }
 .twt .twc.on { fill: #fff7e2; stroke: var(--ink); stroke-width: .7; }
 .twt .twb.X .twc.on { fill: #ffd9cf; } .twt .twb.O .twc.on { fill: #ffefb3; }
 .twt .twbar { fill: none; stroke: var(--ink); stroke-width: .8; } .twt .twb.X .twfill { fill: var(--x); } .twt .twb.O .twfill { fill: var(--o); }
-.twt .twb.X .tmk { stroke: var(--x); } .twt .twb.O .tmk { stroke: #d9a400; }
+.twt .twb.X .tmk { stroke: var(--x); } .twt .twb.O .tmk { stroke: var(--o); }
 .wtg .wtbw, .wtg .wtrack, .wtg .wtmid, .wtg .cbtns { width: 100%; align-self: stretch; }   /* (size containers have no width of their own: the column's full width) */
 .twt .twbg { fill: #fffaf0; stroke: var(--ink); stroke-width: .9; } .twt .twc { fill: #e3d2ad; }   /* (each miniature board on a backing of its own: the plain squares never melt into the page) */
 .dukc.X { box-shadow: 0 0 0 2.5px var(--x); } .dukc.O { box-shadow: 0 0 0 2.5px var(--o); }   /* Hook-a-Duck's shared pond: each catch ringed in its hooker's colour */

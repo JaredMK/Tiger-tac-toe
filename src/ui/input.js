@@ -32,7 +32,7 @@ import {
 import { RATINGS_ENABLED } from './config.js';
 import { closeExplain, explainT, openExplain, practiceEnd, practiceStart } from './explainer.js';
 import { fingGo } from './finger.js';
-import { startFx, tapPop } from './fx.js';
+import { myTurnStop, startFx, tapPop } from './fx.js';
 import { setPace } from './pace.js';
 import { backspace, submitWord, typeLetter } from './keyboard.js';
 import { render } from './render.js';
@@ -176,6 +176,7 @@ export function init() {
       if (state.winner || !state.squares[i]) { SND.play('error'); return; }
       if (state.practice && i !== PRACTICE_SQ) { SND.play('error'); return; }   // (a practice match: the centre square alone)
       if (lockMine() && state.lock !== i) { SND.play('error'); return; }
+      myTurnStop();                                // (your turn's pulse stops as you open a square: ui/fx.js)
       state.screen = 'mini'; state.zoom = i; state.draft = ''; state.sel = []; state.notice = null; setHpSel(null); SND.play('tap'); haptic('tap');   // (a plain tap: no whoosh into the square; the app buzzes once with it)
       if (remoteTurn() && (liveSquare() === i || state.lock === i)) { setWatch({ sq: i }); if (room && !presenting()) applyMatch(room); }   // the square the other side is playing, opened: watched (net/live.js), its turn so far played in it
       if (!state.online) { state.pick = null; state.pickSq = null; }

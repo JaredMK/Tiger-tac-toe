@@ -9,7 +9,7 @@ import { blocked, remoteTurn } from '../../net/room.js';
 import { N, REDUCED, app, cpuPlays, state, waitLine } from '../../ui/app.js';
 import { clockLeft } from '../../ui/clock.js';
 import { fxAt } from '../../ui/fx.js';
-import { arcTally, lateAt } from '../../ui/progress.js';
+import { arcTally, gaugeBar, lateAt } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
 import { drawTimeBar, runCanvas, runColours, runInputAt } from '../../ui/runner.js';
 import { markSvgG, thumbArt } from '../../ui/thumbs.js';
@@ -57,7 +57,7 @@ function pushTable(mini, a, o) {
   const now = p => mini.score[p] + (live ? landed(live, p) : kept ? kept.by[p] : 0);
   const rp = g && pre && (g.after !== g.before || (g.oa || 0) !== (g.ob || 0)) ? replayOf(g, c) : null;   // (someone else's move with coins won: both totals count on coin by coin as the replay plays, frame)
   if (rp) { const at = fxAt('move', a), tm = at == null ? 0 : performance.now() - at; rp.shown = { X: landedPts(rp.gone, tm, 'X'), O: landedPts(rp.gone, tm, 'O') }; }
-  const tal = p => arcTally(p, o, `<span class="pshsc" aria-label="${mini.score[p]} of ${c.target} coins">${rp ? `<b data-psh="sc-${p}">${was(p) + rp.shown[p]}</b>` : `<b data-psh="sc-${p}">${now(p)}</b>`}<small>/${c.target}</small></span>`);
+  const tal = p => arcTally(p, o, `<span class="wtal">${gaugeBar({ goal: c.target, now: Math.min(c.target, rp ? was(p) + rp.shown[p] : now(p)) })}<span class="pshsc" aria-label="${mini.score[p]} of ${c.target} coins">${rp ? `<b data-psh="sc-${p}">${was(p) + rp.shown[p]}</b>` : `<b data-psh="sc-${p}">${now(p)}</b>`}<small>/${c.target}</small></span></span>`);
   const other = a && a.by === 'X' ? 'O' : 'X', reached = g && !o.done && mini.final && mini.final.by === a.by;
   const res = g ? `<p ${lateAt('arcres ' + (g.scored ? 'ok' : 'no'), REDUCED || !pre ? null : g.ms)} role="status">${reached ? `${c.target}! Last turn: <b class="${other}">${N(other)}</b>` : g.scored ? pushWords(g.by, g.pts, g.opp || 0) : g.lost ? `None over · ${g.lost} lost` : 'None over'}</p>`
     : live ? `<p class="arcres ok pshnow" data-psh="now" role="status">${pushWords(live.p, landed(live, live.p), landed(live, other1(live.p)), true)}</p>`
@@ -190,6 +190,8 @@ function showPts(tot, line) {
     const sc = app.querySelector(`[data-psh="sc-${p}"]`);
     if (!sc || String(tot[p]) === sc.textContent) continue;
     sc.textContent = tot[p];
+    const gi = sc.closest && sc.closest('.wtal') && sc.closest('.wtal').querySelector('.wbar i'), gt = (sc.parentNode.querySelector && sc.parentNode.querySelector('small')) ? parseFloat(sc.parentNode.querySelector('small').textContent.slice(1)) : 0;
+    if (gi && gt) gi.style.setProperty('--w1', Math.min(100, 100 * tot[p] / gt).toFixed(1) + '%');
     if (!REDUCED && sc.classList) { sc.classList.remove('pshbump'); void sc.offsetWidth; sc.classList.add('pshbump'); }
   }
 }

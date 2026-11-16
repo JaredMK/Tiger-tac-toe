@@ -4,7 +4,7 @@ import { SND } from '../../audio/sound.js';
 import { N, REDUCED, mv, state, waitLine, zoomedType } from '../../ui/app.js';
 import { cfAnchor, cfFrom } from '../../ui/cardfly.js';
 import { fxAttr } from '../../ui/fx.js';
-import { arcTally, lateAt } from '../../ui/progress.js';
+import { arcTally, gaugeBar, lateAt } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
 import { markSvgG } from '../../ui/thumbs.js';
 import { mySide } from '../../net/room.js';
@@ -129,7 +129,11 @@ function wtTable(mini, a, o) {
   else if (mine && ch) line = ch.ok ? `<p class="arcres ok"><span class="wttick" aria-hidden="true"></span>${ch.words[0].w} +${ch.score}</p>` : `<p class="arcres no sm">${ch.reason === 'word' ? `${ch.w}: not in the list` : WHY[ch.reason] || ''}</p>`;
   else line = `<p class="arcnote">${o.view ? '' : o.locked && !mine ? waitLine(turn) : ''}</p>`;
   const sc = p => { const moved = word && a.by === p; return `<span class="wtsc"${cfAnchor('wtp:' + p)} aria-label="${mini.score[p]} of ${c.target} points">${moved ? `<b class="cnt" data-from="${s.from}" data-delay="${REDUCED ? 0 : tim.count}" data-ms="${Math.max(400, tim.words * WT.per - 120)}">${mini.score[p]}</b>` : `<b>${mini.score[p]}</b>`}<small>/${c.target}</small>${theirs(p)}</span>`; };
-  const tal = p => arcTally(p, o, sc(p));
+  // the gauge: the banked score solid, filling as the move's points count on; the word being built (a valid draft, not yet played) is pending, striped beyond it
+  const tal = p => {
+    const now = Math.min(c.target, mini.score[p]), moved = word && a.by === p, draftPts = mine && p === turn && ch && ch.ok ? ch.score : 0;
+    return arcTally(p, o, `<span class="wtal">${gaugeBar({ goal: c.target, now, was: moved ? Math.min(c.target, s.from) : now, at: REDUCED ? 0 : tim.count, ms: Math.max(400, tim.words * WT.per - 120), pend: draftPts, pendFrom: now })}${sc(p)}</span>`);
+  };
   const ok = mine && ch && ch.ok;
   const btns = o.view ? '' : `<div class="cbtns three"><button class="big" data-act="wtclr"${mine && put.length ? '' : ' disabled'}>Clear</button><button class="big" data-act="move" ${mv('swap')}${mine && !put.length ? '' : ' disabled'}>Swap</button><button class="big wtplay ${turn}${ok ? ' go' : ''}" data-act="move" ${mv(ok ? t : null)}${ok ? '' : ' disabled'}>Play${ok ? ` <b>+${ch.score}</b>` : ''}</button></div>`;
   return `<div class="g-arc wtg"><div class="ctals">${tal('X')}${tal('O')}</div><div class="wtbw"><div class="wtboard ${fp}${d && d.sel != null ? ' aim' : ''}${n > 7 ? ' big' : ''}" style="--n:${n}">${cells}${over}</div></div><div class="wtmid">${line}${bag}</div><div class="wtrack ${me}">${rackHtml}</div>${btns}</div>`;

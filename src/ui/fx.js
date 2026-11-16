@@ -115,17 +115,31 @@ export function shake(power = 1) {
   const a = Math.min(14, 6 * power * ANIM.fx), k = n => `${(a * n).toFixed(1)}px`;
   try { app.animate([{ translate: '0 0' }, { translate: `${k(-1)} ${k(0.4)}` }, { translate: `${k(0.8)} ${k(-0.6)}` }, { translate: `${k(-0.5)} ${k(0.3)}` }, { translate: `${k(0.25)} 0` }, { translate: '0 0' }], { duration: 240, easing: 'ease-out' }); } catch (e) { /* (no individual transforms: no shake) */ }
 }
-// Your turn (December 2026, the owner's pick of the mock-ups: options 1 and 3, in place of the YOUR TURN!
-// burst that covered the board): the board's # lines flash in this player's colour once, then hold a soft tint for as
-// long as it is their turn, and their character in the top bar pops; nothing covers the board or takes a tap. The
-// moment is an event (`myturn`, keyed to the turn) started by ui/turns.js turnAlert with the chime and the buzz; the tint
-// is the state alone (ui/board.js), so a reload or a redraw shows the tint without the flash.
+// Your turn (December 2026, the owner's pick of the mock-ups: options 1 and 3, in place of the YOUR TURN! burst that
+// covered the board; the lines' hold-tint replaced by a pulse): the board's # lines flash in this player's colour as the
+// turn comes round, return to ink, and pulse in their colour again every `MYTURN_MS` (about 4 s) until they open a
+// square (a tap stops it for that turn: myTurnStop); their character in the top bar pops once, with the first pulse.
+// Nothing covers the board or takes a tap, and the other side's turn has none. The first flash is an event (`myturn`,
+// keyed to the turn) started by ui/turns.js turnAlert with the chime and the buzz, which play for that one alone; a
+// page that first sees the turn already running (a reload) starts the same pulse quietly. The loop is one endless CSS
+// animation anchored to the event (ui/fx.js anchorFx: real time, its phase kept through every redraw).
+export const MYTURN_MS = 4000;
 export const turnKey = me => `${state.id || ''}:${state.moves || 0}:${me}`;
-export function myTurnFx(me) { startFx('myturn', turnKey(me)); }
+export function myTurnFx(me) { startFx('myturn', turnKey(me)); fx.myturn.loud = true; }
 export function myTurnNow() {
   const me = mySide();
   if (!me || state.winner || state.sc || state.turn !== me || state.flash || state.spot) return null;
-  return { me, at: fxAt('myturn', turnKey(me)) };
+  const key = turnKey(me);
+  if (!fx.myturn || fx.myturn.key !== key) startFx('myturn', key);   // (a first look at a turn already running: the same pulse, no pop)
+  return fx.myturn.stopped ? null : { me, at: fx.myturn.at, loud: !!fx.myturn.loud };
+}
+// This player opened a square on their turn: the pulse stops for the rest of that turn.
+export function myTurnStop() {
+  const me = mySide();
+  if (!me || state.winner || state.sc || state.turn !== me) return;
+  const key = turnKey(me);
+  if (!fx.myturn || fx.myturn.key !== key) startFx('myturn', key);
+  fx.myturn.stopped = true;
 }
 // A quick spray of confetti from a point (an element's middle, else the screen's), in the players' colours.
 const CONF = ['var(--x)', 'var(--o)', 'var(--sky, #58a8cf)', 'var(--paper, #fff8e8)', '#4e9d3a'];

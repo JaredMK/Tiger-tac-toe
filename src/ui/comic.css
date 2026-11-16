@@ -586,17 +586,15 @@ main.scr.cc { overflow: clip; }
 .gsh-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 14px 16px 24px; }
 .gsh-body > .tpls { margin-bottom: 14px; }
 .cc .gsum small { white-space: nowrap; }
-/* Your turn (fx.js myTurnNow, December 2026: the owner's pick, options 1 and 3 of the mock-ups): the # lines flash in
-   this player's colour once and then hold a soft tint while it's their turn; their character in the top bar pops. Never
-   over the board, never a tap. The flash and the pop run from the turn's event (data-fx), the tint from the state alone. */
-.board.myturn.my-X .hash { color: color-mix(in srgb, var(--x) 62%, var(--ink)); }
-.board.myturn.my-O .hash { color: color-mix(in srgb, #e0a400 70%, var(--ink)); }
-.board.myturn .hash[data-fx] { animation: myHashGlow .9s ease-out both; }
-.board.myturn .hash[data-fx] path { animation: myHash .9s cubic-bezier(.2, .8, .2, 1) both; }
-.board.myturn.my-X .hash[data-fx] path { --mt: var(--x); } .board.myturn.my-O .hash[data-fx] path { --mt: #f0b400; }
-@keyframes myHash { 0% { stroke: var(--ink); stroke-width: 7; } 18% { stroke: var(--mt); stroke-width: 13; } 100% { stroke: currentColor; stroke-width: 7; } }
-@keyframes myHashGlow { 0% { filter: none; } 18% { filter: drop-shadow(0 0 6px var(--mt, var(--x))); } 100% { filter: none; } }
+/* Your turn (fx.js myTurnNow, December 2026: the owner's pick, options 1 and 3 of the mock-ups, then a pulse in place of the
+   held tint): the # lines flash in this player's colour as the turn comes round, return to ink, and pulse again every 4 s
+   (MYTURN_MS) until they open a square; their character in the top bar pops once, with the first pulse. Never over the
+   board, never a tap. One endless loop from the turn's event (data-fx), so a redraw keeps its phase. */
+.board.myturn .hash[data-fx] { animation: myHashGlow 4s linear infinite; }
+.board.myturn .hash[data-fx] path { animation: myHash 4s linear infinite; }
 .board.myturn.my-X .hash[data-fx] { --mt: var(--x); } .board.myturn.my-O .hash[data-fx] { --mt: #f0b400; }
+@keyframes myHash { 0% { stroke: var(--ink); stroke-width: 7; } 4% { stroke: var(--mt); stroke-width: 13; } 22%, 100% { stroke: var(--ink); stroke-width: 7; } }
+@keyframes myHashGlow { 0% { filter: none; } 4% { filter: drop-shadow(0 0 6px var(--mt, var(--x))); } 22%, 100% { filter: none; } }
 .hdr .tside.mypop .pc[data-fx] { animation: myPop .75s cubic-bezier(.3, 1.6, .5, 1) both; transform-origin: 50% 90%; }
 @keyframes myPop { 0% { transform: none; } 30% { transform: translateY(-10px) scale(1.6) rotate(-8deg); } 60% { transform: translateY(0) scale(1.2); } 100% { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .board.myturn .hash[data-fx], .board.myturn .hash[data-fx] path, .hdr .tside.mypop .pc[data-fx] { animation: none; } }

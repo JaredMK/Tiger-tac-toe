@@ -1,6 +1,6 @@
 // Poker Hands: the screen, the miniature, the move's words and sounds, and the inputs (November 2026).
 import { tune } from '../../core/tune.js';
-import { HANDS, HAND_NAMES, POK, pokSlideAt, pokTimes } from './rules.js';
+import { HANDS, HAND_NAMES, POK, handPoints, pokSlideAt, pokTimes } from './rules.js';
 import { N, REDUCED, mv, state, waitLine } from '../../ui/app.js';
 import { SND } from '../../audio/sound.js';
 import { haptic } from '../../net/platform.js';
@@ -28,7 +28,9 @@ const marksFor = (sq, cur) => {
 function total(p, mini, f, goal, tim) {
   const n = Math.min(goal, mini.score[p]), fresh = f && f.kind === 'draw' && f.by === p, from = fresh ? Math.min(goal, f.from) : n;
   if (goal > 12) return `<span class="pokn" aria-label="${n} of ${goal} points">${fresh && from !== n ? `<b class="cnt" data-from="${from}" data-delay="${tim.say}">${n}</b>` : `<b>${n}</b>`}<small>/${goal}</small></span>`;
-  return `<span class="pips" aria-label="${n} of ${goal} points">${Array.from({ length: goal }, (_, k) => `<i ${lateAt(k < n ? 'on' : '', fresh && k >= from && k < n ? tim.say + (k - from) * 70 : null, 'fillin')}></i>`).join('')}</span>`;
+  // the hand dealt and not yet drawn is pending (a draw can still change it): its points striped beyond the pips, solid once the draw scores them
+  const cur = mini.cur && mini.cur.by === p && !(f && f.kind === 'draw') ? mini.cur : null, pend = cur ? handPoints(mini, cur.hand) : 0;
+  return `<span class="pips" aria-label="${n} of ${goal} points${pend ? `, ${pend} pending` : ''}">${Array.from({ length: goal }, (_, k) => `<i ${k >= n && k < n + pend ? 'class="pend"' : lateAt(k < n ? 'on' : '', fresh && k >= from && k < n ? tim.say + (k - from) * 70 : null, 'fillin')}></i>`).join('')}</span>`;
 }
 // The cards that make a hand's rank (1 for each of the five): a pair's two, two pair's four, three or four of a kind's,
 // all five of a straight, a flush or a full house; nothing: none.

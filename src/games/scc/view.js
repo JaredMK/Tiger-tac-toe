@@ -36,7 +36,9 @@ function sccTable(mini, a, o) {
   const tal = p => {
     const now = mini.score[p], gain = !!(s && s.by === p && ends && s.pts > 0), was = gain ? s.from : now;
     const at = tm && tm.count != null ? tm.count : 0;
-    const bar = `<i class="sccbar ${p}"><b class="${gain && tm ? 'grow' : ''}" style="width:${(now / T * 100).toFixed(1)}%;--w0:${(was / T * 100).toFixed(1)}%;--t:${at}ms"></b></i>`;
+    // the cargo on the table this turn is pending (a reroll can still lose it): striped beyond the banked fill, solid once the turn scores it
+    const cg = !ends && by === p && Array.isArray(cargo) ? cargo.reduce((a, v) => a + v, 0) : 0, pw = Math.max(0, Math.min(cg, T - now));
+    const bar = `<i class="sccbar ${p}"><b class="${gain && tm ? 'grow' : ''}" style="width:${(now / T * 100).toFixed(1)}%;--w0:${(was / T * 100).toFixed(1)}%;--t:${at}ms"></b>${pw ? `<u class="sccpend" style="left:${(now / T * 100).toFixed(1)}%;width:${(pw / T * 100).toFixed(1)}%"></u>` : ''}</i>`;
     const num = gain && tm ? `<b class="cnt" data-from="${was}" data-delay="${at}" data-ms="${SCC.score - 100}">${now}</b>` : `<b>${now}</b>`;
     const chip = gain && tm ? `<b class="sccplus"${cfFrom('scccrate', tm.score, { go: true, d: SCC.fly })} aria-hidden="true">+${s.pts}</b>` : '';
     return arcTally(p, o, `<span class="sccs">${bar}<small>${num} / ${T}</small>${chip}</span>`);
