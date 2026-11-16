@@ -1,4 +1,5 @@
 // The turn flow on screen: the computer's turn (think, zoom, play), the result shown and dismissed.
+import { VIEWS } from '../games/index.js';
 import { endFlash, leaveSquare, playMove } from '../core/board.js';
 import { playerName } from '../core/match.js';
 import { SND, backSounds, matchEndSound, moveSounds } from '../audio/sound.js';
@@ -56,6 +57,7 @@ export function cpuStop() {
 }
 export function scheduleCpu() {
   clearTimeout(cpuTimer); setCpuTimer(null);
+  if (!VIEWS.ready) { VIEWS.wait.then(() => scheduleCpu()); return; }   // (the games' views still loading, the first seconds of a visit: its move once they are in)
   chaosStep();                                                   // Super Chaos: the round's own steps (ui/chaos.js)
   if (thinking) return;
   if (!cpuTurn() || state.flash || state.done || state.confirm || menuOpen || explainT || joinAsk || repActive() || mmIntro) return;   // (mmIntro: the side reveal is up; its close asks again)   // (repActive: its inputs are playing; the replay makes the move when they are done)

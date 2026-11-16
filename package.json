@@ -34,6 +34,7 @@
     "@capacitor/haptics": "^8.0.2",
     "@capacitor/ios": "^8.6.0",
     "@capacitor/share": "^8.0.3",
+    "esbuild": "^0.24.2",
     "firebase": "^12.19.0",
     "matter-js": "^0.20.0"
   }

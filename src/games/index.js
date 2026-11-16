@@ -7,6 +7,10 @@ const NONE = Object.freeze({});
 export const rulesOf = t => (GAMES[t] ? GAMES[t].rules : NONE);
 export const aiOf = t => (GAMES[t] ? GAMES[t].ai : NONE);
 export const viewOf = t => (GAMES[t] && GAMES[t].view) || NONE;
+// The page's views load in the background once the menu is up (src/main.js, December 2026: the first load): `ready` once
+// every game's view is in, `wait` the promise of it. The screens that draw a game wait for it (ui/render.js), and so
+// does the computer's turn (ui/turns.js scheduleCpu). The server never loads views (ready stays false there, unused).
+export const VIEWS = { done: false, wait: null, get ready() { return this.done || !this.wait; } };   // (no load started, as in the tests and on the server: nothing to wait for)
 export const metaOf = t => (GAMES[t] ? GAMES[t].meta : NONE);
 import { registerTunes } from '../core/tune.js';
 const add = (type, rules, ai, meta) => { GAMES[type] = { type, rules, ai, meta, view: null }; };

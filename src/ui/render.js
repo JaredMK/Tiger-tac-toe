@@ -31,6 +31,7 @@ import { renderHeader, renderReactDock } from './turnbar.js';
 import { reactOn } from '../net/reactions.js';
 import { matchEnded, menuShown } from '../net/statscache.js';
 import { matchDone } from './onboard.js';
+import { VIEWS } from '../games/index.js';
 import { seriesRecord } from './series.js';
 import { playFlash } from './turns.js';
 
@@ -146,11 +147,14 @@ function graft(oldP, newP, pairs) {
     at = oc.nextSibling;
   }
 }
+const VIEW_SCREENS = ['board', 'mini', 'win', 'review', 'review-mini', 'hreview', 'hreview-mini'];
+const renderViewsLoading = () => '<main class="scr cc calm loadviews"><div class="loadbox" role="status" aria-live="polite"><span class="spinner" aria-hidden="true"></span><b>Loading the games…</b></div></main>';
 export function renderMain() {
   if (updateNeeded()) return renderUpdate();                  // too old a client for its platform (config/clients): nothing but "Please update"
   if (gateOn()) return renderGate();                          // staging: only testers on the allowlist get past this
   if (matchStale()) return renderStale();                     // an online match with a mini-game this version lacks (a client older than it was): never the board, only Update or Leave match
   if (state.screen === 'sandbox') return renderSandbox();     // (the admin's test play, while it checks or when it cannot run)
+  if (!VIEWS.ready && VIEW_SCREENS.includes(state.screen)) return renderViewsLoading();   // (the games' views still on their way, in the first seconds of a visit: games/index.js VIEWS)
   if (state.screen === 'menu') { menuShown(); return renderMenu(); }   // (the stats refreshed in the background, at most every few minutes)
   if (state.screen === 'friend') return renderFriend();
   if (state.screen === 'join') return renderJoin();

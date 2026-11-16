@@ -17,14 +17,14 @@ import { setHopConfig } from './games/skyhop/rules.js';
 import { setSnapConfig } from './games/snapshot/rules.js';
 import { loadTrivia } from './games/trivia/view.js';
 import { fetchWheelsConfig } from './games/wheels/view.js';
-import { GAMES } from './games/index.js';
+import { GAMES, VIEWS } from './games/index.js';
 import { SND, init as soundInit } from './audio/sound.js';
 import { connectQuiet, finishLogin, gateStart, hadAccount, redirectPending } from './net/accounts.js';
 import { init as connectInit } from './net/connect.js';
 import { checkResume, freshVisit, openFind, resumable } from './net/matchmaking.js';
 import { fetchReleases } from './net/releases.js';
 import { closeSeat, init as roomInit, joinCode, joinName, joinRoom, resumeOnline, setJoinCode, setJoinName } from './net/room.js';
-import { devAudio, devOpen, devPulse, init as trackingInit, takeTag } from './net/tracking.js';
+import { devAudio, devError, devOpen, devPulse, init as trackingInit, takeTag } from './net/tracking.js';
 import { clockTimer, commit, setClockTimer, state } from './ui/app.js';
 import { fetchAttConfig } from './ui/attention.js';
 import { setTunes } from './core/tune.js';
@@ -49,8 +49,11 @@ import { acctLoading, setAcctLoading } from './ui/screens/menu.js';
 import { playFlash } from './ui/turns.js';
 
 debugInit();
-// Each game's view (its screen, miniature, words, sounds and inputs), before anything is drawn.
-await Promise.all(Object.keys(GAMES).map(t => import(`./games/${t}/view.js`).then(v => { GAMES[t].view = v; })));
+// Each game's view (its screen, miniature, words, sounds and inputs), loaded in the background (December 2026: the first
+// load): the menu is drawn without them; a screen that draws a game waits for them (ui/render.js, games/index.js VIEWS).
+VIEWS.wait = Promise.all(Object.keys(GAMES).map(t => import(`./games/${t}/view.js`).then(v => { GAMES[t].view = v; })))
+  .then(() => { VIEWS.done = true; render(); })
+  .catch(e => { VIEWS.done = true; devError('views', String(e && e.message || e)); render(); });   // (a view that failed to load: the rest play, the error logged)
 bullseyeInit();
 echoInit();
 fingerInit();

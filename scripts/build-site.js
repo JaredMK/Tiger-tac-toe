@@ -30,6 +30,39 @@ function aasa(app) {
   if (!app || !app.teamId || !app.bundleId) return null;
   return { applinks: { details: [{ appIDs: [`${app.teamId}.${app.bundleId}`], components: [{ '/': '/join/*', comment: 'a friend room (net/invite.js)' }, { '/': '/', '?': { room: '?*' }, comment: 'a friend room (the older link)' }, { '/': '/', '?': { play: 'find' }, comment: 'Find Match' }] }] } };
 }
+// The first load (December 2026; docs/fun-review.md Part 3: about 430 requests and 12 s to the menu on a mid-range phone over
+// slow 4G): the page's modules (src/main.js and all it imports) bundled and minified by esbuild into _site/b/, split into
+// chunks so each mini-game's view (main.js imports them by name: one chunk each) and the physics loader come in their own
+// files, every name carrying its content's hash (served with a year's caching: firebase.json), and the three stylesheets
+// joined and minified into one hashed file; index.html points at them. The computer's worker is its own bundle at a fixed
+// name beside them (ui/think.js finds it next to its own chunk, b/ai.worker.js, revalidated like the page). src/ stays as it
+// was for the admin page; the app's build (scripts/build-app.js) is untouched.
+function bundle(OUT) {
+  const esbuild = require('esbuild'), B = path.join(OUT, 'b');
+  fs.mkdirSync(B, { recursive: true });
+  const r = esbuild.buildSync({ entryPoints: [path.join(OUT, 'src', 'main.js')], bundle: true, format: 'esm', splitting: true, minify: true, target: 'es2022',
+    outdir: B, entryNames: '[name]-[hash]', chunkNames: 'c-[hash]', metafile: true, logLevel: 'error', legalComments: 'none' });
+  esbuild.buildSync({ entryPoints: [path.join(OUT, 'src', 'ui', 'ai.worker.js')], bundle: true, format: 'esm', minify: true, target: 'es2022', outfile: path.join(B, 'ai.worker.js'), logLevel: 'error', legalComments: 'none' });
+  const main = Object.keys(r.metafile.outputs).find(f => /\/main-[A-Z0-9]+\.js$/i.test(f) && r.metafile.outputs[f].entryPoint);
+  const deps = [main].concat(r.metafile.outputs[main].imports.filter(i => i.kind === 'import-statement').map(i => i.path)).map(f => path.basename(f));
+  const sha = b => require('node:crypto').createHash('sha256').update(b).digest('hex').slice(0, 10).toUpperCase();
+  const fonts = fs.readFileSync(path.join(OUT, 'src', 'ui', 'fonts.css'), 'utf8').replace(/url\((['"]?)data:font\/woff2;base64,([A-Za-z0-9+/=]+)\1\)/g, (m, q, b64) => {   // each embedded font its own hashed file (font-display: swap): the stylesheet a third the size, the fonts in parallel
+    const buf = Buffer.from(b64, 'base64'), name = `f-${sha(buf)}.woff2`;
+    fs.writeFileSync(path.join(B, name), buf);
+    return `url(${name})`;
+  });
+  const css = [fonts].concat(['styles.css', 'comic.css'].map(f => fs.readFileSync(path.join(OUT, 'src', 'ui', f), 'utf8'))).join('\n');
+  const min = esbuild.transformSync(css, { loader: 'css', minify: true, legalComments: 'none' }).code;
+  const hash = sha(min);
+  fs.writeFileSync(path.join(B, `app-${hash}.css`), min);
+  const idx = path.join(OUT, 'index.html');
+  let html = fs.readFileSync(idx, 'utf8');
+  const links = /<link rel="stylesheet" href="src\/ui\/fonts\.css">\s*<link rel="stylesheet" href="src\/ui\/styles\.css">\s*<link rel="stylesheet" href="src\/ui\/comic\.css">/;
+  if (!links.test(html) || !html.includes('<script type="module" src="src/main.js"></script>')) throw new Error('index.html: the stylesheets or the main module not where the bundle expects them');
+  html = html.replace(links, `<link rel="stylesheet" href="b/app-${hash}.css">`).replace('<script type="module" src="src/main.js"></script>', `${deps.map(f => `<link rel="modulepreload" href="b/${f}">`).join('\n')}\n<script type="module" src="b/${path.basename(main)}"></script>`);   // (the entry and every chunk it imports, preloaded together: the big shared chunk starts with the stylesheet, not after the entry)
+  fs.writeFileSync(idx, html);
+  return { main: path.basename(main), css: `app-${hash}.css`, files: fs.readdirSync(B).length };
+}
 function robots(env) { return env === 'staging' ? 'User-agent: *\nDisallow: /\n' : 'User-agent: *\nAllow: /\n'; }
 function build(env, sha, out) {
   const OUT = out || OUT_SITE;
@@ -43,6 +76,7 @@ function build(env, sha, out) {
   const stamped = src.replace(/^export const APP_VERSION = 'dev';/m, `export const APP_VERSION = '${sha.slice(0, 7)}';`);
   if (stamped === src) throw new Error('APP_VERSION not found in src/ui/config.js');
   fs.writeFileSync(cfg, stamped);
+  if (!process.env.TTC_NO_BUNDLE) bundle(OUT);                   // (TTC_NO_BUNDLE=1: the modules as they are, to measure against) the page's modules and stylesheets bundled, minified and hashed (December 2026: the first load)
   fs.cpSync(path.join(ROOT, 'assets', 'share'), path.join(OUT, 'assets', 'share'), { recursive: true });
   for (const [f, to] of [['favicon.ico', 'favicon.ico'], ['apple-touch-icon.png', 'apple-touch-icon.png']]) fs.copyFileSync(path.join(ROOT, 'assets', 'share', f), path.join(OUT, to));
   if (env === 'staging') fs.writeFileSync(path.join(OUT, 'index.html'), previewHost(fs.readFileSync(path.join(OUT, 'index.html'), 'utf8'), env));
@@ -65,7 +99,7 @@ function build(env, sha, out) {
   fs.writeFileSync(path.join(OUT, 'version.json'), JSON.stringify({ sha, env, built: new Date().toISOString() }) + '\n');
   return OUT;
 }
-module.exports = { envOf, noindex, previewHost, robots, aasa, build, PRODUCTION_PROJECT };
+module.exports = { envOf, noindex, previewHost, robots, aasa, build, bundle, PRODUCTION_PROJECT };
 if (require.main === module) {
   const env = envOf(process.argv[2], process.env.GCLOUD_PROJECT);
   let sha = process.env.GITHUB_SHA || '';
