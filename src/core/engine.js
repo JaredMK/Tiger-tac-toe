@@ -17,11 +17,11 @@ export { LEVELS, LEVEL_NAME, levelOf, AI_DEFAULTS, AI_LIMITS, AI_CFG, aiNorm, se
 export { mc2Pick } from './mc2.js';
 export { registerTunes, tuneFields, tuneDefaults, tuneValue, tuneNorm, setTune, setTunes, tuneLive, tuneSnap, tune } from './tune.js';
 export { gaussOf, makeRng, needRng, randInt, randomType, shuffle } from './random.js';
-export { resignLocal, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, applyOnlineOpen, newOnlineMatch, applyOnlineResign, applyChaosSubmit, applyChaosDeadline, applyChaosBegin, scReady, roomDue, applyRoomSweep, SC_ROOM, scResyncPlan, parseMatch, packMatch, matchTxn } from './records.js';
+export { resignLocal, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, applyOnlineOpen, applyOnlineGo, newOnlineMatch, applyOnlineResign, applyChaosSubmit, applyChaosDeadline, applyChaosBegin, scReady, roomDue, applyRoomSweep, SC_ROOM, scResyncPlan, parseMatch, packMatch, matchTxn } from './records.js';
 export { SC_GAME, newScGame, scSideState, applyScMove, applyScTimeout, applyScBot, applyScBegin, applyScResign, applyScStart, scDue, scPublicState, scSideView, scFinal } from './scgame.js';
 export { onlineCheck, AUTO_FROM_PHONE, TIMED_RUN_TYPES, timedRunMs } from './verify.js';
 export { matchStats, topOpponents, oppTally } from './stats.js';
-export { normTimer, TIMER_OPTIONS, newTimer, PLAY, ANIM, REPLAY_SPEED, replaySpeed, speedMode, setAnimSpeed, setAnimFast, setAnimFx, setAnimMode, moveRate, holdRate, dur, durRate, playMs, replayMs, armClock, startClock, clockDeadline, CLOCK, turnSecs, turnLimit, turnOpen, turnBegan, timerSpec, specParts, setupSpec, turnSecsOf, timerKind, timerLabel, TIMER_SPECS, PLAYER_TIMERS, TIMER_DEFAULT, clockOn, matchClock, settleClock, holdClock, clockLeft } from './timer.js';
+export { normTimer, TIMER_OPTIONS, newTimer, PLAY, ANIM, REPLAY_SPEED, replaySpeed, speedMode, setAnimSpeed, setAnimFast, setAnimFx, setAnimMode, moveRate, holdRate, dur, durRate, playMs, replayMs, armClock, startClock, clockDeadline, CLOCK, TURN_REPLAY, turnReplaySpeed, turnSecs, turnLimit, turnOpen, turnBegan, timerSpec, specParts, setupSpec, turnSecsOf, timerKind, timerLabel, TIMER_SPECS, PLAYER_TIMERS, TIMER_DEFAULT, clockOn, matchClock, settleClock, holdClock, clockLeft } from './timer.js';
 export { REP, repNorm, repMove, repOf } from './replay.js';
 export { clamp01, r2, r3, other } from './util.js';
 export { BJ, BJT, bjValue, bjTotal, bjNatural, bjDealerPlay, bjOutcome, bjStrategy, bjPlan, bjMs } from '../games/bj/rules.js';

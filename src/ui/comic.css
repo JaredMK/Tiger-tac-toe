@@ -52,9 +52,8 @@ main.board-scr::before, main.scr.mini::before { content: ''; position: absolute;
 .foot .wband .wleft { font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; background: var(--ink); color: var(--o); padding: 3px 6px 1px; min-width: 0; letter-spacing: .05em; }
 
 /* the board's marks: the last-played square: its player's character in a disc on the square's corner (flat, no text) */
-.board .lastcap { position: absolute; left: 11px; top: 12px; z-index: 3; width: 28px; height: 28px;   /* (fully inside the space: the # lines run over the space's edges, a disc on the corner went under them) */
-   border-radius: 50%; border: 2.5px solid var(--ink); display: grid; place-items: center; pointer-events: none; }
-.board .lastcap .pc { width: 22px; height: 22px; }
+.board .lastcap { position: relative; flex: none; display: inline-grid; place-items: center; width: 1.15em; height: 1.15em; min-width: 20px; min-height: 20px; margin-right: .22em; vertical-align: -.2em; border-radius: 50%; border: 2px solid var(--ink); pointer-events: none; }   /* (December 2026: in the label's own line, before the name, so it never covers it; the name wraps beside it) */
+.board .lastcap .pc { width: 82%; height: 82%; }
 .board .lastcap.X { background: var(--x-soft); } .board .lastcap.O { background: var(--o-soft); }
 /* the other side's square, about to be played: a ringed, dotted square in their colour and a flat caption */
 .board .sq.spot::before { inset: 5%; border-radius: 14px; opacity: 1;
@@ -243,8 +242,8 @@ main.scr.cc { overflow: clip; }
 .cc .bar .back { height: 44px; border: 3px solid var(--ink) !important; border-radius: 0 !important; background: #fff; box-shadow: var(--cc-sh) !important; transform: skew(var(--cc-skew));
   font: 400 19px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; padding: 3px 12px 0 8px; margin-right: 4px; animation: ccinL .4s cubic-bezier(.2, 1.3, .4, 1) backwards .05s; }
 .cc .bar .back:active:not(:disabled) { transform: skew(var(--cc-skew)) translate(3px, 3px) !important; box-shadow: var(--cc-sh-in) !important; }
-.cc .bar .ttl > b { display: block; font: 400 clamp(26px, 4.6vh, 32px)/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: #fff; -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; transform: rotate(-2deg); padding-top: 4px; }
-.cc .bar .ttl small { font: 700 15px/1.2 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); margin-top: 2px; -webkit-line-clamp: 1; }
+.cc .bar .ttl > b { display: block; font: 400 clamp(26px, 4.6vh, 32px)/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: #fff; -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; transform: rotate(-2deg); padding: 4px 4px 0 6px; margin-bottom: 4px; }   /* (the stroke's half and the slant's overhang inside its box: the J of Join game was clipped; clear of the line under it) */
+.cc .bar .ttl small { font: 700 15px/1.2 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); margin-top: 2px; padding-left: 2px; -webkit-line-clamp: 1; }
 
 /* ----- Play Computer: the VS card, the choices, the mini-games, Start the one big action ----- */
 .cpuset .setup-box { max-width: 380px; padding: 6px 10px 12px; gap: clamp(10px, 2vh, 18px); flex: 0 1 auto; overflow-x: clip; }
@@ -411,7 +410,7 @@ main.scr.cc { overflow: clip; }
 /* ----- Join, Host, Same phone: the lobby ----- */
 .cc .room { background: #fff; border: 3px solid var(--ink); border-radius: 0; box-shadow: none; }
 .cc .room small { font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; color: var(--ink); letter-spacing: .06em; }
-.cc .room .code { font: 400 48px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .2em; color: var(--ink); }
+.cc .room .code { font: 400 52px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .18em; padding: 4px 0 0 .18em; color: var(--o); -webkit-text-stroke: 2.5px var(--ink); paint-order: stroke fill; text-shadow: 4px 4px 0 var(--x); }   /* (readable: yellow letters in an ink outline over a red shadow, never ink on ink) */
 .cc .room .row { gap: 16px; padding: 4px 6px 4px 0; }
 .cc .jinfo { display: flex; flex-direction: column; gap: 12px; }
 
@@ -474,7 +473,10 @@ main.scr.cc { overflow: clip; }
 .cc .timerrow .seg { font-size: 16px !important; padding-left: 4px; padding-right: 4px; }
 .cc .setup-foot .warn, .cc .setup-foot .warn.info { color: var(--ink); font: 700 16px/1.1 'Comic Neue', 'Patrick Hand', sans-serif; }
 .cc .timerrow { padding-left: 6px; }
-.cc .timerrow > .seg:first-of-type { flex: 2 1 0; }
+/* (December 2026) the choices in a tidy grid: one equal column each (--k), the row's name on a line of its own above */
+.cc .timerrow { display: grid; grid-template-columns: repeat(var(--k, 4), minmax(0, 1fr)); gap: 10px 10px; }
+.cc .timerrow > span { grid-column: 1 / -1; }
+.cc .timerrow > .seg { width: auto; min-width: 0; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: clip; }
 .cc .room .row .btn { white-space: nowrap; font-size: 17px !important; padding-left: 10px; padding-right: 10px; }
 /* every target 44 px or more: the small "?" and the credits' links take a larger hit area, nothing moves */
 .cc button.qbtn.sm { width: 44px; height: 44px; margin: -2px; }
@@ -566,3 +568,26 @@ main.scr.cc { overflow: clip; }
 @media (max-width: 400px) { .g-wheels .wbar { width: clamp(18px, 6.5vw, 40px); } }
 @media (min-width: 700px) { .g-wheels .wbar, .g-plk .wbar { width: 44px; } }
 .ctal .pips:has(i:nth-child(7)) { gap: 3px; } .ctal .pips:has(i:nth-child(7)) i { width: 14px; height: 14px; }   /* (seven pips or more, Poker Hands' total: a little tighter, so the name beside them is whole) */
+
+/* The Mini-games sheet (December 2026): the setup's one summary row opens it; full screen, inside the safe areas, its bar
+   (the name, the count, Done) fixed at the top and the templates and the checklist scrolling under it */
+.gsheet { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--paper, #fff8e8); background-image: radial-gradient(rgba(22, 18, 16, .07) 1px, transparent 1.4px); background-size: 12px 12px; padding: var(--sat, 0px) var(--sar, 0px) var(--sab, 0px) var(--sal, 0px); animation: gshin .22s cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes gshin { from { transform: translateY(24px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .gsheet { animation: none; } }
+.gsh-bar { flex: none; display: flex; align-items: center; gap: 12px; padding: 12px 16px 12px 18px; border-bottom: 3px solid var(--ink); background: var(--o); }
+.gsh-bar > b { font: 400 30px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; padding-top: 3px; }
+.gsh-bar > small { flex: 1 1 auto; min-width: 0; font: 700 16px/1.1 'Comic Neue', 'Patrick Hand', sans-serif; }
+.cc .gsh-bar .pn.gdone { width: auto; height: 48px; min-width: 96px; margin: 0; padding: 0 14px; }
+.cc .gsh-bar .pn.gdone > b { font-size: 26px; padding: 3px 0 0; }
+.gsh-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 14px 16px 24px; }
+.gsh-body > .tpls { margin-bottom: 14px; }
+.cc .gsum small { white-space: nowrap; }
+/* Your turn (fx.js turnBurst): a burst over the board, this player's character bouncing on it; about a second, no taps. */
+.ccturn { position: fixed; z-index: 70; translate: -50% -50%; pointer-events: none; aspect-ratio: 300 / 190; animation: cctbIn var(--tb, 1000ms) cubic-bezier(.3,1.4,.5,1) both; }
+.ccturn .ctb svg { width: 100%; height: auto; display: block; overflow: visible; filter: drop-shadow(5px 5px 0 var(--ink)); }
+.ccturn .bursttxt { font-family: 'Bangers', 'Luckiest Guy', sans-serif; fill: #fff; stroke: var(--ink); stroke-width: 4px; paint-order: stroke fill; letter-spacing: .03em; }
+.ccturn .ctc { position: absolute; left: 50%; top: -12%; width: 26%; aspect-ratio: 1; translate: -50% 0; border-radius: 50%; background: #fff; border: 3px solid var(--ink); display: grid; place-items: center; animation: cctbHop calc(var(--tb, 1000ms) / 3) ease-in-out 3 both; }
+.ccturn .ctc .pc { width: 86%; height: 86%; }
+.ccturn.still, .ccturn.still .ctc { animation: none; }
+@keyframes cctbIn { 0% { scale: .2; rotate: -14deg; opacity: 0; } 18% { scale: 1.08; rotate: 3deg; opacity: 1; } 30% { scale: 1; rotate: 0deg; } 82% { scale: 1; opacity: 1; } 100% { scale: .85; opacity: 0; } }
+@keyframes cctbHop { 0%, 100% { translate: -50% 0; } 45% { translate: -50% -28%; } 60% { translate: -50% -22%; } }

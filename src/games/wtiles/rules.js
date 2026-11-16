@@ -30,11 +30,29 @@ export const WT = { n: 7, rack: 7, bonus: 15, stall: 4, drop: 110, dropMs: 360, 
 export const WT_VAL = { A: 1, B: 3, C: 3, D: 2, E: 1, F: 4, G: 2, H: 4, I: 1, J: 8, K: 5, L: 1, M: 3, N: 1, O: 1, P: 3, Q: 10, R: 1, S: 1, T: 1, U: 1, V: 4, W: 4, X: 8, Y: 4, Z: 10 };
 // A player's bag (53 tiles: about half a usual set, no Q: no word of 7 letters or fewer takes one but a handful).
 export const WT_BAG = 'EEEEEEAAAAAIIIIIOOOONNNRRRTTTSSLLUUDDGGBCFHMPVWYKJXZ';
-// The premium squares, row by row: T triple word, D double word (the centre, where the first word goes), t triple
+// The 7x7 board's premium squares (a square from before December 2026, or `size` 7), row by row: T triple word, D double word (the centre, where the first word goes), t triple
 // letter, d double letter.
 export const WT_PREM = 'T..d..T.D...D...t.t..d..D..d..t.t...D...D.T..d..T';
 export const WT_CENTRE = 24;
-export const wtCfg = mini => { const t = tune(mini); return { target: t.target, rack: Math.max(4, Math.min(7, Math.round(t.rack || WT.rack))), bonus: t.bonus != null ? t.bonus : WT.bonus }; };
+// The board's side, from its cells (7 on a square from before, 11 from December 2026: `size`, TUNE), and every size's
+// premium squares and centre. The 11x11 board (more room for long words and their crossings): one eighth of it drawn
+// and turned and mirrored into the rest, so it is the same from every side: the four corners and the middle of each
+// edge triple word, two double words on each diagonal, triple letters a step off the diagonal, double letters on the
+// edges and round the middle (40 premium squares of 121). The centre is a plain square (the star the first word
+// covers): with a double word there, whoever lays the first word scored it twice, and the first mover won 61-66% of
+// squares on this board (tests/sim/wtiles.sim.js; plain, 50-55%).
+export const wtSide = board => Math.round(Math.sqrt((board && board.length) || 49));
+const OCT11 = { T: [[0, 0], [0, 5]], D: [[1, 1], [3, 3]], t: [[1, 4]], d: [[0, 3], [2, 2], [2, 5]] };
+function premOf(n, oct) {
+  const g = new Array(n * n).fill('.'), m = n - 1;
+  for (const [k, cells] of Object.entries(oct)) for (const [r, c] of cells) for (const [a, b] of [[r, c], [c, r]]) for (const [y, x] of [[a, b], [m - a, b], [a, m - b], [m - a, m - b]]) g[y * n + x] = k;
+  return g.join('');
+}
+export const WT_PREMS = { 7: WT_PREM, 11: premOf(11, OCT11) };
+export const wtPrem = n => WT_PREMS[n] || WT_PREM;
+export const wtCentre = n => (n * n - 1) / 2;
+export const WT_SIZES = [7, 11];
+export const wtCfg = mini => { const t = tune(mini); return { size: WT_SIZES.includes(Number(t.size)) ? Number(t.size) : 11, target: t.target, rack: Math.max(4, Math.min(7, Math.round(t.rack || WT.rack))), bonus: t.bonus != null ? t.bonus : WT.bonus }; };
 
 // ---- the word list ----
 let DICT = null;
@@ -58,19 +76,21 @@ export function wtDict() {
 export const wtIsWord = w => typeof w === 'string' && wtDict().set.has(w.toUpperCase());
 
 // ---- a placement checked and scored ----
-const rowOf = i => Math.floor(i / WT.n), colOf = i => i % WT.n;
-const step = (i, d, s) => { const j = i + d * s; if (j < 0 || j >= WT.n * WT.n) return -1; if (d === 1 && rowOf(j) !== rowOf(i)) return -1; return j; };
-// The word through cell i along d (1 across, 7 down) on board b: its cells, first to last.
+// (every helper reads the board's side from the board itself: n across, n down; d is 1 across, n down)
+const stepN = n => (i, d, s) => { const j = i + d * s; if (j < 0 || j >= n * n) return -1; if (d === 1 && Math.floor(j / n) !== Math.floor(i / n)) return -1; return j; };
+// The word through cell i along d (1 across, n down) on board b: its cells, first to last.
 function wordAt(b, i, d) {
+  const step = stepN(wtSide(b));
   let a = i; for (let j = step(a, d, -1); j >= 0 && b[j]; j = step(a, d, -1)) a = j;
   const cells = []; for (let j = a; j >= 0 && b[j]; j = step(j, d, 1)) cells.push(j);
   return cells;
 }
 function scoreWord(b, cells, fresh) {
   let sum = 0, mult = 1;
+  const prem = wtPrem(wtSide(b));
   for (const c of cells) {
     let v = WT_VAL[b[c]] || 0;
-    if (fresh.has(c)) { const p = WT_PREM[c]; if (p === 'd') v *= 2; else if (p === 't') v *= 3; else if (p === 'D') mult *= 2; else if (p === 'T') mult *= 3; }
+    if (fresh.has(c)) { const p = prem[c]; if (p === 'd') v *= 2; else if (p === 't') v *= 3; else if (p === 'D') mult *= 2; else if (p === 'T') mult *= 3; }
     sum += v;
   }
   return sum * mult;
@@ -79,11 +99,12 @@ function scoreWord(b, cells, fresh) {
 export function wtCheck(board, rack, t, cfg) {
   cfg = cfg || { bonus: WT.bonus };
   if (!Array.isArray(t) || !t.length || t.length > rack.length) return { ok: false, reason: 'bad' };
+  const n = wtSide(board), step = stepN(n), rowOf = i => Math.floor(i / n), colOf = i => i % n;
   const left = rack.slice(), seen = new Set();
   for (const pl of t) {
     if (!Array.isArray(pl) || pl.length !== 2) return { ok: false, reason: 'bad' };
     const [c, l] = pl;
-    if (!Number.isInteger(c) || c < 0 || c >= WT.n * WT.n || board[c] || seen.has(c) || typeof l !== 'string' || !/^[A-Z]$/.test(l)) return { ok: false, reason: 'bad' };
+    if (!Number.isInteger(c) || c < 0 || c >= n * n || board[c] || seen.has(c) || typeof l !== 'string' || !/^[A-Z]$/.test(l)) return { ok: false, reason: 'bad' };
     const k = left.indexOf(l); if (k < 0) return { ok: false, reason: 'bad' };
     left.splice(k, 1); seen.add(c);
   }
@@ -91,14 +112,14 @@ export function wtCheck(board, rack, t, cfg) {
   for (const [c, l] of t) b[c] = l;
   const rows = new Set(t.map(([c]) => rowOf(c))), cols = new Set(t.map(([c]) => colOf(c)));
   let d;
-  if (t.length === 1) { const c = t[0][0]; d = (step(c, 1, -1) >= 0 && b[step(c, 1, -1)]) || (step(c, 1, 1) >= 0 && b[step(c, 1, 1)]) ? 1 : 7; }
-  else if (rows.size === 1) d = 1; else if (cols.size === 1) d = 7; else return { ok: false, reason: 'line' };
+  if (t.length === 1) { const c = t[0][0]; d = (step(c, 1, -1) >= 0 && b[step(c, 1, -1)]) || (step(c, 1, 1) >= 0 && b[step(c, 1, 1)]) ? 1 : n; }
+  else if (rows.size === 1) d = 1; else if (cols.size === 1) d = n; else return { ok: false, reason: 'line' };
   const main = wordAt(b, t[0][0], d);
   if (t.some(([c]) => !main.includes(c))) return { ok: false, reason: 'gap' };
-  if (first && !seen.has(WT_CENTRE)) return { ok: false, reason: 'centre' };
+  if (first && !seen.has(wtCentre(n))) return { ok: false, reason: 'centre' };
   const words = [];
   if (main.length >= 2) words.push(main);
-  for (const [c] of t) { const x = wordAt(b, c, d === 1 ? 7 : 1); if (x.length >= 2) words.push(x); }
+  for (const [c] of t) { const x = wordAt(b, c, d === 1 ? n : 1); if (x.length >= 2) words.push(x); }
   if (!words.length) return { ok: false, reason: first ? 'short' : 'connect' };
   if (!first && !words.some(w => w.some(c => board[c]))) return { ok: false, reason: 'connect' };
   const out = [];
@@ -113,7 +134,7 @@ export function wtCheck(board, rack, t, cfg) {
 // edge), with at least one empty cell, the centre for the first word, else touching a tile; the words of that length
 // that fit the stretch's own letters and the rack, every new tile's word across checked (cached), each scored.
 export function wtMoves(board, rack, cfg) {
-  const { set, byLen } = wtDict(), n = WT.n, first = board.every(x => !x);
+  const { set, byLen } = wtDict(), n = wtSide(board), step = stepN(n), centre = wtCentre(n), first = board.every(x => !x);
   const have = new Array(26).fill(0); for (const l of rack) have[l.charCodeAt(0) - 65]++;
   const onBoard = new Set(board.filter(Boolean));
   const ok = l => have[l.charCodeAt(0) - 65] > 0 || onBoard.has(l);
@@ -122,7 +143,7 @@ export function wtMoves(board, rack, cfg) {
   const crossOk = (c, l, d) => {                                  // the word across a new tile at c (perpendicular to d) is a word, or there is none
     const key = c * 64 + (l.charCodeAt(0) - 65) * 2 + (d === 1 ? 0 : 1);
     if (crossMemo.has(key)) return crossMemo.get(key);
-    const e = d === 1 ? 7 : 1;
+    const e = d === 1 ? n : 1;
     let a = c; for (let j = step(a, e, -1); j >= 0 && board[j]; j = step(a, e, -1)) a = j;
     let w = '', touched = false;
     for (let j = a; j >= 0 && (board[j] || j === c); j = step(j, e, 1)) { if (j === c) w += l; else { w += board[j]; touched = true; } }
@@ -130,17 +151,17 @@ export function wtMoves(board, rack, cfg) {
     crossMemo.set(key, r);
     return r;
   };
-  const nbr = c => [step(c, 1, -1), step(c, 1, 1), step(c, 7, -1), step(c, 7, 1)].some(j => j >= 0 && board[j]);
+  const nbr = c => [step(c, 1, -1), step(c, 1, 1), step(c, n, -1), step(c, n, 1)].some(j => j >= 0 && board[j]);
   const out = [];
-  for (const d of [1, 7]) for (let line = 0; line < n; line++) {
+  for (const d of [1, n]) for (let line = 0; line < n; line++) {
     const cellAt = k => (d === 1 ? line * n + k : k * n + line);
-    for (let a = 0; a < n; a++) for (let z = a + 1; z < n; z++) {
+    for (let a = 0; a < n; a++) for (let z = a + 1; z < n && z - a < 7; z++) {   // (the list's words are 2 to 7 letters)
       const L = z - a + 1, cells = Array.from({ length: L }, (_, k) => cellAt(a + k));
       if (a > 0 && board[cellAt(a - 1)]) continue;                 // (the word would run on: not this stretch)
       if (z < n - 1 && board[cellAt(z + 1)]) continue;
       const empties = cells.filter(c => !board[c]);
       if (!empties.length || empties.length > rack.length) continue;
-      if (first ? !cells.includes(WT_CENTRE) : !(empties.length < L || empties.some(nbr))) continue;
+      if (first ? !cells.includes(centre) : !(empties.length < L || empties.some(nbr))) continue;
       for (const w of lists[L]) {
         let fit = true; const need = have.slice();
         for (let k = 0; k < L && fit; k++) {
@@ -151,7 +172,7 @@ export function wtMoves(board, rack, cfg) {
         }
         if (!fit) continue;
         const t = []; for (let k = 0; k < L; k++) if (!board[cells[k]]) t.push([cells[k], w[k]]);
-        if (t.length === 1 && d === 7 && ((step(t[0][0], 1, -1) >= 0 && board[step(t[0][0], 1, -1)]) || (step(t[0][0], 1, 1) >= 0 && board[step(t[0][0], 1, 1)]))) continue;   // (one tile with a word across too: found as the across one)
+        if (t.length === 1 && d === n && ((step(t[0][0], 1, -1) >= 0 && board[step(t[0][0], 1, -1)]) || (step(t[0][0], 1, 1) >= 0 && board[step(t[0][0], 1, 1)]))) continue;   // (one tile with a word across too: found as the across one)
         const ch = wtCheck(board, rack, t, cfg);
         if (ch.ok) out.push({ t, score: ch.score, w });
       }
@@ -171,7 +192,8 @@ function draw(mini, p, rng) {
 }
 export function create(type, rng) {
   const r = needRng(rng), c = wtCfg({ type, tune: tuneLive(type) });
-  const mini = { type, v: 2, board: new Array(49).fill(null), own: new Array(49).fill(null), rack: { X: [], O: [] }, bag: shuffle(WT_BAG.split(''), r), bagN: 0, score: { X: 0, O: 0 }, plays: { X: 0, O: 0 }, swaps: 0, last: null };
+  const N = c.size * c.size;                                       // (December 2026: 11x11 by default, `size`; a square keeps its own: its board's length)
+  const mini = { type, v: 2, board: new Array(N).fill(null), own: new Array(N).fill(null), rack: { X: [], O: [] }, bag: shuffle(WT_BAG.split(''), r), bagN: 0, score: { X: 0, O: 0 }, plays: { X: 0, O: 0 }, swaps: 0, last: null };
   for (const p of ['X', 'O']) while (mini.rack[p].length < c.rack) mini.rack[p].push(mini.bag.pop());
   mini.bagN = mini.bag.length;
   return mini;

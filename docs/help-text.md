@@ -454,7 +454,7 @@ Play: Make one word from your tiles on the shared board, in a row or a column. T
 Win: First to {target} points. If neither of you can play (two swaps each in a row), the higher score wins.
 List dl: Double letter: that tile counts twice.
 List tl: Triple letter: that tile counts three times.
-List dw: Double word: the whole word counts twice (the centre too).
+List dw: Double word: the whole word counts twice.
 List tw: Triple word: the whole word counts three times.
 List all: All seven tiles in one word: bonus points.
 

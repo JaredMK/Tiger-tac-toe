@@ -32,15 +32,15 @@ export const modeRow = sc => (!isHost() || chaosVisible() ? `<div class="timerro
 // a time per turn (30 or 60 s) or a match clock (3, 5 or 10 minutes each, plus 0, 2 or 5 seconds a move).
 function timerRows(cur) {
   const seg = (spec, label, on) => `<button class="seg${on ? ' on' : ''}" data-act="clock" data-v="${spec}" aria-pressed="${on}">${label}</button>`;
-  const row = (label, body, q) => `<div class="timerrow" role="group" aria-label="${label}"><span><i class="cap">${label}</i>${q ? qBtn('timer', 'sm') : ''}</span>${body}</div>`;
+  const row = (label, body, q) => `<div class="timerrow" role="group" aria-label="${label}" style="--k:${(body.match(/class="seg/g) || []).length}"><span><i class="cap">${label}</i>${q ? qBtn('timer', 'sm') : ''}</span>${body}</div>`;   // (--k: its choices, one equal column each)
   const p = specParts(cur), m = p.kind === 'match' ? p : { mins: 5, inc: 5 };
   // Players (November 2026): the match clock, minutes each with +5 s a move, or no limit; the "?" beside it says so.
   if (!acct.admin) return row('Minutes', [['off', 'No limit'], ...CLOCK_MINS.map(v => [`m${v}+5`, `${v}`])].map(([v, l]) => seg(v, l, cur === v)).join(''), true);
   // The admin (testing): a time per turn too, and the match clock's other increments.
   const t = p.kind === 'turn' ? p.secs : 30;
-  return row('Timer', seg('off', 'No limit', p.kind === 'off') + seg(`m${m.mins}+${m.inc}`, 'Match clock', p.kind === 'match') + seg('t' + t, 'Per turn', p.kind === 'turn'))
-    + (p.kind === 'turn' ? row('Per turn', TURN_SECS.map(v => seg('t' + v, `${v}s/turn`, t === v)).join('')) : '')
-    + (p.kind === 'match' ? row('Minutes', CLOCK_MINS.map(v => seg(`m${v}+${m.inc}`, `${v} min`, m.mins === v)).join(''), true) + row('Per move', CLOCK_INCS.map(v => seg(`m${m.mins}+${v}`, `+${v}s/move`, m.inc === v)).join('')) : '');
+  return row('Timer', seg('off', 'No limit', p.kind === 'off') + seg(`m${m.mins}+${m.inc}`, 'Clock', p.kind === 'match') + seg('t' + t, 'Per turn', p.kind === 'turn'))   // (short labels: equal cells, none cut at 320)
+    + (p.kind === 'turn' ? row('Seconds a turn', TURN_SECS.map(v => seg('t' + v, `${v}s`, t === v)).join('')) : '')
+    + (p.kind === 'match' ? row('Minutes', CLOCK_MINS.map(v => seg(`m${v}+${m.inc}`, `${v}`, m.mins === v)).join(''), true) + row('Added a move', CLOCK_INCS.map(v => seg(`m${m.mins}+${v}`, `+${v}s`, m.inc === v)).join('')) : '');
 }
 export function renderSetup() {
   const s = state.setup;
@@ -100,8 +100,7 @@ export function renderSetup() {
       <div class="vscard ccpunch"><div class="vsme">${who(c1, 0)}<b>${esc(you)}</b></div><span class="vsv" aria-hidden="true">${burstSvg('VS', 'w', 120, 80, 40)}</span><div class="vsme">${who(c2, 1)}<b>${CPU_NAME}</b></div></div>
       <div class="pickrow" role="group" aria-label="You play as">${cap('your side')}<div class="opts">${['X', 'O', 'random'].map((v, k) => opt('cside', 'data-side', v, v === 'random' ? 'Random' : v, C.pick === v, k + 1)).join('')}</div></div>
       <div class="pickrow" role="group" aria-label="Difficulty">${cap('level')}<div class="opts">${LEVELS.map((v, k) => opt('clevel', 'data-v', v, `${meter(k + 1)}${LEVEL_NAME[v]}`, C.level === v, k + 4)).join('')}</div></div>
-      <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(on, VT.length)}</small><i class="chev">${CHEV}</i></button>
-        ${advOpen ? `${templatesRow(VT)}<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div>` : ''}</div>
+      ${gamesPanel(VT, on, chk)}
     </div>
     <div class="setup-foot"><button class="pn y big m-start" data-act="start"${ready ? '' : ' disabled'} style="--k:8"><i class="ptag" aria-hidden="true">go!</i><b>Start!</b></button>${(w => `<small class="warn${w ? '' : ' info'}" role="status">${w || modeNote || CPU_HINT}</small>`)(setupWarn(s))}</div></main>`;
   }
@@ -113,8 +112,7 @@ export function renderSetup() {
     ${host ? `<div class="names">${field(state.online.me)}${field(guest)}</div>` : vsCpu ? cpuSlots() : `<div class="slots">${slots()}</div>`}
     ${SUPER_CHAOS_ENABLED ? modeRow(sc) : ''}
     ${timer}
-    <div class="adv${advOpen ? ' open' : ''}"><button class="adv-h" data-act="adv" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesCount(on, VT.length)}</small><i class="chev">${CHEV}</i></button>
-      ${advOpen ? `${templatesRow(VT)}<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div>` : ''}</div>
+    ${gamesPanel(VT, on, chk)}
   </div>
   <div class="setup-foot">${host && starting() ? '<button class="primary busy" data-act="start" disabled aria-busy="true" aria-live="polite"><i class="spinr" aria-hidden="true"></i>Starting…</button>' : `<button class="primary" data-act="start"${ready ? '' : ' disabled'}>Start match</button>`}${(w => `<small class="warn${w ? '' : modeNote ? ' info' : ''}" role="status">${w || modeNote}</small>`)(setupWarn(s))}</div></main>`;
 }
@@ -206,6 +204,17 @@ export function tplAct(act, el) {
 }
 // How many mini-games are on: "All", or "x/N".
 export const gamesCount = (on, n) => (on === n ? 'All' : `${on}/${n}`);
+// The summary the setup's Mini-games row shows (December 2026): "All 17", or "5 of 17".
+export const gamesSummary = (on, n) => (on === n ? `All ${n}` : `${on} of ${n}`);
+// The Mini-games row and its sheet (December 2026): one summary row on the setup screen ("Mini-games  All 17 ›"), so the
+// screen fits on one page; a tap opens a full-screen sheet with the templates at the top (an admin's), Select / Deselect
+// all and the checklist below, and Done, the one way back (the same data-act as the row: setAdvOpen in ui/input.js).
+function gamesPanel(VT, on, chk) {
+  const row = `<button class="adv-h gsum" data-act="adv" aria-haspopup="dialog" aria-expanded="${advOpen}"><span>Mini-games</span><small>${gamesSummary(on, VT.length)}</small><i class="chev">${CHEV}</i></button>`;
+  if (!advOpen) return `<div class="adv">${row}</div>`;
+  return `<div class="adv">${row}</div><div class="gsheet" role="dialog" aria-modal="true" aria-label="Mini-games"><div class="gsh-bar"><b>Mini-games</b><small class="gsh-n">${gamesSummary(on, VT.length)}</small><button class="pn y gdone" data-act="adv"><b>Done</b></button></div>
+      <div class="gsh-body" data-keep-scroll="gsheet">${templatesRow(VT)}<div class="games-top"><button class="btn selall" data-act="games-none"${on === 0 ? ' disabled' : ''}>Deselect all</button><button class="btn selall" data-act="games-all"${on === VT.length ? ' disabled' : ''}>Select all</button></div><div class="games">${byName(VT).map(chk).join('')}</div></div></div>`;
+}
 // The Mini-games checklist: one list in alphabetical order (a game's kind, meta.js category, is in its "?").
 export const byName = types => types.slice().sort((a, b) => INFO[a].name.localeCompare(INFO[b].name));
 // Start opens once at least one mini-game is on (online, also once the friend is in).
@@ -225,7 +234,7 @@ export function setGames(change) {
     box.checked = v;
     box.closest('.chk').classList.toggle('off', !v);
   }
-  const n = app.querySelector('.adv-h small'); if (n) n.textContent = gamesCount(on, VT.length);
+  for (const n of app.querySelectorAll('.adv-h small, .gsh-n')) n.textContent = gamesSummary(on, VT.length);
   tplSync();
   const all = app.querySelector('[data-act="games-all"]'); if (all) all.disabled = on === VT.length;
   const none = app.querySelector('[data-act="games-none"]'); if (none) none.disabled = on === 0;

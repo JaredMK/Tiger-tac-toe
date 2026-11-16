@@ -148,6 +148,15 @@ export function replayMs(entries) {
 // player's phone has played the move back (or skipped it: startClock), and at the latest once the playback
 // would be over (startBy, with a little slack), so a phone that is away still has a turn that runs out.
 export const CLOCK = { startSlackMs: 3000 };
+// The other side's turn played back on this phone, not watched live (net/room.js applyMatch): condensed to its outcome,
+// the whole turn's actions (a turn of many: Risky Spins' spins and its bank) played at the speed that fits them into
+// `ms` after the one glow and zoom (`lead`); the turn's clock is the server's fallback start for a phone that never says
+// it is through (startBy: no later than this whole playback), the phone itself starting it at the end or a Skip ('go').
+export const TURN_REPLAY = { ms: 3400, lead: 900 };
+export const turnReplaySpeed = entries => {
+  const base = (entries || []).reduce((ms, e) => ms + playMs(e, 4) + (PLAY.flash[e.kind] || 800) + (e.rep && e.rep.length ? 400 : 0), 0);
+  return Math.max(replaySpeed(), base / TURN_REPLAY.ms);
+};
 // A match clock first settles the turn that ends: the time it took comes off the mover's bank, and a move made
 // (the turn passing on with the time not run out) adds the increment.
 export function armClock(st, entries, now) {
@@ -156,7 +165,7 @@ export function armClock(st, entries, now) {
   if (matchClock(t)) settleClock(t, now, st.winReason !== 'clock');
   if (st.winner) { t.deadline = null; t.for = null; t.startBy = null; t.secs = null; return; }
   t.for = st.turn; t.secs = null;
-  if (entries && entries.length) { t.deadline = null; t.startBy = now + replayMs(entries) + CLOCK.startSlackMs; }
+  if (entries && entries.length) { t.deadline = null; t.startBy = now + Math.min(replayMs(entries), (TURN_REPLAY.ms + TURN_REPLAY.lead) / ANIM.admin) + CLOCK.startSlackMs; }
   else { t.deadline = now + turnLimit(t) * 1000; t.startBy = null; }
 }
 // The turn that ends (t.for's): its time used comes off their bank (from when it began, its deadline less the bank;

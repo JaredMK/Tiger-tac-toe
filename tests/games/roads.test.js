@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
 E.setPhysics(require('../physics.js'));
+const R = require('../../src/games/roads/rules.js');
 
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 
@@ -191,5 +192,57 @@ test('roads: the square ends at once when the other player could not even tie wi
   const c2 = new Array(n).fill('B'); for (const k of path) c2[k] = 'X';
   let opened = 0; for (let k = 0; k < n && opened < 14; k++) if (c2[k] === 'B') { c2[k] = null; opened++; }
   const m2 = mk(c2); const r2 = E.applyMove(m2, 'O', c2.indexOf(null), E.makeRng('rd-b'));
-  assert.equal(r2.outcome === 'win' && r2.note === 'decided', E.roadLongest(m2.segs.map(c => (c === null ? 'O' : c)), 'O').len < E.roadLongest(m2.segs, 'X').len);
+  const open2 = m2.segs.filter(c => c === null).length, k2 = R.roadPlacements(open2, 'O', 'X', 1);
+  assert.equal(r2.outcome === 'win' && r2.note === 'decided', R.roadReach(m2.segs, 'O', k2) < E.roadLongest(m2.segs, 'X').len, 'decided exactly when O cannot tie with the placements it has left');
+});
+
+// December 2026: the early end counts the random block after every move. The side behind can only add one line per
+// placement it has left, and every move (theirs or the leader's) also blocks a line, so with 4 open lines and the
+// leader to move next... the trailing player gets one placement, not four.
+test('roads: decided early with the blocks counted: the side behind gets one line per placement it has left, the blocks take the rest', () => {
+  const n = E.ROAD_SEGS.length;
+  assert.equal(R.roadPlacements(4, 'O', 'X', 1), 1, '4 open, X to move: X takes 1, a block 1, O takes 1, a block 1');
+  assert.equal(R.roadPlacements(4, 'O', 'O', 1), 1, 'O to move: O(3 left) block(2) X(1) block(0): 1');
+  assert.equal(R.roadPlacements(5, 'O', 'O', 1), 2, '5 open, O first: O, block, X, block, O');
+  assert.equal(R.roadPlacements(6, 'O', 'X', 0), 3, 'no blocks: every other line');
+  const path = E.roadLongest(new Array(n).fill('X'), 'X').segs;
+  const lead = path.slice(0, 4), tail = path.slice(6, 12);           // X holds 4 in a row; 6 lines further along the same trail are the only open ones
+  let oldWouldPlayOn = 0;
+  for (let g = 0; g < 40; g++) {
+    const cells = new Array(n).fill('B'); for (const k of lead) cells[k] = 'X'; for (const k of tail) cells[k] = null;
+    const m = { type: 'roads', segs: cells, last: null, tune: { blocks: 1 } };
+    const r = E.applyMove(m, 'O', tail[0], E.makeRng('rd-blocks' + g));   // O takes one; a block takes one more: 4 open, X to move
+    const open = m.segs.filter(c => c === null).length, k = R.roadPlacements(open, 'O', 'X', 1);
+    assert.equal(open, 4); assert.equal(k, 1, 'X, a block, O, a block: O has one placement left');
+    assert.ok(R.roadReach(m.segs, 'O', k) <= 2, 'O: its one line and one more');
+    assert.deepEqual([r.outcome, r.note, r.winner], ['win', 'decided', 'X'], 'X wins at once: O cannot catch up even in the best case');
+    if (R.roadLongest(m.segs.map(c => (c === null ? 'O' : c)), 'O').len >= 4) oldWouldPlayOn++;   // (the old rule, every open line O's: played on)
+  }
+  assert.ok(oldWouldPlayOn > 0, 'the old rule would have played on in some of these');
+});
+test('roads: the best case joins two roads through a new line (never just the longest plus the placements left)', () => {
+  const n = E.ROAD_SEGS.length, path = E.roadLongest(new Array(n).fill('X'), 'X').segs;
+  const cells = new Array(n).fill('B');
+  for (const k of path.slice(0, 3)) cells[k] = 'O'; cells[path[3]] = null; for (const k of path.slice(4, 7)) cells[k] = 'O';   // O: 3, a gap, 3
+  assert.equal(R.roadLongest(cells, 'O').len, 3);
+  assert.equal(R.roadReach(cells, 'O', 1), 7, 'one placement in the gap makes 7, not 3 + 1');
+  assert.equal(R.roadReach(cells, 'O', 0), 3);
+  assert.equal(R.roadReach(cells, 'O', 1, 5), 5, 'with a target it stops once reached');
+});
+test('roads: never decided while the side behind can still tie in the best case (random squares, the rule checked move by move)', () => {
+  for (let g = 0; g < 300; g++) {
+    const rng = E.makeRng('rdb' + g), m = E.newMini('roads', rng);
+    let p = 'X';
+    for (let t = 0; t < 40; t++) {
+      const before = m.segs.slice(), mv = E.randomLegalMove(m, p, rng), r = E.applyMove(m, p, mv, rng);
+      assert.ok(r.ok);
+      if (r.note === 'decided') {
+        const w = r.winner, l = w === 'X' ? 'O' : 'X', lw = R.roadLongest(m.segs, w).len, open = m.segs.filter(c => c === null).length;
+        assert.ok(R.roadReach(m.segs, l, R.roadPlacements(open, l, p === 'X' ? 'O' : 'X', 1)) < lw, 'the loser could not have tied');
+        assert.ok(before.includes(null));
+      }
+      if (r.outcome !== 'continue') break;
+      p = p === 'X' ? 'O' : 'X';
+    }
+  }
 });

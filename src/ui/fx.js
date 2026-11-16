@@ -14,6 +14,7 @@ import { TRIVIA } from '../games/trivia/rules.js';
 import { triviaPre } from '../games/trivia/view.js';
 import { SND } from '../audio/sound.js';
 import { REDUCED, WAAPI, app, lastView, state } from './app.js';
+import { toon } from './art.js';
 import { attPre } from './attention.js';
 import { claimHaptic } from './haptics.js';
 import { shownSq } from './chaos.js';
@@ -114,6 +115,27 @@ export function shake(power = 1) {
   if (!FX_ON()) return;
   const a = Math.min(14, 6 * power * ANIM.fx), k = n => `${(a * n).toFixed(1)}px`;
   try { app.animate([{ translate: '0 0' }, { translate: `${k(-1)} ${k(0.4)}` }, { translate: `${k(0.8)} ${k(-0.6)}` }, { translate: `${k(-0.5)} ${k(0.3)}` }, { translate: `${k(0.25)} 0` }, { translate: '0 0' }], { duration: 240, easing: 'ease-out' }); } catch (e) { /* (no individual transforms: no shake) */ }
+}
+// Your turn (ui/turns.js turnAlert, once a turn, never the other side's): a comic "YOUR TURN!" burst over the board for
+// about a second, this player's character bouncing on it. Fixed, outside #app, never a tap; the header's "Your move!"
+// bubble stays until they act. Reduced motion: shown still for the same time.
+export const TURN_BURST_MS = 1000;
+export function turnBurst(me) {
+  if (typeof document === 'undefined' || !document.body || !document.querySelectorAll) return;
+  try { turnBurstShow(me); } catch (e) { /* (a stubbed page: no burst) */ }
+}
+function turnBurstShow(me) {
+  document.querySelectorAll('.ccturn').forEach(e => e.remove());
+  const host = document.querySelector('.board') || document.getElementById('app'), r = host && host.getBoundingClientRect();
+  if (!r || !r.width) return;
+  const w = Math.min(300, r.width * 0.86), ms = dur(TURN_BURST_MS, 'ui');
+  const el = document.createElement('div');
+  el.className = 'ccturn ' + (me === 'O' ? 'tO' : 'tX') + (REDUCED ? ' still' : ''); el.setAttribute('aria-hidden', 'true');
+  el.style.left = (r.left + r.width / 2) + 'px'; el.style.top = (r.top + r.height / 2) + 'px'; el.style.width = w + 'px';
+  el.style.setProperty('--tb', ms + 'ms');
+  el.innerHTML = `<div class="ctb">${burstSvg('YOUR TURN!', me === 'O' ? 'y' : 'r', 300, 190, 56)}</div><div class="ctc">${toon(me)}</div>`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), ms + 60);
 }
 // A quick spray of confetti from a point (an element's middle, else the screen's), in the players' colours.
 const CONF = ['var(--x)', 'var(--o)', 'var(--sky, #58a8cf)', 'var(--paper, #fff8e8)', '#4e9d3a'];

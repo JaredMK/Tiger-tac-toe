@@ -8,7 +8,7 @@ import { isRace, raceFlashHide, raceHide, raceOld, raceSides } from './race.js';
 import { newMini } from './minis.js';
 import { makeRng } from './random.js';
 import { triviaDeal } from '../games/trivia/rules.js';
-import { armClock, clockDeadline, newTimer, turnOpen } from './timer.js';
+import { armClock, clockDeadline, newTimer, startClock, turnOpen } from './timer.js';
 import { other } from './util.js';
 import { ATT_TYPES, attStart } from '../games/shared/attention.js';
 import { PHYS_TYPES } from '../games/shared/physics.js';
@@ -195,6 +195,14 @@ export function applyOnlineOpen(rec, side, i) {
   if (!full.squares[i] || full.squares[i].owner) return { ok: false, reason: 'bad' };
   if (!turnOpen(full, i)) return { ok: false, reason: 'same' };
   return { ok: true, rec: matchRecord(full) };
+}
+// The player on the move has seen the other side's turn play back here (or skipped it): their turn's clock starts now
+// (core/timer.js startClock: once a turn, never later than the server's own fallback, startBy).
+export function applyOnlineGo(rec, side, now) {
+  const st = rec && rec.state;
+  if (!st || st.winner || st.turn !== side) return { ok: false, reason: 'turn' };
+  if (!startClock(st, side, now)) return { ok: false, reason: 'same' };
+  return { ok: true, rec };
 }
 // Find the Pair: the first card chosen is turned up for both phones (or turned back when tapped again).
 export function applyOnlinePick(rec, side, i, card) {

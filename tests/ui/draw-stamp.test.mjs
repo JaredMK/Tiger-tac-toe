@@ -47,7 +47,7 @@ test('a drawn square: back on the board, its Draw stamp over the old game, then 
   assert.equal((html.match(/class="drawst"/g) || []).length, 1, 'one stamp, on that square alone');
   assert.match(sq, new RegExp(`<div class="drawst" data-fx="${at}" data-bend="\\d+" aria-hidden="true"><b>Draw</b></div>`), 'the stamp, timed from its event and taken off the page when it is over');
   assert.match(sq, new RegExp(`<div class="drawold" data-fx="${at}"[^>]*><div class="lab[^"]*"><svg[^]*?<span>${INFO[was].name}</span>`), "the old game's tile under it");
-  assert.match(sq, new RegExp(`<div class="lab[^"]* dnew" data-fx="${at}">[^]*?<span>${INFO[now].name}</span>`), "the new game's label deals in");
+  assert.match(sq, new RegExp(`<div class="lab[^"]* dnew" data-fx="${at}">[^]*?${INFO[now].name}</span>`), "the new game's label deals in");
   assert.match(sq, /<div class="thumb dnew" data-fx="/, '...and its miniature');
   assert.match(sq, /a draw: a new game/, 'said to a screen reader');
   for (const k of [1, 2, 3]) assert.doesNotMatch(sqHtml(html, k), /drawfx|drawst|dnew/);
@@ -59,7 +59,7 @@ test('a drawn square: back on the board, its Draw stamp over the old game, then 
   fx.draw.at = performance.now() - DRAW_MS - 50;
   const later = renderBoard();
   assert.doesNotMatch(later, /drawfx|drawst|drawold|dnew/);
-  assert.match(sqHtml(later, 0), new RegExp(`<span>${INFO[now].name}</span>`));
+  assert.match(sqHtml(later, 0), new RegExp(`${INFO[now].name}</span>`));
 });
 
 test('a square won stamps its mark, with no Draw stamp; a move that keeps the game on shows neither', () => {

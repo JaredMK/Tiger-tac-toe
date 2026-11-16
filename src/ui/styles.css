@@ -2208,8 +2208,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 @keyframes cpairout { to { opacity: 0; } }
 @keyframes cdietumble { from { transform: translate(-90px, -70px) rotate(-260deg) scale(.7); } 60% { transform: translate(6px, 6px) rotate(20deg); } 80% { transform: translate(-2px, -6px) rotate(-6deg); } to { transform: none; } }
 @keyframes cdietumble2 { from { transform: translate(90px, -80px) rotate(300deg) scale(.7); } 60% { transform: translate(-6px, 4px) rotate(-18deg); } 80% { transform: translate(2px, -5px) rotate(5deg); } to { transform: none; } }
-.crolls { display: flex; flex-wrap: nowrap; gap: 6px; justify-content: center; height: 26px; overflow: hidden; }   /* one row, always this tall: the round's last eight rolls */
-.crolls.long { justify-content: flex-end; }   /* a long round: the latest rolls on show, the first ones off the left */
+.crolls { display: flex; flex-wrap: wrap; gap: 4px 6px; justify-content: center; align-content: flex-start; height: 56px; max-width: 100%; padding: 0 12px; box-sizing: border-box; overflow: hidden; }   /* (December 2026) centred, wrapping onto a second line, always two lines tall: the round's last sixteen rolls, never to the screen's edge */
 .crolls span { min-width: 26px; height: 26px; padding: 0 6px; border-radius: 13px; background: var(--panel-2); border: 2px solid var(--ink); display: grid; place-items: center; font-weight: 800; font-size: 13px; }
 /* Krabs (November 2026): the strip of totals with what wins and what is out, the marker on the number to roll again,
    the felt with the 3-D dice and each roll's total, the round's rolls, the result's line (craps/view.js). */
@@ -5876,7 +5875,7 @@ button.dukd:active .dukf, .dukd.rpress .dukf { scale: .88; }
 .wtg .wtsc { position: relative; display: inline-flex; align-items: baseline; gap: 1px; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-size: 16px; white-space: nowrap; }   /* (the figures kept small: the name keeps its room at 320px) */
 .wtg .wtsc small { font-size: 11px; min-width: 0; color: var(--muted); }
 .wtbw { flex: 1 1 auto; min-height: 0; container-type: size; display: grid; place-items: center; }
-.wtboard { --tc: var(--x); position: relative; width: calc(min(100cqw, 100cqh) - 6px); height: calc(min(100cqw, 100cqh) - 6px); display: grid; grid-template: repeat(7, minmax(0, 1fr)) / repeat(7, minmax(0, 1fr)); gap: 2px; padding: 3px; background: var(--ink); border-radius: 9px; box-shadow: 0 0 0 3px var(--tc); container-type: inline-size; touch-action: none; }
+.wtboard { --tc: var(--x); position: relative; width: calc(min(100cqw, 100cqh) - 6px); height: calc(min(100cqw, 100cqh) - 6px); display: grid; grid-template: repeat(var(--n, 7), minmax(0, 1fr)) / repeat(var(--n, 7), minmax(0, 1fr)); gap: 2px; padding: 3px; background: var(--ink); border-radius: 9px; box-shadow: 0 0 0 3px var(--tc); container-type: inline-size; touch-action: none; }
 .wtboard.O { --tc: var(--o); }
 .wtc { position: relative; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 3px; background: #efe2c6; box-shadow: inset 0 2px 0 rgba(22, 18, 16, .09); display: grid; place-items: center; font: inherit; color: var(--ink); -webkit-tap-highlight-color: transparent; }
 .wtc:disabled { opacity: 1; cursor: default; }
@@ -5894,7 +5893,7 @@ button.dukd:active .dukf, .dukd.rpress .dukf { scale: .88; }
 @keyframes wtstamp { 0% { transform: translateY(-6%); } 50% { transform: translateY(-20%) scale(1.14); } 78% { transform: translateY(4%) scale(.92); } 100% { transform: none; } }
 .wtt.bk, .wtt.gh { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; opacity: 0; pointer-events: none; z-index: 4; }   /* a tile on its way into the bag or to the other side's score: seen only in flight */
 .wtt.gh b { font-size: 13px; } .wtt.gh i { display: none; }
-.wtwb, .wtchip { --cs: calc((100% - 18px) / 7); position: absolute; pointer-events: none; z-index: 3; }   /* over the board, by cells (--c, --r; --w, --h cells wide and tall) */
+.wtwb, .wtchip { --cs: calc((100% - 6px - (var(--n, 7) - 1) * 2px) / var(--n, 7)); position: absolute; pointer-events: none; z-index: 3; }   /* over the board, by cells (--c, --r; --w, --h cells wide and tall) */
 .wtwb { left: calc(3px + var(--c) * (var(--cs) + 2px)); top: calc(3px + var(--r) * (var(--cs) + 2px)); width: calc(var(--w, 1) * var(--cs) + (var(--w, 1) - 1) * 2px); height: calc(var(--h, 1) * var(--cs) + (var(--h, 1) - 1) * 2px); border-radius: 7px; box-shadow: 0 0 0 3px var(--green), 0 0 0 5px var(--ink); opacity: 0; animation: wtwb .42s var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
 @keyframes wtwb { 0% { opacity: 0; transform: scale(1.14); } 22% { opacity: 1; transform: none; } 78% { opacity: 1; } 100% { opacity: 0; } }
 .wtwb.win { box-shadow: 0 0 0 3.5px var(--gold), 0 0 0 5.5px var(--ink); animation: wtwbwin .5s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; } .wtwb.win b { background: var(--gold); color: var(--ink); }   /* the word that won: its ring stays, in gold */
@@ -5902,7 +5901,7 @@ button.dukd:active .dukf, .dukd.rpress .dukf { scale: .88; }
 .wtwb b, .wtchip { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: 15px; line-height: 1; padding: 4px 7px 2px; border-radius: 999px; background: var(--green); color: #fff; border: 2px solid var(--ink); white-space: nowrap; }
 .wtwb b { position: absolute; right: -8px; top: -9px; }
 .wtchip { left: calc(3px + (var(--c) + 1) * (var(--cs) + 2px) - 20px); top: calc(3px + var(--r) * (var(--cs) + 2px) - 11px); }
-.wtboard .wtchip[style*="--c:6"] { left: auto; right: -5px; } .wtboard .wtchip[style*="--r:0"] { top: -5px; }   /* (at the board's edge: kept on it) */
+.wtboard .wtchip.er { left: auto; right: -5px; } .wtboard .wtchip.et { top: -5px; }   /* (at the board's edge: kept on it) */
 .wtmid { position: relative; flex: none; height: 34px; padding: 0 46px; display: grid; align-items: center; }   /* the reserved line (one line of the result's type, two of the small), the bag at its right */
 .wtmid .arcres, .wtmid .arcnote { height: 34px; line-height: 1; } .wtmid .arcres.sm { font-size: 15px; line-height: 1.05; }
 .wttick { display: inline-block; width: .42em; height: .78em; margin: 0 .5em .08em 0; border: solid var(--green); border-width: 0 .2em .2em 0; transform: rotate(42deg); }
@@ -5965,3 +5964,14 @@ button.dukd:active .dukf, .dukd.rpress .dukf { scale: .88; }
 .bglbr.on { border-style: solid; border-width: 3px; background: color-mix(in srgb, var(--x) 55%, transparent); } .bglbr.O.on { background: color-mix(in srgb, var(--o) 62%, transparent); }
 .bglof { border: 2px solid transparent; border-bottom-color: var(--x); background: color-mix(in srgb, var(--x) 14%, transparent); } .bglof.O { border-bottom-color: var(--o); background: color-mix(in srgb, var(--o) 18%, transparent); }
 .bglbr b, .bglof b { font: 700 11px/1 'Comic Neue', 'Patrick Hand', sans-serif; letter-spacing: 0; color: #fff8e8; text-shadow: 0 1px 0 var(--ink), 1px 0 0 var(--ink), -1px 0 0 var(--ink); margin-top: 2px; }
+
+/* Word Tiles' 11x11 board (December 2026): the same board's width shared by 11 squares, so every size on it follows the
+   square: a tile's letter and value, a premium square's name (two letters, never under 9px), the gaps a little thinner */
+.wtboard.big { gap: 1.5px; padding: 2.5px; }
+.wtboard.big .wtt b { font-size: 5.1cqw; } .wtboard.big .wtt i { font-size: max(7px, 1.9cqw); right: 6%; bottom: 5%; }
+.wtboard.big .wtc em { font-size: max(8.5px, 2.5cqw); letter-spacing: 0; }
+.wtboard.big .wtt { border-width: 1.2px; border-radius: 4px; box-shadow: inset 0 -2px 0 var(--edge), 0 1.5px 0 rgba(22, 18, 16, .42); }
+.wtboard.big .wtwb, .wtboard.big .wtchip { --cs: calc((100% - 5px - (var(--n, 11) - 1) * 1.5px) / var(--n, 11)); }
+.wtboard.big .wtwb { left: calc(2.5px + var(--c) * (var(--cs) + 1.5px)); top: calc(2.5px + var(--r) * (var(--cs) + 1.5px)); width: calc(var(--w, 1) * var(--cs) + (var(--w, 1) - 1) * 1.5px); height: calc(var(--h, 1) * var(--cs) + (var(--h, 1) - 1) * 1.5px); }
+.wtboard.big .wtchip { left: calc(2.5px + (var(--c) + 1) * (var(--cs) + 1.5px) - 20px); top: calc(2.5px + var(--r) * (var(--cs) + 1.5px) - 11px); }
+.wtboard.big .wtchip.er { left: auto; right: -5px; } .wtboard.big .wtchip.et { top: -5px; }

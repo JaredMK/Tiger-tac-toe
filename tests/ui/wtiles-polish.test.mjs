@@ -20,6 +20,7 @@ const { renderMini } = await import('../../src/ui/mini.js');
 const V = await import('../../src/games/wtiles/view.js');
 const { GAMES } = await import('../../src/games/index.js');
 GAMES.wtiles.view = V;   // (the page registers the views in main.js; here by hand)
+E.setTune('wtiles', { size: 7 });   // (these tests were drawn on the 7x7 board, its cells by number: the 11x11 board has its own test at the end)
 
 let n = 0;
 function match(racks) {
@@ -127,4 +128,21 @@ test('the winning word: its ring stays (gold), an ordinary one does not; several
   assert.match(h, new RegExp(`class="wtstep on" style="--t:${t.wordAt(0)}ms;--u:${t.wordAt(1)}ms">${s.words[0].w} \\+${s.words[0].s}<`));
   assert.match(h, new RegExp(`class="wtstep" style="--t:${t.wordAt(1)}ms;--u:${t.wordAt(2)}ms">${s.words[1].w} \\+${s.words[1].s} <small>= ${s.pts}</small>`));
   assert.ok(m2.score.X > 0);
+});
+
+test('the 11x11 board (December 2026): 121 squares in an 11-wide grid, its premium squares and its centre, the chips on its edges', async () => {
+  E.setTune('wtiles', { size: 11 });
+  try {
+    const m = match({ X: ['C', 'A', 'T', 'S', 'E', 'R', 'O'] });
+    assert.equal(m.board.length, 121);
+    const html = renderMini(state.squares[state.zoom]);
+    assert.match(html, /<div class="wtboard X big" style="--n:11">/);
+    assert.equal((html.match(/class="wtc[ "]/g) || []).length, 121, 'every square a button');
+    assert.equal((html.match(/class="wtc[^"]*ctr/g) || []).length, 1, 'one centre');
+    assert.equal((html.match(/class="wtc pw3/g) || []).length, 8, 'triple word: the corners and the middle of each edge');
+    assert.match(html, /aria-label="Square 61"/, 'the centre is square 61, a plain square (the star)');
+    const r = E.applyMove(m, 'X', [[59, 'C'], [60, 'A'], [61, 'T']], E.makeRng('wt11'));
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.ok(m.score.X > 0);
+  } finally { E.setTune('wtiles', { size: 7 }); }
 });

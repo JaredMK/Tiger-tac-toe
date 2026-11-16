@@ -179,6 +179,14 @@ export async function dbOpen(i) {
   if (!fb || !room || !isMM() || state.sc) return;
   try { await call('move', { game: state.online.game, square: i, kind: 'open' }); } catch (e) { /* the turn keeps the match's time */ }
 }
+// The other side's turn has played back here (or was skipped): this player's turn clock starts now (the server's
+// applyOnlineGo; it never starts later than its own fallback, startBy). Once a turn: `key` the match and its move count.
+let goSent = null;
+export async function dbGo(key) {
+  if (!fb || !isMM() || state.sc || !state.online.game || goSent === key) return;
+  goSent = key;
+  try { await call('move', { game: state.online.game, kind: 'go' }); } catch (e) { /* the server's fallback starts it */ }
+}
 export async function dbPick(i, card) {
   if (blocked() || !fb || !room || !isMM()) return;
   setMoveWait(Date.now()); render();

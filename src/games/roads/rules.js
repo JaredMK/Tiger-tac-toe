@@ -9,7 +9,8 @@ import { tune } from '../../core/tune.js';
 // between them are the roads. A move claims an open edge; then a random open edge is blocked (drawn as the
 // move is made). Once none is open, each player's score is their longest road: a trail through their own
 // edges using each edge at most once (a corner may be passed more than once). Longer road wins; a tie resets
-// the square. Once one side could not even tie the other's road with every open edge, the square ends at once. The admin's config/roads may choose a smaller honeycomb, 4 hexagons in a diamond (16 corners,
+// the square. Once the side behind could not even tie the other's road in the best case (December 2026: through every open
+// edge it could still claim, one a placement, the placements it has left counted with the random block after each move), the square ends at once. The admin's config/roads may choose a smaller honeycomb, 4 hexagons in a diamond (16 corners,
 // 19 edges). (A square from before the honeycomb: a 4x4 grid of dots, 24 lines; it plays on as it was.)
 // Every layout: the corners in a 100 x 100 field (pts), the edges between them (segs); told apart by the
 // number of edges, which a square's own segs say.
@@ -68,6 +69,39 @@ export function roadLongest(segs, p) {
   for (const v of Object.keys(at)) { walk(Number(v), []); if (best.length === mine.length) break; }
   return { len: best.length, segs: best };
 }
+// The longest trail p could still make: through p's lines and at most k of the open ones (each placement p has left adds
+// one line; the blocks and the other player take the rest). Stops as soon as it reaches `need`, when one is given (enough to
+// know p can still catch up). A trail may join two of p's roads through a new line, so this is a search, never len + k.
+export function roadReach(segs, p, k, need) {
+  const E = roadGeom(segs).segs, ok = E.map((e, j) => segs[j] === p || (segs[j] === null && k > 0));
+  const at = {};
+  E.forEach((e, j) => { if (ok[j]) for (const v of e) (at[v] = at[v] || []).push(j); });
+  const used = {};
+  let best = 0;
+  const walk = (v, len, left) => {
+    if (len > best) best = len;
+    if (need != null && best >= need) return;
+    for (const j of at[v] || []) {
+      if (used[j]) continue;
+      const open = segs[j] === null;
+      if (open && left <= 0) continue;
+      used[j] = true;
+      const [a, b] = E[j];
+      walk(a === v ? b : a, len + 1, left - (open ? 1 : 0));
+      used[j] = false;
+      if (need != null && best >= need) return;
+    }
+  };
+  for (const v of Object.keys(at)) { walk(Number(v), 0, k); if (need != null && best >= need) break; }
+  return best;
+}
+// How many placements p still has, the other player `next` on the move: the open lines taken in turn, one line and then
+// `nb` blocks a move (fewer once none are left), so every placement also costs the open lines the blocks take.
+export function roadPlacements(open, p, next, nb) {
+  let n = 0, e = open, t = next;
+  while (e > 0) { if (t === p) n++; e -= 1; e -= Math.min(nb, e); t = other(t); }
+  return n;
+}
 // The computer: lengthen its own longest road, and take the line that would lengthen the other player's most.
 export function roadPick(pm, me, rng) {
   const o = other(me), segs = pm.segs, E = roadGeom(segs).segs, mine0 = roadLongest(segs, me).len, theirs0 = roadLongest(segs, o).len;
@@ -94,11 +128,13 @@ export function apply(mini, p, m, rng, idx) {   // a line; then a random open li
   if (b != null) mini.segs[b] = 'B';
   for (let k = 1; k < nb && b != null; k++) { const x = randomEmpty(mini.segs, r); if (x == null) break; mini.segs[x] = 'B'; more.push(x); }   // (the admin's settings: more than one)
   mini.last = Object.assign({ by: p, seg: m, block: b }, more.length ? { more } : {});
-  if (mini.segs.includes(null)) {                                // decided early: one side cannot reach the other's road even with every open line
-    const len = { X: roadLongest(mini.segs, 'X').len, O: roadLongest(mini.segs, 'O').len };
+  if (mini.segs.includes(null)) {                                // decided early: the side behind cannot even tie the other's road in the best case
+    const len = { X: roadLongest(mini.segs, 'X').len, O: roadLongest(mini.segs, 'O').len }, open = mini.segs.filter(c => c === null).length;
     for (const w of ['X', 'O']) {
       const l = other(w);
-      if (len[w] > len[l] && roadLongest(mini.segs.map(c => (c === null ? l : c)), l).len < len[w]) return { ok: true, outcome: 'win', note: 'decided', winner: w, counts: { X: len.X, O: len.O } };
+      if (len[w] <= len[l]) continue;
+      const k = roadPlacements(open, l, other(p), nb);            // (December 2026: every placement of theirs is one line, and every move also blocks `nb`)
+      if (roadReach(mini.segs, l, k, len[w]) < len[w]) return { ok: true, outcome: 'win', note: 'decided', winner: w, counts: { X: len.X, O: len.O } };
     }
     return { ok: true, outcome: 'continue', note: 'road' };
   }

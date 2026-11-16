@@ -337,3 +337,12 @@ emulator smoke and the server suite exercise on the web).
 - [ ] The Privacy link (menu foot) opens in the in-app browser and Done returns to the game
 - [ ] My Stats → Delete account (a throwaway account): asks first, then the menu says "Account deleted"
 - [ ] iPad, if you have one: rotates, the board stays centred
+
+## 9. The 1.21.0 build (December 2026)
+
+`CLIENT_VERSION` 1.21.0 (Word Tiles' 11x11 board; the committed project's `MARKETING_VERSION` 1.21.0). The haptic map was
+checked in the app's build in Chromium with a stand-in `window.Capacitor` recording the Haptics plugin's calls: a square
+opened and a placement LIGHT, the turn coming back MEDIUM twice (with the YOUR TURN! burst), a refused move ERROR, a
+square won SUCCESS then the stamp's MEDIUM, the match won HEAVY then SUCCESS, a square lost and the match lost ERROR.
+For TestFlight, on the Mac, after the next release: `npm run ios:build` (production; staging: `-- staging`), then
+Archive and upload as in section 8. On the phone: Settings → Vibration on, play the computer and feel each of the above.

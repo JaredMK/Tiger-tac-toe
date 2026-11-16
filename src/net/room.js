@@ -8,7 +8,7 @@ import { NAME_MAX, playerName } from '../core/match.js';
 import { upgradeMini } from '../core/minis.js';
 import { isRace } from '../core/race.js';
 import { MATCH_FIELDS, packMatch, parseMatch, resignLocal, sideMergeOf } from '../core/records.js';
-import { ANIM, dur, durRate, newTimer, normTimer, PLAYER_TIMERS, replaySpeed, setupSpec, speedMode, TIMER_DEFAULT } from '../core/timer.js';
+import { ANIM, dur, durRate, newTimer, normTimer, PLAYER_TIMERS, replaySpeed, setupSpec, turnReplaySpeed, speedMode, TIMER_DEFAULT } from '../core/timer.js';
 import { other } from '../core/util.js';
 import { echoPinned } from '../games/echo/view.js';
 import { oddPinned } from '../games/oddone/view.js';
@@ -18,7 +18,7 @@ import { acct, connectQuiet, loggedIn, setAfterLogin } from './accounts.js';
 import { call, connectFirebase, connected, fb, serverNow } from './connect.js';
 import { isMM, listenGame, onGameValue, resignMM } from './matchmaking.js';
 import { scFollow } from './chaos.js';
-import { moveSeen, predicted, setPredicted, showNotice } from './moves.js';
+import { dbGo, moveSeen, predicted, setPredicted, showNotice } from './moves.js';
 import { liveElapsed, liveSeen, liveStop, watch } from './live.js';
 import { listenReacts, stopReacts } from './reactions.js';
 import { scMode, timerDefault, visibleTypes } from './releases.js';
@@ -41,6 +41,7 @@ import { noteNet } from '../ui/turnbar.js';
 import { cpuTurn, playFlash, turnAlert } from '../ui/turns.js';
 
 const REPLAY_MAX = 6;
+let cond = null;                                    // the other side's turn being played back condensed: { id, to (its last action's seq), speed }
 const TURN_MAX = 16;                               // a turn of many actions (rolls, draws): played back whole up to this many                              // at most this many missed moves are played back after a time away
 export let net = { status: 'idle', msg: '' };             // 'idle' | 'connecting' | 'waiting' | 'connected' | 'error'
 export let room = null, pendingRoom = null, roomUnsub = null, presUnsub = null;   // the room (the lobby, then the match the server runs for it) as last read; one that arrived mid-playback
@@ -316,6 +317,12 @@ export function applyMatch(r) {
   const cap = Math.max(REPLAY_MAX, Math.min(TURN_MAX, run));
   const skipped = Math.max(0, st.seq - o.shownSeq - Math.min(missed.length, cap));
   if (missed.length > cap) missed = missed.slice(-cap);
+  // The other side's turn, not watched live: condensed to its outcome, every action of it at the one speed that fits
+  // the whole turn into about 4 s with the glow and zoom (core/timer.js TURN_REPLAY, turnReplaySpeed), after one glow and zoom.
+  if (missed.length && missed[0].by !== o.me && !(cond && cond.id === st.id && missed[0].seq <= cond.to)) {
+    const theirs = []; for (const e of missed) { if (e.by !== missed[0].by) break; theirs.push(e); }
+    cond = { id: st.id, to: theirs[theirs.length - 1].seq, speed: turnReplaySpeed(theirs) };
+  }
   if (skipped > 0) { o.shownSeq = missed.length ? missed[0].seq - 1 : st.seq; sayAway(`${skipped} move${skipped === 1 ? '' : 's'} happened while you were away`); }
   if (missed.length) { presentEntry(st, missed[0], missed.slice(1)); return; }
   showLatest(st);
@@ -360,6 +367,13 @@ export function showLatest(st) {
   turnAlert();                                                    // (the turn come round here without a replay: a missed turn, a move while away)
   save(); liveSeen();
 }
+// The other side's turn has played back here (or was skipped; ui/turns.js turnAlert, from every way the turn comes round
+// to this phone): this player's turn clock starts now (net/moves.js dbGo; the server's own fallback is startBy).
+export function clockGo() {
+  const o = state.online, t = state.timer;
+  if (!o || !o.me || state.sc || state.winner || state.turn !== o.me || !t || t.for !== o.me || t.deadline != null || t.startBy == null || state.flash || state.spot) return;
+  dbGo(`${o.matchId}:${state.moves}:${t.startBy}`);
+}
 // A turn's time ran out (core/board.js timeoutMove): both phones say so once (the record's timer.miss).
 let missSeen = null;                                              // `${match}:${n}`: the last one seen here
 function sayMissed(st) {
@@ -401,7 +415,7 @@ export function presentEntry(st, e, rest) {
     const mini0 = before ? clone(before) : null;
     if (mini0) { state.squares[e.square] = clone(mini0); mergeMySides(); }   // (this side's own part goes on the square as it was, too: its hand or rack is not the other player's move's to change, and never turns to backs while their move replays)
     const el = liveElapsed(e);                                   // (watched live as it went: the move carries on from where it was shown, at its own speed)
-    const start = () => repStart({ sq: e.square, by: e.by, type: f.type, mini: mini0 ? mini0.mini : state.squares[e.square].mini, move: f.m, list: mini0 ? f.rep : null, timeout: !!f.timeout, speed: el ? 1 : replaySpeed(),
+    const start = () => repStart({ sq: e.square, by: e.by, type: f.type, mini: mini0 ? mini0.mini : state.squares[e.square].mini, move: f.m, list: mini0 ? f.rep : null, timeout: !!f.timeout, speed: el ? 1 : cond && cond.id === st.id && e.seq <= cond.to ? cond.speed : replaySpeed(),
       onMove: () => { state.squares[e.square] = clone(e.after); mergeMySides(); state.flash = f; state.done = done; state.draft = ''; state.notice = null; if (el) playFlash(false, 1, undefined, undefined, el); else playFlash(); save(); render(); } });
     showRemoteMove(e.square, moveLabel(e), mini0, start);
   }

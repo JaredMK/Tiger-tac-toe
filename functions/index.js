@@ -1078,6 +1078,7 @@ async function changeGame(id, uid, step, what) {   // what: the kind of change, 
 // A move (or Find the Pair's first card, kind 'pick'; Trivia's question turned up, kind 'reveal'; an attention game's Start, kind 'start') from the player on the move.
 exports.move = onCall(HOT, async req => {
   const uid = needUid(req), d = req.data || {}, id = gameId(d.game);
+  if (d.kind === 'go') return changeGame(id, uid, (rec, side) => E.applyOnlineGo(rec, side, now()), 'go');   // the other side's turn played back on this phone (or skipped): this player's clock starts now
   const i = d.square;
   if (!Number.isInteger(i) || i < 0 || i > 8) return { ok: false, reason: 'bad' };
   if (d.kind === 'pick') {

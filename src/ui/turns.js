@@ -5,7 +5,7 @@ import { SND, backSounds, matchEndSound, moveSounds } from '../audio/sound.js';
 import { mmIntro } from '../net/matchmaking.js';
 import { haptic } from '../net/platform.js';
 import { cutHaptics, moveHaptics, mySide } from './haptics.js';
-import { applyPending } from '../net/room.js';
+import { applyPending, clockGo } from '../net/room.js';
 import { ANIM, dur, durRate, holdRate, moveRate, replaySpeed, speedMode } from '../core/timer.js';
 import {
   CPU_MS, FLASH_MS, FLIP_MS, MEMORY_MS, RNG, app, commit, cpuPlan, cpuTimer, flashReady, flashTimer, holdTimer,
@@ -14,7 +14,7 @@ import {
 import { STAMP_MS } from './board.js';
 import { chaosStep } from './chaos.js';
 import { explainT } from './explainer.js';
-import { animMs, confetti, drawFx, drawLeft, fx, fxAt, momentPower, shake, stampFx, startFx, zoomBusy, zoomLeft } from './fx.js';
+import { animMs, confetti, turnBurst, drawFx, drawLeft, fx, fxAt, momentPower, shake, stampFx, startFx, zoomBusy, zoomLeft } from './fx.js';
 import { joinAsk } from './input.js';
 import { render } from './render.js';
 import { rep, repActive, repStart, repStop } from './replay.js';
@@ -34,6 +34,7 @@ let turnSeen = { id: null, turn: null };
 export const TURN_AFTER_STAMP_MS = 450;                            // (a square stamped just now: the alert once its thump has landed, never on top of it)
 export function turnAlert(prev, stamped) {
   const o = state.online, me = mySide();
+  clockGo();                                                          // (online: the turn's clock starts as the other side's turn has played here)
   if (!me || state.flash || state.spot) return;                      // (a replay still to play: the turn is not this player's yet)
   const id = o ? o.matchId || o.game || o.code || null : 'cpu:' + (state.id || ''), was = turnSeen.id === id ? turnSeen.turn : !o && prev ? prev : undefined;
   turnSeen = { id, turn: state.winner ? null : state.turn };
@@ -42,6 +43,7 @@ export function turnAlert(prev, stamped) {
     if (state.winner || state.turn !== me || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return;
     SND.play('yourTurn');
     haptic('turn');
+    if (state.screen === 'board') turnBurst(me);                      // (the comic YOUR TURN! burst over the board, about a second)
   };
   const z = zoomLeft();                                               // (back from a square: once the board is back, its stamp's thump after that)
   if (stamped) setTimeout(go, z + dur(TURN_AFTER_STAMP_MS)); else if (z > 0) setTimeout(go, z); else go();

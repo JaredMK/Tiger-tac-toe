@@ -35,6 +35,7 @@ function cells(point, cls, st) {
   return `<div class="kcells${cls || ''}"${st ? ` style="${st}"` : ''}>${TOTALS.map(n => { const k = kind(n); return `<i class="${k}">${n}${k === 'w' ? TICK : k === 'o' ? CROSS : ''}</i>`; }).join('')}</div>`;
 }
 const at12 = n => ((n - 2 + 0.5) / 11 * 100).toFixed(2);       // a total's place along the strip (%)
+export const CROLLS_MAX = 16;   // (two lines of eight at 320px)
 function crapsTable(mini, a, o) {
   const c = a && a.craps && a.craps.rolls && !a.craps.roll && a.craps.kind !== 'stop' ? a.craps : null, l = mini.last, turn = o.turn;
   const play = !!c, tim = c ? crapsTimes(c.rolls, c.point, c.was) : null;   // (reduced motion: the stylesheet plays none of it and hides the pairs and rings a later roll replaces)
@@ -70,9 +71,10 @@ function crapsTable(mini, a, o) {
     dice = `<div class="kpair idle" aria-hidden="true"><div class="kdice"><span class="kd">${die3d(d ? d[0] : null, { v: 0 })}</span><span class="kd b">${die3d(d ? d[1] : null, { v: 1 })}</span></div></div>`;
   }
   const glow = shown && (shown.result === 'win' || shown.result === 'lose') ? ` ${shown.result}${play ? ' late' : ''}` : '';
-  // the round's rolls in a row, each as it lands (one row, a fixed height: a long round shows its latest)
-  const all = shown ? shown.rolls : [];
-  const log = `<div class="crolls${all.length > 8 ? ' long' : ''}" aria-label="The round's rolls">${all.map((d, k) => `<span ${lateAt(k === n - 1 && shown.result === 'win' ? 'w' : k === n - 1 && shown.result === 'lose' ? 'o' : k === 0 && shown.point != null && shown.was == null ? 'p' : '', play ? landAt(tim, k) : null)}>${d[0] + d[1]}</span>`).join('')}</div>`;
+  // the round's rolls, each as it lands: centred, wrapping onto a second line in a box of two lines' fixed height (December
+  // 2026: never running to the screen's edge); a very long round shows its latest CROLLS_MAX
+  const all = shown ? shown.rolls : [], skip = Math.max(0, all.length - CROLLS_MAX);
+  const log = `<div class="crolls" aria-label="The round's rolls">${all.map((d, k) => (k < skip ? '' : `<span ${lateAt(k === n - 1 && shown.result === 'win' ? 'w' : k === n - 1 && shown.result === 'lose' ? 'o' : k === 0 && shown.point != null && shown.was == null ? 'p' : '', play ? landAt(tim, k) : null)}>${d[0] + d[1]}</span>`)).join('')}</div>`;
   const W = p => `<b class="${p}">${N(p)}</b>`;
   const res = c ? `<p ${lateAt('arcres ' + (c.result === 'win' ? 'ok' : 'no'), play ? tRes : null)} role="status">${crapsSay(c)}</p>`
     : l && (o.done || o.view || (o.held && l.by === turn)) ? `<p class="arcres ${l.result === 'win' ? 'ok' : l.result === 'lose' ? 'no' : ''}">${W(l.by)}: ${crapsSay(l)}</p>`

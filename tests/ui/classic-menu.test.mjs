@@ -78,7 +78,7 @@ test('Play Computer: its setup screen: You vs Computer, your side (Random), Mini
   assert.match(html, /data-act="cside" data-side="X"/); assert.match(html, /data-act="cside" data-side="O"/);
   assert.match(html, /<b>You<\/b>/); assert.match(html, /<b>Computer<\/b>/, 'You vs Computer');
   assert.match(html, /data-act="clevel" data-v="normal" aria-pressed="true"/, 'Normal by default'); assert.match(html, /data-act="clevel" data-v="easy"/); assert.match(html, /data-act="clevel" data-v="hard"/);
-  assert.match(html, /data-act="adv"[^>]*><span>Mini-games<\/span><small>All<\/small>/, 'Mini-games: All, and editable');
+  assert.match(html, /data-act="adv"[^>]*><span>Mini-games<\/span><small>All \d+<\/small>/, 'Mini-games: All, and editable');
   assert.match(html, /data-act="start"/); assert.match(html, /class="back" data-act="menu"/);
   assert.doesNotMatch(html, /data-ln=|data-act="kind"|data-act="gmode"/, 'no name to type, no mode');
   state.setup.vs = 'same';

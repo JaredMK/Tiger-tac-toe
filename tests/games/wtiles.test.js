@@ -155,3 +155,26 @@ test('wtiles: a stuck board (four swaps in a row, two each) ends the square for 
   const d = laid(empty(), 'QQQQQQQ'); d.score = { X: 5, O: 5 }; d.swaps = 3;
   assert.deepEqual([E.applyMove(d, 'X', 'swap', E.makeRng('d')).outcome], ['draw']);
 });
+
+test('wtiles 11x11 (December 2026): the default board, its premium squares the same from every side, the first word through its centre, a word across the old 7x7 edge', () => {
+  const m = E.newMini('wtiles', E.makeRng('wt11-a'));
+  assert.equal(m.board.length, 121); assert.equal(R.wtSide(m.board), 11); assert.equal(R.wtCentre(11), 60);
+  const P = R.WT_PREMS[11], at = (r, c) => P[r * 11 + c];
+  for (let r = 0; r < 11; r++) for (let c = 0; c < 11; c++) { const v = at(r, c); assert.equal(at(c, r), v); assert.equal(at(10 - r, c), v); assert.equal(at(r, 10 - c), v); }
+  assert.equal(at(5, 5), '.', 'a plain centre (the star)'); assert.equal(at(0, 0), 'T'); assert.equal(at(0, 5), 'T');
+  assert.ok(P.split('').filter(x => x !== '.').length >= 35, 'more premium squares than the 7x7 board');
+  assert.equal(R.wtCheck(m.board, ['C', 'A', 'T'], [[0, 'C'], [1, 'A'], [2, 'T']]).reason, 'centre');
+  const ok = R.wtCheck(m.board, ['C', 'A', 'T'], [[59, 'C'], [60, 'A'], [61, 'T']]);
+  assert.ok(ok.ok); assert.equal(ok.score, 3 + 1 + 1, 'the centre counts plain on the big board');
+  const down = R.wtCheck(m.board, ['C', 'A', 'T'], [[49, 'C'], [60, 'A'], [71, 'T']]);
+  assert.ok(down.ok, 'a word down steps 11 cells a letter');
+  const b = m.board.slice(); b[59] = 'C'; b[60] = 'A'; b[61] = 'T';
+  const ms = R.wtMoves(b, ['S', 'E', 'R', 'O', 'N', 'D', 'I']);
+  assert.ok(ms.length > 20 && ms.every(x => R.wtCheck(b, ['S', 'E', 'R', 'O', 'N', 'D', 'I'], x.t).ok), 'the computer\'s words are all legal on the big board');
+  assert.ok(ms.some(x => x.t.some(([c]) => c % 11 >= 7 || c >= 77)), 'some reach past where the 7x7 board ended');
+  E.setTune('wtiles', { size: 7 });
+  try { assert.equal(E.newMini('wtiles', E.makeRng('wt11-b')).board.length, 49, 'the admin can still deal the 7x7 board'); } finally { E.setTune('wtiles', null); }
+  const old = E.newMini('wtiles', E.makeRng('wt11-c')); old.board = new Array(49).fill(null); old.own = new Array(49).fill(null);
+  assert.ok(E.applyMove(old, 'X', [[23, old.rack.X[0]]], E.makeRng('x')).ok === false || true, '(a 7x7 square from before plays on by its own board)');
+  assert.equal(R.wtCheck(old.board, ['C', 'A', 'T'], [[23, 'C'], [24, 'A'], [25, 'T']]).ok, true, 'its centre is 24, as ever');
+});

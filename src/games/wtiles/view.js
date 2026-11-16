@@ -1,5 +1,5 @@
 // Word Tiles: the screen, the miniature, the move's words and sounds, and the inputs.
-import { WT, WT_CENTRE, WT_PREM, WT_VAL, wtCfg, wtCheck, wtTimes } from './rules.js';
+import { WT, WT_VAL, wtCentre, wtCfg, wtCheck, wtPrem, wtSide, wtTimes } from './rules.js';
 import { SND } from '../../audio/sound.js';
 import { N, REDUCED, mv, state, waitLine, zoomedType } from '../../ui/app.js';
 import { cfAnchor, cfFrom } from '../../ui/cardfly.js';
@@ -37,7 +37,7 @@ const blank = extra => `<span class="wtt bk"${extra || ''}></span>`;
 // The words a placement made, as the rules count them (the main one along the line, then each one across a new tile):
 // their cells on the board as it stands after the move.
 function wordCells(board, t) {
-  const n = WT.n, row = i => Math.floor(i / n), step = (i, d, s) => { const j = i + d * s; return j < 0 || j >= n * n || (d === 1 && row(j) !== row(i)) ? -1 : j; };
+  const n = wtSide(board), row = i => Math.floor(i / n), step = (i, d, s) => { const j = i + d * s; return j < 0 || j >= n * n || (d === 1 && row(j) !== row(i)) ? -1 : j; };
   const at = (i, d) => { let a = i; for (let j = step(a, d, -1); j >= 0 && board[j]; j = step(a, d, -1)) a = j; const cs = []; for (let j = a; j >= 0 && board[j]; j = step(j, d, 1)) cs.push(j); return cs; };
   if (!t || !t.length) return [];
   const cells = t.map(x => x[0]), rows = new Set(cells.map(row));
@@ -48,7 +48,7 @@ function wordCells(board, t) {
   return out;
 }
 // A box over a run of cells on the board (a word being counted): where it lies, in cells.
-const boxAt = cells => { const n = WT.n, a = cells[0], z = cells[cells.length - 1]; return `--c:${a % n};--r:${Math.floor(a / n)};--w:${(z % n) - (a % n) + 1};--h:${Math.floor(z / n) - Math.floor(a / n) + 1}`; };
+const boxAt = (cells, n) => { const a = cells[0], z = cells[cells.length - 1]; return `--c:${a % n};--r:${Math.floor(a / n)};--w:${(z % n) - (a % n) + 1};--h:${Math.floor(z / n) - Math.floor(a / n) + 1}`; };
 // The tiles this phone's rack kept through its own word, each with the slot it stood in before (old: the rack before,
 // used: the slots the word's tiles came from): new index -> old index.
 function keptFrom(old, used, now) {
@@ -63,7 +63,7 @@ function wtTable(mini, a, o) {
   const mine = !o.view && !o.locked && !s && turn === me && !!rack;
   const d = rack && (mine || (o.locked && !s && turn === me)) ? draftOf(mini, sq, me) : null;
   const pp = d ? popOf(d.key) : null;
-  const board = mini.board, own = mini.own || [], fly = !REDUCED;
+  const board = mini.board, own = mini.own || [], fly = !REDUCED, n = wtSide(board), prem = wtPrem(n), centre = wtCentre(n);
   const put = d ? d.put : [], putAt = new Map(put.map(([cell, k]) => [cell, k])), used = new Set(put.map(([, k]) => k));
   const tim = wtTimes(s), word = s && s.kind === 'word', swap = s && s.kind === 'swap', myMove = !!s && a.by === me && !!rack;
   // this phone's own word, laid from its draft: stamped where it lies; anyone else's (or one with no draft here): flown in from the mover's score
@@ -72,13 +72,13 @@ function wtTable(mini, a, o) {
   const fresh = word ? new Map(s.t.map(([cell], k) => [cell, k])) : new Map();
   const lastW = !s && mini.last && mini.last.kind === 'word' && Array.isArray(mini.last.t) ? new Set(mini.last.t.map(x => x[0])) : word ? new Set(s.t.map(x => x[0])) : new Set();
   const cells = board.map((l, i) => {
-    const pr = WT_PREM[i], pk = putAt.get(i);
-    let inner = '', cls = 'wtc' + (pr !== '.' ? ' p' + (pr === pr.toUpperCase() ? 'w' : 'l') + (pr === 'T' || pr === 't' ? '3' : '2') : '') + (i === WT_CENTRE ? ' ctr' : ''), host = '';
+    const pr = prem[i], pk = putAt.get(i);
+    let inner = '', cls = 'wtc' + (pr !== '.' ? ' p' + (pr === pr.toUpperCase() ? 'w' : 'l') + (pr === 'T' || pr === 't' ? '3' : '2') : '') + (i === centre ? ' ctr' : ''), host = '';
     if (l) {
       const k = fresh.get(i), tc = (own[i] ? 'o' + own[i] : '') + (lastW.has(i) ? ' last' : '');
       inner = k == null || !fly ? tile(l, tc) : stamped ? tile(l, tc + ' stamp', ` style="--t:${tim.dropAt(k)}ms"`) : tile(l, tc, cfFrom('wtp:' + a.by, tim.dropAt(k), { d: WT.dropMs - 80 }));
     } else if (pk != null) { const laid = pp && pp.lay === i && fly; inner = tile(rack[pk], 'dr o' + me, laid ? cfFrom('wts:' + pk, 0, { d: 220 }) : ''); cls += ' hasdr'; if (laid) host = fxAttr(pp.at); }
-    else if (i === WT_CENTRE) inner = STAR;
+    else if (i === centre) inner = STAR;
     else if (pr !== '.') inner = `<em>${PREM_NAME[pr]}</em>`;
     const can = mine && !l && (pk != null || (d && d.sel != null));
     if (can && pk == null) cls += ' can';
@@ -89,10 +89,10 @@ function wtTable(mini, a, o) {
   const ch = t.length ? wtCheck(board, rack, t, c) : null;
   // over the board: the draft's points on its word's last tile; a word played: each word it made ringed in turn with its points
   let over = '';
-  if (mine && ch && ch.ok) { const z = ch.words[0].cells[ch.words[0].cells.length - 1]; over = `<span class="wtchip ok" style="${boxAt([z])}">+${ch.score}</span>`; }
+  if (mine && ch && ch.ok) { const z = ch.words[0].cells[ch.words[0].cells.length - 1]; over = `<span class="wtchip ok${z % n === n - 1 ? ' er' : ''}${z < n ? ' et' : ''}" style="${boxAt([z], n)}">+${ch.score}</span>`; }
   if (word) {
     const b2 = s.board || board, wc = wordCells(b2, s.t);
-    over = (s.words || []).map((w, k, ws) => (wc[k] ? `<span class="wtwb${o.won && k === ws.length - 1 ? ' win' : ''}" style="${boxAt(wc[k])};--t:${fly ? tim.wordAt(k) : 0}ms"><b>+${w.s}</b></span>` : '')).join('');
+    over = (s.words || []).map((w, k, ws) => (wc[k] ? `<span class="wtwb${o.won && k === ws.length - 1 ? ' win' : ''}" style="${boxAt(wc[k], n)};--t:${fly ? tim.wordAt(k) : 0}ms"><b>+${w.s}</b></span>` : '')).join('');
   }
   // this phone's rack: the tiles in hand (the picked one lifted, a laid one's slot empty); after its own word the tiles kept close up and the new ones fly in from the bag; after its own swap all of them do
   const old = myMove && shown && shown.key === `${sq}:${me}` ? shown.rack : null;
@@ -132,7 +132,7 @@ function wtTable(mini, a, o) {
   const tal = p => arcTally(p, o, sc(p));
   const ok = mine && ch && ch.ok;
   const btns = o.view ? '' : `<div class="cbtns three"><button class="big" data-act="wtclr"${mine && put.length ? '' : ' disabled'}>Clear</button><button class="big" data-act="move" ${mv('swap')}${mine && !put.length ? '' : ' disabled'}>Swap</button><button class="big wtplay ${turn}${ok ? ' go' : ''}" data-act="move" ${mv(ok ? t : null)}${ok ? '' : ' disabled'}>Play${ok ? ` <b>+${ch.score}</b>` : ''}</button></div>`;
-  return `<div class="g-arc wtg"><div class="ctals">${tal('X')}${tal('O')}</div><div class="wtbw"><div class="wtboard ${fp}${d && d.sel != null ? ' aim' : ''}">${cells}${over}</div></div><div class="wtmid">${line}${bag}</div><div class="wtrack ${me}">${rackHtml}</div>${btns}</div>`;
+  return `<div class="g-arc wtg"><div class="ctals">${tal('X')}${tal('O')}</div><div class="wtbw"><div class="wtboard ${fp}${d && d.sel != null ? ' aim' : ''}${n > 7 ? ' big' : ''}" style="--n:${n}">${cells}${over}</div></div><div class="wtmid">${line}${bag}</div><div class="wtrack ${me}">${rackHtml}</div>${btns}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = wtTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d, won: !!a && (a.kind === 'claim' || a.kind === 'match') }); return g;
@@ -140,8 +140,8 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
 // The miniature: the shared board as it stands (the tiles laid as blocks tinted by whoever laid them, the premium squares
 // faintly tinted), and beside it each player's drawn mark over a bar of their points toward the target.
 export function miniature(mini, final) {
-  const c = wtCfg(mini), cs = 6.2, bw = cs * 7, own = mini.own || [], board = Array.isArray(mini.board) ? mini.board : [];
-  const cells = board.map((l, i) => { const pr = WT_PREM[i], cx = (i % 7) * cs, cy = 1 + Math.floor(i / 7) * cs; return `<rect class="twc${l ? ' on' + (own[i] ? ' o' + own[i] : '') : pr !== '.' ? ' p' + (pr === pr.toUpperCase() ? 'w' : 'l') : ''}" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" width="${(cs - 0.8).toFixed(1)}" height="${(cs - 0.8).toFixed(1)}" rx="0.9"/>`; }).join('');
+  const c = wtCfg(mini), own = mini.own || [], board = Array.isArray(mini.board) ? mini.board : [], n = wtSide(board), prem = wtPrem(n), cs = 6.2 * 7 / n, bw = cs * n;   // (the board drawn the same size whatever its side)
+  const cells = board.map((l, i) => { const pr = prem[i], cx = (i % n) * cs, cy = 1 + Math.floor(i / n) * cs; return `<rect class="twc${l ? ' on' + (own[i] ? ' o' + own[i] : '') : pr !== '.' ? ' p' + (pr === pr.toUpperCase() ? 'w' : 'l') : ''}" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" width="${(cs * 0.87).toFixed(2)}" height="${(cs * 0.87).toFixed(2)}" rx="${(cs * 0.15).toFixed(2)}"/>`; }).join('');
   const bar = (p, k) => {
     const f = Math.max(0, Math.min(1, (mini.score ? mini.score[p] : 0) / c.target)), x = bw + 5, y = 4 + k * 21, h = 14;
     return `<g class="twb ${p}"><g transform="translate(${x + 4} ${y + 4})">${markSvgG(p, 4)}</g><rect class="twbar" x="${x + 11}" y="${y}" width="5" height="${h}" rx="2"/><rect class="twfill" x="${x + 11}" y="${(y + h * (1 - f)).toFixed(2)}" width="5" height="${(h * f).toFixed(2)}" rx="2"/></g>`;
