@@ -600,3 +600,18 @@ main.scr.cc { overflow: clip; }
 .hdr .tside.mypop .pc[data-fx] { animation: myPop .75s cubic-bezier(.3, 1.6, .5, 1) both; transform-origin: 50% 90%; }
 @keyframes myPop { 0% { transform: none; } 30% { transform: translateY(-10px) scale(1.6) rotate(-8deg); } 60% { transform: translateY(0) scale(1.2); } 100% { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .board.myturn .hash[data-fx], .board.myturn .hash[data-fx] path, .hdr .tside.mypop .pc[data-fx] { animation: none; } }
+
+/* The setup screens' entrance (December 2026): every piece slides in on the one stagger (--k, the panels' own: 80 ms a step
+   from 140 ms), from alternating sides. Play Computer's Mini-games row (k 7) and note, and every piece of the host lobby,
+   Same phone and Join, had none; theirs run on the individual `translate` property, so a skewed button's own transform
+   is untouched, and, like the panels', only once as the screen comes in (never on a tap's redraw). */
+@keyframes ccinT { from { translate: -120vw 0; } } @keyframes ccinTR { from { translate: 120vw 0; } }
+.cpuset .adv, .cpuset .setup-foot .warn, :is(.hostset, .sameset, .join-scr) :is(.setup-box, .setup-foot) > * { animation: ccinT .45s cubic-bezier(.2, 1.3, .4, 1) backwards; animation-delay: calc(var(--k, 0) * 80ms + 140ms); }
+:is(.hostset, .sameset, .join-scr) :is(.setup-box, .setup-foot) > :nth-child(even) { animation-name: ccinTR; }
+:is(.hostset, .sameset, .join-scr) .setup-box > :nth-child(1) { --k: 1; } :is(.hostset, .sameset, .join-scr) .setup-box > :nth-child(2) { --k: 2; }
+:is(.hostset, .sameset, .join-scr) .setup-box > :nth-child(3) { --k: 3; } :is(.hostset, .sameset, .join-scr) .setup-box > :nth-child(4) { --k: 4; }
+:is(.hostset, .sameset, .join-scr) .setup-box > :nth-child(5) { --k: 5; } :is(.hostset, .sameset, .join-scr) .setup-box > :nth-child(6) { --k: 6; }
+:is(.hostset, .sameset, .join-scr) .setup-box > :nth-child(n+7) { --k: 7; }
+:is(.hostset, .sameset, .join-scr) .setup-foot > :nth-child(1) { --k: 8; } :is(.hostset, .sameset, .join-scr) .setup-foot > :nth-child(2) { --k: 9; }
+.cpuset .adv { --k: 7; } .cpuset .setup-foot .warn { --k: 9; }
+@media (prefers-reduced-motion: reduce) { .cpuset .adv, .cpuset .setup-foot .warn, :is(.hostset, .sameset, .join-scr) :is(.setup-box, .setup-foot) > * { animation: none; } }
