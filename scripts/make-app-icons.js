@@ -10,7 +10,7 @@
 //   node scripts/make-app-icons.js        (npm run app-icons)
 const fs = require('node:fs');
 const path = require('node:path');
-const { INK, CREAM, O, X, fonts, toonX, toonO, svg, burst, ol2 } = require('./make-share-images.js');
+const { INK, CREAM, O, X, fonts, toonX, toonO, svg, chaos } = require('./make-share-images.js');
 const { OPTIONS } = require('./icon-options.js');
 const ICON_SVG = OPTIONS.find(o => o.id === 'patchwork').draw();   // the app's icon (the icon options' round 1, /icons.html)
 const IOS_ICON = path.join(__dirname, '..', 'ios', 'App', 'App', 'Assets.xcassets', 'AppIcon.appiconset', 'AppIcon-512@2x.png');
@@ -26,17 +26,18 @@ body{background:${bg};position:relative;font-family:'Patrick Hand',cursive;color
 ${css}</style>${body}`;
 // The icon: the Patchwork drawing at any size (an SVG, so every size is drawn, not scaled down from a picture).
 const ICON = s => `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;width:${s}px;height:${s}px;overflow:hidden}svg{display:block;width:${s}px;height:${s}px}</style>${ICON_SVG}`;
-// The launch screen: the title alone, centred (the same title as the share image, at the launch image's scale), with the two
-// characters either side, on the plain cream (no rays: the phone shows it centred over the same cream, docs/ios-plan.md, so
-// its edges never show).
+// The launch screen: the game's logo as the main menu draws it (Comic Chaos, December 2026: TIC TAC in Bangers, yellow in
+// an ink outline with a hard shadow, over the white CHAOS! burst with its red word: the share image's own burst), with the
+// two characters either side, on the plain cream (no rays or halftone: the phone shows it centred over the same cream,
+// docs/ios-plan.md, so its edges never show and the menu's loud page arrives with the game).
 const LAUNCH = s => page(s, s, `
-.title{position:absolute;left:0;right:0;top:${s * .30}px;display:flex;flex-direction:column;align-items:center;gap:${s * .005}px}
-.tt{font-family:'Luckiest Guy',sans-serif;font-size:${s * .14}px;line-height:1;color:${O};text-shadow:${ol2},${s * .006}px ${s * .009}px 0 ${INK};letter-spacing:${s * .003}px;transform:rotate(-2deg)}
-.bw{width:${s * .46}px;height:${s * .23}px;transform:rotate(3deg)} .bw svg{width:100%;height:100%;overflow:visible}
-.bt{font-family:'Luckiest Guy',sans-serif;fill:#fff8e8;stroke:${INK};stroke-width:5;paint-order:stroke fill;letter-spacing:2px}
-.pal{position:absolute;top:${s * .43}px;width:${s * .15}px;height:${s * .15}px} .pal svg{width:100%;height:100%;overflow:visible}
-.pal.l{left:${s * .14}px;transform:rotate(-10deg)} .pal.r{right:${s * .14}px;transform:rotate(10deg)}`,
-`<div class="title"><div class="tt">TIC TAC</div><div class="bw">${burst('CHAOS!', 300, 150, 66)}</div></div>
+.title{position:absolute;left:0;right:0;top:${s * .285}px;display:flex;flex-direction:column;align-items:center}
+.tt{font-family:'Bangers',sans-serif;font-size:${s * .17}px;line-height:.95;color:${O};-webkit-text-stroke:${s * .016}px ${INK};paint-order:stroke fill;letter-spacing:${s * .007}px;transform:rotate(-4deg);text-shadow:${s * .009}px ${s * .01}px 0 ${INK}}
+.bw{width:${s * .5}px;height:${s * .25}px;margin-top:${-s * .02}px;transform:rotate(3deg)} .bw svg{width:100%;height:100%;overflow:visible}
+.ct{font-family:'Bangers',sans-serif;fill:${X};stroke:${INK};stroke-width:7;paint-order:stroke fill;letter-spacing:4px}
+.pal{position:absolute;top:${s * .47}px;width:${s * .15}px;height:${s * .15}px} .pal svg{width:100%;height:100%;overflow:visible}
+.pal.l{left:${s * .12}px;transform:rotate(-10deg)} .pal.r{right:${s * .12}px;transform:rotate(10deg)}`,
+`<div class="title"><div class="tt">TIC TAC</div><div class="bw">${chaos}</div></div>
 <div class="pal l">${svg(toonX())}</div><div class="pal r">${svg(toonO())}</div>`);
 // The studio's mark: the logo's drawing without its background square, on a transparent canvas.
 const MARK = s => `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;width:${s}px;height:${s}px;overflow:hidden;background:transparent}svg{width:${s}px;height:${s}px;display:block}</style>${LOGO.replace(/<rect width="1024" height="1024"[^>]*\/>\s*/, '')}`;

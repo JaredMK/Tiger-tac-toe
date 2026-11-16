@@ -3,7 +3,7 @@ import { AGAIN_TUNE } from '../../core/tune.js';
 
 export const info = { name: 'Rock Paper Scissors', hint: 'Throw against the house. First to 3 wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.15.0';   // the oldest client version that has this game (core/client.js; 1.15.0: the house throws at random, no deck)
+export const minVersion = '1.17.0';   // (1.17.0: the first version with its rules as they are now, December 2026 audit; was 1.15.0); the oldest client version that has this game (core/client.js; 1.15.0: the house throws at random, no deck)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const explainer = { name: 'Rock Paper Scissors', play: 'Pick rock, paper or scissors against the house. The house throws at random. Tie? Throw again.{goAgain}', win: 'Win {goal} throws.' };
 // {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).

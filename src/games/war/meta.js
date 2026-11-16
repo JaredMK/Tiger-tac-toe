@@ -3,7 +3,7 @@ import { AGAIN_TUNE } from '../../core/tune.js';
 
 export const info = { name: 'War',          hint: 'Flip against the dealer: the higher card wins the round. Win 3 rounds' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.5.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const minVersion = '1.14.0';   // (1.14.0: the first version with its rules as they are now, December 2026 audit; was 1.5.0); the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds (each player's own round against the dealer, from their own deck)
 export const explainer = { name: 'War', play: 'Tap Flip: your card against the dealer\'s, and the higher card wins the round. A tie goes to war: three cards down each, then flip again. A war won counts {warWorth}.{goAgain}', win: 'Win {goal} rounds.' };   // ({goal}, {warWorth}: its settings, TUNE below)

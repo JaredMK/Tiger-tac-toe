@@ -29,12 +29,26 @@ const localImports = (code, base) => code.split(base).join('./');
 async function vendorSdk(dir) {
   const v = versionOfSdk(), base = `https://www.gstatic.com/firebasejs/${v}/`;
   fs.mkdirSync(dir, { recursive: true });
-  for (const f of SDK) {
-    const r = await fetch(base + f);
-    if (!r.ok) throw new Error(`${base + f}: HTTP ${r.status}`);
-    fs.writeFileSync(path.join(dir, f), localImports(await r.text(), base));
+  try {
+    for (const f of SDK) {
+      const r = await fetch(base + f);
+      if (!r.ok) throw new Error(`${base + f}: HTTP ${r.status}`);
+      fs.writeFileSync(path.join(dir, f), localImports(await r.text(), base));
+    }
+  } catch (e) {                                                  // Google's CDN out of reach (a build machine whose network allows the package registry alone): the same files from the npm package of that version
+    console.log(`  (the CDN did not answer: ${e.message}; taking firebase@${v}'s own copies of the files from the npm registry)`);
+    for (const f of SDK) fs.writeFileSync(path.join(dir, f), localImports(fs.readFileSync(path.join(npmSdk(v), f), 'utf8'), base));
   }
   return v;
+}
+// The npm package `firebase` at version v, unpacked in a temp folder: it carries the CDN's own builds (firebase-app.js ...).
+let npmDir = null;
+function npmSdk(v) {
+  if (npmDir) return npmDir;
+  const tmp = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'ttc-firebase-'));
+  execSync(`npm pack firebase@${v} --silent`, { cwd: tmp, stdio: ['ignore', 'pipe', 'inherit'] });
+  execSync(`tar -xzf firebase-${v}.tgz ${SDK.map(f => 'package/' + f).join(' ')}`, { cwd: tmp });
+  return (npmDir = path.join(tmp, 'package'));
 }
 async function buildApp(env, sha, opts) {
   build(env, sha, OUT);

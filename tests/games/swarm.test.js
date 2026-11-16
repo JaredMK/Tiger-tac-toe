@@ -14,7 +14,7 @@ const cfg = () => E.tuneLive('swarm');
 test('star swarm: the square as dealt (the registry, its meta, its settings)', () => {
   const m = E.newMini('swarm', E.makeRng('deal'));
   assert.equal(m.type, 'swarm'); assert.deepEqual(m.score, { X: 0, O: 0 }); assert.deepEqual(m.tries, { X: 0, O: 0 }); assert.equal(m.seed.X, m.seed.O);
-  assert.equal(M.turnSecs, 60); assert.equal(M.realTime, true); assert.equal(M.category, 'skill'); assert.equal(M.superChaos, false); assert.equal(M.minVersion, '1.5.0'); assert.equal(M.release, 'admin');
+  assert.equal(M.turnSecs, 60); assert.equal(M.realTime, true); assert.equal(M.category, 'skill'); assert.equal(M.superChaos, false); assert.equal(M.minVersion, '1.14.0'); assert.equal(M.release, 'admin');
   assert.ok(E.TYPES.includes('swarm')); assert.ok(E.TEST_TYPES.includes('swarm'), 'admin only by default');
   assert.equal(R.swarmGoal(m), cfg().target);
   assert.match(M.explainer.win, /\{target\}/, 'the explainer shows the target from TUNE');

@@ -4,7 +4,7 @@ import { AGAIN_TUNE } from '../../core/tune.js';
 export const info = { name: 'Word Tiles', hint: 'Lay a word from your tiles on the shared board. First to the target' };
 export const samePhone = false;   // never two people on one phone: each rack would be on show to the other (games/index.js NO_SAME_PHONE)
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.11.0';   // the oldest client version that has this game (core/client.js)
+export const minVersion = '1.14.0';   // (1.14.0: the first version with its rules as they are now, December 2026 audit; was 1.11.0); the oldest client version that has this game (core/client.js)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const explainer = { name: 'Word Tiles', play: 'Make one word from your tiles on the shared board, in a row or a column. The first goes through the centre; every other word joins the tiles already there. Tinted squares count extra. Your tiles are yours alone. No word? Swap your tiles.{goAgain}', win: 'First to {target} points. If neither of you can play (two swaps each in a row), the higher score wins.' };   // ({target}: its setting, TUNE below)
 // The premium squares, one line each, under Play and Win in the "?" (ui/explainer.js: explainerList).

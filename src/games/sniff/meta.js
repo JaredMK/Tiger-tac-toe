@@ -3,7 +3,7 @@ import { MODE_TUNE } from '../../core/race.js';
 
 export const info = { name: 'Sniff',        hint: 'Walk the dog, any of 8 ways. Hotter, colder or the same? Find the treasure' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.15.0';   // (1.15.0: distance in steps, a diagonal counting one)   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const minVersion = '1.16.0';   // (1.16.0: the first version with its rules as they are now, December 2026 audit; was 1.15.0); (1.15.0: distance in steps, a diagonal counting one)   ; the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds (its own form: a dog each)
 export const explainer = { name: 'Sniff', play: 'Move the dog one step, any of 8 ways. A diagonal step counts the same as a straight one. You\'ll see if it\'s getting hotter, colder or the same.', win: 'Be the one who finds the treasure.' };

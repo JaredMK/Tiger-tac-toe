@@ -3,7 +3,7 @@ import { AGAIN_TUNE } from '../../core/tune.js';
 
 export const info = { name: 'Cup Pong',     hint: 'Flick to throw. Sink all three cups' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const minVersion = '1.8.0';   // (1.8.0: the first version with its rules as they are now, December 2026 audit; was 1.0.0); the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Cup Pong', play: 'Flick up to throw: aim with the angle, throw harder with a faster flick.{goAgain}', win: 'Sink all 3 of your cups.' };

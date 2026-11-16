@@ -26,6 +26,7 @@ test('client: every mini-game declares the oldest client that has it, never newe
   for (const t of E.TYPES.concat(E.OLD_TYPES)) {
     const v = GAMES[t].meta.minVersion;
     assert.ok(E.versionOk(v), `${t}: minVersion ${v}`);
+    assert.ok(E.cmpVersion(v, E.CLIENT_VERSION) <= 0, `${t}: minVersion ${v} is no newer than this client (${E.CLIENT_VERSION}): the current build has every game`);
     assert.ok(E.cmpVersion(v, E.CLIENT_VERSION) <= 0, `${t}: needs ${v}, this code is ${E.CLIENT_VERSION}`);
   }
 });
@@ -41,8 +42,10 @@ test('client: a match deals only games both clients have and that are on for bot
   } finally { GAMES.c4 = was; }
   const rel = { platform: { ios: { hangman: false } } };
   assert.ok(E.platformOff('hangman', rel, 'ios') && !E.platformOff('hangman', rel, 'web'));
-  assert.deepEqual(E.clientTypes(['ttt', 'hangman'], [{ p: 'web' }, { p: 'web' }], rel), ['ttt', 'hangman'], 'web and web: on');
-  assert.deepEqual(E.clientTypes(['ttt', 'hangman'], [{ p: 'web' }, { p: 'ios' }], rel), ['ttt'], 'cross-play with iOS: off for both');
+  const V = E.CLIENT_VERSION;
+  assert.deepEqual(E.clientTypes(['ttt', 'hangman'], [{ v: V, p: 'web' }, { v: V, p: 'web' }], rel), ['ttt', 'hangman'], 'web and web: on');
+  assert.deepEqual(E.clientTypes(['ttt', 'hangman'], [{ v: V, p: 'web' }, { v: V, p: 'ios' }], rel), ['ttt'], 'cross-play with iOS: off for both');
+  assert.deepEqual(E.clientTypes(['ttt', 'hangman'], [{ v: V, p: 'web' }, { v: '1.2.0', p: 'ios' }], {}), ['ttt'], 'an app from before the December 2026 audit (1.2.0) is dealt only what it can still play');
   assert.ok(!E.platformOff('ttt', { platform: { ios: { ttt: true } } }, 'ios'), 'a switch only ever turns a game off');
   assert.ok(E.isReleased('hangman', rel), 'the per-platform node is no game of its own');
 });

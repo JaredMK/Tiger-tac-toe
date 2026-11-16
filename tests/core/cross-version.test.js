@@ -14,7 +14,7 @@ const OLD = { v: '0.9.0', p: 'web' };                 // older than every game's
 test('lackedTypes: a match dealt for this client lacks nothing; an unknown mini-game, or one newer than the client, is lacked, in a square or in the match\'s list', () => {
   const st = E.newMatch(E.makeRng('cv'), { games: ['ttt', 'c4', 'hilo'] });
   assert.deepEqual(E.lackedTypes(WEB, st), []);
-  assert.deepEqual(E.lackedTypes(undefined, st), [], 'a client that says nothing is the first web page, which has every game of the first release');
+  assert.deepEqual(E.lackedTypes(undefined, st), ['hilo'], 'a client that says nothing is the first web page (1.0.0): it has the games unchanged since, and lacks one whose rules moved on (Higher/Lower, 1.14.0)');
   const unknown = JSON.parse(JSON.stringify(st));
   unknown.squares[3].mini.type = 'zzz';
   assert.deepEqual(E.lackedTypes(WEB, unknown), ['zzz'], 'a type this code has no game for');

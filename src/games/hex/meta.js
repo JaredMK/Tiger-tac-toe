@@ -2,7 +2,7 @@
 
 export const info = { name: 'Hex',          hint: 'X joins left to right, O joins top to bottom' };
 export const release = 'admin';   // the default (the admin's dashboard can change it): Admin only: with no swap rule the first mover wins far over 60% between the computer players (tests/sim/hex.sim.js)
-export const minVersion = '1.1.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const minVersion = '1.8.0';   // (1.8.0: the first version with its rules as they are now, December 2026 audit; was 1.1.0); the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const explainer = { name: 'Hex', play: 'Claim a hex. X connects left to right, O connects top to bottom.', win: 'Complete your path.' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): read through tune(mini).

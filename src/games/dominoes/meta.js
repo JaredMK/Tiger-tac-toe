@@ -2,7 +2,7 @@
 
 export const info = { name: 'Dominoes',     hint: 'Match the ends of the line. First to empty their hand wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.5.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const minVersion = '1.19.0';   // (1.19.0: the first version with its rules as they are now, December 2026 audit; was 1.5.0); the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = false;   // Super Chaos: never dealt there (a turn-based shared line with hidden hands cannot be played in simultaneous rounds)
 export const samePhone = false;   // Same phone: never dealt there (each player's hand would be on show to the other; read by the setup's checklist and the local deal once the core knows the flag)

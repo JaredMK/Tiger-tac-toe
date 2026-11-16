@@ -2,7 +2,7 @@
 
 export const info = { name: 'Pinball',      hint: 'Tap left or right to flip. Light every target first' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.13.0';   // (1.13.0: the November 2026 rework: a new table and the ball worked out in the engine's own arithmetic, a move its inputs alone; an older client's ball would not be the server's) the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const minVersion = '1.16.0';   // (1.16.0: the first version with its rules as they are now, December 2026 audit; was 1.13.0); (1.13.0: the November 2026 rework: a new table and the ball worked out in the engine's own arithmetic, a move its inputs alone; an older client's ball would not be the server's) the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const turnSecs = 60;   // an online turn's time in this game (core/timer.js turnSecs): 60 seconds, against the match's 30
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
