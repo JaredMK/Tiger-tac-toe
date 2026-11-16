@@ -117,6 +117,35 @@ function pairQueue(queue, now, byRating = RATINGS_ENABLED) {
   }
   return pairs;
 }
+// The hidden skill rating (December 2026): an Elo number per account (skill/{uid}: the server's alone, never read by a
+// phone, never in a game, a result or a profile), moved only by finished Find Match matches between two people
+// (functions/index.js finishGame: skillUpdate), used only to pair searchers. Pairs the closest skills first; the range
+// widens with the longer wait of the two and is anyone at all after SKILL_OPEN_MS, so two people searching together are
+// always paired well before the computer is offered (about 20 s).
+const SKILL_START = 1000, SKILL_K = 32, SKILL_OPEN_MS = 10000;
+function skillRange(waitMs) { return waitMs >= SKILL_OPEN_MS ? Infinity : 200 + 100 * Math.floor(Math.max(0, waitMs) / 2000); }
+const skillOf = e => (e && Number.isFinite(e.skill) ? e.skill : SKILL_START);
+function pairBySkill(queue, now) {
+  const waiting = Object.entries(queue || {}).filter(([, e]) => e && !e.game && Number.isFinite(e.since));
+  const cands = [];
+  for (let i = 0; i < waiting.length; i++) {
+    for (let j = i + 1; j < waiting.length; j++) {
+      const [ua, a] = waiting[i], [ub, b] = waiting[j];
+      const gap = Math.abs(skillOf(a) - skillOf(b)), first = Math.min(a.since, b.since);
+      if (gap <= skillRange(now - first)) cands.push({ ua, ub, gap, first });
+    }
+  }
+  cands.sort((x, y) => x.gap - y.gap || x.first - y.first || (x.ua + x.ub < y.ua + y.ub ? -1 : 1));
+  const used = new Set(), pairs = [];
+  for (const c of cands) {
+    if (used.has(c.ua) || used.has(c.ub)) continue;
+    used.add(c.ua); used.add(c.ub);
+    pairs.push([c.ua, c.ub]);
+  }
+  return pairs;
+}
+// Both skills after a match (scoreX: 1 X won, 0 O won, 0.5 a draw).
+function skillUpdate(sx, so, scoreX) { return elo(Number.isFinite(sx) ? sx : SKILL_START, Number.isFinite(so) ? so : SKILL_START, scoreX, SKILL_K); }
 
 // ---------- results ----------
 // A match ends with a winner, X or O, or as a draw (winner 'draw': neither side could still make a line).
@@ -228,6 +257,6 @@ module.exports = {
   stagingAllows,
   LOCAL_REASONS, checkLocal, publicProfile, PROFILE_KEYS,
   USERNAME_RE, usernameProblem, unleet, flatten, badWordIn, BAD, BAD_TOKENS, ALLOW, RATINGS_ENABLED, ELO_K, START_RATING, LEADERBOARD_MIN_GAMES, expected, elo,
-  FIND_MATCH_TIMER, FIND_MATCH_MODES, QUEUES, queueKey, ratingRange, pairQueue, howEnded, resultFor,
+  FIND_MATCH_TIMER, FIND_MATCH_MODES, QUEUES, queueKey, ratingRange, pairQueue, SKILL_START, SKILL_OPEN_MS, skillRange, pairBySkill, skillUpdate, howEnded, resultFor,
   recordDelta, squaresFor, recountHistory, recountSides,
 };

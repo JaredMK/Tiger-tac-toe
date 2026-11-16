@@ -19,7 +19,7 @@ const crypto = require('node:crypto');
 const START_RATING = 1200;                                              // (functions/serverRules.js START_RATING)
 const DELETE = ['rooms', 'games', 'gpresence', 'glive', 'presence', 'reacts', 'active', 'queue', 'botGames', 'history', 'localHistory',
   'matchLogs', 'matchLogIndex', 'matchLogRoom', 'stats', 'statsSeen', 'localStats', 'oppStats', 'leaderboard', 'botStats',
-  'alertLog', 'alertStats', 'alertState', 'botsLock', 'devices', 'devlog', 'lastSeen', 'reports', 'rate'];
+  'alertLog', 'alertStats', 'alertState', 'botsLock', 'devices', 'devlog', 'lastSeen', 'reports', 'rate', 'skill'];
 const KEEP = ['users', 'profiles', 'usernames', 'admin', 'config', 'releases', 'features', 'bots', 'meta', 'review', 'rate', 'prefs', 'templates'];   // (prefs: a player's own settings, the Animation choice; templates: the admin's game templates)
 const RECORD = { wins: 0, losses: 0, draws: 0, games: 0, rating: START_RATING, friend: null, minis: null };
 const PUBLIC_RECORD = ['wins', 'losses', 'draws', 'games', 'friend', 'minis'];   // the record's part of a public profile (profiles/{uid}: no rating), put back to 0-0-0 with it

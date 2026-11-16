@@ -417,7 +417,7 @@ exports.deleteAccount = onCall(CALL, async req => {
   const name = await usernameOf(uid);
   if (name && (await db.ref(`usernames/${name.toLowerCase()}`).get()).val() === uid) up[`usernames/${name.toLowerCase()}`] = null;
   for (const key of ALL_QUEUES()) up[`queue/${key}/${uid}`] = null;
-  for (const node of ['users', 'profiles', 'history', 'oppStats', 'localStats', 'localHistory', 'lastSeen', 'active', 'leaderboard', 'prefs', 'templates']) up[`${node}/${uid}`] = null;   // (templates: the admin's game templates go with the account)
+  for (const node of ['users', 'profiles', 'history', 'oppStats', 'localStats', 'localHistory', 'lastSeen', 'active', 'leaderboard', 'prefs', 'templates', 'skill']) up[`${node}/${uid}`] = null;   // (skill: the hidden rating)   // (templates: the admin's game templates go with the account)
   up[`review/flaggedNames/names/${uid}`] = null;
   statsUp(S.periodUpdates('deletedAccounts', t), up);
   await db.ref().update(up);
@@ -443,6 +443,7 @@ exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async
   // The entry first, then the active game: a pairing that removes the entry writes the active game in the
   // same update, so if the entry is gone by the transaction below, one of the two reads shows why.
   const prev = (await db.ref(`queue/${key}/${uid}`).get()).val();
+  const skill = (await db.ref(`skill/${uid}`).get()).val();      // the hidden skill rating (serverRules.js pairBySkill): pairing alone, never sent
   const act = await activeGame(uid);
   if (act) return matchedOf(act);
   if (!(await findMatchOn())) {                                 // switched off on the admin page: out of the queue, nobody new is paired
@@ -464,8 +465,8 @@ exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async
     if (!q[uid] && prev && (prev.game || t - prev.seen <= STALE_MS)) { vanished = true; return cur === null ? null : undefined; }
     for (const [u, e] of Object.entries(q)) if (!e || (!e.game && t - e.seen > STALE_MS)) delete q[u];
     const me = q[uid] || { since: t };
-    q[uid] = Object.assign(me, { name: prof.username, seen: t, rec: recordOf(prof), client}, R.RATINGS_ENABLED ? { rating: prof.rating } : {});
-    for (const [a, b] of R.pairQueue(q, t)) {
+    q[uid] = Object.assign(me, { name: prof.username, seen: t, rec: recordOf(prof), client, skill: Number.isFinite(skill) ? skill : R.SKILL_START }, R.RATINGS_ENABLED ? { rating: prof.rating } : {});
+    for (const [a, b] of (R.RATINGS_ENABLED ? R.pairQueue(q, t) : R.pairBySkill(q, t))) {
       const id = db.ref('games').push().key, xFirst = crypto.randomInt(2) === 0;
       q[a] = Object.assign(q[a], { game: id, side: xFirst ? 'X' : 'O', vs: b, at: t });
       q[b] = Object.assign(q[b], { game: id, side: xFirst ? 'O' : 'X', vs: a, at: t });
@@ -1158,6 +1159,11 @@ async function finishGame(id) {
     if (!counted && pub.players[s].uid === bg.human) { result.records[s] = r0; continue; }   // left out of the record: as it was
     recordUp(up, pub.players[s].uid, res, final.squares, s, false);
     result.records[s] = { wins: r0.wins + d.wins, losses: r0.losses + d.losses, draws: r0.draws + d.draws };   // as the results screen shows it
+  }
+  if (!friend && !bg && !pub.chaos) {                              // the hidden skill rating (two people, Find Match): moved by the result, never sent anywhere
+    const [sx, so] = await Promise.all(['X', 'O'].map(s => db.ref(`skill/${pub.players[s].uid}`).get().then(v => v.val())));
+    const nx = R.skillUpdate(sx, so, st.winner === 'X' ? 1 : st.winner === 'O' ? 0 : 0.5);
+    up[`skill/${pub.players.X.uid}`] = nx.X; up[`skill/${pub.players.O.uid}`] = nx.O;
   }
   if (R.RATINGS_ENABLED && pub.mode === 'ranked' && !bg) {        // (switched off for now; never for a game against a bot)
     const scoreX = st.winner === 'X' ? 1 : st.winner === 'O' ? 0 : 0.5;

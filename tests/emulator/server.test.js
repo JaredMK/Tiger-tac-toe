@@ -1124,6 +1124,10 @@ test('bots: never paired unasked (no hidden bots); a lone searcher who asks gets
   const g = await pairUp(b, a);
   assert.equal(await get(`botGames/${g.id}`), null, 'two people: no bot');
   await a.call('resign', { game: g.id }); await recorded(g.id);
+  const ska = await get(`skill/${a.uid}`), skb = await get(`skill/${b.uid}`);
+  assert.ok(ska < 1000 && skb > 1000, `the hidden skill moved by the result (${ska}, ${skb})`);
+  await denied(a.read(`skill/${a.uid}`), 'the hidden skill, even their own');
+  assert.equal((await get(`games/${g.id}/pub`)).players.X.skill, undefined, 'never in the game');
   // asked for: the computer
   const c = await player('Lonely_C');
   const r = await soloUntilBot(c);
