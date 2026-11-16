@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Tic Tac Chaos: your-turn indicator</title>
+<link rel="stylesheet" href="src/ui/fonts.css">
+<link rel="stylesheet" href="assets/turn-indicator/ti.css">
+<script type="module" src="assets/turn-indicator/ti.js"></script>
+</head><body>
+<header class="top"><div class="wrap">
+  <p class="kicker">Mock-ups · staging only · nothing in the game has changed</p>
+  <h1>Your turn, without the blocker</h1>
+  <p class="lede">The live "YOUR TURN!" burst lands in the middle of the board for a second every turn and covers it. Here are five ways to say the same thing that never cover the board or catch a tap: each is plain within half a second and settles within about one. Every option keeps the turn chime and the double buzz.</p>
+  <div class="ctrls">
+    <button class="pn y" data-act="all" aria-pressed="false"><b>Play all, back to back</b></button>
+    <button class="pn w" data-act="sound" aria-pressed="true"><b>Sound: on</b></button>
+  </div>
+  <p class="hint">Tap <b>Simulate turn change</b> on any phone: the other player's move ends and it becomes yours. Tap squares while it plays: every tap is counted, so you can see nothing gets in the way.</p>
+</div></header>
+<main class="wrap">
+  <section class="grid" id="opts"></section>
+  <section class="rec" id="pick">
+    <h2>Recommendation</h2>
+    <p><b>Combine 2 and 1:</b> the banner sweeps across the top bar and tucks into the "Your move!" bubble, then the # lines hold a soft tint in your colour while it is your turn.</p>
+    <ul>
+      <li><b>The moment:</b> the banner is the loudest of the five and the most Comic Chaos, but it only crosses the top bar, so the board never goes dark or gets covered. It lands where your eye already looks for whose turn it is.</li>
+      <li><b>The state:</b> once the banner has gone, the tinted lines say "still your turn" for as long as you think, right where you are looking. They need no text and no motion.</li>
+      <li><b>Why not the others:</b> the edge glow (5) is strong but gets confused with "Connection lost" and the notch. The ripple (4) looks great on an empty board and nearly vanishes late in a match. The character pop (3) is charming but small, and is a good extra beside 2.</li>
+      <li><b>Sound and touch:</b> the chime and the double buzz fire as the banner arrives, as they do now.</li>
+    </ul>
+    <p class="hint">Pick one or a combination, and say whether you want anything changed (colours, timing, words).</p>
+  </section>
+</main>
+</body></html>

@@ -103,3 +103,22 @@ test('envs: the menus\' design review page (design-review.html) is built into st
     assert.ok(!fs.existsSync(path.join(tmp, 'p', 'design-review.html')) && !fs.existsSync(path.join(tmp, 'p', 'assets', 'design-review')), 'production never has it');
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
+
+test('envs: the your-turn indicator mock-ups (turn-indicator.html) are built into staging only, linked from nowhere in the game, and keep to the site\'s CSP', () => {
+  const os = require('node:os');
+  const page = fs.readFileSync(path.join(ROOT, 'turn-indicator.html'), 'utf8');
+  assert.match(page, /<meta name="robots" content="noindex, nofollow">/);
+  assert.doesNotMatch(page, /<script(?![^>]*\bsrc=)[^>]*>/, 'no inline script');
+  for (const m of page.matchAll(/(?:src|href)="(assets\/turn-indicator\/[^"]+)"/g)) assert.ok(fs.existsSync(path.join(ROOT, m[1])), `${m[1]} exists`);
+  const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(f => (f.isDirectory() ? walk(path.join(d, f.name)) : [path.join(d, f.name)]));
+  const named = walk(path.join(ROOT, 'src')).concat(['index.html', 'admin.html', 'admin.js', 'privacy.html'].map(f => path.join(ROOT, f))).filter(f => /turn-indicator/.test(fs.readFileSync(f, 'utf8')));
+  assert.deepEqual(named.map(f => path.relative(ROOT, f)), []);
+  if (typeof site.build !== 'function') return;
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ttc-site-'));
+  try {
+    site.build('staging', 'abcdef1234567', path.join(tmp, 's'));
+    assert.ok(fs.existsSync(path.join(tmp, 's', 'turn-indicator.html')) && fs.existsSync(path.join(tmp, 's', 'assets', 'turn-indicator', 'ti.js')), 'staging has it');
+    site.build('production', 'abcdef1234567', path.join(tmp, 'p'));
+    assert.ok(!fs.existsSync(path.join(tmp, 'p', 'turn-indicator.html')) && !fs.existsSync(path.join(tmp, 'p', 'assets', 'turn-indicator')), 'production never has it');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});

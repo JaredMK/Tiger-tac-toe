@@ -1,0 +1,135 @@
+/* The your-turn indicator comparison (turn-indicator.html, staging only). Comic Chaos tokens. */
+:root { --x: #e5432a; --o: #f6c21b; --x-soft: #f9c7b6; --o-soft: #fbe39a; --ink: #161210; --paper: #fff8e8; --page: #f4e6c8; --sky: #58a8cf; --ease: cubic-bezier(.2, .8, .2, 1); }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--page); background-image: radial-gradient(rgba(22, 18, 16, .08) 1px, transparent 1.4px); background-size: 12px 12px; color: var(--ink); font: 400 17px/1.45 'Comic Neue', 'Patrick Hand', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+h1, h2, .pn b, .vsw, .bub, .banner b, .menu, .say, .lab, .num, .kicker { font-family: 'Bangers', 'Luckiest Guy', sans-serif; font-weight: 400; letter-spacing: .03em; }
+.top { background: var(--x); background-image: radial-gradient(rgba(22, 18, 16, .14) 1.4px, transparent 1.8px); background-size: 10px 10px; border-bottom: 4px solid var(--ink); color: #fff; padding: 22px 0 18px; }
+.kicker { display: inline-block; background: var(--o); color: var(--ink); border: 2.5px solid var(--ink); padding: 2px 10px 0; font-size: 16px; margin: 0 0 10px; }
+h1 { font-size: clamp(36px, 8vw, 56px); line-height: 1; margin: 0 0 10px; color: var(--o); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 4px 4px 0 var(--ink); }
+.lede { max-width: 760px; margin: 0 0 14px; font-weight: 700; }
+.top .hint { color: #fff; }
+.hint { font-size: 15px; opacity: .9; }
+.ctrls { display: flex; flex-wrap: wrap; gap: 14px; margin: 6px 0 10px; }
+.pn { --sk: -7deg; appearance: none; cursor: pointer; border: 3.5px solid var(--ink); background: #fff; color: var(--ink); min-height: 48px; padding: 0 18px; transform: skewX(var(--sk)); box-shadow: 6px 6px 0 var(--ink); transition: transform .08s, box-shadow .08s; }
+.pn b { display: block; transform: skewX(calc(-1 * var(--sk))); font-size: 22px; padding-top: 3px; }
+.pn.y { background: var(--o); } .pn.w { background: #fff; }
+.pn:active { transform: skewX(var(--sk)) translate(4px, 4px); box-shadow: 0 0 0 var(--ink); }
+.pn[aria-pressed="true"][data-act="all"] { background: var(--ink); color: var(--o); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 28px 22px; padding: 26px 0 10px; }
+.card { background: #fff; border: 3px solid var(--ink); padding: 14px 14px 12px; transition: box-shadow .2s; }
+.card.ref { background: #f1ebe0; border-style: dashed; }
+.card.lit { box-shadow: 0 0 0 5px var(--o), 0 0 0 8px var(--ink); }
+.card h2 { display: flex; align-items: center; gap: 10px; font-size: 26px; line-height: 1.05; margin: 0 0 12px; min-height: 2.1em; }
+.num { flex: none; display: grid; place-items: center; min-width: 38px; height: 38px; padding: 3px 6px 0; background: var(--ink); color: var(--o); font-size: 22px; transform: skewX(-7deg); }
+.stage { display: flex; justify-content: center; }
+.row { display: flex; justify-content: center; margin: 14px 0 6px; }
+.note { display: flex; justify-content: space-between; gap: 10px; margin: 6px 0; font-size: 14px; font-weight: 700; }
+.cue { opacity: .35; } .cue.on { animation: cue 1.6s ease-out both; }
+@keyframes cue { 0% { opacity: 1; color: var(--x); } 70% { opacity: 1; } 100% { opacity: .35; } }
+.how { margin: 8px 0 6px; font-size: 16px; }
+.pc2 { margin: 2px 0; font-size: 15px; }
+.plus, .minus { display: inline-block; width: 1.2em; font-weight: 700; } .plus { color: #2f8a3b; } .minus { color: var(--x); }
+.rec { background: #fff; border: 3px solid var(--ink); box-shadow: 8px 8px 0 var(--ink); padding: 16px 20px; margin: 16px 0 40px; }
+.rec h2 { font-size: 34px; margin: 0 0 8px; } .rec li { margin: 6px 0; }
+
+/* ---- the phone ---- */
+.ph { position: relative; width: 300px; height: 520px; border: 4px solid var(--ink); border-radius: 26px; overflow: hidden; background: var(--paper); background-image: radial-gradient(rgba(22, 18, 16, .07) 1px, transparent 1.4px); background-size: 12px 12px; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.hdr { position: relative; padding: 10px 10px 6px; background: linear-gradient(90deg, var(--o-soft), transparent 80%); border-bottom: 3px solid var(--ink); transition: background .3s; }
+.ph.mine .hdr { background: linear-gradient(90deg, var(--x-soft), transparent 80%); }
+.tbar { display: flex; align-items: center; gap: 6px; }
+.menu { flex: none; display: grid; place-items: center; height: 32px; padding: 2px 8px 0; border: 2.5px solid var(--ink); background: #fff; font-size: 15px; transform: skewX(-7deg); box-shadow: 3px 3px 0 var(--ink); }
+.vs { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; border: 2.5px solid var(--ink); background: linear-gradient(100deg, #fff 0 48%, #fff 52%); height: 40px; padding: 0 6px; }
+.side { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.side b { font-family: 'Bangers', sans-serif; font-weight: 400; font-size: 16px; }
+.side .clk { font-style: normal; font-size: 12px; font-weight: 700; opacity: .7; }
+.side .pc { width: 26px; height: 26px; flex: none; overflow: visible; }
+.vsw { font-size: 18px; }
+.pc .ol { stroke: var(--ink); fill: none; stroke-linecap: round; } .pX .ol { stroke-width: 26; } .pX .fl { stroke: var(--x); stroke-width: 15; stroke-linecap: round; fill: none; }
+.pO .ol { stroke-width: 25; } .pO .fl { stroke: var(--o); stroke-width: 15; fill: none; }
+.pc .eye { fill: #fff; stroke: var(--ink); stroke-width: 3; } .pc .pup { fill: var(--ink); } .pc .mouth { fill: none; stroke: var(--ink); stroke-width: 3.5; stroke-linecap: round; }
+.turnrow { position: relative; display: flex; align-items: center; justify-content: center; height: 34px; margin-top: 6px; }
+.bub { position: relative; display: inline-grid; place-items: center; min-width: 150px; height: 30px; padding: 2px 14px 0; border: 2.5px solid var(--ink); border-radius: 16px; background: #fff; font-size: 17px; transition: background .25s; }
+.bub::after { content: ''; position: absolute; top: -9px; width: 12px; height: 12px; background: inherit; border: 2.5px solid var(--ink); border-right: 0; border-bottom: 0; transform: rotate(45deg); }
+.ph.theirs .bub::after { right: 22px; } .ph.mine .bub::after { left: 22px; }
+.bub > span { grid-area: 1 / 1; } .ph.theirs .t-me, .ph.mine .t-them { visibility: hidden; }
+.ph.mine .bub { background: var(--x-soft); }
+
+/* the board */
+.board { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); width: 284px; height: 284px; margin: 16px auto 0; }
+.sq { position: relative; appearance: none; border: 0; background: transparent; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; cursor: pointer; border-radius: 10px; color: var(--ink); overflow: hidden; }
+.sq .lab { font-size: 14px; line-height: .95; text-align: center; }
+.sq .art { flex: 1; display: grid; place-items: center; width: 100%; }
+.sq.own { justify-content: center; } .sq.own .pc { width: 62px; height: 62px; }
+.sq.own-X { background: radial-gradient(circle, var(--x-soft) 0 55%, transparent 70%); } .sq.own-O { background: radial-gradient(circle, var(--o-soft) 0 55%, transparent 70%); }
+.sq.hit { animation: hit .25s ease-out; }
+@keyframes hit { 50% { background-color: rgba(22, 18, 16, .12); } }
+.hash { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.hash path { fill: none; stroke: var(--ink); stroke-width: 8; stroke-linecap: round; }
+/* small pictures of the games */
+.a-die { display: inline-block; width: 22px; height: 22px; margin: 0 3px; border: 2.5px solid var(--ink); border-radius: 5px; background: #fff radial-gradient(circle, var(--ink) 0 2.5px, transparent 3px) center / 100% 100% no-repeat; transform: rotate(-8deg); }
+.a-die.b { transform: rotate(10deg); background: #fff radial-gradient(circle at 30% 30%, var(--ink) 0 2.5px, transparent 3px), radial-gradient(circle at 70% 70%, var(--ink) 0 2.5px, transparent 3px); }
+.a-tiles { display: flex; gap: 2px; } .a-tiles b { width: 12px; height: 12px; border: 2px solid var(--ink); background: #fff; } .a-tiles .g { background: #4e9d3a; } .a-tiles .y { background: var(--o); }
+.a-grid { width: 54px; height: 42px; border-radius: 6px; background: var(--sky) radial-gradient(circle, #fff 0 3px, transparent 3.6px) 0 0 / 9px 9px; border: 2.5px solid var(--ink); }
+.a-sea { width: 50px; height: 40px; border: 2.5px solid var(--ink); background: var(--sky); background-image: linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px); background-size: 10px 10px; }
+.a-felt { position: relative; width: 56px; height: 34px; border: 3px solid #7a4a28; border-radius: 6px; background: #2f8a5a; } .a-felt b { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: var(--x); border: 1.5px solid var(--ink); top: 10px; left: 12px; } .a-felt .o { background: var(--o); left: 26px; top: 6px; } .a-felt .w { background: #fff; left: 38px; top: 15px; }
+.a-card { width: 40px; height: 40px; border: 2.5px solid var(--ink); background: #fff; background-image: linear-gradient(var(--ink) 1px, transparent 1px), linear-gradient(90deg, var(--ink) 1px, transparent 1px); background-size: 12.3px 12.3px; }
+.a-green { position: relative; width: 54px; height: 36px; border-radius: 18px; border: 2.5px solid var(--ink); background: #6cbf5a; } .a-green b { position: absolute; right: 10px; top: 12px; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
+.foot { display: flex; justify-content: center; align-items: center; height: 40px; margin-top: 12px; font-weight: 700; font-size: 14px; }
+.ph.mine .foot .wait { visibility: hidden; }
+
+/* ---- the live burst, for reference (covers the board) ---- */
+.burst { position: absolute; left: 50%; top: 270px; width: 250px; translate: -50% -50%; pointer-events: none; opacity: 0; }
+.burst svg { width: 100%; display: block; overflow: visible; filter: drop-shadow(5px 5px 0 var(--ink)); }
+.burst polygon { fill: var(--x); stroke: var(--ink); stroke-width: 4.5; stroke-linejoin: round; }
+.burst text { font: 400 44px 'Bangers', sans-serif; fill: #fff; stroke: var(--ink); stroke-width: 4px; paint-order: stroke fill; }
+.burst .bt { position: absolute; left: 50%; top: -14%; width: 26%; aspect-ratio: 1; translate: -50% 0; border-radius: 50%; background: #fff; border: 3px solid var(--ink); display: grid; place-items: center; }
+.burst .bt .pc { width: 80%; height: 80%; }
+.o-now.go .burst { animation: bIn 1s cubic-bezier(.3, 1.4, .5, 1) both; }
+@keyframes bIn { 0% { scale: .2; rotate: -14deg; opacity: 0; } 18% { scale: 1.08; rotate: 3deg; opacity: 1; } 30% { scale: 1; rotate: 0deg; } 82% { opacity: 1; } 100% { scale: .85; opacity: 0; } }
+
+/* ---- 1: the # lines flash in your colour, then hold a soft tint ---- */
+.o-lines.mine .hash path { stroke: color-mix(in srgb, var(--x) 62%, var(--ink)); }
+.o-lines.go .hash path { animation: lFlash .9s var(--ease) both; }
+.o-lines.go .hash { animation: lGlow .9s ease-out both; }
+@keyframes lFlash { 0% { stroke: var(--ink); stroke-width: 8; } 18% { stroke: var(--x); stroke-width: 15; } 100% { stroke: color-mix(in srgb, var(--x) 62%, var(--ink)); stroke-width: 8; } }
+@keyframes lGlow { 0% { filter: none; } 18% { filter: drop-shadow(0 0 7px var(--x)); } 100% { filter: none; } }
+
+/* ---- 2: a banner sweeps across the top bar and tucks into the bubble ---- */
+.banner { position: absolute; left: 0; right: 0; top: 8px; height: 44px; display: grid; place-items: center; pointer-events: none; opacity: 0; }
+.banner b { display: block; padding: 4px 26px 0; background: var(--x); color: #fff; font-size: 30px; line-height: 40px; border: 3.5px solid var(--ink); transform: skewX(-12deg); box-shadow: 5px 5px 0 var(--ink); -webkit-text-stroke: 1.2px var(--ink); paint-order: stroke fill; white-space: nowrap; }
+.o-banner.go .banner { animation: bSweep .95s var(--ease) both; }
+@keyframes bSweep { 0% { opacity: 1; transform: translateX(-115%); } 30% { opacity: 1; transform: translateX(0); } 58% { opacity: 1; transform: translateX(0) scale(1); } 100% { opacity: 0; transform: translate(-4px, 40px) scale(.42); } }
+.o-banner.go .bub { animation: bTuck .95s var(--ease) both; }
+@keyframes bTuck { 0%, 58% { scale: 1; } 78% { scale: 1.16; background: var(--x); color: #fff; } 100% { scale: 1; } }
+
+/* ---- 3: your character pops, a small bubble stays beside the bar ---- */
+.say { position: absolute; left: 0; top: 1px; height: 28px; padding: 3px 10px 0; display: grid; place-items: center; border: 2.5px solid var(--ink); border-radius: 14px; background: #fff; font-size: 16px; color: var(--x); opacity: 0; pointer-events: none; transform-origin: 20% 0; }
+.say::before { content: ''; position: absolute; left: 14px; top: -8px; width: 11px; height: 11px; background: #fff; border: 2.5px solid var(--ink); border-right: 0; border-bottom: 0; transform: rotate(45deg); }
+.o-toon .turnrow { justify-content: flex-end; }
+.o-toon.mine .say { opacity: 1; }
+.o-toon.go .say { animation: sayIn .55s cubic-bezier(.3, 1.6, .5, 1) .18s both; }
+@keyframes sayIn { 0% { opacity: 0; scale: .2; } 100% { opacity: 1; scale: 1; } }
+.o-toon.go .me .pc { animation: tPop .75s cubic-bezier(.3, 1.6, .5, 1) both; transform-origin: 50% 90%; }
+@keyframes tPop { 0% { transform: none; } 30% { transform: translateY(-12px) scale(1.7) rotate(-8deg); } 60% { transform: translateY(0) scale(1.25); } 100% { transform: none; } }
+.o-toon.mine .me .pc { filter: drop-shadow(0 0 4px var(--x)); }
+
+/* ---- 4: the open squares shimmer, then rest with a faint ring ---- */
+.o-ripple.mine .sq.open { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--x) 35%, transparent); }
+.o-ripple .sq.open::after { content: ''; position: absolute; inset: -40%; pointer-events: none; background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, .95) 48%, color-mix(in srgb, var(--x) 45%, transparent) 52%, transparent 62%); transform: translateX(-100%); opacity: 0; }
+.o-ripple.go .sq.open::after { animation: shine .62s ease-out var(--d, 0s) both; }
+.o-ripple.go .sq.open { animation: rBump .62s cubic-bezier(.3, 1.5, .5, 1) var(--d, 0s) both; }
+@keyframes shine { 0% { opacity: 1; transform: translateX(-70%); } 100% { opacity: 1; transform: translateX(70%); } }
+@keyframes rBump { 0% { scale: 1; } 40% { scale: 1.07; } 100% { scale: 1; } }
+.o-ripple .sq[data-i="1"], .o-ripple .sq[data-i="3"], .o-ripple .sq[data-i="5"], .o-ripple .sq[data-i="7"] { --d: .1s; }
+.o-ripple .sq[data-i="0"], .o-ripple .sq[data-i="2"], .o-ripple .sq[data-i="6"], .o-ripple .sq[data-i="8"] { --d: .22s; }
+
+/* ---- 5: one pulse round the screen's edge, then a thin glow while it's your turn ---- */
+.edge { position: absolute; inset: 0; border-radius: 22px; pointer-events: none; }
+.o-edge.mine .edge { box-shadow: inset 0 0 0 3px var(--x), inset 0 0 12px 2px color-mix(in srgb, var(--x) 45%, transparent); }
+.o-edge.go .edge { animation: ePulse .9s ease-out both; }
+@keyframes ePulse { 0% { box-shadow: inset 0 0 0 0 var(--x); } 20% { box-shadow: inset 0 0 0 12px var(--x), inset 0 0 40px 14px color-mix(in srgb, var(--x) 60%, transparent); } 100% { box-shadow: inset 0 0 0 3px var(--x), inset 0 0 12px 2px color-mix(in srgb, var(--x) 45%, transparent); } }
+
+@media (prefers-reduced-motion: reduce) { .ph *, .ph::after, .ph *::after { animation: none !important; } .o-now.go .burst { opacity: 0; } }
+@media (max-width: 380px) { .grid { grid-template-columns: 1fr; } .card { padding: 12px 6px; } }

@@ -54,7 +54,11 @@ function build(env, sha, out) {
     fs.copyFileSync(path.join(ROOT, 'design-review.html'), path.join(OUT, 'design-review.html'));
     fs.cpSync(path.join(ROOT, 'assets', 'design-review'), path.join(OUT, 'assets', 'design-review'), { recursive: true });
   }
-  if (env === 'staging') for (const f of ['index.html', 'privacy.html', 'admin.html', 'styles.html', 'icons.html', 'icons-patchwork.html', 'design-review.html']) { const p = path.join(OUT, f); if (fs.existsSync(p)) fs.writeFileSync(p, noindex(fs.readFileSync(p, 'utf8'))); }
+  if (env === 'staging' && fs.existsSync(path.join(ROOT, 'turn-indicator.html'))) {   // the your-turn indicator's mock-ups (December 2026): staging only, linked from nowhere
+    fs.copyFileSync(path.join(ROOT, 'turn-indicator.html'), path.join(OUT, 'turn-indicator.html'));
+    fs.cpSync(path.join(ROOT, 'assets', 'turn-indicator'), path.join(OUT, 'assets', 'turn-indicator'), { recursive: true });
+  }
+  if (env === 'staging') for (const f of ['index.html', 'privacy.html', 'admin.html', 'styles.html', 'icons.html', 'icons-patchwork.html', 'design-review.html', 'turn-indicator.html']) { const p = path.join(OUT, f); if (fs.existsSync(p)) fs.writeFileSync(p, noindex(fs.readFileSync(p, 'utf8'))); }
   fs.writeFileSync(path.join(OUT, 'robots.txt'), robots(env));
   const links = aasa(require('./app-config.js'));
   if (links) { fs.mkdirSync(path.join(OUT, '.well-known'), { recursive: true }); fs.writeFileSync(path.join(OUT, '.well-known', 'apple-app-site-association'), JSON.stringify(links) + '\n'); }
