@@ -152,7 +152,7 @@ test('bowling: the three sweeps — each meter sweeps back and forth and stops w
   assert.ok(hook > straight, `the hook's window (${hook} of 10) beats the straight ball's (${straight})`);
   for (const f of E.tuneFields('bowling')) if (['aimMs', 'curveMs', 'powerMs', 'hook', 'even'].includes(f.k)) assert.ok(f.group === 'Rules');
   assert.ok(!E.tuneFields('bowling').some(f => /^flick|angleGain|aiAim|aiPow/.test(f.k)), 'the flick\'s settings are gone');
-  assert.equal(E.minVersionOf('bowling'), '1.15.0');
+  assert.equal(E.minVersionOf('bowling'), '1.16.0');
 });
 
 test('bowling: the geometry — the lane fits the canvas; the pins small at the far end', () => {

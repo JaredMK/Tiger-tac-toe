@@ -3,7 +3,7 @@
 export const info = { name: 'Bowling',      hint: 'Tap to aim, curve and roll. Every pin counts' };
 export const BOWL_DEFAULTS = { aimMs: 733, meterMs: 600 };   // (the old two taps' speeds, config/bowling: nothing reads them since the flick and the three sweeps, rules.js)
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.15.0';   // (1.13.0: the tighter rack and the pins' new physics, equal rolls; 1.15.0: the three sweeps and the curve)   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const minVersion = '1.16.0';   // (1.16.0: the first version with its rules as they are now, December 2026 audit; was 1.15.0); (1.13.0: the tighter rack and the pins' new physics, equal rolls; 1.15.0: the three sweeps and the curve)   ; the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Bowling', play: 'Three meters sweep in turn: tap to stop the aim, then the curve, then the power. A curve hooks the ball late, into the pins. One roll a turn at a fresh rack.', win: '{target} pins.{evenText}' };

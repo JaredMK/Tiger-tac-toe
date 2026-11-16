@@ -145,7 +145,7 @@ test('bricks: its settings (TUNE) are dealt into the square: the wall\'s size, t
   assert.equal(R.brkMaxSteps(R.brkCfg(m)), 12 * 120 + R.BRK.slackSteps);
 });
 test('bricks: meta: admin only, 1.5.0, a 60 s turn, real time, not in Super Chaos, the explainer in the house format', () => {
-  assert.equal(M.release, 'admin'); assert.equal(M.minVersion, '1.5.0'); assert.equal(M.turnSecs, 60); assert.equal(M.realTime, true); assert.equal(M.superChaos, false); assert.equal(M.category, 'skill');
+  assert.equal(M.release, 'admin'); assert.equal(M.minVersion, '1.14.0'); assert.equal(M.turnSecs, 60); assert.equal(M.realTime, true); assert.equal(M.superChaos, false); assert.equal(M.category, 'skill');
   assert.ok(M.explainer.name && M.explainer.play && M.explainer.win);
   assert.ok(E.TEST_TYPES.includes('bricks') && E.TYPES.includes('bricks'));
 });

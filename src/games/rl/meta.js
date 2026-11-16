@@ -3,7 +3,7 @@ import { AGAIN_TUNE } from '../../core/tune.js';
 
 export const info = { name: 'Little Wheel', hint: 'Pick 8 numbers, a group or green 0. Two hits wins' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.0.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const minVersion = '1.14.0';   // (1.14.0: the first version with its rules as they are now, December 2026 audit; was 1.0.0); the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Little Wheel', play: 'Pick 8 numbers, a group of 8, or green 0, then spin.{goAgain}', win: '{goal} hits, or hit green 0 for an instant win.' };   // ({goal}: its setting, TUNE below)

@@ -2,7 +2,7 @@
   "appId": "com.jaredkrosser.tictacchaos",
   "appName": "Tic Tac Chaos",
   "webDir": "_app",
-  "ios": { "contentInset": "never", "scheme": "Tic Tac Chaos" },
+  "ios": { "contentInset": "never", "scheme": "Tic Tac Chaos", "backgroundColor": "#f4e6c8" },
   "plugins": {
     "FirebaseAuthentication": { "skipNativeAuth": true, "providers": ["google.com", "apple.com"] }
   }

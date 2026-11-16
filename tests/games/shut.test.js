@@ -19,7 +19,7 @@ test('shut: each player their own box of tiles 1 to 6, all open; nothing hidden;
   E.setTune('shut', { tiles: 8, oneDie: 9 });
   try { const t = E.newMini('shut', E.makeRng('s2')); assert.equal(t.up.X.length, 8); assert.deepEqual(R.shutCfg(t), { tiles: 8, oneDie: 9 }); } finally { E.setTune('shut', null); }
   const meta = require('../../src/games/shut/meta.js');
-  assert.deepEqual([meta.category, meta.release, meta.minVersion, meta.TUNE[0].k, meta.TUNE[0].def], ['luck', 'admin', '1.8.0', 'again', 'off']);
+  assert.deepEqual([meta.category, meta.release, meta.minVersion, meta.TUNE[0].k, meta.TUNE[0].def], ['luck', 'admin', '1.14.0', 'again', 'off']);
 });
 
 test('shut: Roll, then tiles that add up to it; the turn held between the two; the flip ends the turn (go again off)', () => {

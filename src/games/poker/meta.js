@@ -3,7 +3,7 @@ import { AGAIN_TUNE } from '../../core/tune.js';
 
 export const info = { name: 'Poker Hands',  hint: 'Deal five cards, throw some away, draw once. Better hands score more' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.10.0';   // the oldest client version that has this game (core/client.js)
+export const minVersion = '1.17.0';   // (1.17.0: the first version with its rules as they are now, December 2026 audit; was 1.10.0); the oldest client version that has this game (core/client.js)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = false;   // (not dealt in Super Chaos)
 // The hands, one line each, under Play and Win in the "?" (ui/explainer.js: a game's explainerList, "Label: meaning"; the points are the defaults).

@@ -95,5 +95,5 @@ test('combo: the public view and the flash carry the dice, the holds and the car
   E.setTune('combo', { goal: 2, rolls: 3 });
   try { const m = E.newMini('combo', E.makeRng('tt')); assert.deepEqual(m.tune, { goal: 2, rolls: 3 }); } finally { E.setTune('combo', null); }
   const meta = require('../../src/games/combo/meta.js');
-  assert.deepEqual([meta.release, meta.category, meta.minVersion, meta.TUNE[0].k, meta.TUNE[0].def], ['admin', 'luck', '1.8.0', 'again', 'off']);
+  assert.deepEqual([meta.release, meta.category, meta.minVersion, meta.TUNE[0].k, meta.TUNE[0].def], ['admin', 'luck', '1.17.0', 'again', 'off']);
 });

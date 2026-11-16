@@ -2,7 +2,7 @@
 
 export const info = { name: 'Apple Pick',  hint: 'Spin to pick apples into your bucket. Empty your tree first' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.3.0';   // the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const minVersion = '1.14.0';   // (1.14.0: the first version with its rules as they are now, December 2026 audit; was 1.3.0); the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds (each player's tree and bucket are their own)
 export const explainer = { name: 'Apple Pick', play: 'Spin to pick apples into your bucket. Watch out for the bird and spills, which put apples back on the tree.', win: 'Empty your tree first.' };

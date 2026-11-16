@@ -3,7 +3,7 @@ import { AGAIN_TUNE } from '../../core/tune.js';
 
 export const info = { name: 'Shut the Box', hint: 'Roll, then flip down tiles that add up to it. Shut them all' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.8.0';   // the oldest client version that has this game (core/client.js)
+export const minVersion = '1.14.0';   // (1.14.0: the first version with its rules as they are now, December 2026 audit; was 1.8.0); the oldest client version that has this game (core/client.js)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const explainer = { name: 'Shut the Box', play: 'Roll, then flip down open tiles that add up to the roll. Roll one die once your tiles add up to {oneDie} or less. No way to make it? Your turn ends.{goAgain}', win: 'Shut all your tiles first.' };   // ({oneDie}: its setting, TUNE below)
 // {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).

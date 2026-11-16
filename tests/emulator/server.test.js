@@ -57,7 +57,7 @@ async function player(username, opts = {}) {
   const cred = opts.anonymous ? await A.signInAnonymously(auth) : await A.createUserWithEmailAndPassword(auth, `${(username || 'player').toLowerCase()}${n}@example.com`, 'secret-password');
   if (!opts.anonymous && !opts.unverified) { await verifyEmailOf(cred.user.uid); await cred.user.getIdToken(true); }   // the address proved (as the link in the email would): an unproved one gets nothing that needs an account
   const p = { app, auth, db, uid: cred.user.uid, name: username };
-  const withClient = d => (opts.client ? Object.assign({}, d, { client: opts.client }) : d);   // (a phone's client, as net/connect.js call sends it: the web page's when not given)
+  const withClient = d => Object.assign({}, d, { client: opts.client || { v: E.CLIENT_VERSION, p: 'web' } });   // (a phone's client, as net/connect.js call sends it with every call: the current web page's when not given; a call that says nothing is the first web page, 1.0.0, which has almost no game now)
   p.call = async (name, data) => (await F.httpsCallable(fns, name)(withClient(name === 'findMatch' ? Object.assign({ mode: 'classic' }, data) : data))).data;   // (Find Match is Super Chaos; these tests ask for the Classic queue, kept as code, unless they say otherwise)
   p.read = async path => (await D.get(D.ref(db, path))).val();
   p.write = (path, v) => D.set(D.ref(db, path), v);
@@ -1066,9 +1066,10 @@ test('playtest: a device\'s opens and matches are logged under a hash of its ran
   const d = await get(`devices/${h}`), log = await get(`devlog/${h}`);
   assert.equal(d.tag, 'sam', 'the first tag stays');
   assert.equal(d.n, 4); assert.ok(d.first <= d.last);
-  assert.deepEqual(Object.keys(d).sort(), ['first', 'last', 'n', 'tag'], 'only times, a count and the tag');
+  assert.deepEqual(Object.keys(d).sort(), ['cv', 'first', 'last', 'n', 'p', 'tag'], 'only times, a count, the tag and the client it last opened (its platform and version, as every page sends them)');
+  assert.deepEqual([d.p, d.cv], ['web', E.CLIENT_VERSION]);
   assert.deepEqual(Object.keys(log).sort(), ['elgame0001', 'oopen0001', 'plive0001', 'slgame0001'], 'an open, a start, an end and a live');
-  for (const e of Object.values(log)) assert.ok(Object.keys(e).every(k => ['t', 'ev', 'm', 'g'].includes(k)), 'an event: its time, kind, mode and match only');
+  for (const e of Object.values(log)) assert.ok(Object.keys(e).every(k => ['t', 'ev', 'm', 'g', 'p', 'cv'].includes(k)), 'an event: its time, kind, mode and match, and (an open) the client: ' + Object.keys(e).join(' '));
   assert.deepEqual([log.slgame0001.ev, log.slgame0001.m, log.slgame0001.g, log.elgame0001.ev], ['start', 'cpu', 'lgame0001', 'finish']);
   assert.ok(!JSON.stringify([d, log]).includes(acct.uid) && !JSON.stringify([d, log]).includes(dev), 'no account and no raw id with the device');
   assert.ok(Math.abs((await get(`lastSeen/${acct.uid}`)) - Date.now()) < 60000, 'the logged-in player\'s last activity moved on');

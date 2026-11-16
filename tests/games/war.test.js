@@ -183,7 +183,7 @@ test('war: Super Chaos: a round\'s move is one flip of the player\'s own round (
   assert.deepEqual(R.scApply(m, 'O', 'flip', lcg(1)), { ok: true, outcome: 'continue', note: 'lost' });
   assert.deepEqual([m.wins, m.flips], [{ X: 1, O: 0 }, { X: 1, O: 1 }]);
   const meta = require('../../src/games/war/meta.js');
-  assert.deepEqual([meta.superChaos, meta.release, meta.minVersion, meta.category], [true, 'admin', '1.5.0', 'luck']);
+  assert.deepEqual([meta.superChaos, meta.release, meta.minVersion, meta.category], [true, 'admin', '1.14.0', 'luck']);
   assert.deepEqual(meta.TUNE.map(t => [t.k, t.def]), [['again', 'off'], ['goal', 3], ['warWorth', 2]]);
   assert.match(meta.explainer.win, /\{goal\}/); assert.match(meta.explainer.play, /\{warWorth\}/);
   assert.doesNotMatch(JSON.stringify(meta), /\b(bet|stake|wager|chip|payout)s?\b/i, 'no gambling words');

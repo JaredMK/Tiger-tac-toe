@@ -1,7 +1,8 @@
 # Tic Tac Chaos on iOS: the plan
 
 The iOS app is the same game in a native shell (Capacitor). It uses the same Firebase project, accounts, live config and
-Find Match queue as the web page, so web and iOS players are matched with each other. Nothing below has been built yet.
+Find Match queue as the web page, so web and iOS players are matched with each other. The project is built and committed
+(`ios/`, section 7); **section 8 is the current build's audit, the exact steps to TestFlight and the phone checklist.**
 This page covers what the code already does for it, what you need, how to set it up, what Apple requires, and a checklist
 to reach TestFlight.
 
@@ -27,15 +28,18 @@ to reach TestFlight.
   - Sharing, copying, opening outside pages and "Please update" all go through `src/net/platform.js`.
   - Staging's tester gate opens without a reload.
 - **Deep links:**
-  - Join links (`https://tictacchaos.com/?room=CODE`) and the alert's Find Match link work as Universal Links.
+  - Join links (`https://tictacchaos.com/join/CODE`, the invite's link, and the older `/?room=CODE`) and the alert's
+    Find Match link work as Universal Links (the site's `apple-app-site-association` lists `/join/*`).
   - The app handles a link when it starts and while it runs (Capacitor's `appUrlOpen` event, `main.js` `openLink`).
   - Once `scripts/app-config.js` holds the Team ID and bundle ID, every site build publishes
     `/.well-known/apple-app-site-association`.
 - **Native touches, harmless on the web** (`src/net/platform.js`):
-  - **Haptics:** `haptic(kind)` buzzes through the Capacitor Haptics plugin when it is present (nothing on the web):
-    a light impact when a square is opened (`ui/input.js`), a heavy one when a square stamps in on the board
-    (`ui/fx.js` `stampFx`), a success or error notification with the match-end screen (`ui/turns.js` `toWin`). Each
-    fires once, from its event. Install `@capacitor/haptics` with the other plugins.
+  - **Haptics:** `haptic(kind)` buzzes through the Capacitor Haptics plugin (a phone browser with `navigator.vibrate`
+    gets a plain buzz; iPhone Safari has none, so on an iPhone only the app buzzes). The map is `ui/haptics.js`: a light
+    impact for a square opened and every move made on this phone, a medium one for a result landing and a claimed
+    square, the success pattern for a mini-game won, heavy then success for the match, the error pattern for a refused
+    move, a bust or a lost square, and two medium pulses with the `yourTurn` chime when the turn comes back. Each fires
+    once, from its event, only with Settings' Vibration on.
   - **Connection lost:** during an online match, `.info/connected` false for 3 seconds shows a full-width band over the
     board or the mini-game ("Connection lost — reconnecting…", `ui/turnbar.js`; the board stays visible) and bounces the
     SDK's socket every 10 seconds until it is back (`net/connect.js` `lostWatch`, `NET_LOST`). Coming back from the
@@ -240,3 +244,96 @@ Capacitor 8 uses Swift packages: no CocoaPods. Needs Xcode 16.3 or later (the Fi
   capabilities (Sign in with Apple, Associated Domains) from `App.entitlements`.
 - **Deep links:** `/.well-known/apple-app-site-association` is served by every site build once `app-config.js` is filled; it is live on staging after a staging
   deploy and on tictacchaos.com after a release.
+
+## 8. The 1.20.0 build (December 2026): audit, steps to TestFlight, phone checklist
+
+`CLIENT_VERSION` is **1.20.0** (the app's marketing version). Every mini-game's `minVersion` was audited: it is the first
+version that holds the game's rules as they are now (the last change to its `rules.js`, its word list or the shared
+family file it plays by), so an older app is dealt only what it can still play (a 1.2.0 app: Tic-tac-toe, Four in a
+Row, Roads and the few others unchanged since). After this build is on TestFlight, set the **iOS minimum** on the
+admin's Games page (Platforms card) to 1.20.0 in each environment: older builds then see "Please update".
+
+### Which server the build talks to (read before archiving)
+
+A production build talks to the production project, and production is whatever `main` holds. While `main` is behind
+`staging`, a production build is a new client on an old server: its invites point at `tictacchaos.com/join/CODE`, which
+the old site does not serve, the live opponent view's writes are refused, and the server plays by older rules. So:
+
+- **To test now:** `npm run ios:build -- staging` (the staging project; a STAGING badge shows in a corner).
+- **For the store, or a production TestFlight build:** release the web first (`release`), then `npm run ios:build`.
+
+### What was audited, and how
+
+There is no Mac in the cloud session that prepared this build, so the Simulator and the archive are yours (below). What
+was checked there, on the app's own files (`npm run build:app`, production) in Chromium with a stand-in for the Capacitor
+shell (`window.Capacitor`, its plugins recording every call), every outside request refused:
+
+| Item | Result |
+|---|---|
+| Build and sync | `npm run build:app` and `npx cap sync ios` run clean; 7 plugins (Firebase Authentication, App, Browser, Clipboard, Filesystem, Haptics, Share) in `CapApp-SPM/Package.swift` |
+| Starts offline | No page error; all four fonts (Bangers, Comic Neue 400/700, Luckiest Guy, Patrick Hand) load from `fonts.css` (embedded); the only requests are the live settings and the anonymous sign-in, refused without harm |
+| Safe areas, clipping | Menu, Play Computer, Settings, login and results at 375x667, 393x852 and 430x932 (a 59px top and 34px bottom inset on the two taller ones); the menu also at 768x1024 and 1024x768: every control inside the insets, no text cut, no scroll |
+| Every mini-game | All 69 (the 17 released and the admin-only ones) open in a square, fit with no scroll or cut text, and play a move, at 375x667, 393x852, 768x1024 and 1024x768 |
+| Portrait lock | `Info.plist`: iPhone portrait only, iPad all four (held by `tests/server/ios-setup.test.js`) |
+| Deep links | `/join/CODE` and `/?room=CODE` handed to the running app open the join screen with the code; `App.entitlements` has `applinks:` for both sites; the site's association file lists `/join/*` |
+| Invites | "Join my Tic Tac Chaos game! Code: CODE https://tictacchaos.com/join/CODE" (staging's address in a staging build); Share goes to the Share plugin as text alone, Copy to the Clipboard plugin (`tests/flows/invite-browser.test.mjs`) |
+| Haptics, turn alert | A square opened: light; a move, then the turn back: two medium pulses; Vibration off: none |
+| Settings | Sound, Animation (Normal/Speed) and Vibration shown; Speed switches `html.spd`; the build stamp shows |
+| Share result | The card is written to the cache (Filesystem) and shared with its text (Share) |
+| Privacy link | Opens `https://tictacchaos.com/privacy.html` in the in-app browser; the game stays |
+| Account deletion | My Stats' Delete account calls the server's `deleteAccount` (same code as the web; needs a login: phone) |
+| Icon, launch | The Patchwork icon in the one 1024 slot; the launch screen redrawn as the Comic Chaos logo on the cream |
+
+Fixed in this pass (app only): the launch screen still showed the old logo; the web view had no background of its own
+(a white flash before the page: now the cream, `capacitor.config.json` `ios.backgroundColor`); the app followed the
+phone's Dark Mode for its status bar (white text over the cream: now always light, `UIUserInterfaceStyle`); the project's
+version was 1.2.0. For both platforms: a tally's name ("Computer") was cut in a few admin-only games on a 375px phone and
+inside an iPad's 600px game (the computer's icon left the tally; Risky Spins' gauge and Poker Hands' pips a little tighter).
+
+Not checked there, so on the Simulator or the phone: WebKit itself (the audit ran in Chromium), the native sheets (Google
+sign-in, share, the in-app browser), real haptics and sound, Universal Links from Messages, the launch screen, and
+anything online against a second device (the live opponent view, replays, the match clock: the same code the two-phone
+emulator smoke and the server suite exercise on the web).
+
+### What differs from the web, and why
+
+- **Sign-in:** Google goes through the native sheet, then the same Firebase account. **Continue with Apple is hidden**
+  (as on the web) until the Apple provider is on in Firebase (`docs/login-setup.md`, then `apple: true` in `src/env.js`).
+  TestFlight does not need it; **App Review does** (guideline 4.8).
+- **Links and invites** name the live site (the app's own address is `capacitor://localhost`); outside pages open in the
+  in-app browser; the result card goes to the share sheet as a file (no download).
+- **Haptics** are the phone's own patterns; iPhone Safari cannot buzz at all.
+- **Orientation:** an iPhone never rotates (the web shows "Rotate your phone" instead); an iPad rotates.
+- **No admin page**, the Firebase SDK is inside the app, the appearance is always light.
+- **"Please update"** opens the App Store's front page until `APP_STORE_ID` is set (`src/net/platform.js`).
+- **App Check** is off on both.
+
+### Steps on the Mac (Xcode 16.3 or later, Node 22)
+
+1. `git pull` on the `staging` branch, then `npm ci`.
+2. The two Firebase plists are in `ios-config/` as before (`GoogleService-Info.production.plist`, `.staging.plist`).
+3. `npm run ios:build -- staging --open` (or `npm run ios:build -- --open` for production, after a release). It prints
+   `GoogleService-Info.plist: … (project tic-tac-chaos-staging)` and `version 1.20.0 (<build number>)`.
+4. Simulator first: pick an iPhone, press Run. Go through the Login checklist (section 5) and the list below.
+5. Xcode: destination **Any iOS Device (arm64)** → **Product → Archive**.
+6. Organizer → **Distribute App** → **App Store Connect** → **Upload** (automatic signing, team `2F7M8F9NBG`). The first
+   upload needs the app's record in App Store Connect (My Apps → + → New App, bundle ID `com.jaredkrosser.tictacchaos`).
+7. App Store Connect → TestFlight: wait for "Processing" to end (no export-compliance question: the build answers it),
+   add yourself under Internal Testing, install from the TestFlight app.
+
+### Checklist on the phone
+
+- [ ] Launch: the cream screen with the comic logo, then the menu, no white flash; the status bar's text is dark in Dark Mode too
+- [ ] Nothing under the notch or the home bar on the menu, the board and a mini-game; the phone held sideways does not rotate
+- [ ] Airplane mode: the app opens, Play Computer plays a whole match, the fonts are the comic ones
+- [ ] Continue with Google: the sheet, then the menu with your username; close and reopen: still logged in; email login too
+- [ ] Settings: Sound off and on (and the silent switch mutes it), Speed makes moves snappier, Vibration off stops every buzz
+- [ ] Buzzes: a light one opening a square, a stronger one when a square is claimed, two pulses with a chime when your turn comes back
+- [ ] Host a game → Share invite into Messages: the text has the code and a `/join/CODE` link; Copy invite pastes the same
+- [ ] On a second device tap that link: the app opens on the join screen with the code (app closed, and app open)
+- [ ] A friend match, web against the app: the other side's open square glows with Live, Watch follows their turn, their move replays, both match clocks run and "+5" shows
+- [ ] Background the app mid-match for 20 seconds and return: the board catches up, no stuck screen
+- [ ] Results → Share result: the share sheet shows the picture and the text
+- [ ] The Privacy link (menu foot) opens in the in-app browser and Done returns to the game
+- [ ] My Stats → Delete account (a throwaway account): asks first, then the menu says "Account deleted"
+- [ ] iPad, if you have one: rotates, the board stays centred

@@ -6,6 +6,8 @@
 //   - the Firebase config for the build: GoogleService-Info.plist (production or staging) copied in and put in the app's
 //     resources, with its REVERSED_CLIENT_ID as the Google sign-in URL scheme in Info.plist,
 //   - Info.plist: arm64 only, no export-compliance question (the app uses only the system's encryption), the URL scheme,
+//     the light appearance always (UIUserInterfaceStyle: the page is a light one, so the status bar's text stays dark
+//     over it with the phone in Dark Mode, where it would turn white on the cream),
 //   - the app icon and the launch screen from `npm run app-icons` (assets/app/), the launch background the game's cream,
 //   - AppDelegate: the ambient audio session (the silent switch mutes the game, as in a web page).
 //   node scripts/ios-setup.js [production|staging] [--build N] [--plists DIR]
@@ -72,11 +74,13 @@ function infoPlist(reversed) {
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
 	${END}`;
   s = s.replace(/\n<\/dict>\s*<\/plist>\s*$/, `${block}\n</dict>\n</plist>\n`);
   if (!s.includes(reversed)) die('could not write the URL scheme into Info.plist');
   wr(p, s);
-  log(`Info.plist: URL scheme ${reversed}, arm64, no export-compliance question, portrait on iPhone (every orientation on iPad)`);
+  log(`Info.plist: URL scheme ${reversed}, arm64, no export-compliance question, portrait on iPhone (every orientation on iPad), the light appearance always (the page is light: dark status-bar text over it in Dark Mode too)`);
 }
 
 // ---- Entitlements

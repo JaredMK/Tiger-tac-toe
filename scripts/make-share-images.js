@@ -110,5 +110,5 @@ async function main() {
   console.log('Wrote', fs.readdirSync(OUT).join(', '));
 }
 // The drawing (the colours, the X and O characters, the burst, the fonts): shared with the app's icons (scripts/make-app-icons.js).
-module.exports = { INK, CREAM, PAPER, X, O, SKY, GREEN, fonts, toonX, toonO, svg, burst, ol2 };
+module.exports = { INK, CREAM, PAPER, X, O, SKY, GREEN, fonts, toonX, toonO, svg, burst, ol2, chaos };
 if (require.main === module) main();
