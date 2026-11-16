@@ -41,6 +41,8 @@ What I could not do, and what it means:
 - **A friend match from both seats was not played.** It needs the Firebase emulators, which are not installed here. I read the online flow instead and relied on the measurements already in the project notes.
 - **Scripted play is not a human feel test.** It measures pacing, waiting and outcomes well. It cannot tell you whether a clash is exciting. The Super Chaos proposals in particular need a handful of real people before they are trusted.
 - Simulated players pick squares the way the computer does, so "same square" rates are probably higher than between two humans.
+- "The 19 released games" means the 17 released by default plus Krabs and Risky Spins, which a release switch turns on. The live switches may differ; I could not read them.
+- While this review was being written, an iOS 1.20.0 commit landed on the branch. Part 3 was re-checked against its notes: Continue with Apple is still hidden, `APP_STORE_ID` is still empty, token revocation is still to do.
 
 ---
 
@@ -426,7 +428,7 @@ Legal items are flagged from the code and Apple's published rules as I understan
 | Must | Age rating questionnaire answered on purpose | Open; the project notes already flag simulated gambling | S |
 | Must | App Privacy labels refreshed | The draft is stale in two places: it says deletion is not built and devices are not swept; both now are | S |
 | Must | `APP_STORE_ID` set | Empty, so "Please update" opens the App Store's front page | S |
-| Must | TestFlight checklist in `docs/ios-plan.md` worked through | Every box unchecked | M |
+| Must | TestFlight checklist in `docs/ios-plan.md` worked through (section 5; section 8 now has the 1.20.0 steps and the phone checklist) | Boxes unchecked; the 1.20.0 audit ran in Chromium only, so WebKit, the native sheets and real haptics are still to check on a phone | M |
 | Should | A privacy manifest (`PrivacyInfo.xcprivacy`) | Absent | S |
 | Should | iPad checks (all orientations, Split View) | Not recorded | S |
 | Nice | A 20-second App Preview video | None | M |
@@ -450,7 +452,7 @@ Draft listing text, to edit:
 | Should | Terms of Service | None | S |
 | Should | A position on children: the policy says "not for children under 13" but there is no age question | Needs advice, especially with a low age rating | S (a decision) |
 | Should | A position on consent for the anonymous device ID in the EU and UK | No banner or choice today | S (a decision) |
-| Nice | Rename the stale lines in `docs/ios-plan.md` (it says "nothing below has been built yet") | Stale | S |
+| Nice | Fix the stale line in `docs/ios-plan.md` section 2 (it still says the privacy policy page "doesn't exist yet") | Stale | S |
 
 ### Support
 
