@@ -65,6 +65,7 @@ function endBurst(m) {
 function mmResult() {
   if (!isMM() || state.online.room || !room || !room.pub) return '';   // (a friend room's match: the friends record is on the profile, not here)
   const pub = room.pub, me = state.online.me, opp = pub.players[other(me)];
+  if (opp && opp.bot) return burstBadge('You played the computer', 'w vsbot', 8);   // (asked for after a search alone: said so, and kept off the record)
   const recs = pub.result && pub.result.records;
   let r = '';
   if (RATINGS_ENABLED && pub.mode === 'ranked') {
@@ -126,8 +127,8 @@ function speedOffer() {
   if (!state.speedAsk) return '';
   return `<div class="rmline spdask">${bubble('Too slow?', 'r')}${smallPanel('speed-try', '', 'Try Speed', { cls: 'w spdtry', aria: 'Try Speed: faster animations (Settings)' })}</div>`;
 }
-// A Find Match game's next: another one, or a small flat "soon" tag while Find Match is switched off.
-function findAgainBtn() { return findOn ? BIG('find-again', 'Find Match', 'another rival') : '<button class="soon" disabled aria-label="Find Match: coming soon">Find Match<small>soon</small></button>'; }
+// A Find Match game's next: another one (Find Match switched off meanwhile: the main menu).
+function findAgainBtn() { return findOn ? BIG('find-again', 'Find Match', 'another rival') : BIG('menu', 'Main menu', 'play again'); }
 // The small panels under it: the board, the main menu, Share result.
 function smallRow() {
   return `<div class="ccsmall endsmall">${smallPanel('review', CICON.board, 'Board', { k: 7, aria: 'View board' })}${smallPanel(state.online ? 'leave' : 'menu', CICON.home, 'Menu', { cls: 'w fr', k: 8, aria: 'Main menu' })}${shareBtn()}</div>${shareLine()}`;

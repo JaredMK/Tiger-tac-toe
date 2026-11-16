@@ -1,6 +1,7 @@
 // The Find Match screen and its intro.
 import { acct } from '../../net/accounts.js';
-import { mmIntro, search } from '../../net/matchmaking.js';
+import { OFFER_MS, mmIntro, search } from '../../net/matchmaking.js';
+import { bubble, panel } from '../comic.js';
 import { startShuffle } from '../../net/room.js';
 import { net } from '../../net/room.js';
 import { esc, state } from '../app.js';
@@ -33,6 +34,7 @@ export function renderFind() {
       <div class="spinner" aria-hidden="true">${toon('X')}${toon('O')}</div><h2>Searching…</h2>
       <p class="hint"><span id="mmwait">${fmtClock(Date.now() - search.since)}</span></p>
       ${search.msg ? `<div class="warn">${esc(search.msg)}</div>` : ''}
+      ${Date.now() - search.since >= OFFER_MS ? `<div class="botoffer">${bubble('No one around right now.', '')}${panel('search-bot', 'Play the Computer', { tag: 'while you wait', cls: 'y', k: 1, attrs: search.bot ? ' disabled' : '', aria: 'Play the computer instead (it is not a person)' })}</div>` : ''}
       <button class="btn" data-act="search-cancel">Cancel</button></div></div></main>`;
   }
   // (not searching: only if a search could not start; Search tries again)

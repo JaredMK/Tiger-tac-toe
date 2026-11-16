@@ -23,7 +23,8 @@ const CONFIG_SETS = [
   { id: 'verify1', path: 'config/verify/since', value: () => Date.now() },   // email verification's cutoff: accounts made before this deploy are grandfathered (production: the release that brings verification in)
   { id: 'wheels2', path: 'config/wheels', value: { target: 30, lowSkulls: 2, midSkulls: 4, highSkulls: 5, lowLo: 1, lowHi: 4, midLo: 4, midHi: 7, highLo: 6, tensMin: 1, tensMax: 1, gap: 0.4, evSpread: 10 } },   // Risky Spins balanced (November 2026): the whole of config/wheels set to the new defaults (meta.js WHEEL_DEFAULTS), the three wheels' turns within 10%; squares dealt before keep their wheels
   { id: 'wheels3', path: 'config/wheels', value: { target: 30, lowSkulls: 2, highSkulls: 5, lowLo: 1, lowHi: 4, highLo: 6, tensMin: 1, tensMax: 1, gap: 0.4, evSpread: 10 } },   // Risky Spins deals two wheels, low and high (November 2026): the whole of config/wheels set to the defaults (meta.js WHEEL_DEFAULTS: the same numbers as wheels2, without the medium wheel's midSkulls, midLo and midHi); squares dealt with three wheels play on with them
-  { id: 'stagingOpen1', path: 'config/staging/mode', value: 'open', env: 'staging' },   // staging open to anyone with the link (the admin's Staging access switch; Allowlist puts the gate back)
+  { id: 'stagingOpen1', path: 'config/staging/mode', value: 'open', env: 'staging' },
+  { id: 'findMatch1', path: 'features/findMatch', value: true, env: 'staging' },   // Find Match on on staging (the soft launch: a computer offered after about 20 s alone; the admin's switch can still turn it off)   // staging open to anyone with the link (the admin's Staging access switch; Allowlist puts the gate back)
 ];
 const ENV = process.env.TARGET || (PROJECT === 'tic-tac-chaos' ? 'production' : 'staging');   // (a set with env: that environment alone)
 (async () => {

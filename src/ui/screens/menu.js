@@ -31,12 +31,12 @@ export function renderMenu() {
   </div><div class="menu-foot"><a class="credit" href="${JARHEAD_URL}" target="_blank" rel="noopener noreferrer" aria-label="by JarHead Labs, on X (opens in a new tab)">${JARHEAD_LOGO}<span>by JarHead Labs</span></a><a class="privacy" href="${privacyUrl()}" target="_blank" rel="noopener noreferrer" aria-label="Privacy policy (opens in a new tab)">Privacy</a></div></main>`;
 }
 // Find Match: a panel like the others while it is on (back into the match in progress if there is one); while the
-// admin has it off, a small flat "soon" tag (still a disabled button: the menu's controls keep their order).
+// admin has it off, nothing.
 function findBtn() {
   const back = activeElsewhere();
   if (back) return panel('find-go', 'Back to your match', { tag: 'online', cls: 'c', k: 4 });
   if (findOn) return panel('find-go', 'Find Match', { tag: 'online', cls: 'c', k: 4 });
-  return '<button class="soon" data-act="find-go" disabled aria-label="Find Match: coming soon">Find Match<small>soon</small></button>';
+  return '';                                        // (switched off on the admin page: not shown at all; no "soon" tag, December 2026)
 }
 // The main menu's top row: My Stats (or the leaderboard, with ratings on), and the account (Log in, or your username).
 export let acctLoading = false;                     // a returning player's account is being fetched at start

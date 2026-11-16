@@ -1,7 +1,7 @@
 // Comic Chaos (December 2026; src/ui/comic.js, comic.css): the game's look.
 //   tappable: a skewed panel (.pn) with a thick outline, a hard shadow and a caption tag, pressed it punches in;
 //   information: flat (bubbles, captions, burst badges), never a .pn; selected: inverted to ink and yellow (.pn.on);
-//   the main menu: a panel for each way to play with its tag and line, Find Match a small "soon" tag while off;
+//   the main menu: a panel for each way to play with its tag and line, Find Match not shown while off;
 //   every panel 44 px or more; the fonts embedded.
 // Rendered in Node with the browser's names stubbed (no page needed).
 import test from 'node:test';
@@ -36,7 +36,7 @@ test('the stylesheet and the two faces are the page\'s', () => {
   assert.match(fonts, /Open Font License/);
 });
 
-test('the main menu: a panel with a caption tag for each way to play (no second line: the copy sweep); Find Match a small "soon" tag while off', () => {
+test('the main menu: a panel with a caption tag for each way to play (no second line: the copy sweep); Find Match not shown while off', () => {
   Object.assign(state, board(), { screen: 'menu', online: null });
   MM.setFindOn(true);
   let html = renderMenu();
@@ -45,7 +45,7 @@ test('the main menu: a panel with a caption tag for each way to play (no second 
   assert.deepEqual(panels(html).map(p => p.act), ['cpu-go', 'friend-go', 'find-go', 'howto', 'settings']);
   MM.setFindOn(false);
   html = renderMenu();
-  assert.match(html, /<button class="soon" data-act="find-go" disabled[^>]*>Find Match<small>soon<\/small>/);
+  assert.doesNotMatch(html, /data-act="find-go"/);
   assert.ok(!panels(html).some(p => p.act === 'find-go'), 'never a dead panel');
   MM.setFindOn(true);
 });

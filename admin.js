@@ -1029,10 +1029,9 @@ const chk = (sec, k) => `<input type="checkbox" data-cfg="${sec}.${k}"${cfgGet(s
 const numIn = (sec, k, min, max) => `<input type="number" inputmode="numeric" data-cfg="${sec}.${k}" min="${min}" max="${max}" value="${esc(cfgGet(sec, k))}">`;
 function botsCard() {
   const b = ctl.botStats || {}, list = Object.values(ctl.bots || {}).sort((x, y) => String(x.key).localeCompare(String(y.key)));
-  return `<div class="card ctl" id="botsCard"><div class="row"><h2>Bots</h2><label class="sw">${chk('bots', 'enabled')}<span>${cfgGet('bots', 'enabled') ? 'On' : 'Off'}</span></label></div>
-    <p class="note">When someone searches Find Match and nobody else is searching, a bot takes them on after a random wait between these two numbers. The player is not told it is a bot. Off: they keep waiting.</p>
-    <div class="fields"><label>Wait from ${numIn('bots', 'waitMin', 5, 600)} s</label><label>to ${numIn('bots', 'waitMax', 5, 600)} s</label>
-      <label>${chk('bots', 'countInRecords')} Count bot matches in players' records</label>
+  return `<div class="card ctl" id="botsCard"><div class="row"><h2>Bots</h2></div>
+    <p class="note">When someone has searched Find Match alone for about 20 seconds, the search screen offers them the computer. If they take it, a bot plays them, shown as "Computer", and the results say they played the computer; it never counts on their Find Match record. Nobody is paired with a bot unasked (December 2026: the hidden bots, their waits and the record switch are gone).</p>
+    <div class="fields">
       <label>Bots play at <select data-cfg="bots.level">${[['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']].map(([v, l]) => `<option value="${v}"${cfgGet('bots', 'level') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
     <p class="note">The computer's levels, as in Play Local: Easy is Normal with a careless move now and then; Normal the computer as it has always played, each bot with its own style; Hard searches inside the mini-games and plays the rest of the match out (Monte Carlo) before choosing its square, within about 0.3 s a move. The default for new bot matches; a match under way keeps its level.</p>
     <div class="kpis" style="margin-top:12px">
@@ -1086,7 +1085,7 @@ function alertsCard() {
   const tr = testResult ? `<p class="res">Test: text ${out(testResult.sms)} · email ${out(testResult.email)}</p>` : '';
   const phoneOk = !cfgGet('alerts', 'phone') || /^\+?[\d\s().-]{10,18}$/.test(cfgGet('alerts', 'phone'));
   return `<div class="card ctl" id="alertsCard"><div class="row"><h2>Empty-queue alerts</h2><label class="sw">${chk('alerts', 'enabled')}<span>${cfgGet('alerts', 'enabled') ? 'On' : 'Off'}</span></label></div>
-    <p class="note">When someone has searched for this many seconds and nobody else is searching, you get a text and/or an email with a link straight into Find Match. It comes before any bot (bots wait ${esc(cfgGet('bots', 'waitMin'))}–${esc(cfgGet('bots', 'waitMax'))} s), so you have until then to join. Your own searches never alert you.</p>
+    <p class="note">When someone has searched for this many seconds and nobody else is searching, you get a text and/or an email with a link straight into Find Match. It comes before the computer is offered to them (about 20 s in), so you have until then to join. Your own searches never alert you.</p>
     <div class="fields"><label>${chk('alerts', 'sms')} Text (SMS)</label><label>${chk('alerts', 'email')} Email</label>
       <label>Phone <input type="tel" data-cfg="alerts.phone" value="${esc(cfgGet('alerts', 'phone'))}" placeholder="914-555-0100"></label>${phoneOk ? '' : '<span class="bad">not a phone number</span>'}
       <label>Email <input type="email" data-cfg="alerts.to" value="${esc(cfgGet('alerts', 'to'))}" placeholder="you@example.com"></label>

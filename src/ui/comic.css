@@ -422,6 +422,8 @@ main.scr.cc { overflow: clip; }
 .find-scr.cc .searching h2 { font: 400 34px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: #fff; -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; transform: rotate(-2deg); }
 .find-scr.cc .searching .hint { font: 400 26px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .06em; color: var(--ink); }
 .find-scr.cc .searching .btn, .find-scr.cc .searching .primary { min-width: 160px; }
+.find-scr.cc .botoffer { display: flex; flex-direction: column; align-items: center; gap: 14px; margin: 4px 0 8px; animation: coachin .3s cubic-bezier(.3, 1.4, .5, 1) both; }   /* about 20 s alone: the computer offered (screens/find.js) */
+.find-scr.cc .botoffer .pn { min-width: 240px; height: 64px; } .find-scr.cc .botoffer .bub { font-size: 17px; }
 
 /* ----- Settings (the screen and the in-game menu's step) ----- */
 .cc .settings, .flash.pause .settings { gap: 16px; }

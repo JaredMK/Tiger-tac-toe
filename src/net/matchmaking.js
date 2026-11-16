@@ -22,7 +22,9 @@ import { ANIM, dur, durRate, newTimer } from '../core/timer.js';
 import { render } from '../ui/render.js';
 import { noteNet } from '../ui/turnbar.js';
 
-export let search = { on: false, found: false, since: 0, msg: '' }, searchTimer = null, searchBusy = false;
+export let search = { on: false, found: false, since: 0, msg: '', bot: false }, searchTimer = null, searchBusy = false;
+export const OFFER_MS = 20000;                    // alone this long: the search screen offers the computer (labelled; functions/index.js findMatch { bot: true })
+let offerTimer = null;
 // Find Match is on only while the admin page has it on (features/findMatch); off until the database says otherwise.
 export let findOn = (() => { try { return localStorage.getItem(KEY + '.find') === 'on'; } catch (e) { return false; } })();
 export function setFindOn(on) {
@@ -45,7 +47,8 @@ export async function openFind() {
 }
 export function startSearch() {
   if (search.on || !loggedIn()) return;
-  search.on = true; search.found = false; search.since = Date.now(); search.msg = '';   // (the searching screen is silent: only "found" sounds, when the match starts)
+  search.on = true; search.found = false; search.since = Date.now(); search.msg = ''; search.bot = false;   // (the searching screen is silent: only "found" sounds, when the match starts)
+  clearTimeout(offerTimer); offerTimer = setTimeout(() => { if (search.on) render(); }, OFFER_MS + 50);   // (the offer shows on time, between the checks-in)
   render();
   searchTick();
 }
@@ -75,7 +78,21 @@ export async function cancelSearch() {
   try { const r = await call('cancelSearch', {}); if (r.status === 'matched') enterMatched(r); }   // paired just before Cancel: the game is on
   catch (e) { /* a searcher who stops checking in is dropped from the queue anyway */ }
 }
-export function stopSearch() { search.on = false; clearTimeout(searchTimer); searchTimer = null; }
+export function stopSearch() { search.on = false; search.bot = false; clearTimeout(searchTimer); searchTimer = null; clearTimeout(offerTimer); }
+// The offer taken: the computer, now (the same queue entry, paired with a free bot; labelled "Computer" in the game).
+export async function searchBot() {
+  if (!search.on || search.bot) return;
+  search.bot = true; render();
+  try {
+    const r = await call('findMatch', { bot: true });
+    if (search.on && r.status === 'matched') { enterMatched(r); return; }
+    search.msg = 'No computer free right now: still searching…';
+  } catch (e) { search.msg = 'Connection trouble: still trying…'; }
+  search.bot = false;
+  if (search.on) render();
+}
+// A match against the computer from Find Match (its seat says bot: true).
+export function vsBot() { return isMM() && room && room.pub && room.pub.players && !!Object.values(room.pub.players).some(p => p && p.bot); }
 export function findAgain() {                          // the results screen: another game
   if (!findOn) return;
   leaveRoom(true);

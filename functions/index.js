@@ -430,9 +430,10 @@ exports.deleteAccount = onCall(CALL, async req => {
 // Find Match: joins the queue (or stays in it), pairs whoever can be paired, and answers with the
 // game once there is one. The phone calls it every few seconds while searching, which keeps its place
 // and lets the rating range widen; Cancel leaves the queue.
-// Searching alone (no other live searcher): after a few seconds the admin is alerted (when alerts are on),
-// and once the player's own randomized wait is over (40 to 70 seconds by default), a free bot is paired
-// with them (when bots are on). Anyone else searching meanwhile is paired with them as usual first.
+// Searching alone (no other live searcher): after a few seconds the admin is alerted (when alerts are on). About 20 s
+// in, the search screen offers the computer (December 2026): a call with { bot: true } pairs the player with a free
+// bot, shown in the game as "Computer" (its seat marked bot) and never counted on the Find Match record. Nobody is
+// ever paired with a bot unasked. Anyone else searching meanwhile is paired with them as usual first.
 exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async req => {
   const uid = await needAccount(req), client = await needCurrent(req);
   const isAdmin = !!(req.auth.token && req.auth.token.admin === true);
@@ -451,8 +452,9 @@ exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async
     throw new HttpsError('failed-precondition', 'Find Match is not available at this time.', { off: true });
   }
   for (const other of OLD_QUEUES.concat(Object.keys(R.QUEUES).filter(k => k !== key))) await leaveQueue(other, uid);   // (from an older page, or the other queue)
-  const conf = await adminConfig(), bc = B.botConfig(conf), ac = B.alertConfig(conf);
-  const free = bc.enabled && prev && !prev.game && prev.botAt && now() >= prev.botAt ? await freeBots() : [];   // only looked up once a bot could be due
+  const conf = await adminConfig(), ac = B.alertConfig(conf);
+  const wantBot = !!(req.data && req.data.bot === true);          // the player took the search screen's offer (about 20 s in): the computer, labelled as such
+  const free = wantBot && prev && !prev.game ? await freeBots() : [];
   let made = [], mine = null, alone = false, entry = null, botGame = null, vanished = false;
   await db.ref(`queue/${key}`).transaction(cur => {
     made = []; mine = null; alone = false; botGame = null; vanished = false;
@@ -461,9 +463,8 @@ exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async
     // Never put it back, or the player would wait in the queue while in a game.
     if (!q[uid] && prev && (prev.game || t - prev.seen <= STALE_MS)) { vanished = true; return cur === null ? null : undefined; }
     for (const [u, e] of Object.entries(q)) if (!e || (!e.game && t - e.seen > STALE_MS)) delete q[u];
-    const me = q[uid] || { since: t, botAt: t + B.waitMs(bc, Math.random) };
-    if (!me.botAt) me.botAt = me.since + B.waitMs(bc, Math.random);
-    q[uid] = Object.assign(me, { name: prof.username, seen: t, rec: recordOf(prof), client }, R.RATINGS_ENABLED ? { rating: prof.rating } : {});
+    const me = q[uid] || { since: t };
+    q[uid] = Object.assign(me, { name: prof.username, seen: t, rec: recordOf(prof), client}, R.RATINGS_ENABLED ? { rating: prof.rating } : {});
     for (const [a, b] of R.pairQueue(q, t)) {
       const id = db.ref('games').push().key, xFirst = crypto.randomInt(2) === 0;
       q[a] = Object.assign(q[a], { game: id, side: xFirst ? 'X' : 'O', vs: b, at: t });
@@ -472,7 +473,7 @@ exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async
     }
     if (!q[uid].game) {
       alone = !Object.entries(q).some(([u, e]) => u !== uid && e && !e.game);
-      if (alone && bc.enabled && t >= q[uid].botAt && free.length) {      // a bot takes the lone searcher on
+      if (wantBot && free.length) {                                        // the computer, asked for (never by itself: no hidden bots, December 2026)
         const bot = free[crypto.randomInt(free.length)], id = db.ref('games').push().key;
         q[uid] = Object.assign(q[uid], { game: id, side: crypto.randomInt(2) === 0 ? 'X' : 'O', vs: bot.uid, at: t });
         botGame = { id, bot };
@@ -601,13 +602,13 @@ async function createGame(key, id) {
   const X = ea.side === 'X' ? { uid: ua, e: ea } : { uid: ub, e: eb }, O = X.uid === ua ? { uid: ub, e: eb } : { uid: ua, e: ea };
   return makeGame(key, id, X, O, null);
 }
-// A lone searcher and a bot: the same game, the bot in the other seat, online (its presence says so)
-// and looked after by runBot. Nothing in the game itself says it is a bot.
+// A lone searcher who asked for the computer and a bot: the same game, the bot in the other seat as "Computer" (its
+// seat says bot: true), online (its presence says so) and looked after by runBot.
 async function createBotGame(key, uid, id, bot) {
   const e = (await db.ref(`queue/${key}/${uid}`).get()).val();
   if (!e || e.game !== id) return false;
   const p = (await db.ref(`users/${bot.uid}`).get()).val() || {};
-  const human = { uid, e }, me = { uid: bot.uid, e: { name: p.username || bot.username, rec: recordOf(p) } };
+  const human = { uid, e }, me = { uid: bot.uid, e: { name: E.CPU_NAME || 'Computer', rec: { wins: 0, losses: 0, draws: 0 }, bot: true } };   // (labelled: the computer, its own record not shown)
   return makeGame(key, id, e.side === 'X' ? human : me, e.side === 'X' ? me : human, { bot });
 }
 // The game itself, made exactly once; then the players are pointed at it.
@@ -622,7 +623,7 @@ async function makeGame(key, id, X, O, opts) {
   const rng = seedRng();
   await runConfigNow();
   const rel = await releasesNow();
-  const seat = p => Object.assign({ uid: p.uid, name: p.e.name, record: p.e.rec || { wins: 0, losses: 0, draws: 0 } }, R.RATINGS_ENABLED ? { rating: p.e.rating } : {});   // the record for the players' intro
+  const seat = p => Object.assign({ uid: p.uid, name: p.e.name, record: p.e.rec || { wins: 0, losses: 0, draws: 0 } }, p.e.bot ? { bot: true } : {}, R.RATINGS_ENABLED ? { rating: p.e.rating } : {});   // the record for the players' intro
   const players = { X: seat(X), O: seat(O) };
   const on = g => !friend || !friend.setup.games || friend.setup.games[g] !== false;   // (a room: the games its host left on)
   const clients = [X, O].filter(p => !(bot && p.uid === bot.uid)).map(p => p.e.client);   // (a bot plays every game)
@@ -1142,7 +1143,7 @@ async function finishGame(id) {
   if (!g || !g.pub || g.pub.status !== 'over') return false;
   const pub = g.pub, st = parse(pub.state);
   const bg = (await db.ref(`botGames/${id}`).get()).val();      // a game against a bot: its own stats; the player's record as the admin chose
-  const counted = !bg || B.botConfig(await adminConfig()).countInRecords;
+  const counted = !bg;                                              // a match against the computer (asked for, labelled) never counts on the Find Match record
   const names = { X: pub.players.X.name, O: pub.players.O.name };
   const final = pub.chaos ? E.scFinal(scOf(g), names) : finalOf({ state: st, secrets: parse(g.sec), sides: sidesOf(g) }, names);   // (a Super Chaos match: every square revealed from the server's record)
   const how = R.howEnded(st), t = pub.ended || now();

@@ -14,7 +14,7 @@ import {
   acct, afterLogin, askDelete, cancelDelete, connectQuiet, deleteAccount, gateAct, gateOn, loggedIn, loginMail, loginMsg, loginPass, loginReset, loginWith, logout,
   needAccount, saveUsername, setAfterLogin, setLoginMail, setLoginMsg, setLoginPass, setUnameDraft, unameDraft, unverified, verifyAct
 } from '../net/accounts.js';
-import { cancelSearch, closeIntro, findAgain, isMM, onIntroClosed, openFind, resignMM, resumeMatch, search, showSides, startSearch } from '../net/matchmaking.js';
+import { searchBot, cancelSearch, closeIntro, findAgain, isMM, onIntroClosed, openFind, resignMM, resumeMatch, search, showSides, startSearch } from '../net/matchmaking.js';
 import { attemptMove, dbOpen, setTapEl, tapEl } from '../net/moves.js';
 import { reactCooling, rx, sendReact } from '../net/reactions.js';
 import { scMode, scPicked, setMode, visibleTypes } from '../net/releases.js';
@@ -273,6 +273,8 @@ export function init() {
       connectQuiet();
     } else if (act === 'find-go') {               // the main menu: Find Match (or back to the match in progress)
       openFind();
+    } else if (act === 'search-bot') {           // the search screen's offer, about 20 s alone: the computer (net/matchmaking.js searchBot)
+      searchBot();
     } else if (act === 'search-go') {
       startSearch();
     } else if (act === 'search-cancel') {

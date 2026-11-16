@@ -1007,12 +1007,11 @@ async function rewrite(id, fn) {
   await patch(`games/${id}`, { pub: Object.assign(g.pub, { state: JSON.stringify(rec.state) }), sec: JSON.stringify(rec.secrets), dl: rec.state.timer.deadline });
 }
 const tttBoard = full => { for (const sq of full.squares) { sq.owner = null; sq.mini = E.newMini('ttt', E.makeRng('t')); } };
-// A lone searcher's bot comes once their wait is over: here, by moving their wait into the past.
+// A lone searcher takes the search screen's offer: the computer (a bot, labelled), asked for.
 async function soloUntilBot(p) {
   assert.equal((await p.call('findMatch', {})).status, 'searching');
-  await patch(`queue/match/${p.uid}`, { botAt: Date.now() - 1 });
-  const r = await p.call('findMatch', {});
-  assert.equal(r.status, 'matched', 'a bot once the wait is over');
+  const r = await p.call('findMatch', { bot: true });
+  assert.equal(r.status, 'matched', 'the computer, asked for');
   return r;
 }
 
@@ -1111,35 +1110,29 @@ test('accounts: last activity moves on with a login or a local match (online mat
   assert.ok((await get(`lastSeen/${p.uid}`)) > t1, 'a local match');
 });
 
-test('bots: off by default; on, a lone searcher gets one only after their own randomized 40-70 s wait, and two people play each other', async () => {
+test('bots: never paired unasked (no hidden bots); a lone searcher who asks gets the computer; two people play each other', async () => {
   await clearQueue(); await put('admin/config', null);
   const a = await player('Lonely_A');
   assert.equal((await a.call('findMatch', {})).status, 'searching');
-  await patch(`queue/match/${a.uid}`, { botAt: Date.now() - 1 });
-  assert.equal((await a.call('findMatch', {})).status, 'searching', 'bots off (the default): the player keeps waiting');
-  assert.equal(await get('bots'), null, 'no bot accounts made while bots are off');
+  await wait(50);
+  assert.equal((await a.call('findMatch', {})).status, 'searching', 'searching alone: the player keeps waiting');
+  assert.equal(await get('bots'), null, 'no bot accounts made until one is asked for');
   assert.equal((await a.call('cancelSearch', {})).status, 'cancelled');
-  await botsOn();
-  const waits = [];
-  for (let k = 0; k < 4; k++) {
-    assert.equal((await a.call('findMatch', {})).status, 'searching', 'not before the wait');
-    const q = await get(`queue/match/${a.uid}`);
-    waits.push(q.botAt - q.since);
-    await a.call('cancelSearch', {});
-  }
-  assert.ok(waits.every(w => w >= 40000 && w <= 70000), `each wait drawn from 40 to 70 s (${waits})`);
-  assert.ok(new Set(waits).size > 1, 'a new wait each time');
-  // someone else searching: the two people are paired, whatever the waits
+  // someone else searching: the two people are paired
   assert.equal((await a.call('findMatch', {})).status, 'searching');
-  await patch(`queue/match/${a.uid}`, { botAt: Date.now() - 1 });
   const b = await player('Lonely_B');
   const g = await pairUp(b, a);
   assert.equal(await get(`botGames/${g.id}`), null, 'two people: no bot');
   await a.call('resign', { game: g.id }); await recorded(g.id);
+  // asked for: the computer
+  const c = await player('Lonely_C');
+  const r = await soloUntilBot(c);
+  assert.ok(await get(`botGames/${r.game}`), 'the computer, asked for');
+  await c.call('resign', { game: r.game }); await recorded(r.game);
   await put('admin/config', null);
 });
 
-test('bots: the match is an ordinary one against an ordinary-looking, online account; it thinks before each move and never runs out of time', async () => {
+test('bots: the match is an ordinary one against the computer, labelled as such, online; it thinks before each move and never runs out of time', async () => {
   await clearQueue(); await botsOn();
   await put('test/noBotTasks', true);                            // (each move here comes from a tick or the sweep: no queued Cloud Task racing the steps on a loaded runner)
   const h = await player('VsBot_One'), other = await player('Onlooker');
@@ -1154,12 +1147,13 @@ test('bots: the match is an ordinary one against an ordinary-looking, online acc
   const bu = await get(`users/${bot.uid}`);
   assert.equal(require('../../functions/serverRules.js').usernameProblem(bu.username), null, 'a username within the rules, made up like anyone\'s');
   assert.equal(new Set(Object.values(bots).map(b => b.username.toLowerCase())).size, 5, 'five different usernames');
-  assert.equal(bot.name, bu.username);
+  assert.equal(bot.name, 'Computer', 'labelled: the computer');
+  assert.equal(bot.bot, true);
   assert.match(bot.uid, /^[A-Za-z0-9]{28}$/, 'an id shaped like any account\'s');
   assert.equal(await get(`usernames/${bu.username.toLowerCase()}`), bot.uid, 'its username is taken like anyone\'s');
   assert.ok(bu.joined < Date.now() - 3600000 && bu.rating === 1200, 'a profile like any other');
-  assert.deepEqual(Object.keys(pub).sort(), ['clock', 'created', 'mode', 'players', 'queue', 'state', 'status', 'timer', 'updated'], 'nothing in the game says bot');
-  assert.deepEqual(Object.keys(bot).sort(), ['name', 'record', 'uid']);
+  assert.deepEqual(Object.keys(pub).sort(), ['clock', 'created', 'mode', 'players', 'queue', 'state', 'status', 'timer', 'updated']);
+  assert.deepEqual(Object.keys(bot).sort(), ['bot', 'name', 'record', 'uid'], 'its seat says bot');
   assert.equal(pub.mode, 'match');
   await denied(h.read(`botGames/${id}`), 'the bot record'); await denied(h.read('bots'), 'the bot list'); await denied(h.read('botStats'), 'the bot numbers');
   await denied(other.read(`active/${bot.uid}`), 'the bot\'s active game');
@@ -1257,7 +1251,7 @@ test('bots: after a player\'s move, the bot\'s move is planned inside its own wi
   await patch(`botGames/${id}`, { live: true });
 });
 
-test('bots: the result is recorded for both; the player\'s record as the admin chose; bot matches counted apart in the stats', async () => {
+test('bots: the result is recorded; never on the player\'s Find Match record; bot matches counted apart in the stats', async () => {
   await clearQueue(); await botsOn();
   const statsBefore = (await get('stats/modes')) || {}, botStats0 = (await get('botStats')) || {};
   const h = await player('VsBot_Two');
@@ -1277,24 +1271,23 @@ test('bots: the result is recorded for both; the player\'s record as the admin c
   const g1 = await finishWin();
   const pub1 = await get(`games/${g1.id}/pub`), botUid = pub1.players[g1.botSide].uid;
   const u1 = await get(`users/${h.uid}`), b1 = await get(`users/${botUid}`);
-  assert.deepEqual([u1.wins - (u0.wins || 0), u1.games - (u0.games || 0)], [1, 1], 'counted in the player\'s record (the default)');
-  assert.equal(pub1.result.records[g1.me].wins, u1.wins, 'the results screen shows the new record');
+  assert.deepEqual([(u1.wins || 0) - (u0.wins || 0), (u1.games || 0) - (u0.games || 0)], [0, 0], 'never counted in the player\'s Find Match record');
+  assert.equal(pub1.result.records[g1.me].wins, u1.wins || 0, 'the results screen shows the record as it was');
   assert.ok(b1.losses >= 1, 'the bot\'s own record counts every game, like anyone\'s');
   const hist = await get(`history/${h.uid}/${g1.id}`);
-  assert.deepEqual([hist.mode, hist.result, hist.opponent.uid, hist.opponent.name], ['match', 'win', botUid, b1.username], 'an ordinary Find Match game in the history');
+  assert.deepEqual([hist.mode, hist.result, hist.opponent.uid, hist.opponent.name], ['match', 'win', botUid, 'Computer'], 'in the history, against the computer');
   assert.ok(await get(`history/${botUid}/${g1.id}`), 'and in the bot\'s');
   const bg = await get(`botGames/${g1.id}`);
   assert.deepEqual([bg.live, bg.done, bg.winner], [undefined, true, g1.me]);
   assert.equal(await get(`active/${botUid}`), null, 'the bot is free again');
   assert.equal(await get(`lastSeen/${botUid}`), null, 'a bot has no last activity (it is not in the Accounts table)');
-  // the switch: left out of the player's record
-  await botsOn({ countInRecords: false });
+  // the admin's old switch makes no difference: never counted
+  await botsOn({ countInRecords: true });
   const g2 = await finishWin();
   const u2 = await get(`users/${h.uid}`), pub2 = await get(`games/${g2.id}/pub`);
   assert.deepEqual([u2.wins, u2.games, u2.minis], [u1.wins, u1.games, u1.minis], 'not counted: the record and mini-game stats as they were');
   assert.deepEqual(u2.sides, u1.sides, 'nor the games by side');
-  assert.equal(u1.sides[g1.me].wins, 1, 'the counted one is on the side played');
-  assert.deepEqual(pub2.result.records[g2.me], { wins: u1.wins, losses: u1.losses || 0, draws: u1.draws || 0 }, 'the results screen shows the record unchanged');
+  assert.deepEqual(pub2.result.records[g2.me], { wins: u1.wins || 0, losses: u1.losses || 0, draws: u1.draws || 0 }, 'the results screen shows the record unchanged');
   assert.ok(await get(`history/${h.uid}/${g2.id}`), 'still in the history');
   // the stats: a mode of their own; the bot matches counted for the dashboard
   const m = (await get('stats/modes')) || {};
@@ -1380,7 +1373,7 @@ test('alerts: someone searching alone alerts the admin by text and email, once, 
   await p8.call('findMatch', {});
   await count(6, 'alerts off');
   await p8.call('cancelSearch', {});
-  // the order with bots on: the alert first, the bot only after the player's wait
+  // the alert first; the computer only once the player asks for it
   await put('alertState', null);
   await patch('admin/config/alerts', { enabled: true });
   await botsOn();
@@ -1388,10 +1381,9 @@ test('alerts: someone searching alone alerts the admin by text and email, once, 
   assert.equal((await p9.call('findMatch', {})).status, 'searching');
   await count(8, 'the alert at once');
   const q9 = await get(`queue/match/${p9.uid}`);
-  assert.ok(q9.alerted && q9.botAt - q9.alerted >= 40000, 'the bot is at least 40 s behind it: time to join');
-  await patch(`queue/match/${p9.uid}`, { botAt: Date.now() - 1 });
-  const r9 = await p9.call('findMatch', {});
-  assert.equal(r9.status, 'matched', 'then the bot');
+  assert.ok(q9.alerted, 'alerted while searching alone');
+  const r9 = await p9.call('findMatch', { bot: true });
+  assert.equal(r9.status, 'matched', 'then the computer, once asked for');
   await count(8, 'no second alert');
   await p9.call('resign', { game: r9.game }); await recorded(r9.game);
   await put('admin/config/bots', null);
@@ -2033,13 +2025,12 @@ test('Super Chaos Find Match, two clients: paired into a match the server runs; 
   const log = Object.values(await get(`matchLogs/m${id}`) || {}).map(e => e.k);
   for (const k of ['start', 'move', 'resolve', 'round', 'timeout', 'end']) assert.ok(log.includes(k), `${k} in the match's log (${log})`);
 });
-test('Super Chaos Find Match against a bot: a lone searcher gets a bot after their wait; it moves by the computer\'s Super Chaos play once its think is over; the round settles; counted apart', async () => {
+test('Super Chaos Find Match against a bot: a lone searcher who asks gets a bot; it moves by the computer\'s Super Chaos play once its think is over; the round settles; counted apart', async () => {
   await clearQueue(); await botsOn();
   const h = await player('ScSolo');
   assert.equal((await h.call('findMatch', { mode: 'chaos' })).status, 'searching');
-  await patch(`queue/chaos/${h.uid}`, { botAt: Date.now() - 1 });
-  const r = await h.call('findMatch', { mode: 'chaos' });
-  assert.equal(r.status, 'matched', 'a bot once the wait is over');
+  const r = await h.call('findMatch', { mode: 'chaos', bot: true });
+  assert.equal(r.status, 'matched', 'the computer, asked for');
   const id = r.game, botSide = r.side === 'X' ? 'O' : 'X';
   const pub = await h.read(`games/${id}/pub`), bg = await get(`botGames/${id}`);
   assert.equal(pub.chaos, true); assert.deepEqual([bg.side, bg.human, bg.live], [botSide, h.uid, true]);
