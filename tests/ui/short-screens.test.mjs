@@ -33,3 +33,10 @@ test('the Mini-games list names keep their last letter\'s overhang', () => {
 test('How to Play: the WIN! burst sits in the panel\'s top band, above the grid, not over a mark or the text', () => {
   assert.match(comic, /\.cc \.cpanel\.half \{ padding-top: 46px; \}\n\.cc \.hwinb \{ position: absolute; right: -4px; top: -42px; width: 64px;/);
 });
+
+test('Play Computer says "Computer difficulty" (not "Level"), in both of its setups', () => {
+  const setup = readFileSync(new URL('../../src/ui/screens/setup.js', import.meta.url), 'utf8');
+  assert.match(setup, /cap\('computer difficulty'\)/);
+  assert.match(setup, /<span>Computer difficulty<\/span>/);
+  assert.doesNotMatch(setup, /cap\('level'\)/);
+});
