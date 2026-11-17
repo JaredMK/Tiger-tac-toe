@@ -1317,15 +1317,19 @@ test('bots: after a player\'s move, the bot\'s move is planned inside its own wi
   const [pa, pb] = B.PACES[bot.pace].turn;
   const planned = {};
   for (const type of E.TYPES) {
-    await rewrite(id, full => {
-      full.squares.forEach((sq, i) => { sq.owner = null; sq.mini = E.newMini(type, E.makeRng(type + i)); });
-      full.turn = botSide; full.lock = null; full.winner = null; full.timer.deadline = Date.now() + 30000; full.timer.for = botSide;
-      full.seq = (full.seq || 0) + 100;                        // a move number of its own: a bot task queued for an earlier board finds it stale
-    });
-    await patch(`botGames/${id}`, { next: null, live: true });
-    const t0 = Date.now();
-    await h.call('tick', { game: id });
-    const t1 = Date.now(), next = (await get(`botGames/${id}`)).next;   // (the plan counts its think time from when the server finished choosing the move: between t0 and t1)
+    let seq = 0, t0, t1, next;
+    for (let tries = 0; tries < 3; tries++) {
+      await rewrite(id, full => {
+        full.squares.forEach((sq, i) => { sq.owner = null; sq.mini = E.newMini(type, E.makeRng(type + i)); });
+        full.turn = botSide; full.lock = null; full.winner = null; full.timer.deadline = Date.now() + 30000; full.timer.for = botSide;
+        full.seq = seq = (full.seq || 0) + 100;                // a move number of its own: a bot task queued for an earlier board finds it stale
+      });
+      await patch(`botGames/${id}`, { next: null, live: true });
+      t0 = Date.now();
+      await h.call('tick', { game: id });
+      t1 = Date.now(); next = (await get(`botGames/${id}`)).next;   // (the plan counts its think time from when the server finished choosing the move: between t0 and t1)
+      if (!next || next.seq === seq) break;                  // a plan for an earlier board, written late by the run before (a race of the test's own, not the server's): again
+    }
     await patch(`botGames/${id}`, { live: false });           // the planned task (queued for later) finds the game off, and does nothing
     if (!next) { planned[type] = null; continue; }
     const [lo, hi] = WORD.includes(type) ? [3, 8] : [pa, pb];
