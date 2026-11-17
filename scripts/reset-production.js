@@ -6,7 +6,8 @@
 //
 // 1. Backup first: the whole database, as gzipped JSON, to gs://{project}-backups/backups/{YYYY-MM-DD-HHMM}Z.json.gz
 //    (the bucket is made if it is missing). The upload is read back and compared before anything is deleted.
-// 2. Delete what matches and play left behind (DELETE below): games, rooms, history, match logs, stats, tracking.
+// 2. Delete what matches and play left behind (DELETE below): games, rooms, history, match logs, stats, tracking,
+//    reports, and the settings-version history (DELETE_IN: config/versions and its log, so every game is version 1).
 // 3. Every account's record back to 0-0-0 (RECORD below); its username, joined date and anything else stays.
 // Kept: Auth accounts and their claims (the admin flag), users/ profiles (and their public profiles/, the records zeroed with them), usernames/, admin/, config/ (game and
 // computer settings), releases/, features/, bots/ (bot settings), meta/, review/. A root it does not know is
@@ -20,6 +21,7 @@ const START_RATING = 1200;                                              // (func
 const DELETE = ['rooms', 'games', 'gpresence', 'glive', 'presence', 'reacts', 'active', 'queue', 'botGames', 'history', 'localHistory',
   'matchLogs', 'matchLogIndex', 'matchLogRoom', 'stats', 'statsSeen', 'localStats', 'oppStats', 'leaderboard', 'botStats',
   'alertLog', 'alertStats', 'alertState', 'botsLock', 'devices', 'devlog', 'lastSeen', 'reports', 'reportsDay', 'rate', 'skill', 'alertOps'];
+const DELETE_IN = ['config/versions', 'config/versionLog'];             // inside a kept root: the settings-version history (every game back to version 1; its settings stay)
 const KEEP = ['users', 'profiles', 'usernames', 'admin', 'config', 'releases', 'features', 'bots', 'meta', 'review', 'rate', 'prefs', 'templates'];   // (prefs: a player's own settings, the Animation choice; templates: the admin's game templates)
 const RECORD = { wins: 0, losses: 0, draws: 0, games: 0, rating: START_RATING, friend: null, minis: null };
 const PUBLIC_RECORD = ['wins', 'losses', 'draws', 'games', 'friend', 'minis'];   // the record's part of a public profile (profiles/{uid}: no rating), put back to 0-0-0 with it
@@ -37,6 +39,7 @@ function plan(data) {
       else remove.push(r);
     } else if (!KEEP.includes(r)) unknown.push(r);
   }
+  for (const p of DELETE_IN) { const [r, k] = p.split('/'); if (data[r] && data[r][k] != null) remove.push(p); }
   for (const [uid, u] of Object.entries(data.users || {})) {
     if (!u || typeof u !== 'object') continue;
     for (const [k, v] of Object.entries(RECORD)) records[`users/${uid}/${k}`] = v;
@@ -87,7 +90,7 @@ async function main() {
   const writes = Object.assign(Object.fromEntries(p.remove.map(r => [r, null])), p.records);
   const keys = Object.keys(writes);
   for (let i = 0; i < keys.length; i += 500) await db.ref().update(Object.fromEntries(keys.slice(i, i + 500).map(k => [k, writes[k]])));
-  const left = DELETE.filter(r => data[r] != null);
+  const left = DELETE.filter(r => data[r] != null).concat(DELETE_IN.filter(p => p.split('/').reduce((o, k) => (o ? o[k] : o), data) != null));
   const still = (await Promise.all(left.map(r => db.ref(r).limitToFirst(1).get().then(s => (s.exists() ? r : null))))).filter(Boolean);
   if (still.length) console.log(`::warning::Written to again since the backup (play going on?): ${still.join(', ')}. Run the reset again once the game is quiet.`);
   console.log(`Done: ${keys.length} writes. Restore with the "Restore production" workflow and the backup's name: ${name}`);
@@ -95,4 +98,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch(e => { console.log('::error::' + e.message); process.exit(1); });
-module.exports = { plan, DELETE, KEEP, RECORD, START_RATING, stamp };
+module.exports = { plan, DELETE, DELETE_IN, KEEP, RECORD, START_RATING, stamp };

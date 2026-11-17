@@ -22,6 +22,13 @@ test('reset: matches, history, logs and stats go; accounts, names, admin and set
   assert.equal(X.START_RATING, R.START_RATING);
 });
 
+test('reset: the settings-version history goes (every game back to version 1); the settings themselves stay', () => {
+  const p = X.plan({ config: { tune: { pig: { target: 40 } }, versions: { pig: 3 }, versionLog: { pig: { v2: {}, v3: {} } }, ai: {} }, reports: { r1: {} } });
+  assert.deepEqual(p.remove.sort(), ['config/versionLog', 'config/versions', 'reports/r1']);
+  assert.ok(!p.remove.some(r => r.startsWith('config/tune') || r === 'config/ai'));
+  assert.deepEqual(X.plan({ config: { ai: {} } }).remove, [], 'nothing to delete when there is no history');
+});
+
 test('reset: every root the database rules know is either deleted or kept', () => {
   for (const r of Object.keys(rules.rules)) if (!r.startsWith('.')) assert.ok(X.DELETE.includes(r) || X.KEEP.includes(r), r);
 });

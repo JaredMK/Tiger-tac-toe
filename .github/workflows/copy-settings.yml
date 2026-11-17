@@ -1,5 +1,6 @@
 # Staging's settings copied to production (scripts/copy-settings.js): the release switches, every game's settings,
-# the computer's and the animation's, the bots' and alerts' settings and the Find Match switch. Accounts, play data,
+# the computer's and the animation's, the bots' and alerts' settings, the Find Match switch and the admin's game
+# templates (by the admin account's email). Accounts, play data,
 # client minimums, the email cutoff, the alert keys and the staging allowlist are never touched.
 # Run it by hand from the Actions tab: "Copy settings to production" -> Run workflow. A dry run (the default) lists
 # every change and writes nothing; to write, untick it and type COPY-TO-PRODUCTION. Production's values before the
