@@ -124,7 +124,7 @@ export function renderBoard(review) {
     if (drew) cls.push('drawfx');
     const dn = drew ? ` dnew"${fxAttr(drawAt)}` : '"';
     // a claimed square keeps its label and final state, with the owner's mark laid over them
-    const body = `<div class="lab${info.name.length > 14 ? ' long' : ''}${lastCap ? ' haslast' : ''}${dn}>${ICONS[sq.mini.type]}<span>${lastCap ? lastCap + ' ' : ''}${info.name}</span>${lead ? `<i class="leadp ${lead}" aria-hidden="true"></i>` : ''}</div><div class="thumb${dn}>${thumb(sq.mini, !!sq.owner)}</div>`
+    const body = `<div class="lab${info.name.length > 14 ? ' long' : ''}${lastCap ? ' haslast' : ''}${dn}>${ICONS[sq.mini.type]}<span>${lastCap ? lastCap + ' ' : ''}${info.name.replace('/', '/<wbr>')}</span>${lead ? `<i class="leadp ${lead}" aria-hidden="true"></i>` : ''}</div><div class="thumb${dn}>${thumb(sq.mini, !!sq.owner)}</div>`
       + (drew ? drawOver(drawAt) : '')
       + (sq.owner ? `<div class="own-ov${stampOn && stamped(i) ? ' stamp' : ''}"${stampOn && stamped(i) ? fxAttr(stampAt) : ''} aria-hidden="true">${toon(sq.owner)}<b class="sr">${esc(sq.owner)}</b></div>` : '')   // a fresh claim stamps in
       + (lastP && (lastP.X === i || lastP.O === i) ? `<div class="lpbs" aria-hidden="true">${['X', 'O'].filter(p => lastP[p] === i).map(p => `<i class="lpb ${p}">${p}</i>`).join('')}</div>` : '')   // (both players' badges at once, in a fixed corner: nothing moves)
