@@ -131,6 +131,7 @@ async function playOne(host, guest, type, out) {
   const box = await host.page.$(`label.chk input[data-t="${type}"]`);
   if (!box) { fails.push(`${type}: not in the host's checklist`); return fails; }
   await box.click();
+  await host.page.click('.gsheet [data-act="adv"]', { timeout: 5000 }).catch(() => {});   // Done: the checklist is a sheet over the lobby (December 2026), closed before Start
   await sleep(400);                                                                  // (the setup's write to the room)
   // the friend joins with the code
   await guest.page.click('[data-act="friend-go"]'); await guest.page.waitForSelector('[data-act="join-go"]', { timeout: 10000 });
