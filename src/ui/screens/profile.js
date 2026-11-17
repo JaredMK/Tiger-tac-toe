@@ -4,7 +4,7 @@ const SNAP_HASH = hashSvg('hash', 16);   // the history snapshot's # (a bolder s
 import { newState } from '../../core/match.js';
 import { upgradeMini } from '../../core/minis.js';
 import { TYPES } from '../../games/index.js';
-import { acct, connectQuiet, delState, needAccount, pendingMe } from '../../net/accounts.js';
+import { acct, connectQuiet, needAccount, pendingMe } from '../../net/accounts.js';
 import { fb } from '../../net/connect.js';
 import { fetchOwnStats, readStats, writeStats } from '../../net/statscache.js';
 import { NAV_SCREENS, RNG, commit, esc, state, withView } from '../app.js';
@@ -12,6 +12,7 @@ import { CHEV } from '../art.js';
 import { renderBoard } from '../board.js';
 import { RATINGS_ENABLED } from '../config.js';
 import { renderMini } from '../mini.js';
+import { accountRow, deleteDialog } from './account-row.js';
 import { viewRec, winPct } from '../pstats.js';
 import { render } from '../render.js';
 
@@ -164,17 +165,7 @@ export function renderProfile() {
   return `<main class="scr setup acct-scr prof-scr cc calm">
     <div class="bar"><button class="back" data-act="prof-back" aria-label="Back">${CHEV}${backLabel}</button>
       <div class="ttl"><b>${own ? 'My Stats' : esc(u ? u.username : 'Profile')}</b><small>${own ? esc(u ? u.username : '') : 'Player profile'}</small></div></div>
-    <div class="setup-box" data-keep-scroll="profile">${body}${own ? '<button class="link wide" data-act="logout">Log out</button><button class="link wide delacct" data-act="del-account">Delete account</button>' : ''}</div>${own ? deleteDialog() : ''}</main>`;
-}
-// Delete account: the question first (No / Yes, delete), then the server deletes everything (net/accounts.js deleteAccount);
-// refused while the player is in an online match, which the card says.
-function deleteDialog() {
-  if (!delState) return '';
-  const busy = delState === 'busy', err = delState && delState.error;
-  return `<div class="flash pause delask" role="dialog" aria-label="Delete your account?"><div class="card"><h2>Delete your account?</h2>
-    <p>Your username, records, game history and login are deleted for good. Other players keep their own history of games against you.</p>
-    ${err ? `<div class="warn" role="status">${esc(err)}</div>` : '<div class="warn" aria-hidden="true"></div>'}
-    <div class="row"><button class="btn" data-act="del-cancel"${busy ? ' disabled' : ''}>No</button><button class="btn go" data-act="del-confirm"${busy ? ' disabled' : ''}>${busy ? 'Deleting…' : 'Yes, delete'}</button></div></div></div>`;
+    <div class="setup-box" data-keep-scroll="profile">${body}${own ? accountRow() : ''}</div>${own ? deleteDialog() : ''}</main>`;
 }
 // A past game's final main board, small: X, O and empty squares, the profile's own squares outlined.
 const SNAP = new Map();                                    // entry id -> its squares' owners (each final parsed once)

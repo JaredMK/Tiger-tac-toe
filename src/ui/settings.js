@@ -5,7 +5,8 @@
 // net/accounts.js), whose value wins when it says something; a setting the account lacks gets this device's.
 import { SND } from '../audio/sound.js';
 import { ANIM } from '../core/timer.js';
-import { savePref } from '../net/accounts.js';
+import { loggedIn, savePref } from '../net/accounts.js';
+import { accountRow, deleteDialog } from './screens/account-row.js';
 import { canVibrate, setVibOn, vibOn } from '../net/platform.js';
 import { app, esc } from './app.js';
 import { APP_VERSION, SUPPORT_EMAIL } from './config.js';
@@ -27,6 +28,7 @@ export function settingsBody(o) {
     ${row('Animation', pick('anim-set', 'normal', ANIM.mode !== 'speed', 'Normal') + pick('anim-set', 'speed', ANIM.mode === 'speed', 'Speed'))}
     ${canVibrate() ? row('Vibration', pick('set-vib', 'on', vibOn, 'On') + pick('set-vib', 'off', !vibOn, 'Off')) : ''}
     ${help}
+    ${o && o.account && loggedIn() ? accountRow() : ''}
     <p class="build" aria-label="Build ${esc(APP_VERSION)}">Build ${esc(APP_VERSION)}</p></div>`;   // (the build on this phone: a stale page is seen for what it is)
 }
 // The Settings screen, from the main menu.
@@ -34,7 +36,7 @@ export function renderSettings() {
   return `<main class="scr setup settings-scr cc calm">
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
       <div class="ttl"><b>Settings</b></div></div>
-    <div class="setup-box">${settingsBody({ report: true })}</div></main>`;
+    <div class="setup-box">${settingsBody({ report: true, account: true })}</div>${loggedIn() ? deleteDialog() : ''}</main>`;
 }
 // A choice made here: on this device at once, on the account too (fromAccount: the account's own, arriving).
 export function setSound(on, fromAccount) {

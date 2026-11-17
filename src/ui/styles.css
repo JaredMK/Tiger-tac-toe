@@ -81,6 +81,9 @@ b.X { color: var(--x); } b.O { color: var(--o); }
   --gw: calc(100vw - 2 * var(--pad) - var(--sal) - var(--sar));
 }
 @supports (height: 100dvh) { .scr { --vh: 100dvh; } }
+/* One unit of the SMALL viewport's height (iOS Safari's visible screen with its toolbars up: 100vh there is the tall one, with them hidden, so a size taken from vh came out bigger than the screen): every menu screen sizes from --u (calc(8 * var(--u)) is 8svh; 1vh where svh is not known), so it fits what is seen. */
+:root { --u: 1vh; }
+@supports (height: 1svh) { :root { --u: 1svh; } }
 
 /* ---------- main board ---------- */
 .board-scr { --s: min(var(--gw), calc(var(--vh) - var(--hdr) - var(--foot) - var(--rxh) - 2 * var(--pad) - var(--sat) - var(--sab))); }

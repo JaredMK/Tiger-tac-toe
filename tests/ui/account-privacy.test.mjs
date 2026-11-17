@@ -46,7 +46,7 @@ test('My Stats: Log out and Delete account; the question (No / Yes, delete) only
   assert.match(html, /<b>My Stats<\/b>/);
   assert.match(html, /data-act="prof-hist"/, 'your own game history');
   assert.match(html, /Top opponents/);
-  assert.match(html, /<button class="link wide" data-act="logout">Log out<\/button><button class="link wide delacct" data-act="del-account">Delete account<\/button>/);
+  assert.match(html, /<div class="acctrow"[^>]*><span class="setname">Account<\/span><span class="setctl"><button class="pk" data-act="logout">Log out<\/button><button class="delq" data-act="del-account">Delete account<\/button><\/span><\/div>/, 'a compact Account row: Log out a pill, Delete account a quiet link');
   assert.doesNotMatch(html, /role="dialog"/, 'no question yet');
   askDelete();
   assert.equal(A.delState, 'ask');
@@ -82,4 +82,22 @@ test('email verification: accounts made before the cutoff (config/verify/since) 
   setVerifySince('nonsense');
   assert.equal(grandfathered(made('2026-11-02')), true, 'a cutoff that is not a number counts as none');
   setVerifySince(null);
+});
+
+// Settings (December 2026): Log out and Delete account are a compact Account row at its foot (never two full-width buttons),
+// only for a logged-in player; Delete account only asks (the same question, No / Yes, delete).
+test('Settings: a compact Account row for a logged-in player; Delete account asks first; none when logged out', async () => {
+  const { renderSettings, settingsBody } = await import('../../src/ui/settings.js');
+  const row = /<div class="acctrow"[^>]*><span class="setname">Account<\/span><span class="setctl"><button class="pk" data-act="logout">Log out<\/button><button class="delq" data-act="del-account">Delete account<\/button><\/span><\/div>/;
+  acct.user = null; acct.profile = null;
+  assert.doesNotMatch(renderSettings(), /acctrow/, 'logged out: no Account row');
+  acct.user = { uid: 'me', email: 'me@example.com' }; acct.profile = { username: 'me_too' };
+  const html = renderSettings();
+  assert.match(html, row, 'the Account row on the Settings screen');
+  assert.ok(html.indexOf('acctrow') < html.indexOf('class="build"'), 'at the foot, above the build line');
+  assert.doesNotMatch(settingsBody({}), /acctrow/, 'the in-game menu\'s Settings step has none');
+  assert.doesNotMatch(html, /role="dialog"/, 'nothing deleted, nothing asked, by the row alone');
+  askDelete();
+  assert.match(renderSettings(), /role="dialog" aria-label="Delete your account\?"[\s\S]*data-act="del-cancel"[\s\S]*data-act="del-confirm"/, 'Delete account asks first on this screen too');
+  cancelDelete();
 });
