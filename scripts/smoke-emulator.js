@@ -216,8 +216,11 @@ async function playOne(host, guest, type, out) {
   for (const p of [host, guest]) {
     const back = await p.page.waitForFunction(() => window.state.screen === 'win' || !!document.querySelector('[data-act="friend-go"]'), null, { timeout: 20000 }).then(() => null, async () => `${p.name}: no result screen after leaving (${await where(p)})`);
     if (fail(back)) { await shot(p, `${type}-leave`); continue; }
-    await sleep(300);
-    const menu = await p.page.$('main.win [data-act="leave"], main.win [data-act="menu"], .win [data-act="leave"], [data-act="leave"]'); if (menu) await menu.click({ timeout: 5000 }).catch(() => {});
+    // Menu, tapped until the main menu is up (a tap while the result's panels are still coming in can land on nothing)
+    for (let k = 0; k < 12 && !(await p.ev(() => !!document.querySelector('[data-act="friend-go"]'))); k++) {
+      await sleep(500);
+      await p.page.locator('main.win-scr [data-act="leave"], main.win-scr [data-act="menu"]').first().click({ timeout: 3000 }).catch(() => {});
+    }
     const home = await p.page.waitForFunction(() => !!document.querySelector('[data-act="friend-go"]'), null, { timeout: 15000 }).then(() => null, async () => `${p.name}: not back on the main menu (${await where(p)})`);
     if (fail(home)) await shot(p, `${type}-home`);
   }
