@@ -24,9 +24,9 @@ test('privacy: the bare minimum: what is collected, why, where it is stored, how
 });
 
 test('privacy: both site builds carry the page (staging with noindex); the app build keeps it beside the game, with no admin page', async () => {
-  const out = site.build('staging', 'abc1234567');
+  const out = site.build('staging', 'abc1234567', fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'ttc-site-')) + '/s');   // (a folder of its own: the test files run at once, and two builds into _site/ would race)
   assert.match(read(path.join(out, 'privacy.html')), /noindex/);
-  site.build('production', 'abc1234567');
+  site.build('production', 'abc1234567', out);
   assert.doesNotMatch(read(path.join(out, 'privacy.html')), /noindex/);
   assert.equal(read(path.join(out, 'privacy.html')), html, 'as it is');
   const app = await buildApp('production', 'abc1234567', { noSdk: true });

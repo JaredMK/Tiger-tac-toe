@@ -35,11 +35,11 @@ test('share: staging points the preview tags at staging; production keeps its ow
   const st = site.previewHost(index, 'staging');
   for (const k of ['og:url', 'og:image', 'twitter:image']) assert.match(meta(st, k), /^https:\/\/staging\.tictacchaos\.com\//, k);
   assert.equal(site.previewHost(index, 'production'), index);
-  const out = site.build('staging', 'abc1234567');
+  const out = site.build('staging', 'abc1234567', fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'ttc-site-')) + '/s');   // (a folder of its own: the test files run at once, and two builds into _site/ would race)
   const built = fs.readFileSync(path.join(out, 'index.html'), 'utf8');
   assert.match(built, /noindex/); assert.equal(meta(built, 'og:image'), 'https://staging.tictacchaos.com/assets/share/og-image.png');
   for (const f of ['assets/share/og-image.png', 'favicon.ico', 'apple-touch-icon.png']) assert.ok(fs.existsSync(path.join(out, f)), f);
-  site.build('production', 'abc1234567');
+  site.build('production', 'abc1234567', out);
   const prod = fs.readFileSync(path.join(out, 'index.html'), 'utf8');
   assert.doesNotMatch(prod, /noindex/); assert.equal(meta(prod, 'og:image'), 'https://tictacchaos.com/assets/share/og-image.png');
 });
