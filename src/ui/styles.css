@@ -4784,8 +4784,7 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .tmmr .mmbest circle { stroke: var(--ink); stroke-width: 2.2; }
 .tmmr .mmbest circle.sd { fill: var(--ink); } .tmmr .mmbest circle.hw { fill: #fff; stroke-width: 2.8; }
 .tmmr .mmbest circle.no { fill: none; stroke: rgba(22, 18, 16, .35); stroke-dasharray: 3 2.4; stroke-width: 1.8; }
-/* Codebreaker (November 2026 polish). The rows stand on the guess being made: the newest large in its own frame, the
-   older ones compact above it (the list still scrolls back). The list's box reaches down behind the slots (its bottom
+/* Codebreaker (November 2026 polish). The rows stand on the guess being made, every one the same size (the list still scrolls back). The list's box reaches down behind the slots (its bottom
    padding is their room), so a guess's pegs fly from their slots up into the new row without being cut at the list's
    edge (ui/cardfly.js; mastermind/view.js MMT); a colour flies from the palette into its slot. The cracked code opens
    only once the markers have landed (1.45 s into the move): each "?" turns away and its peg turns up, the tray pops. */
@@ -4794,17 +4793,16 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .g-mm .mmlist > :first-child { margin-top: auto; }
 .g-mm .mmlist > .empty { margin: auto; }
 .g-mm.mmview .mmlist { padding-bottom: 6px; margin-bottom: 0; }   /* (a finished square: no slots under it; its rows under the code) */
-.g-mm.mmview .mmlist > :first-child, .g-mm.mmview .mmrow.new:first-child { margin-top: 6px; }
-.g-mm .mmrow { flex: none; }
-.g-mm .mmrow.old { grid-template-columns: 22px repeat(4, calc(var(--pg) * .64)) auto; gap: 6px; }
-.g-mm .mmrow.old .mmby .pc { width: 22px; height: 22px; }
-.g-mm .mmrow.old .peg { border-width: 2.5px; box-shadow: 0 2px 0 var(--ink); }
-.g-mm .mmrow.old .mmfb { grid-template-columns: repeat(2, 10px); gap: 2px; margin-left: 2px; }
-.g-mm .mmrow.old .mmfb i, .g-mm .mmrow.old .mmfb i.sd, .g-mm .mmrow.old .mmfb i.hw { width: 10px; height: 10px; border-width: 1.5px; }
-.g-mm .mmrow.new { align-self: center; margin-top: 3px; padding: 5px 10px 8px 8px; border-radius: 16px 12px 18px 14px; background: var(--paper); box-shadow: 0 0 0 2.5px var(--ink), 0 3px 0 2.5px var(--ink); }
-.g-mm .mmrow.new:first-child { margin-top: auto; }
-.g-mm .mmrow.new .mmfb { grid-template-columns: repeat(2, 15px); gap: 3px; }
-.g-mm .mmrow.new .mmfb i { width: 15px; height: 15px; }
+.g-mm.mmview .mmlist > :first-child { margin-top: 6px; }   /* (a finished square: no slots under it; its rows under the code) */
+/* Every guess row the same size, the latest too (December 2026: no larger framed newest row): compact pegs and markers. */
+.g-mm .mmrow { flex: none; grid-template-columns: 24px repeat(4, calc(var(--pg) * .7)) auto; gap: 6px; }
+.g-mm .mmrow .mmby .pc { width: 24px; height: 24px; }
+.g-mm .mmrow .peg { border-width: 2.5px; box-shadow: 0 2px 0 var(--ink); }
+.g-mm .mmrow .mmfb { grid-template-columns: repeat(2, 11px); gap: 2px; margin-left: 2px; }
+.g-mm .mmrow .mmfb i, .g-mm .mmrow .mmfb i.sd, .g-mm .mmrow .mmfb i.hw { width: 11px; height: 11px; border-width: 1.5px; }
+/* The slot being filled: a yellow ring with an ink edge, a little larger; a filled slot keeps its colour until a new one goes in. */
+.g-mm .mmcur .mmslot { transition: transform .08s; }
+.g-mm .mmcur .mmslot.at { border-style: solid; box-shadow: 0 0 0 4px var(--o), 0 0 0 7px var(--ink); transform: scale(1.08); }
 .g-mm .mmcur .mmslot.full { border-style: solid; }
 .mmgo.X { background: var(--x); color: var(--paper); } .mmgo.O { background: var(--o); color: var(--ink); }
 .mmcode.small.cracked { transform: scale(1.22); }

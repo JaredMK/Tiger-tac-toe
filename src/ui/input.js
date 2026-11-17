@@ -30,7 +30,7 @@ import {
   sbx, setCpuPlan, setCpuTimer, setMenuNote, setMenuOpen, setMenuStep, state, zoomedType
 } from './app.js';
 import { RATINGS_ENABLED } from './config.js';
-import { closeExplain, explainT, openExplain, practiceEnd, practiceStart } from './explainer.js';
+import { closeExplain, explainT, openExplain, practiceEnd, practiceStart, resetCredits, toggleCredits } from './explainer.js';
 import { fingGo } from './finger.js';
 import { myTurnStop, startFx, tapPop } from './fx.js';
 import { STARTER, coachOpen, seenOnce } from './onboard.js';
@@ -252,7 +252,9 @@ export function init() {
     } else if (act.startsWith('tpl-')) {           // the setup's Templates row, admin only (ui/screens/setup.js)
       tplAct(act, el);
     } else if (act === 'howto') {
-      state.screen = 'howto'; commit();
+      resetCredits(); state.screen = 'howto'; commit();
+    } else if (act === 'credits') {
+      toggleCredits();
     } else if (act === 'settings') {
       state.screen = 'settings'; commit();
     } else if (act === 'menu') {

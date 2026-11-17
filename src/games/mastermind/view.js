@@ -61,7 +61,7 @@ export function miniature(mini, final) {
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, _won, wk, fresh, turn, g) {
   // The hidden code under its shells (open once cracked, or when looking back), every guess with its
-  // markers, then the guess being made: tap a slot, then a colour; tap a filled slot to clear it.
+  // markers, then the guess being made: tap a slot (or take the one selected), then a colour; a filled slot is tapped to change it.
   const won = !!sq.owner || (a && (a.kind === 'claim' || a.kind === 'match'));
   const open = view || (fresh && a);
   const race = !!mini.race, me = race ? raceMe() : null, end = race && (!!sq.owner || !!view);
@@ -76,14 +76,14 @@ export function screen(sq, f, d, mini, view, locked, a, anim, _won, wk, fresh, t
   // just sent: its pegs fly up from the slots they were in (ui/cardfly.js; a board with no slots: they pop in).
   const rows = guesses.map((gs, r) => {
     const newest = r === n - 1, last = a && mine && newest;
-    return `<div class="mmrow${last ? ' fresh' : ''} ${newest ? 'new' : 'old'}"><span class="mmby ${gs.by}">${toon(gs.by)}</span>${gs.code.map((c, k) => mmPeg(c, last ? 'in' : '', last ? ` style="--k:${k}"${view ? '' : cfFrom('mmslot:' + k, k * MMT.gap, { d: MMT.fly, wait: true })}` : '')).join('')}${mmMarks(gs, '', last)}</div>`;
+    return `<div class="mmrow${last ? ' fresh' : ''}"><span class="mmby ${gs.by}">${toon(gs.by)}</span>${gs.code.map((c, k) => mmPeg(c, last ? 'in' : '', last ? ` style="--k:${k}"${view ? '' : cfFrom('mmslot:' + k, k * MMT.gap, { d: MMT.fly, wait: true })}` : '')).join('')}${mmMarks(gs, '', last)}</div>`;
   }).join('');
   if (!mmDraft || mmDraft.sq !== state.zoom || view || f || d) mmDraft = { sq: state.zoom, slots: [null, null, null, null], at: 0 };
   const dr = mmDraft.slots, full = dr.every(c => c != null);
   const pop = mmPop && mmPop.sq === state.zoom && performance.now() - mmPop.at < 300 ? mmPop.k : -1;
-  const slots = dr.map((c, k) => `<button class="mmslot${k === mmDraft.at && !locked ? ' at' : ''}${c != null ? ' full' : ''}" data-act="mmslot" data-k="${k}" aria-label="Slot ${k + 1}${c != null ? ', ' + MM_NAMES[c] + ' (tap to clear)' : ', empty'}"${cfAnchor('mmslot:' + k)}${k === pop ? fxAttr(mmPop.at) : ''}${locked ? ' disabled' : ''}>${c != null ? mmPeg(c, k === pop ? 'pop' : '', k === pop ? cfFrom('mmcol:' + c, 0, { d: MMT.put }) : '') : ''}</button>`).join('');
+  const slots = dr.map((c, k) => `<button class="mmslot${k === mmDraft.at && !locked ? ' at' : ''}${c != null ? ' full' : ''}" data-act="mmslot" aria-pressed="${k === mmDraft.at && !locked}" data-k="${k}" aria-label="Slot ${k + 1}${c != null ? ', ' + MM_NAMES[c] + ' (tap to change)' : ', empty'}${k === mmDraft.at ? ', selected' : ''}"${cfAnchor('mmslot:' + k)}${k === pop ? fxAttr(mmPop.at) : ''}${locked ? ' disabled' : ''}>${c != null ? mmPeg(c, k === pop ? 'pop' : '', k === pop ? cfFrom('mmcol:' + c, 0, { d: MMT.put }) : '') : ''}</button>`).join('');
   const nc = tune(mini).colors;                                       // (the colours this square was dealt with: TUNE)
-  const pal = Array.from({ length: nc }, (_, c) => `<button class="mmcol c${c}${dr.includes(c) ? ' used' : ''}" data-act="mmcol" data-c="${c}" aria-label="${MM_NAMES[c]}"${cfAnchor('mmcol:' + c)}${locked || dr.includes(c) ? ' disabled' : ''}>${mmPeg(c)}</button>`).join('');
+  const pal = Array.from({ length: nc }, (_, c) => `<button class="mmcol c${c}${dr.includes(c) && dr[mmDraft.at] !== c ? ' used' : ''}" data-act="mmcol" data-c="${c}" aria-label="${MM_NAMES[c]}"${cfAnchor('mmcol:' + c)}${locked || (dr.includes(c) && dr[mmDraft.at] !== c) ? ' disabled' : ''}>${mmPeg(c)}</button>`).join('');
   const cracked = race ? sq.owner === me : won;
   g = `<div class="g-mm${race ? ' mmr2' : ''}${view ? ' mmview' : ''}"><div class="mmcode small${cracked ? ' cracked' : ''}${cracked && flip ? ' fresh' : ''}" aria-label="${race ? 'Your hidden code' : 'The hidden code'}">${code}</div>
         <div class="mmlist" id="mmlist">${rows || `<div class="empty">${view ? 'No guesses were made.' : 'No guesses yet'}</div>`}</div>
@@ -104,33 +104,36 @@ export function sounds(f, add, won, mini, last) {
   for (let k = 0; k < MM.pegs; k++) add('peg', MMT.fly + k * MMT.gap);        // the pegs click into their row as they land
   for (let k = 0; k < n; k++) add('marker', 450 + k * 250); if (won) add('reveal', 1450); return;
 }
-// Codebreaker: pick a slot; a filled one is cleared
+// Codebreaker (December 2026): tap any slot to select it (highlighted; a filled one keeps its colour until another goes in),
+// then tap a colour: it fills the selected slot and the next empty slot is selected (all full: the one just filled stays).
 export function mmslotAct(el, e, act) {
   if (zoomedType() !== 'mastermind' || !mmDraft) return;
-  const k = Number(el.dataset.k);
-  if (mmDraft.slots[k] != null) mmDraft.slots[k] = null;
-  mmDraft.at = k;
+  mmDraft.at = Number(el.dataset.k);
   render();
 }
-// ...then a colour goes into it, and the next empty slot is picked
+// A colour into the selected slot (no colour twice); returns the slot filled, -1 when it could not go in.
+function mmPlace(draft, c) {
+  const k = draft.at;
+  if (!(k >= 0 && k < MM.pegs) || draft.slots.some((x, j) => x === c && j !== k)) return -1;
+  draft.slots[k] = c;
+  const nxt = draft.slots.findIndex((x, j) => x == null && j > k), any = draft.slots.indexOf(null);
+  draft.at = nxt >= 0 ? nxt : any >= 0 ? any : k;
+  return k;
+}
 export function mmcolAct(el, e, act) {
   if (zoomedType() !== 'mastermind' || !mmDraft) return;
-  const c = Number(el.dataset.c);
-  if (mmDraft.slots.includes(c)) return;
-  const k = mmDraft.slots[mmDraft.at] == null ? mmDraft.at : mmDraft.slots.indexOf(null);
+  const k = mmPlace(mmDraft, Number(el.dataset.c));
   if (k < 0) return;
-  mmDraft.slots[k] = c; mmPop = { sq: state.zoom, k, at: performance.now() };
-  const nxt = mmDraft.slots.findIndex((x, j) => x == null && j > k);
-  mmDraft.at = nxt >= 0 ? nxt : Math.max(0, mmDraft.slots.indexOf(null));
+  mmPop = { sq: state.zoom, k, at: performance.now() };
   render();
 }
 // Someone else's guess replayed (ui/replay.js): the pegs go into the slots as theirs did, then Submit.
 function replayInput(act, val, r) {
   if (!mmDraft || mmDraft.sq !== r.sq) mmDraft = { sq: r.sq, slots: [null, null, null, null], at: 0 };
   if (act === 'mmcol' && /^c=\d$/.test(val || '')) {
-    const c = Number(val.slice(2)), k = mmDraft.slots[mmDraft.at] == null ? mmDraft.at : mmDraft.slots.indexOf(null);
-    if (k >= 0 && !mmDraft.slots.includes(c)) { mmDraft.slots[k] = c; mmPop = { sq: r.sq, k, at: performance.now() }; const nxt = mmDraft.slots.findIndex((x, j) => x == null && j > k); mmDraft.at = nxt >= 0 ? nxt : Math.max(0, mmDraft.slots.indexOf(null)); }
-  } else if (act === 'mmslot' && /^k=\d$/.test(val || '')) { const k = Number(val.slice(2)); if (mmDraft.slots[k] != null) mmDraft.slots[k] = null; mmDraft.at = k; }
+    const k = mmPlace(mmDraft, Number(val.slice(2)));
+    if (k >= 0) mmPop = { sq: r.sq, k, at: performance.now() };
+  } else if (act === 'mmslot' && /^k=\d$/.test(val || '')) mmDraft.at = Number(val.slice(2));
   return false;
 }
 const replaySynth = m => (Array.isArray(m) && m.length === MM.pegs ? m.map((c, k) => [k * 380, 'mmcol', 'c=' + c]).concat([[MM.pegs * 380 + 250, 'move', 'm=' + JSON.stringify(m)]]) : null);

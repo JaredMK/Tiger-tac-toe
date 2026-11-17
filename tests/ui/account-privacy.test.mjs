@@ -13,7 +13,7 @@ const { privacyUrl } = await import('../../src/net/platform.js');
 const { renderMenu } = await import('../../src/ui/screens/menu.js');
 const { renderLogin, renderVerify } = await import('../../src/ui/screens/account.js');
 const { renderProfile, setProf } = await import('../../src/ui/screens/profile.js');
-const { renderHowTo } = await import('../../src/ui/explainer.js');
+const { renderHowTo, resetCredits, toggleCredits } = await import('../../src/ui/explainer.js');
 const { acct, askDelete, cancelDelete, delState, grandfathered, setVerifySince, unverified } = await import('../../src/net/accounts.js');
 const A = await import('../../src/net/accounts.js');
 const { state } = await import('../../src/ui/app.js');
@@ -27,10 +27,14 @@ test('the privacy policy: a relative link on the web; from the main menu, the lo
   assert.match(menu, /class="menu-foot"><a class="credit"/, 'beside the studio credit');
   const login = renderLogin(false);
   assert.match(login, /<p class="agree">By continuing you agree to the <a href="privacy\.html"[^>]*>Privacy policy<\/a>\.<\/p>/);
+  assert.match(renderHowTo(), /<button class="pn w credbtn" data-act="credits" aria-expanded="false"><b>Credits<\/b><\/button>/, 'the credits are shut behind a small Credits button');
+  assert.doesNotMatch(renderHowTo(), /rulecard credits/);
+  toggleCredits();
   const howto = renderHowTo();
-  assert.match(howto, /<span>Credits<\/span>/, 'the credits always show (the privacy link is in them)');
+  assert.match(howto, /<span>Credits<\/span>/, 'opened: the credits (the privacy link is in them)');
   assert.match(howto, /<p class="priv">What the game keeps about you, and how to delete your account: <a href="privacy\.html"[^>]*>Privacy policy<\/a><\/p>/);
   assert.match(login, LINK); assert.match(howto, LINK);
+  resetCredits();
 });
 test('"Verify your email": Continue, Send the link again, Log out, and a way back to the menu; nothing proved without a signed-in account', () => {
   const html = renderVerify();

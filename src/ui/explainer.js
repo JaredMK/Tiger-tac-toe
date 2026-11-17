@@ -164,6 +164,10 @@ function howPanels() {
   const panel = (n, pic, text, cls) => `<figure class="cpanel ${cls}" style="--k:${n}"><figcaption class="cap">${n}</figcaption>${pic}<p>${text}</p></figure>`;
   return `<div class="cpanels">${panel(1, p1, RULES_CORE[0], 'wide')}${panel(2, p2, RULES_CORE[1], 'half')}${panel(3, p3, RULES_CORE[2], 'half')}</div>`;
 }
+// The credits stay shut until the small Credits button opens them (December 2026); leaving How to Play shuts them again.
+let credOpen = false;
+export function toggleCredits() { credOpen = !credOpen; render(); }
+export function resetCredits() { credOpen = false; }
 export function renderHowTo() {
   return `<main class="scr setup howto-scr cc calm">
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
@@ -174,6 +178,7 @@ export function renderHowTo() {
       <div class="games howlist"><button class="pn gt w" data-act="explain" data-t="superchaos" aria-label="How to play Super Chaos">${gameIcon('superchaos', SC_ICON)}<b>Super Chaos</b></button></div>` : ''}
       <div class="games-h"><span>Mini-games</span><small></small></div>
       <div class="games howlist">${visibleTypes().filter(t => SUPER_CHAOS_ENABLED || !SC_ONLY.includes(t)).sort((a, b) => EXPLAIN[a].name.localeCompare(EXPLAIN[b].name, undefined, { numeric: true, sensitivity: 'base' })).map(t => `<button class="pn gt w" data-act="explain" data-t="${t}" aria-label="How to play ${EXPLAIN[t].name}">${gameIcon(t)}<b>${EXPLAIN[t].name.replace(/\//g, '/<wbr>')}</b>${testBadge(t)}</button>`).join('')}</div>
-      <div class="games-h"><span>Credits</span></div><div class="rulecard credits">${visibleTypes().includes('trivia') ? '<p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>' : ''}${visibleTypes().some(t => PHYS_TYPES.includes(t) || t === 'pinball') ? '<p>Mini Golf, Pool, Bowling and Pinball run on <a href="https://brm.io/matter-js" target="_blank" rel="noopener noreferrer">Matter.js</a> (MIT licence).</p>' : ''}${visibleTypes().includes('wtiles') ? '<p>Word Tiles checks its words against the ENABLE word list (public domain).</p>' : ''}<p>Fonts: Luckiest Guy, Patrick Hand, Bangers and Comic Neue (SIL Open Font License).</p><p class="priv">What the game keeps about you, and how to delete your account: <a href="${privacyUrl()}" target="_blank" rel="noopener noreferrer">Privacy policy</a></p></div>
+      <button class="pn w credbtn${credOpen ? ' on' : ''}" data-act="credits" aria-expanded="${credOpen}"><b>Credits</b></button>
+      ${credOpen ? `<div class="games-h"><span>Credits</span></div><div class="rulecard credits">${visibleTypes().includes('trivia') ? '<p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>' : ''}${visibleTypes().some(t => PHYS_TYPES.includes(t) || t === 'pinball') ? '<p>Mini Golf, Pool, Bowling and Pinball run on <a href="https://brm.io/matter-js" target="_blank" rel="noopener noreferrer">Matter.js</a> (MIT licence).</p>' : ''}${visibleTypes().includes('wtiles') ? '<p>Word Tiles checks its words against the ENABLE word list (public domain).</p>' : ''}<p>Fonts: Luckiest Guy, Patrick Hand, Bangers and Comic Neue (SIL Open Font License).</p><p class="priv">What the game keeps about you, and how to delete your account: <a href="${privacyUrl()}" target="_blank" rel="noopener noreferrer">Privacy policy</a></p></div>` : ''}
     </div></main>`;
 }

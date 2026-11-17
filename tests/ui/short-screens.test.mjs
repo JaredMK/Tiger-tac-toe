@@ -29,3 +29,7 @@ test('the ahead pip sits in the label row\'s reserved strip, not over the miniat
 test('the Mini-games list names keep their last letter\'s overhang', () => {
   assert.match(comic, /\.cc \.chk span \{ padding-right: \.25em; padding-bottom: 2px; margin-right: -\.25em; \}/);
 });
+
+test('How to Play: the WIN! burst sits in the panel\'s top band, above the grid, not over a mark or the text', () => {
+  assert.match(comic, /\.cc \.cpanel\.half \{ padding-top: 46px; \}\n\.cc \.hwinb \{ position: absolute; right: -4px; top: -42px; width: 64px;/);
+});

@@ -1,5 +1,5 @@
-// Codebreaker's square (Shared), November 2026 polish: the newest row large in its own frame over the guess being made,
-// the older ones compact; a colour flies from the palette into its slot and a guess's pegs from their slots into the new
+// Codebreaker's square (Shared), November 2026 polish: every guess row the same size (December 2026),
+// the latest too; a colour flies from the palette into its slot and a guess's pegs from their slots into the new
 // row (ui/cardfly.js); the cracked code opens only once the markers have landed; the code never reaches the page before.
 // Rendered in Node, the browser stubbed.
 import test from 'node:test';
@@ -28,12 +28,13 @@ function match() {
 }
 const rows = html => html.match(/<div class="mmrow[\s\S]*?<\/span><\/div>/g) || [];
 
-test('the rows: the newest framed and large, the older compact; the controls in the mover\'s colour; the code hidden', () => {
+test('the rows: every one the same size, the newest too; the controls in the mover\'s colour; the code hidden', () => {
   const m = match(), rng = E.makeRng('r');
   E.applyMove(m, 'X', [0, 4, 3, 2], rng); E.applyMove(m, 'O', [1, 3, 5, 0], rng); E.applyMove(m, 'X', [3, 0, 4, 1], rng);
   const html = renderMini(state.squares[0]), rs = rows(html);
   assert.equal(rs.length, 3);
-  assert.match(rs[0], /^<div class="mmrow old">/); assert.match(rs[1], /^<div class="mmrow old">/); assert.match(rs[2], /^<div class="mmrow new">/);
+  for (const r of rs) assert.match(r, /^<div class="mmrow">/, 'no framed or larger newest row');
+  assert.doesNotMatch(html, /mmrow[^"]*\b(new|old)\b/);
   assert.match(rs[1], /class="mmby O"/, "each row carries its guesser's mark");
   assert.doesNotMatch(html, /fresh|data-cf=| rv"/, 'no move playing: nothing to animate');
   assert.match(html, /<button class="big mmgo X" data-act="move"/, "Submit in the mover's colour");
@@ -47,11 +48,11 @@ test('a colour flies from the palette into its slot; a guess sent, its pegs fly 
   renderMini(state.squares[0]);
   V.actions.mmcol({ dataset: { c: '3' } });
   const h1 = renderMini(state.squares[0]);
-  assert.match(h1, /<button class="mmslot full" data-act="mmslot" data-k="0"[^>]*data-anchor="mmslot:0" data-fx="[\d.]+">\s*<i class="peg c3 pop" data-cf="mmcol:3" data-cfat="0" data-cfd="170"/, 'the peg in its slot, flying from its colour');
+  assert.match(h1, /<button class="mmslot full" data-act="mmslot" aria-pressed="false" data-k="0"[^>]*data-anchor="mmslot:0" data-fx="[\d.]+">\s*<i class="peg c3 pop" data-cf="mmcol:3" data-cfat="0" data-cfd="170"/, 'the peg in its slot, flying from its colour');
   assert.match(h1, /<button class="mmcol c3 used"[^>]*disabled>/, 'no colour twice: the one used is closed');
   assert.ok(E.playMove(state, 0, [3, 0, 2, 5], E.makeRng('m')).ok);
   const h2 = renderMini(state.squares[0]), r = rows(h2);
-  assert.equal(r.length, 1); assert.match(r[0], /^<div class="mmrow fresh new">/);
+  assert.equal(r.length, 1); assert.match(r[0], /^<div class="mmrow fresh">/);
   [3, 0, 2, 5].forEach((c, k) => assert.match(r[0], new RegExp(`<i class="peg c${c} in" style="--k:${k}" data-cf="mmslot:${k}" data-cfat="${k * 40}" data-cfwait="" data-cfd="220"`), `peg ${k} from its slot, in its turn`));
   assert.equal((r[0].match(/ rv" style="--k:\d"/g) || []).length, 4, 'its markers land one by one');
   assert.equal((h2.match(/data-anchor="mmslot:\d"/g) || []).length, 4, 'the slots they leave');
@@ -74,4 +75,30 @@ test('cracked: the code opens once the markers have landed, each "?" giving way 
   assert.equal(E.playMs(state.flash, 4), 450 + 4 * 250 + 900, 'the move plays on through the reveal');
   assert.match(V.miniature(m, true), /<div class="tmc open"><i class="c0"><\/i><i class="c3"><\/i><i class="c4"><\/i><i class="c1"><\/i><\/div>/);
   assert.doesNotMatch(V.miniature(m, false), /tmc open/);
+});
+
+test('the guess being made: tap any slot to select it, a colour fills it and the next empty slot is selected; a filled slot is changed, not cleared; Submit when full', () => {
+  match(); renderMini(state.squares[0]);
+  const at = () => V.mmDraft.at, slots = () => V.mmDraft.slots.slice();
+  assert.equal(at(), 0, 'the first slot starts selected');
+  V.actions.mmslot({ dataset: { k: '2' } }); assert.equal(at(), 2, 'tap any slot: selected');
+  assert.match(renderMini(state.squares[0]), /<button class="mmslot at" data-act="mmslot" aria-pressed="true" data-k="2"/, 'highlighted');
+  V.actions.mmcol({ dataset: { c: '4' } }); assert.deepEqual(slots(), [null, null, 4, null]); assert.equal(at(), 3, 'the next empty one after it');
+  V.actions.mmcol({ dataset: { c: '1' } }); assert.deepEqual(slots(), [null, null, 4, 1]); assert.equal(at(), 0, 'then the first empty one');
+  V.actions.mmslot({ dataset: { k: '2' } }); assert.deepEqual(slots(), [null, null, 4, 1], 'a filled slot is selected, not cleared');
+  assert.match(renderMini(state.squares[0]), /<button class="mmcol c4"[^>]*data-c="4"[^>]*aria-label="[A-Za-z]+"(?![^>]*disabled)/, 'its own colour stays open');
+  V.actions.mmcol({ dataset: { c: '0' } }); assert.deepEqual(slots(), [null, null, 0, 1], 'changed'); assert.equal(at(), 0);
+  V.actions.mmcol({ dataset: { c: '1' } }); assert.deepEqual(slots(), [null, null, 0, 1], 'no colour twice');
+  V.actions.mmcol({ dataset: { c: '2' } }); V.actions.mmcol({ dataset: { c: '3' } });
+  assert.deepEqual(slots(), [2, 3, 0, 1]); assert.equal(at(), 1, 'all full: the one just filled stays selected');
+  assert.doesNotMatch(renderMini(state.squares[0]), /class="big mmgo[^>]*disabled/, 'Submit when every slot is filled');
+  V.actions.mmslot({ dataset: { k: '0' } }); V.actions.mmcol({ dataset: { c: '5' } });
+  assert.deepEqual(slots(), [5, 3, 0, 1]); assert.equal(at(), 0, 'changing a full guess stays on the slot');
+});
+test('a replay presses the same controls: a slot selected, then colours, then Submit', () => {
+  V.setMmDraft(null);
+  const r = { sq: 0 };
+  V.replay.input('mmslot', 'k=2', r); V.replay.input('mmcol', 'c=3', r);
+  assert.deepEqual(V.mmDraft.slots, [null, null, 3, null]); assert.equal(V.mmDraft.at, 3);
+  assert.deepEqual(V.replay.synth([0, 1, 2, 3]).map(x => x[1]), ['mmcol', 'mmcol', 'mmcol', 'mmcol', 'move']);
 });
