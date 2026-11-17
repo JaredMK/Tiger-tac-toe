@@ -18,7 +18,7 @@ test('stats periods: the New York day, ISO week and month', () => {
 
 test('stats: a phone\'s report of a match is checked and trimmed; anything that does not hold together is refused', () => {
   const ok = S.checkEnd({ winner: 'X', reason: 'line', squares: [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2, extra: 'dropped' }, { t: 'pig', end: 'open', w: 'O', X: 1, O: 0 }] }, E.TYPES);
-  assert.deepEqual(ok, { winner: 'X', reason: 'line', sc: false, squares: [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2 }, { t: 'pig', end: 'open', w: null, X: 1, O: 0 }] });
+  assert.deepEqual(ok, { winner: 'X', reason: 'line', sc: false, squares: [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2, v: 1 }, { t: 'pig', end: 'open', w: null, X: 1, O: 0, v: 1 }] });
   for (const bad of [null, {}, { squares: 'x' }, { squares: [{ t: 'chess', end: 'won', w: 'X', X: 1, O: 1 }] }, { squares: [{ t: 'ttt', end: 'won', w: null, X: 1, O: 1 }] },
     { squares: [{ t: 'ttt', end: 'gone', X: 1, O: 1 }] }, { squares: [{ t: 'ttt', end: 'open', X: -1, O: 1 }] }, { squares: [{ t: 'ttt', end: 'open', X: 1.5, O: 1 }] },
     { squares: Array(81).fill({ t: 'ttt', end: 'open', X: 1, O: 1 }) }]) assert.equal(S.checkEnd(bad, E.TYPES), null, JSON.stringify(bad).slice(0, 60));
@@ -65,7 +65,7 @@ test('stats: the engine\'s match summary feeds the stats directly', () => {
   st.squares[0].mini = E.newMini('ttt', E.makeRng('a'));
   for (const [i, m] of [[0, 0], [0, 3], [0, 1], [0, 4], [0, 2]]) { E.playMove(st, i, m, E.makeRng('m')); E.endFlash(st); }
   const sum = S.checkEnd(E.matchStats(st), E.TYPES);
-  assert.deepEqual(sum.squares, [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2 }]);
+  assert.deepEqual(sum.squares, [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2, v: 1, f: 'X' }]);
   const up = S.endUpdates('local', sum, 1000, Date.now(), false);
   assert.equal(up['mini/local/ttt/winMoves'], 3); assert.equal(up['mini/local/ttt/loseMoves'], 2); assert.equal(up['modes/local/turns'], 5);
 });

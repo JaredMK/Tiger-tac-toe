@@ -8,6 +8,7 @@ const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', chaos: '#d9622b', cv
 const GAMES = { ttt: 'Tic-tac-toe', c4: 'Four in a Row', bs: 'Sea Battle', wordle: 'Five Letters', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Find the Pair', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Codebreaker', bj: '21', bus: 'Ride the Bus', rl: 'Little Wheel', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Peg Drop', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush', golf: 'Mini Golf', pool: 'Pool', bowling: 'Bowling', craps: 'Krabs', takeover: 'Takeover', flood: 'Flood', seating: 'Seating', districts: 'Districts', shelves: 'Shelves', roads: 'Roads', flap: 'Flap', chopper: 'Chopper', patterns: 'Patterns', wheels: 'Risky Spins', apple: 'Apple Pick', sniff: 'Sniff', clash: 'Standoff Grid', headcount: 'Headcount', flash: 'Flash', snapshot: 'Snapshot', shell: 'Shell Game', skyhop: 'Sky Hop', scoop: 'Scoop Stack', pinball: 'Pinball', muncher: 'Muncher', swarm: 'Star Swarm', bricks: 'Brick Break', snake: 'Snake', dominoes: 'Dominoes', war: 'War', shut: 'Shut the Box', combo: 'Dice Combo', bglite: 'Backgammon Lite', scc: 'Ship, Captain & Crew', rps: 'Rock Paper Scissors', poker: 'Poker Hands', t31: 'Thirty-One', rummy: 'Rummy Lite', claw: 'Claw Machine', duck: 'Hook-a-Duck', pusher: 'Coin Pusher', wtiles: 'Word Tiles', scratch: 'Scratch & Match', bingo: 'Bingo' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
 const app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let BAL = null, balOpts = { admin: false, from: '', to: '', version: 'current', allGames: false };   // (the Balance report: src/admin/balance.js; its filters: an admin's matches left out by default)
 let fb = null, user = null, stats = null, flagged = null, reports = [], view = { status: 'loading', error: '' };
 let ctl = { config: {}, secretsSet: {}, bots: {}, botStats: {}, alertLog: [], alertStats: {} }, testResult = null, keyMsg = '';
 // The defaults the server uses for anything not set (functions/bots.js).
@@ -258,11 +259,13 @@ function draw() {
     playtest: () => playCard(),
     matches: () => matchCard(),
     games: sub => (sub && GAMES[sub] ? gamePage(sub) : gamesIndex()),
+    balance: () => balancePage(),
     growth: () => growthPage(),
     bots: () => `${findCard()}${timerCard()}${botsCard()}${aiCard()}${alertsCard()}`,
     access: () => accessCard(),
     stats: () => `<div class="card"><h2>Matches by mode</h2>${modeTable}</div><div class="card"><h2>Matches by timer</h2>${timerTable}</div>
     <div class="card"><div class="row"><h2>Mini-games</h2><label>Squares <select id="mrace">${[['all', 'Shared and Race'], ['shared', 'Shared only'], ['race', 'Race only']].map(([v, l]) => `<option value="${v}"${miniRace === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label><label>Modes <select id="mm">${[['all', 'All modes'], ['people', 'All but computer vs computer']].concat(MODES.filter(m => m[0] !== 'chaos'), [['testing', 'Admin-only games (testing)']]).map(([v, l]) => `<option value="${v}"${miniMode === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
+      <p class="note">All-time totals, every settings version together. By settings version (the current one by default, against the previous), with percentiles: the <a href="#balance">Balance report</a>.</p>
       ${miniTable}<h2 style="margin-top:14px">Average winner moves</h2>${hbarChart(rows, 'avgWin', 'Average winner moves by mini-game', v => num(v))}</div>`,
   };
   const [where, sub] = route(), info = SECTIONS.find(x => x[0] === where);
@@ -284,6 +287,7 @@ const SECTIONS = [
   ['games', 'Games', () => { const ts = Object.keys(GAMES), ch = ts.filter(gameChanged).length, off = ts.filter(iosOff).length, m = ctl.clients || {}, sp = ctl.anim && ctl.anim.speed; return `${ts.length} mini-games · ${ts.filter(isReleased).length} released${ch ? ` · ${ch} changed` : ''}${off ? ` · ${off} off on iOS` : ''}${m.web || m.ios ? ` · minimum ${['web', 'ios'].filter(p => m[p]).map(p => `${p} ${m[p]}`).join(', ')}` : ''}${sp && sp !== 1 ? ` · speed ${sp}×` : ''}`; }],
   ['bots', 'Bot Settings', () => 'Find Match, timer, bots, empty-queue alerts'],
   ['stats', 'Stats', () => 'Matches by mode and timer, moves to win'],
+  ['balance', 'Balance report', () => 'Moves and time per game by settings version, match length, export'],
   ['growth', 'Growth', () => 'First-run funnel, retention, invites, sources, Find Match waits'],
 ].concat(STAGING ? [['access', 'Staging Access', () => ctl.stagingMode === 'open' ? 'Open: anyone with the link' : `Allowlist: ${Object.keys(ctl.allow || {}).length} on the list`]] : []);   // (staging only: who may use it)
 // The Games page took over Mini-game Settings and Releases (November 2026): their old hashes (bookmarks) open it, #settings/<type> the game's page.
@@ -883,6 +887,7 @@ async function loadMetas() {
   TUNE = await import('./src/core/tune.js');   // (the registry has registered every game's settings)
   CLIENT = await import('./src/core/client.js');
   RACE = await import('./src/core/race.js');   // (after the registry: the metas import its MODE_TUNE)
+  BAL = await import('./src/admin/balance.js');   // the Balance report and the stats by settings version (pure)
 }
 const tuneList = t => (META[t] && Array.isArray(META[t].TUNE) ? META[t].TUNE : []);
 const catName = t => { const c = CATS.find(x => META[t] && x[0] === META[t].category); return c ? c[1] : ''; };
@@ -981,10 +986,11 @@ function gamePage(t) {
   const groups = TGROUPS.concat([...new Set(fields.map(f => f.group).filter(g => !TGROUPS.includes(g)))]).map(g => [g, fields.filter(f => (f.group || 'Rules') === g)]).filter(([, fs]) => fs.length);
   const body = fields.length ? groups.map(([g, fs]) => `<h3>${esc(g)}</h3><div class="rform tform">${fs.map(inp).join('')}</div>`).join('') : `<p class="note">${own ? 'No settings beyond its tuning above.' : 'No settings.'}</p>`;
   const any = fields.length || own || isRaceGame(t);
+  const ver = BAL ? BAL.versionCard(t, ctl.versions, ctl.versionLog, k => { const f = tuneList(t).find(x => x.k === k); return f ? f.label : k; }) : '';
   return `<div class="gpage" id="gamePage" data-game="${t}">${releaseCard(t)}${modeCard(t)}${own}
     <div class="card ctl" id="tuneCard"><h2>Settings</h2>${presetRow(t)}${body}
       <div class="tbar"><button class="btn go" data-gamesave="${t}"${any ? '' : ' disabled'}>Save</button><button class="btn" data-tunereset="${t}">Reset to defaults</button><button class="btn tplay" data-testplay="${t}" title="Opens the game alone in a new tab with this page's values, saved or not (the live settings are not touched)">Test play</button><span class="unsaved" role="status"></span></div>
-      <p class="note">Save: every value on this page${own ? ' (the tuning card\'s too)' : ''}${isRaceGame(t) ? ', the Mode included,' : ''} to the game and the server at once, for squares dealt from then on; only what differs from the defaults is kept. Reset to defaults: every value on this page back to the code's${own ? ' (the tuning card\'s too)' : ''}. Test play: a game of it alone against the computer on Hard, in a new tab, with the values as they are here, saved or not; back here when it ends.</p></div></div>`;
+      <p class="note">Save (a new settings version): every value on this page${own ? ' (the tuning card\'s too)' : ''}${isRaceGame(t) ? ', the Mode included,' : ''} to the game and the server at once, for squares dealt from then on; only what differs from the defaults is kept. Reset to defaults: every value on this page back to the code's${own ? ' (the tuning card\'s too)' : ''}. Test play: a game of it alone against the computer on Hard, in a new tab, with the values as they are here, saved or not; back here when it ends.</p></div>${ver}</div>`;
 }
 // A game's presets (its meta.js PRESETS: { name: { k: value, ... } }, e.g. Shell Game's Gentle, Normal, Brutal): a button
 // each, which fills those settings' fields on the page (marked unsaved, as any edit: nothing is saved until Save, and
@@ -1006,6 +1012,51 @@ function applyPreset(t, name, btn) {
   }
   for (const b of app.querySelectorAll('[data-preset]')) { const on = b === btn; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }
 }
+// The Balance report (December 2026, #balance; src/admin/balance.js): per game, for its current settings version (or the
+// previous one, or all), the squares, the winner's moves and the time in the square (25th percentile, median, 75th), left
+// open, reset and first-mover rates, flags; the current version against the one before; match length by mode, timer and
+// finished or abandoned. Filters: an admin's matches left out (by default), dates, the version; Export JSON.
+let lastBal = null;
+function balancePage() {
+  if (!BAL) { loadMetas().then(() => render()).catch(() => {}); return '<div class="card"><p class="note">Loading…</p></div>'; }
+  const types = Object.keys(GAMES).filter(t => balOpts.allGames || isReleased(t)).sort((a, b) => GAMES[a].localeCompare(GAMES[b]));
+  lastBal = BAL.balanceReport(stats || {}, { versions: ctl.versions, log: ctl.versionLog, types, names: GAMES, env: STAGING ? 'staging' : 'production', now: Date.now() }, balOpts);
+  return BAL.balanceHtml(lastBal, { allGames: balOpts.allGames });
+}
+function balanceFilter(el) {
+  const k = el.dataset.balf;
+  if (k === 'noadmin') balOpts.admin = !el.checked;
+  else if (k === 'allgames') balOpts.allGames = el.checked;
+  else if (k === 'from' || k === 'to' || k === 'version') balOpts[k] = el.value;
+  render();
+}
+function balanceExport() {
+  if (!lastBal || !BAL) return;
+  const blob = new Blob([JSON.stringify(lastBal, null, 2)], { type: 'application/json' }), a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = BAL.exportName(lastBal.env, lastBal.generatedAt); document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+// Settings versions (December 2026): every Save or Reset of a game's settings makes a new version (config/versions/<type>,
+// its number; config/versionLog/<type>/v<n>: when, by whom, what changed), so the squares dealt from then on are filed under
+// it (core/tune.js; the Balance report compares the versions). The first Save makes version 2: v1 is everything before.
+async function bumpVersion(t, ch, note) {
+  const ref = fb.dbM.ref(fb.db, `config/versions/${t}`);
+  const r = await fb.dbM.runTransaction(ref, cur => (Number.isInteger(cur) && cur >= 1 ? cur : 1) + 1);
+  const n = r.snapshot.val(), clean = {};
+  for (const [k, c] of Object.entries(ch || {})) clean[k] = { from: typeof c.from === 'number' ? c.from : String(c.from), to: typeof c.to === 'number' ? c.to : String(c.to) };
+  const entry = Object.assign({ at: Date.now(), by: String((user && user.email) || 'admin').slice(0, 80), ch: clean }, note ? { note: String(note).slice(0, 200) } : {});
+  await fb.dbM.set(fb.dbM.ref(fb.db, `config/versionLog/${t}/v${n}`), entry);
+  ctl.versions = Object.assign({}, ctl.versions, { [t]: n });
+  ctl.versionLog = Object.assign({}, ctl.versionLog, { [t]: Object.assign({}, (ctl.versionLog || {})[t], { ['v' + n]: entry }) });
+  return n;
+}
+// A tuning card's change, as the log puts it: each top-level value that differs (an object as its JSON, cut short).
+function cardChanges(before, after) {
+  const a = before && typeof before === 'object' ? before : {}, b = after && typeof after === 'object' ? after : {}, out = {};
+  const show = v => (v === undefined ? 'default' : typeof v === 'number' || typeof v === 'string' ? v : JSON.stringify(v).slice(0, 60));
+  for (const k of new Set(Object.keys(a).concat(Object.keys(b)))) if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) out['card.' + k] = { from: show(a[k]), to: show(b[k]) };
+  return out;
+}
 // Save: the page's TUNE values (config/tune/<type>, the values that differ from the defaults alone) and its tuning card's
 // (config/<name>, the card's own shape), each written only where it changed; the mode rides the TUNE values.
 async function saveGame(t, btn) {
@@ -1024,6 +1075,7 @@ async function saveGame(t, btn) {
   const tuneDiff = canon(norm) !== canon((ctl.tune && ctl.tune[t]) || {}), ownDiff = !!own && canon(own.value) !== canon(legacyStored(t) || {});
   if (!tuneDiff && !ownDiff) { said(btn, true, 'Nothing to save'); return; }
   btn.disabled = true;
+  const changes = Object.assign(tuneDiff ? TUNE.tuneChanges(t, (ctl.tune && ctl.tune[t]) || {}, norm) : {}, ownDiff ? cardChanges(legacyStored(t), own.value) : {});
   try {
     if (tuneDiff) {
       await fb.dbM.set(fb.dbM.ref(fb.db, `config/tune/${t}`), Object.keys(norm).length ? norm : null);
@@ -1033,6 +1085,7 @@ async function saveGame(t, btn) {
       if (!Object.keys(norm).length) delete ctl.tune[t];
     }
     if (ownDiff) { await fb.dbM.set(fb.dbM.ref(fb.db, legacyPath(t)), own.value); legacyKeep(t, own.value); }
+    await bumpVersion(t, changes);                                   // (a new settings version: the squares dealt from now on are filed under it)
   } catch (e) { said(btn, false, failed(e)); return; }
   render(); said(app.querySelector(`[data-gamesave="${t}"]`) || btn, true, 'Saved');
 }
@@ -1041,8 +1094,10 @@ async function resetGame(t, btn) {
   if (!confirm(`Put every ${GAMES[t]} setting back to its default? Squares dealt from then on use the defaults.`)) return;
   btn.disabled = true;
   try {
+    const changes = Object.assign(TUNE.tuneChanges(t, (ctl.tune && ctl.tune[t]) || {}, {}), legacyPath(t) ? cardChanges(legacyStored(t), null) : {});
     await fb.dbM.set(fb.dbM.ref(fb.db, `config/tune/${t}`), null);
     if (legacyPath(t)) await fb.dbM.set(fb.dbM.ref(fb.db, legacyPath(t)), null);
+    await bumpVersion(t, changes, 'Reset to defaults');
     await loadCtl();
   } catch (e) { said(btn, false, 'Not reset: ' + ((e && e.message) || 'the database refused it')); return; }
   render(); said(app.querySelector(`[data-tunereset="${t}"]`) || btn, true, 'Back to the defaults');
@@ -1273,7 +1328,7 @@ async function loadCtl() {
   const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg, wheelsCfg, plinkoCfg, oddCfg, headCfg, flashCfg, snapCfg, hopCfg, scoopCfg, pinCfg, pigCfg, roadsCfg, bowlCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
     fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls'), g('config/wheels'), g('config/plinko'), g('config/oddone'), g('config/headcount'), g('config/flash'), g('config/snapshot'), g('config/skyhop'), g('config/scoop'), g('config/pinball'), g('config/pig'), g('config/roads'), g('config/bowling'), loadMetas()]);
   ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {}, wheelsCfg: wheelsCfg || {}, plinkoCfg: plinkoCfg || {}, pigCfg: pigCfg || {}, roadsCfg: roadsCfg || {}, oddCfg: oddCfg || {}, attCfg: { headcount: headCfg || {}, flash: flashCfg || {}, snapshot: snapCfg || {} }, fingCfg: { skyhop: hopCfg || {}, scoop: scoopCfg || {}, bowling: bowlCfg || {}, pinball: pinCfg || {} },
-    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {}, ai: (await g('config/ai')) || {}, anim: (await g('config/anim')) || {}, timer: (await g('config/timer')) || {}, clients: (await g('config/clients')) || {}, allow: STAGING ? ((await g('admin/staging/allow')) || {}) : {}, stagingMode: STAGING ? ((await g('config/staging/mode')) === 'open' ? 'open' : 'allowlist') : 'allowlist' };
+    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {}, versions: (await g('config/versions')) || {}, versionLog: (await g('config/versionLog')) || {}, ai: (await g('config/ai')) || {}, anim: (await g('config/anim')) || {}, timer: (await g('config/timer')) || {}, clients: (await g('config/clients')) || {}, allow: STAGING ? ((await g('admin/staging/allow')) || {}) : {}, stagingMode: STAGING ? ((await g('config/staging/mode')) === 'open' ? 'open' : 'allowlist') : 'allowlist' };
 }
 async function signIn(how) {
   view.error = '';
@@ -1296,6 +1351,7 @@ app.addEventListener('click', e => {
   const mr = !b && e.target.closest('tr.mlrow');
   if (mr && fb) { const k = mr.dataset.ml; mlOpen = mlOpen === k ? null : k; render(); if (mlOpen) { mlLoad(mlOpen); const el = document.getElementById('mlTimeline'); if (el) el.scrollIntoView({ block: 'nearest' }); } return; }   // a match's row: its timeline
   if (!b || !fb) return;
+  if (b.dataset.balexport) { balanceExport(); return; }
   if (b.dataset.allowdel) { allowEdit(b, b.dataset.allowdel, false); return; }
   if (b.dataset.stmode) { setStagingMode(b, b.dataset.stmode); return; }
   if (b.dataset.act === 'allowadd') { const i = document.getElementById('allowAdd'); allowEdit(b, i && i.value, true); return; }
@@ -1328,6 +1384,7 @@ app.addEventListener('click', e => {
 });
 app.addEventListener('input', e => { if (note) { note = null; showNote(); } dirtyMark(e.target); });   // (an edit after a save: its note goes; on a game's page the edit is marked unsaved)
 app.addEventListener('change', e => {
+  if (e.target.dataset && e.target.dataset.balf) { balanceFilter(e.target); return; }
   if (e.target.id === 'mm') { miniMode = e.target.value; render(); }
   if (e.target.id === 'mrace') { miniRace = e.target.value; render(); }
   else if (['mlWho', 'mlMode', 'mlFrom', 'mlTo'].includes(e.target.id)) { mlFilt[{ mlWho: 'who', mlMode: 'mode', mlFrom: 'from', mlTo: 'to' }[e.target.id]] = e.target.value; mlOpen = null; render(); }

@@ -75,7 +75,9 @@ function checkEnd(d, types) {
     if (e.end === 'won' && !w) return null;
     const run = checkRun(e.run);
     if (e.run !== undefined && !run) return null;
-    squares.push(Object.assign({ t: e.t, end: e.end, w, X, O }, run ? { run } : {}));
+    const v = Number.isInteger(e.v) && e.v >= 1 && e.v <= 100000 ? e.v : 1, f = e.f === 'X' || e.f === 'O' ? e.f : null;   // (the settings version, the first mover, the time in it: core/board.js sqEntry)
+    const ms = Number.isFinite(e.ms) && e.ms >= 0 && e.ms <= MAX_MS ? Math.round(e.ms) : null;
+    squares.push(Object.assign({ t: e.t, end: e.end, w, X, O, v }, f ? { f } : {}, ms !== null ? { ms } : {}, e.race ? { race: 1 } : {}, run ? { run } : {}));
   }
   const winner = d.winner === 'X' || d.winner === 'O' ? d.winner : null;
   return { squares, winner, reason: REASONS.includes(d.reason) ? d.reason : null, sc: d.sc === true };
@@ -160,6 +162,45 @@ function endUpdates(mode, sum, ms, t, withStart, testTypes) {
     }
   }
   return withPeriods(up, k);
+}
+// ---------- balance (December 2026): the admin's Balance report and the stats by settings version ----------
+// stats/bal/sq/{type}/v{n}/{day}/{seg}/   every square of a match played to its end, filed under the settings version it
+//     was dealt under (v1: none recorded, every square from before), the New York day and seg ('p': only players, 'a': an
+//     admin played in the match): n (squares), won, draw (reset), open (left open by the match's end), moves (both sides'
+//     turns summed), fd (decided squares whose first mover is known), fm (of those, won by the first mover), wm/m{k} (the
+//     winner's moves, a histogram, m40 = 40 or more), tn/tsum (won squares with a time, their seconds summed) and t/s{b} (the
+//     won square's time in seconds, a histogram by upper edge, s9999 beyond the last).
+// stats/bal/ml/{day}/{seg}/{mode}/{timer}/{fin|ab}/   every match reported (finished, or abandoned: resigned or two turns
+//     missed): n, turns/t{b} (its turns, by upper edge), tsum, mn/msum (with a time: how many, minutes summed) and mi/m{b}
+//     (its minutes, by upper edge). timer: core/timer.js timerSpec ('t30', 'm5+5', 'off'), 'none' for a local match.
+// Super Chaos matches are left out (simultaneous rounds: not comparable). Practice and the admin's Test play are never
+// reported at all (net/tracking.js, ui/sandbox.js).
+const BAL_SEG = admin => (admin ? 'a' : 'p');
+const MOVE_CAP = 40;
+const SQ_SECS = [5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 300, 420, 600, 900, 1200, 1800, 3600];
+const MATCH_TURNS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 100, 120, 160, 200];
+const MATCH_MINS = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 90, 120, 180];
+const edgeOf = (edges, x) => { const e = edges.find(b => x <= b); return e === undefined ? 9999 : e; };
+const BAL_TIMER = v => (typeof v === 'string' && TIMER_CODE.test(v) ? v : 'none');
+function balanceUpdates(mode, sum, ms, t, o) {
+  o = o || {};
+  const up = {}, add = (p, n) => { if (n) up[p] = (up[p] || 0) + n; };
+  if (!sum || sum.sc || mode === 'chaos') return up;
+  const day = periodKeys(t).d, seg = BAL_SEG(o.admin), ab = ABANDONED.includes(sum.reason);
+  const turns = sum.squares.reduce((n, e) => n + e.X + e.O, 0), timed = Number.isFinite(ms) && ms >= 0 && ms <= MAX_MS;
+  const mb = `bal/ml/${day}/${seg}/${mode}/${BAL_TIMER(o.timer)}/${ab ? 'ab' : 'fin'}/`;
+  add(mb + 'n', 1); add(mb + 'tsum', turns); add(`${mb}turns/t${edgeOf(MATCH_TURNS, turns)}`, 1);
+  if (timed) { const min = ms / 60000; add(mb + 'mn', 1); add(mb + 'msum', Math.round(ms / 1000)); add(`${mb}mi/m${edgeOf(MATCH_MINS, min)}`, 1); }
+  if (ab) return up;                                                    // (an abandoned match's squares say nothing about the mini-games)
+  for (const e of sum.squares) {
+    const b = `bal/sq/${e.t}/v${Number.isInteger(e.v) && e.v >= 1 ? e.v : 1}/${day}/${seg}/`;
+    add(b + 'n', 1); add(b + e.end, 1); add(b + 'moves', e.X + e.O);
+    if (e.end !== 'won') continue;
+    add(`${b}wm/m${Math.min(MOVE_CAP, Math.max(1, e[e.w] || 1))}`, 1);
+    if (e.f === 'X' || e.f === 'O') { add(b + 'fd', 1); if (e.f === e.w) add(b + 'fm', 1); }
+    if (Number.isFinite(e.ms)) { const s = e.ms / 1000; add(b + 'tn', 1); add(b + 'tsum', Math.round(s)); add(`${b}t/s${edgeOf(SQ_SECS, s)}`, 1); }
+  }
+  return up;
 }
 // A login, or a new account: the counter for the day, the week, the month and all time.
 function periodUpdates(what, t) {
@@ -298,5 +339,6 @@ function healthUpdates(c, t) {
 }
 
 module.exports = {
+  balanceUpdates, BAL_SEG, MOVE_CAP, SQ_SECS, MATCH_TURNS, MATCH_MINS, edgeOf, BAL_TIMER,
   checkReport, reportText, REPORT_WHERE, MODES, healthUpdates, findUpdates, growthMarks, STEPS, ACTS, CHANNELS, RETAIN, dayNum, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, PERIOD_NODE, PERIOD_PATH, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates, timerStartUpdates, timerEndUpdates,
   DEV_EVENTS, DEV_MODES, TAG_RE, tagOk, devHash, checkDev };

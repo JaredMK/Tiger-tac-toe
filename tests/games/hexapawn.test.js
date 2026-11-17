@@ -134,7 +134,7 @@ test('hexapawn: leaving the other side without a move wins nothing; when neither
   assert.equal(f.kind, 'draw', 'nobody can move: no winner'); assert.equal(f.note, 'stuck');
   assert.equal(st.squares[0].owner, null);
   assert.equal(st.squares[0].mini.type, 'ttt', 'the square resets with a new mini-game');
-  assert.deepEqual(st.sqlog[0], { t: 'hexapawn', end: 'draw', w: null, X: 1, O: 0 });
+  assert.deepEqual(st.sqlog[0], { t: 'hexapawn', end: 'draw', w: null, X: 1, O: 0, v: 1, f: 'X' });
   // capturing the last pawn does not win either: the pawn still has to get through
   const w = hp(hpAt(2, 1), 'X', hpAt(3, 2), 'X', hpAt(1, 0), 'O');
   assert.deepEqual(L.applyMove(w, 'X', [hpAt(2, 1), hpAt(1, 0)]), { ok: true, outcome: 'continue', note: 'capture' });

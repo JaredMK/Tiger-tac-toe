@@ -72,9 +72,11 @@ const { RACE_TYPES } = await import('../../src/core/race.js');
 
 // The database stood in for: every write recorded; a read answers what was written, else what the test seeded.
 function mockDb(seed = {}) {
-  const store = Object.assign({}, seed), writes = [];
-  const dbM = { ref: (db, p) => p, set: async (p, v) => { writes.push([p, v]); if (v === null) delete store[p]; else store[p] = v; }, get: async p => ({ val: () => (p in store ? store[p] : null) }), query: p => p, orderByChild: () => null, limitToLast: () => null, startAt: () => null };
-  return { fb: { dbM, db: null, fnM: {}, fns: null }, writes, store };
+  const store = Object.assign({}, seed), writes = [], versions = [];   // (versions: the settings-version writes, kept apart: config/versions and config/versionLog)
+  const put = (p, v) => { (/^config\/version/.test(p) ? versions : writes).push([p, v]); if (v === null) delete store[p]; else store[p] = v; };
+  const dbM = { ref: (db, p) => p, set: async (p, v) => put(p, v), get: async p => ({ val: () => (p in store ? store[p] : null) }), query: p => p, orderByChild: () => null, limitToLast: () => null, startAt: () => null,
+    runTransaction: async (p, fn) => { const v = fn(p in store ? store[p] : null); put(p, v); return { committed: true, snapshot: { val: () => v } }; } };
+  return { fb: { dbM, db: null, fnM: {}, fns: null }, writes, store, versions };
 }
 const ctl0 = () => ({ config: {}, secretsSet: {}, bots: {}, botStats: {}, alertStats: {}, features: {}, releases: {}, runCfg: {}, bullsCfg: {}, wheelsCfg: {}, plinkoCfg: {}, pigCfg: {}, roadsCfg: {}, oddCfg: {}, attCfg: { headcount: {}, flash: {}, snapshot: {} }, fingCfg: { skyhop: {}, scoop: {}, bowling: {}, pinball: {} }, alertLog: [], tune: {}, ai: {}, anim: {}, timer: {}, clients: {}, allow: {} });
 const draw = hash => { location.hash = hash; app.edits = []; A.draw(); return app.innerHTML; };
@@ -185,6 +187,9 @@ test('Reset to defaults clears the game\'s config/tune node and its tuning card\
   await A.resetGame('pig', btn('pig'));
   assert.deepEqual(db.writes, [['config/tune/pig', null], ['config/pig', null]]);
   assert.deepEqual(A.ctl.pigCfg, {}, 'read back: the card is at its defaults');
+  assert.deepEqual(db.versions[0], ['config/versions/pig', 2], 'a Reset makes a new settings version (v1: everything before)');
+  assert.equal(db.versions[1][0], 'config/versionLog/pig/v2'); assert.equal(db.versions[1][1].note, 'Reset to defaults');
+  assert.deepEqual(db.versions[1][1].ch['card.target'], { from: 60, to: 'default' }, 'what changed: the tuning card\'s target back to its default');
   db.writes.length = 0;
   await A.resetGame('dash', btn('dash'));
   assert.deepEqual(db.writes, [['config/tune/dash', null], ['config/run/dash', null]], 'a runner: its node under config/run');
@@ -196,8 +201,10 @@ test('Reset to defaults clears the game\'s config/tune node and its tuning card\
   assert.deepEqual(db.writes, [['config/tune/ttt', null]], 'a game without a card: its tune node alone');
   globalThis.confirm = () => false;
   db.writes.length = 0;
+  db.versions.length = 0;
   await A.resetGame('pig', btn('pig'));
   assert.deepEqual(db.writes, [], 'not confirmed: nothing written');
+  assert.deepEqual(db.versions, [], 'and no new version');
   globalThis.confirm = () => true;
 });
 test('Save writes what changed: the Mode as a TUNE value, a tuning card to its own node in its own shape, nothing where nothing changed', async () => {
@@ -233,4 +240,21 @@ test('Save writes what changed: the Mode as a TUNE value, a tuning card to its o
   type(el => el.dataset.pigcfg === 'target', { value: '5' });
   await A.saveGame('pig', { dataset: { gamesave: 'pig' }, tagName: 'BUTTON', disabled: false, closest: () => null, insertAdjacentElement() {} });
   assert.deepEqual(db.writes, [], 'out of range: refused');
+});
+
+// The Balance report (December 2026, #balance; src/admin/balance.js) and a game's settings version card.
+test('Balance report: the released games for their current settings version, the filters, the match length, Export JSON; a game\'s version card', () => {
+  const sq = n => ({ '2026-11-17': { p: { n, won: n, wm: { m5: n }, fd: n, fm: Math.round(n / 2) }, a: { n: 9, won: 9, wm: { m2: 9 } } } });
+  A.ready({ bal: { sq: { ttt: { v2: sq(40) }, pig: { v1: sq(12) } }, ml: { '2026-11-17': { p: { cpu: { none: { fin: { n: 3, tsum: 90, turns: { t30: 3 }, mn: 3, msum: 1800, mi: { m10: 3 } } } } } } } } });
+  A.ctl = Object.assign(ctl0(), { releases: { ttt: true, pig: true }, versions: { ttt: 2 }, versionLog: { ttt: { v2: { at: Date.parse('2026-11-16'), by: 'admin@x', ch: {} } } } });
+  const html = draw('#balance');
+  assert.match(html, /<h2>Balance report<\/h2>/);
+  assert.match(html, /Tic-tac-toe<\/a> <small>v2<\/small>/);
+  assert.match(html, /<td>40<\/td>/, 'the players\' squares only by default (an admin\'s 9 left out)');
+  assert.match(html, /Risky Rolls<\/a> <small>v1<\/small> <span class="bflag small"/, 'a sample under 30 is flagged');
+  assert.match(html, /data-balf="noadmin" checked/); assert.match(html, /Leave out Practice and Test play/);
+  assert.match(html, /data-balexport="1"/);
+  assert.match(html, /vs Computer/);
+  const page = draw('#games/ttt');
+  assert.match(page, /Settings version 2/); assert.match(page, /<b>v2<\/b> 2026-11-16/);
 });

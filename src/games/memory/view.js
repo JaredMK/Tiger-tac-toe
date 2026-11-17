@@ -115,7 +115,7 @@ export function pickAct(el, e, act) {
   }
   if (first == null) { state.pick = i; state.pickSq = state.zoom; startFx('pick', pickKey()); SND.play('flipUp'); }   // the card turns up: its own event
   else if (first === i) { state.pick = null; state.pickSq = null; }
-  else if (!playMove(state, state.zoom, [first, i], RNG, { rep: repTake() }).ok) { state.pick = null; state.pickSq = null; }
+  else if (!playMove(state, state.zoom, [first, i], RNG, { rep: repTake(), at: Date.now() }).ok) { state.pick = null; state.pickSq = null; }
   else playFlash();
   commit();
 }

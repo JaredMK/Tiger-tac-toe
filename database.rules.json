@@ -709,6 +709,45 @@
       },
       "$other": {
         ".validate": false
+      },
+      "versions": {
+        ".write": "auth != null && auth.token.admin === true",
+        "$type": {
+          ".validate": "$type.matches(/^[a-z0-9]{1,16}$/) && newData.isNumber() && newData.val() >= 1 && newData.val() <= 100000 && newData.val() % 1 === 0"
+        }
+      },
+      "versionLog": {
+        ".write": "auth != null && auth.token.admin === true",
+        "$type": {
+          "$n": {
+            ".validate": "$type.matches(/^[a-z0-9]{1,16}$/) && $n.matches(/^v[0-9]{1,6}$/) && newData.hasChildren(['at']) && newData.child('at').isNumber()",
+            "at": {
+              ".validate": "newData.isNumber()"
+            },
+            "by": {
+              ".validate": "newData.isString() && newData.val().length <= 80"
+            },
+            "note": {
+              ".validate": "newData.isString() && newData.val().length <= 200"
+            },
+            "ch": {
+              "$k": {
+                "from": {
+                  ".validate": "newData.isString() || newData.isNumber()"
+                },
+                "to": {
+                  ".validate": "newData.isString() || newData.isNumber()"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
       }
     },
     "matchLogs": {

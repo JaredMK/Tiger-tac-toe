@@ -1,19 +1,30 @@
 // What a finished (or abandoned) match adds to the anonymous game stats.
 import { RUN_TYPES, runLog } from '../games/shared/runner.js';
 import { isRace } from './race.js';
+import { miniVersion } from './tune.js';
 
 // ---------- stats: what a finished (or abandoned) match adds to the anonymous game stats ----------
 // Every mini-game played: how it ended ('won', 'draw' when it reset, or 'open' when the match ended
 // first), who won it and the turns each side spent in it. A bonus move within a turn (a Risky Rolls roll,
 // a Hangman letter after a hit) is part of the same turn.
 export function matchStats(st) {
-  const squares = (Array.isArray(st.sqlog) ? st.sqlog : []).map(e => Object.assign({ t: e.t, end: e.end, w: e.w || null, X: e.X || 0, O: e.O || 0 }, e.race ? { race: 1 } : {}, e.run ? { run: e.run } : {}));   // (race: a Race mode square, core/race.js)
+  const extra = e => Object.assign({}, e.race ? { race: 1 } : {}, e.run ? { run: e.run } : {}, { v: Number.isInteger(e.v) && e.v >= 1 ? e.v : 1 }, e.f === 'X' || e.f === 'O' ? { f: e.f } : {}, Number.isFinite(e.ms) ? { ms: Math.round(e.ms) } : {});   // (v: the settings version, f: the first mover, ms: the time spent in it: core/board.js sqEntry)
+  const squares = (Array.isArray(st.sqlog) ? st.sqlog : []).map(e => Object.assign({ t: e.t, end: e.end, w: e.w || null, X: e.X || 0, O: e.O || 0 }, extra(e)));   // (race: a Race mode square, core/race.js)
   for (const sq of st.squares || []) {
     if (sq.owner || !sq.mv || !(sq.mv.X + sq.mv.O)) continue;
-    squares.push(Object.assign({ t: sq.mini.type, end: 'open', w: null, X: sq.mv.X, O: sq.mv.O }, isRace(sq.mini) ? { race: 1 } : {}, RUN_TYPES.includes(sq.mini.type) ? runLog(sq.mini) : {}));
+    squares.push(Object.assign({ t: sq.mini.type, end: 'open', w: null, X: sq.mv.X, O: sq.mv.O }, extra(Object.assign({ race: isRace(sq.mini), v: miniVersion(sq.mini), f: sq.f, ms: sq.ms }, RUN_TYPES.includes(sq.mini.type) ? runLog(sq.mini) : {}))));
   }
   const turns = squares.reduce((n, e) => n + e.X + e.O, 0);
-  return { squares, turns, winner: st.winner || null, reason: st.winReason || null, sc: !!st.sc };   // sc: a Super Chaos match (its squares counted apart)
+  return { squares, turns, winner: st.winner || null, reason: st.winReason || null, sc: !!st.sc, sv: boardVersions(st) };   // sc: a Super Chaos match (its squares counted apart); sv: every game's settings version on its board
+}
+// The settings version of every mini-game on a match's board (December 2026): the squares on it now and every one played
+// out of it ({ type: version }; a type dealt under two versions keeps the higher).
+export function boardVersions(st) {
+  const out = {};
+  const put = (t, v) => { if (typeof t === 'string') out[t] = Math.max(out[t] || 1, Number.isInteger(v) && v >= 1 ? v : 1); };
+  for (const e of Array.isArray(st.sqlog) ? st.sqlog : []) put(e.t, e.v);
+  for (const sq of st.squares || []) if (sq && sq.mini) put(sq.mini.type, miniVersion(sq.mini));
+  return out;
 }
 
 // ---------- Top opponents: a player's record against each person they have played online ----------

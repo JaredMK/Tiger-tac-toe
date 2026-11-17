@@ -27,7 +27,7 @@ import { closeSeat, init as roomInit, joinCode, joinName, joinRoom, resumeOnline
 import { devAct, devAudio, devError, devOpen, devPulse, init as trackingInit, takeTag } from './net/tracking.js';
 import { clockTimer, commit, setClockTimer, state } from './ui/app.js';
 import { fetchAttConfig } from './ui/attention.js';
-import { setTunes } from './core/tune.js';
+import { setTuneVersions, setTunes } from './core/tune.js';
 import { AI_CLOCK } from './core/ai.js';
 import { setAiWeights } from './core/aiw.js';
 import { setAnimFast, setAnimFx, setAnimSpeed } from './core/timer.js';
@@ -87,6 +87,7 @@ function loadConfigs() {
   fetchAttConfig('skyhop', setHopConfig); fetchAttConfig('scoop', setScoopConfig); fetchAttConfig('pinball', setPinConfig);   // and the finger games'
   fetchAttConfig('bowling', setBowlConfig);                       // Bowling's two taps' speeds
   fetchAttConfig('tune', setTunes, true);                         // every mini-game's settings (Mini-game Settings: config/tune), likewise
+  fetchAttConfig('versions', setTuneVersions, true);              // and their settings versions (config/versions: a square is dealt under its game's own)
   fetchAttConfig('ai', setAiWeights, true);                       // the Hard computer's weights (npm run tune-ai: config/ai), likewise
   fetchAttConfig('anim', v => { setAnimSpeed(v && v.speed); setAnimFast(v && v.fast); setAnimFx(v && v.fx); }, true);   // the admin's Animation speed (everyone) and Speed mode's multiplier and effects (config/anim)
   fetchAttConfig('clients', v => { const was = updateNeeded(); setClientMins(v); if (updateNeeded() !== was) render(); }, true);   // the oldest version still allowed per platform (config/clients): below it, "Please update"

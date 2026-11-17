@@ -30,7 +30,7 @@ export function attemptMove(m) {
   const rep = repTake();                                          // this phone's inputs before the move: they ride with it, for the other side's replay
   if (state.online && state.sc) { scRequest(state.zoom, m, rep); return true; }   // Super Chaos online: the server plays it (net/chaos.js)
   if (state.online) { dbMove(state.zoom, m, rep); return true; }
-  const r = playMove(state, state.zoom, m, RNG, { rep });
+  const r = playMove(state, state.zoom, m, RNG, { rep, at: Date.now() });   // (at: the square's time, core/board.js sqEntry)
   if (r.ok) { playFlash(); commit(); } else SND.play('error');
   return r;
 }

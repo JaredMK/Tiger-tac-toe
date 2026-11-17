@@ -13,7 +13,7 @@ import { WHEEL_DEFAULTS } from '../games/wheels/meta.js';
 import { WHEELS_ALL, WHEEL_SEGS } from '../games/wheels/rules.js';
 import { isRace, raceOld, raceShape, raceSide } from './race.js';
 import { rulesOf } from '../games/index.js';
-import { tuneSnap } from './tune.js';
+import { tuneSnap, tuneVersion } from './tune.js';
 
 // Does p have a legal move in this mini-game? Only Hexapawn can leave a player stuck; every other game
 // always offers a move. A stuck player simply plays in another square.
@@ -82,7 +82,7 @@ export function upgradeMini(mini) {
 export function anyMove(state, p) { return state.squares.some(s => !s.owner && canMove(s.mini, p)); }
 
 // A square keeps the settings it was dealt with (core/tune.js): only those that differ from the defaults.
-export function withTune(mini) { const s = mini && tuneSnap(mini.type); if (s) mini.tune = s; return mini; }
+export function withTune(mini) { const s = mini && tuneSnap(mini.type); if (s) mini.tune = s; const v = mini && tuneVersion(mini.type); if (v > 1) mini.sv = v; return mini; }   // (sv: the settings version it was dealt under, core/tune.js; none = 1)
 export function newMini(type, rng, opts) {   // opts.shared: two people on one phone (a race game is dealt Shared: core/race.js)
   const game = rulesOf(type);
   if (game.create) return withTune(game.create(type, rng, opts));

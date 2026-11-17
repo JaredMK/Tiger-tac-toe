@@ -51,6 +51,22 @@ export function tune(mini) {
   memo.set(mini, { src: mini.tune, v });
   return v;
 }
+// Settings versions (December 2026): every Save of a game's admin settings makes a new version of that game's settings
+// (config/versions/<type>: its number; config/versionLog/<type>/<n>: when and what changed; the admin's Games page). A
+// square is dealt under the version of the moment and keeps its number (mini.sv; none = 1: every square from before
+// versions were kept counts as version 1), so its stats are filed under the settings it was played with.
+const VER = Object.create(null);
+const verNum = v => (Number.isInteger(Number(v)) && Number(v) >= 1 ? Number(v) : 1);
+export function setTuneVersions(all) { for (const k of Object.keys(VER)) delete VER[k]; if (all && typeof all === 'object') for (const [t, v] of Object.entries(all)) VER[t] = verNum(v); }
+export const tuneVersion = type => VER[type] || 1;
+export const tuneVersions = () => Object.assign({}, VER);
+export const miniVersion = mini => verNum(mini && mini.sv);
+// The settings a save changed (old and new values by key, both as the code would deal: defaults filled in), for the log.
+export function tuneChanges(type, before, after) {
+  const a = Object.assign({}, DEF[type], tuneNorm(type, before)), b = Object.assign({}, DEF[type], tuneNorm(type, after)), out = {};
+  for (const f of tuneFields(type)) if (String(a[f.k]) !== String(b[f.k])) out[f.k] = { from: a[f.k], to: b[f.k] };
+  return out;
+}
 // "Go again on success" (November 2026): the games where a success can keep the turn (War, Krabs, 21, Little Wheel,
 // Hangman, Sea Battle, Pool, Ride the Bus, Odd One Out, Cup Pong) carry this one switch in their TUNE, off by default:
 // off, every move is one action and the turn ends; on, a success keeps the turn. Read from the square (goAgain(mini)).

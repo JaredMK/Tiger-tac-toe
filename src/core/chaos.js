@@ -17,6 +17,7 @@
 // player sees it), scApply (a move made differently), scAfter (a move's result as its player sees it until the
 // round ends), scMerge (both moves together; it may return win, reset, replay, or resolve: a result settled only now,
 // such as a Bump knock or a Standoff Grid collision, for the recap to play). A game without them keeps each player's progress apart already.
+import { miniVersion } from './tune.js';
 import { LINES, playMove, timeoutClose } from './board.js';
 import { cpuMove } from './ai.js';
 import { dealable, pickReset, startMatch } from './match.js';
@@ -285,7 +286,7 @@ export function chaosResolve(state, rng, missed) {   // missed: the sides that m
       sq.mini = m; wins.push([i, w]);
       recap.view[i] = clone(m);
     } else if (winners.length === 2 || out.reset || drew) {      // both won it (or a Hangman word only the two finished together): a new game
-      state.sqlog.push(Object.assign({ t: m.type, end: 'draw', w: null, X: sq.mv.X, O: sq.mv.O }, RUN_TYPES.includes(m.type) ? runLog(m) : {}));
+      state.sqlog.push(Object.assign({ t: m.type, end: 'draw', w: null, X: sq.mv.X, O: sq.mv.O, v: miniVersion(m) }, RUN_TYPES.includes(m.type) ? runLog(m) : {}));
       sq.mv = { X: 0, O: 0 };
       const pool = scPool(state);
       scSquareMini(state, sq, pickReset(state, pool, rng, i), rng);
@@ -299,7 +300,7 @@ export function chaosResolve(state, rng, missed) {   // missed: the sides that m
   for (const [i, w] of wins) {
     const sq = state.squares[i];
     sq.owner = w;
-    state.sqlog.push(Object.assign({ t: sq.mini.type, end: 'won', w, X: sq.mv.X, O: sq.mv.O }, RUN_TYPES.includes(sq.mini.type) ? runLog(sq.mini) : {}));
+    state.sqlog.push(Object.assign({ t: sq.mini.type, end: 'won', w, X: sq.mv.X, O: sq.mv.O, v: miniVersion(sq.mini) }, RUN_TYPES.includes(sq.mini.type) ? runLog(sq.mini) : {}));
     recap.claims.push({ square: i, by: w });
   }
   const miss = Object.assign({ X: 0, O: 0 }, sc.miss);           // rounds missed in a row, each side: a second in a row loses the match

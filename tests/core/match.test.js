@@ -894,12 +894,12 @@ test('stats: each mini-game counts the turns each side spent in it, bonus moves 
   turn(st, 3, 'P'); turn(st, 3, 'Z');                                                // X: a hit and a bonus miss, one turn
   assert.deepEqual(st.squares[0].mv, { X: 1, O: 0 });
   assert.deepEqual(st.squares[3].mv, { X: 1, O: 0 });
-  assert.deepEqual(st.sqlog, [{ t: 'bs', end: 'won', w: 'O', X: 0, O: 1 }]);
+  assert.deepEqual(st.sqlog, [{ t: 'bs', end: 'won', w: 'O', X: 0, O: 1, v: 1, f: 'O' }], 'with its settings version and its first mover (no clock given: no time)');
   // a drawn square resets: its count goes to the log and the new game starts from zero
   st.squares[1].mini = tttOf('X', 'O', 'X', 'X', 'O', 'O', 'O', 'X', null);
   st.turn = 'X';
   turn(st, 1, 8, typeRng('ttt'));
-  assert.deepEqual(st.sqlog[1], { t: 'ttt', end: 'draw', w: null, X: 1, O: 0 });
+  assert.deepEqual(st.sqlog[1], { t: 'ttt', end: 'draw', w: null, X: 1, O: 0, v: 1, f: 'X' });
   assert.deepEqual(st.squares[1].mv, { X: 0, O: 0 });
   const s = L.matchStats(st);
   assert.deepEqual(s.squares.map(e => `${e.t}:${e.end}:${e.X}/${e.O}`), ['bs:won:0/1', 'ttt:draw:1/0', 'pig:open:1/0', 'hangman:open:1/0']);

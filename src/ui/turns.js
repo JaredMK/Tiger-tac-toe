@@ -125,7 +125,7 @@ function cpuPlay() {
   const plan = cpuPlan;
   if (!plan || !cpuTurn() || state.screen !== 'mini' || plan.square !== state.zoom) return;
   setCpuPlan(null);
-  const r = playMove(state, plan.square, plan.move, RNG);
+  const r = playMove(state, plan.square, plan.move, RNG, { at: Date.now() });
   if (!r.ok) {                                   // never expected; rather than freeze, hand the match to two players
     console.error('The computer could not play', plan, r);
     state.cpu = null; leaveSquare(state); stampFx();

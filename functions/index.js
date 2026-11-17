@@ -312,7 +312,9 @@ exports.track = onCall(CALL, async req => {
     const c = await claimMatch(id, 'e', t);
     if (!c) return { ok: true, seen: true };
     const started = !!(c.prev && c.prev.s), ms = started ? t - c.prev.t0 : Number(d.ms);
-    await db.ref().update(statsUp(S.endUpdates(d.mode, sum, ms, t, !started, testTypesOf(await releasesNow()))));   // a start never reported counts now
+    const up = statsUp(S.endUpdates(d.mode, sum, ms, t, !started, testTypesOf(await releasesNow())));   // a start never reported counts now
+    statsUp(S.balanceUpdates(d.mode, sum, ms, t, { admin: !!(req.auth.token && req.auth.token.admin === true), timer: 'none' }), up);   // (the Balance report: by settings version, an admin's own matches apart)
+    await db.ref().update(up);
   } else throw new HttpsError('invalid-argument', 'Not an event.');
   await markActive([who], t);
   return { ok: true };
@@ -580,9 +582,10 @@ function friendTimer(setup, admin, def) {
 }
 async function runConfigNow() {
   if (now() - runCfgAt < 20000) return;
-  const [run, bulls, wheels, plinko, odd, head, flash, snap, hop, scoop, pin, pig, roads, tune, ai, anim] = await Promise.all(['run', 'bulls', 'wheels', 'plinko', 'oddone', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'pig', 'roads', 'tune', 'ai', 'anim'].map(k => db.ref('config/' + k).get()));
+  const [run, bulls, wheels, plinko, odd, head, flash, snap, hop, scoop, pin, pig, roads, tune, ai, anim, versions] = await Promise.all(['run', 'bulls', 'wheels', 'plinko', 'oddone', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'pig', 'roads', 'tune', 'ai', 'anim', 'versions'].map(k => db.ref('config/' + k).get()));
   E.setAnimSpeed((anim.val() || {}).speed);                             // the admin's Animation speed (config/anim): the replay times the turn clock and the bots allow for
   E.setTunes(tune.val() || null);                                       // every mini-game's settings (Mini-game Settings: config/tune/<type>)
+  E.setTuneVersions(versions.val() || null);                              // and their settings versions (config/versions/<type>: a square dealt is filed under its own)
   E.setAiWeights(ai.val() || null);                                     // the Hard computer's weights (npm run tune-ai: config/ai)
   E.setRunConfig(run.val() || null);
   E.setBullsConfig(bulls.val() || null);
@@ -940,7 +943,7 @@ async function runBot(id, opts) {
   if (next.step === 'second') {                              // Find the Pair: the second card
     if (st.pickSq !== next.square) return false;
     const r = await changeGame(id, bg.bot, (rec, side) => (rec.state.seq !== next.seq || rec.state.pickSq !== next.square ? { ok: false, reason: 'stale' }
-      : E.applyOnlineMove(rec, side, next.square, next.move, seedRng())), 'bot');
+      : E.applyOnlineMove(rec, side, next.square, next.move, seedRng(), { at: now() })), 'bot');
     return r.ok;
   }
   const mini = st.squares[next.square] && st.squares[next.square].mini;
@@ -955,7 +958,7 @@ async function runBot(id, opts) {
     return r.ok;
   }
   const r = await changeGame(id, bg.bot, (rec, side) => (rec.state.seq !== next.seq ? { ok: false, reason: 'stale' }
-    : E.applyOnlineMove(rec, side, next.square, next.move, seedRng())), 'bot');
+    : E.applyOnlineMove(rec, side, next.square, next.move, seedRng(), { at: now() })), 'bot');
   return r.ok;
 }
 // The bot's move, run by its Cloud Task at the time it is due (see planBot).
@@ -1157,7 +1160,7 @@ exports.move = onCall(HOT, async req => {
     if (full.lock != null && full.lock !== i) return { ok: false, reason: 'locked' };   // (held to another square: as the engine refuses it, before anything else is asked of the move)
     const t = full.timer, chk = E.onlineCheck(sq.mini, side, d.move, now(), t && t.limit && t.deadline != null ? E.turnBegan(t) : null);
     if (chk && chk.why) return { ok: false, reason: chk.why };
-    return E.applyOnlineMove(rec, side, i, chk && chk.move !== undefined ? chk.move : d.move, seedRng(), { rep: d.rep });   // (rep: the mover's inputs before the move, checked and kept by the engine for the other phone's replay)
+    return E.applyOnlineMove(rec, side, i, chk && chk.move !== undefined ? chk.move : d.move, seedRng(), { rep: d.rep, at: now() });   // (at: the server's clock, the square's time: core/board.js sqEntry)   // (rep: the mover's inputs before the move, checked and kept by the engine for the other phone's replay)
   }, 'move');
 });
 const MATCH_CLOCK_LATE_MS = 1500;   // a move reaching the server this long after a match clock's zero counts as too late (the connection's slack)
@@ -1249,6 +1252,10 @@ async function finishGame(id) {
   up[`games/${id}/dl`] = null;
   statsUp(S.endUpdates(bg ? 'bot' : pub.mode, E.matchStats(st), t - (pub.created || t), t, false, testTypesOf(await releasesNow())), up);
   if (!pub.chaos) statsUp(S.timerEndUpdates(pub.clock || E.timerSpec(pub.timer), E.matchStats(st), t - (pub.created || t)), up);   // (by timer: a time per turn against a match clock)
+  if (!pub.chaos) {                                                // the Balance report (by settings version; a match with an admin in it apart)
+    const adm = (await Promise.all(['X', 'O'].map(s => (bg && pub.players[s].uid === bg.bot ? false : isAdminUser(pub.players[s].uid))))).some(Boolean);
+    statsUp(S.balanceUpdates(bg ? 'bot' : pub.mode, E.matchStats(st), t - (pub.created || t), t, { admin: adm, timer: pub.clock || E.timerSpec(pub.timer) }), up);
+  }
   if (bg) {
     Object.assign(up, { [`botGames/${id}/live`]: null, [`botGames/${id}/next`]: null, [`botGames/${id}/done`]: true, [`botGames/${id}/winner`]: st.winner || null });
     up['botStats/finished'] = ServerValue.increment(1);
@@ -1273,6 +1280,7 @@ function historyRecord(mode, side, them, st, final, at, rating) {
     opponent: { uid: them.uid || null, name: them.name || E.other(side) },
     result: R.resultFor(st, side), how: R.howEnded(st),
     final: JSON.stringify(final),
+    sv: E.boardVersions(st),                                       // (every game's settings version on its board: core/stats.js boardVersions)
   };
   if (rating) { h.ratingBefore = rating.before; h.ratingAfter = rating.after; }
   return h;

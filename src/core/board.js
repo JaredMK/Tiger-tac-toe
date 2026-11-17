@@ -4,6 +4,7 @@ import { chaosPlay } from './chaos.js';
 import { dealOpts, dealable, pickReset } from './match.js';
 import { isRace } from './race.js';
 import { anyMove, applyMove, canMove, newMini } from './minis.js';
+import { miniVersion } from './tune.js';
 import { needRng } from './random.js';
 import { repMove, repNorm } from './replay.js';
 import { other, PRACTICE_SQ } from './util.js';
@@ -100,6 +101,17 @@ export function majorityResult(squares) {
 // (flash.kind === 'again'). A square where neither player has a legal move resets like a draw,
 // and a player with no legal move anywhere on the board is skipped (flash.pass) so the match
 // never freezes.
+// A square's line in the match's log of finished mini-games (state.sqlog, for the stats): its type, how it ended, the winner,
+// the turns each side spent in it, and (December 2026) the settings version it was dealt under (v), the side that made its
+// first move (f) and the time spent in it (ms: the time from the move before, anywhere on the board, to each move made in
+// it, summed: opts.at, the clock the caller has, a gap capped at SQ_GAP_MS; none where the caller gave no clock).
+export const SQ_GAP_MS = 120000;
+export function sqEntry(sq, mini, end, w) {
+  const e = Object.assign({ t: mini.type, end, w, X: sq.mv ? sq.mv.X : 0, O: sq.mv ? sq.mv.O : 0, v: miniVersion(mini) }, isRace(mini) ? { race: 1 } : {}, RUN_TYPES.includes(mini.type) ? runLog(mini) : {});   // (race: a Race mode square; a runner: its runs and crashes, for the tuning)
+  if (sq.f === 'X' || sq.f === 'O') e.f = sq.f;
+  if (Number.isFinite(sq.ms)) e.ms = Math.round(sq.ms);
+  return e;
+}
 export function playMove(state, i, m, rng, opts) {
   if (state.sc) return chaosPlay(state, i, m, rng, opts);   // Super Chaos: a move in a simultaneous round (core/chaos.js; in a friend room too, on this phone's own copy)
   rng = needRng(rng); opts = opts || {};
@@ -122,6 +134,11 @@ export function playMove(state, i, m, rng, opts) {
   if (mini.type === 'trivia' && res.outcome === 'continue') triviaDeal(state, sq, rng);   // a new question once the last was answered right (before the square is judged stuck), from the match's unasked ones
   if (!sq.mv) sq.mv = { X: 0, O: 0 };
   if (!bonus) sq.mv[p] += 1;                                    // turns each side has spent in this mini-game (for the stats)
+  if (sq.f !== 'X' && sq.f !== 'O') sq.f = p;                   // (the side that moved first in it: the first-mover rate)
+  if (Number.isFinite(opts.at)) {                                // (the time spent in it: from the move before, anywhere on the board)
+    const dt = Number.isFinite(state.lastAt) ? Math.max(0, Math.min(SQ_GAP_MS, opts.at - state.lastAt)) : 0;
+    sq.ms = (Number.isFinite(sq.ms) ? sq.ms : 0) + dt; state.lastAt = opts.at;
+  }
   if (!Array.isArray(state.sqlog)) state.sqlog = [];
   let outcome = res.outcome, note = res.note || null;
   if (outcome === 'continue' && !canMove(mini, 'X') && !canMove(mini, 'O')) { outcome = 'draw'; note = 'stuck'; }
@@ -138,7 +155,7 @@ export function playMove(state, i, m, rng, opts) {
   if (outcome === 'win') {
     const w = res.winner || p;                   // a mini-game may hand the square to the other player
     sq.owner = w;
-    state.sqlog.push(Object.assign({ t: mini.type, end: 'won', w, X: sq.mv.X, O: sq.mv.O }, isRace(mini) ? { race: 1 } : {}, RUN_TYPES.includes(mini.type) ? runLog(mini) : {}));   // (race: a Race mode square, for the stats)   // (a runner: its runs and crashes, for the tuning)
+    state.sqlog.push(sqEntry(sq, mini, 'won', w));
     mini.winCells = res.cells || null;
     flash.winner = w; flash.counts = res.counts || null;
     const mr = state.practice ? { winner: w, line: null, reason: 'practice', counts: null } : mainResult(state.squares);   // (practice: the centre square is the whole match)
@@ -151,8 +168,8 @@ export function playMove(state, i, m, rng, opts) {
     flash.counts = res.counts || null;
     const dealt = (state.games || []).filter(t => TYPES.includes(t) && dealable(t));      // an older match's list may name a game no longer dealt
     const pool = dealt.length ? dealt : TYPES.filter(t => dealable(t));
-    state.sqlog.push(Object.assign({ t: mini.type, end: 'draw', w: null, X: sq.mv.X, O: sq.mv.O }, isRace(mini) ? { race: 1 } : {}, RUN_TYPES.includes(mini.type) ? runLog(mini) : {}));
-    sq.mv = { X: 0, O: 0 };
+    state.sqlog.push(sqEntry(sq, mini, 'draw', null));
+    sq.mv = { X: 0, O: 0 }; delete sq.f; delete sq.ms;
     sq.mini = newMini(pickReset(state, pool, rng, i), rng, dealOpts(state)); // the square resets with a new mini-game from this match's list (one not used yet first)
     if (sq.mini.type === 'trivia') triviaDeal(state, sq, rng);
     flash.newType = sq.mini.type;

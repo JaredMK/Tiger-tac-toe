@@ -83,7 +83,7 @@ test('runners: the public view, the flash, the playback time, the stats log, and
   st.turn = 'O';
   const w = E.playMove(st, i, { dist: m.cfg.target, ms: 200 }, lcg(2));
   assert.equal(w.flash.kind, 'claim'); assert.equal(E.playMs(w.flash), E.RUNT.bar + E.RUNT.hold + 600);
-  assert.deepEqual(st.sqlog[st.sqlog.length - 1], { t: 'dash', end: 'won', w: 'O', X: 1, O: 1, run: { runs: { X: 1, O: 4 }, dist: { X: Math.round(ob.at), O: m.cfg.target }, crashes: { X: [Math.round(ob.at)], O: [120, 310, 480] } } }, 'the square\'s log carries its runs and crashes for the tuning');
+  assert.deepEqual(st.sqlog[st.sqlog.length - 1], { t: 'dash', end: 'won', w: 'O', X: 1, O: 1, v: 1, f: 'X', run: { runs: { X: 1, O: 4 }, dist: { X: Math.round(ob.at), O: m.cfg.target }, crashes: { X: [Math.round(ob.at)], O: [120, 310, 480] } } }, 'the square\'s log carries its runs and crashes for the tuning');
   const stats = E.matchStats(st);
   assert.deepEqual(stats.squares[0].run.runs, { X: 1, O: 4 });
   E.endFlash(st);

@@ -1,5 +1,5 @@
 'use strict';
-// Staging's settings copied to production (the "Copy settings to production" workflow,
+// Staging's settings copied to production (a game whose settings change gets a new settings version there: bumpVersions) (the "Copy settings to production" workflow,
 // .github/workflows/copy-settings.yml): the release switches, every game's settings, the computer's and the
 // animation's, the bots' and alerts' settings and the Find Match switch. Never the accounts, the play data, the
 // client minimums (config/clients), the email cutoff (config/verify), the alert keys (admin/secrets) or staging's
@@ -24,6 +24,23 @@ function diff(a, b, at, out) {
     for (const k of new Set([...Object.keys(obj(a) ? a : {}), ...Object.keys(obj(b) ? b : {})])) diff(obj(a) ? a[k] : undefined, obj(b) ? b[k] : undefined, `${at}/${k}`, out);
   } else if (JSON.stringify(a) !== JSON.stringify(b)) out.push(`${at}: ${a === undefined ? '(none)' : JSON.stringify(a)} → ${b === undefined ? '(none)' : JSON.stringify(b)}`);
   return out;
+}
+
+// Settings versions (December 2026, core/tune.js): a game whose settings the copy changes gets a new version on production
+// (config/versions/<type> and its log, as the admin's Save does), so production's stats keep each version's squares apart.
+// The version numbers are each environment's own: config/versions is never copied.
+async function bumpVersions(db, before, after, dry) {
+  for (const t of new Set(Object.keys(before).concat(Object.keys(after)))) {
+    const a = before[t] || {}, b = after[t] || {};
+    if (JSON.stringify(a) === JSON.stringify(b)) continue;
+    const ch = {};
+    for (const k of new Set(Object.keys(a).concat(Object.keys(b)))) if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) ch[k] = { from: a[k] === undefined ? 'default' : a[k], to: b[k] === undefined ? 'default' : b[k] };
+    if (dry) { console.log(`  ${t}: a new settings version on production`); continue; }
+    const r = await db.ref(`config/versions/${t}`).transaction(cur => (Number.isInteger(cur) && cur >= 1 ? cur : 1) + 1);
+    const nv = r.snapshot.val();
+    await db.ref(`config/versionLog/${t}/v${nv}`).set({ at: Date.now(), by: 'copy-settings', ch });
+    console.log(`  ${t}: settings version ${nv} on production`);
+  }
 }
 
 (async () => {
@@ -56,6 +73,7 @@ function diff(a, b, at, out) {
       for (const c of changes) console.log('  ' + c);
       n += changes.length;
       if (!dry) await db.ref(p).set(v);
+      if (p === 'config/tune') await bumpVersions(db, before[p] || {}, v, dry);   // (each game whose settings change gets a new settings version on production too)
     }
     console.log(dry ? `Dry run: ${n} changes listed, nothing written.` : `Copied: ${n} changes written to production.`);
   }
