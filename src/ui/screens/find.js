@@ -1,7 +1,8 @@
 // The Find Match screen and its intro.
 import { acct } from '../../net/accounts.js';
 import { OFFER_MS, mmIntro, search } from '../../net/matchmaking.js';
-import { bubble, panel } from '../comic.js';
+import { bubble, burstBadge, cap, panel, rays } from '../comic.js';
+import { burstSvg } from '../fx.js';
 import { startShuffle } from '../../net/room.js';
 import { net } from '../../net/room.js';
 import { esc, state } from '../app.js';
@@ -21,25 +22,29 @@ export function renderIntro() {
   return `<div class="vsintro" data-act="intro-close" role="dialog" aria-label="${me ? `You are ${me}` : 'Who plays X and O'}"><div class="vscard"><h2 class="vstitle">${title}</h2>${side('X')}<div class="vsmid">VS</div>${side('O')}
     <p class="hint">${me === 'X' ? 'You go first' : `${esc((mmIntro.players.X || {}).name || 'X')} goes first`}</p></div></div>`;
 }
+// Comic Chaos (December 2026): a VS card (this player's character, name and record against a rival still to come: a
+// "?" that shakes while the search runs, the rival's character once found), the state shouted under it (Searching… with
+// its clock in a caption box; Match found! on a burst with the rays behind), Cancel a white panel, the computer's offer
+// a bubble and a yellow panel. Information is flat (the card, the clock, the bubbles); the panels are the taps.
 export function renderFind() {
-  const p = acct.profile || {};
-  // While searching, the way out is the Cancel under the timer: the one screen with no back button at the top left.
-  const back = `<div class="bar">${search.on ? '' : `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>`}
-      <div class="ttl"><b>Find Match</b><small>${esc(p.username || '')} · ${RATINGS_ENABLED ? `rating ${p.rating || 1200}` : `record ${record(p)}`}</small></div></div>`;
+  const p = acct.profile || {}, me = esc(p.username || 'You'), rec = RATINGS_ENABLED ? `rating ${p.rating || 1200}` : `record ${record(p)}`;
+  const back = `<div class="bar">${search.on ? '' : `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>`}<div class="ttl"><b>Find Match</b></div></div>`;
+  const card = found => `<div class="fmcard${found ? ' found' : ''}"><div class="fmside"><span class="fmface">${toon('X')}</span><b>${me}</b>${cap(rec, 'fmrec')}</div>
+      <span class="fmvs" aria-hidden="true">${burstSvg('VS', 'w', 120, 80, 40)}</span>
+      <div class="fmside">${found ? `<span class="fmface">${toon('O')}</span><b>Rival</b>${cap('found!', 'fmrec')}` : '<span class="fmface fmq" aria-hidden="true">?</span><b>Rival</b>' + cap('searching', 'fmrec')}</div></div>`;
   if (search.found) {
-    return `<main class="scr setup acct-scr find-scr cc calm">${back}<div class="setup-box"><div class="searching found" role="status"><div class="big-g">${toon('X')}${toon('O')}</div><h2>Match found!</h2><p class="hint">${esc(net.msg || 'Loading the match…')}</p></div></div></main>`;
+    return `<main class="scr setup acct-scr find-scr cc calm">${back}<div class="setup-box"><div class="searching found" role="status">${card(true)}
+      <div class="fmshout">${rays()}${burstBadge('Match found!', 'y fmbang')}</div><p class="fmhint">${esc(net.msg || 'Loading the match…')}</p></div></div></main>`;
   }
   if (search.on) {
-    return `<main class="scr setup acct-scr find-scr cc calm">${back}<div class="setup-box"><div class="searching" role="status" aria-live="polite">
-      <div class="spinner" aria-hidden="true">${toon('X')}${toon('O')}</div><h2>Searching…</h2>
-      <p class="hint"><span id="mmwait">${fmtClock(Date.now() - search.since)}</span></p>
+    return `<main class="scr setup acct-scr find-scr cc calm">${back}<div class="setup-box"><div class="searching" role="status" aria-live="polite">${card(false)}
+      <div class="fmshout"><h2>Searching…</h2>${cap(`<span id="mmwait">${fmtClock(Date.now() - search.since)}</span>`, 'fmclock')}</div>
       ${search.msg ? `<div class="warn">${esc(search.msg)}</div>` : ''}
       ${Date.now() - search.since >= OFFER_MS ? `<div class="botoffer">${bubble('No one around right now.', '')}${panel('search-bot', 'Play the Computer', { tag: 'while you wait', cls: 'y', k: 1, attrs: search.bot ? ' disabled' : '', aria: 'Play the computer instead (it is not a person)' })}</div>` : ''}
-      <button class="btn" data-act="search-cancel">Cancel</button></div></div></main>`;
+      ${panel('search-cancel', 'Cancel', { cls: 'w fmcancel', k: 2 })}</div></div></main>`;
   }
   // (not searching: only if a search could not start; Search tries again)
-  return `<main class="scr setup acct-scr find-scr cc calm">${back}<div class="setup-box"><div class="searching" role="status">
-      <div class="spinner" aria-hidden="true">${toon('X')}${toon('O')}</div>
+  return `<main class="scr setup acct-scr find-scr cc calm">${back}<div class="setup-box"><div class="searching" role="status">${card(false)}
       ${search.msg ? `<div class="warn">${esc(search.msg)}</div>` : ''}
-      <button class="primary" data-act="search-go">Search</button></div></div></main>`;
+      ${panel('search-go', 'Search', { cls: 'y fmgo', k: 2 })}</div></div></main>`;
 }

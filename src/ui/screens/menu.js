@@ -1,6 +1,6 @@
 // The main menu.
 import { acct, loggedIn, pendingMe } from '../../net/accounts.js';
-import { activeElsewhere, findOn, resumable, resumeBusy } from '../../net/matchmaking.js';
+import { activeElsewhere, findVisible, resumable, resumeBusy } from '../../net/matchmaking.js';
 import { privacyUrl } from '../../net/platform.js';
 import { esc, menuNote } from '../app.js';
 import { toon } from '../art.js';
@@ -35,7 +35,7 @@ export function renderMenu() {
 function findBtn() {
   const back = activeElsewhere();
   if (back) return panel('find-go', 'Back to your match', { tag: 'online', cls: 'c', k: 4 });
-  if (findOn) return panel('find-go', 'Find Match', { tag: 'online', cls: 'c', k: 4 });
+  if (findVisible()) return panel('find-go', 'Find Match', { tag: 'online', cls: 'c', k: 4 });
   return '';                                        // (switched off on the admin page: not shown at all; no "soon" tag, December 2026)
 }
 // The main menu's top row: My Stats (or the leaderboard, with ratings on), and the account (Log in, or your username).

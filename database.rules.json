@@ -271,6 +271,10 @@
         ".write": "auth != null && auth.token.admin === true",
         ".validate": "newData.isBoolean()"
       },
+      "findMatchAdmin": {
+        ".write": "auth != null && auth.token.admin === true",
+        ".validate": "newData.isBoolean()"
+      },
       "$other": {
         ".validate": false
       }

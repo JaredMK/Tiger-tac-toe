@@ -36,7 +36,7 @@ test('"Verify your email": Continue, Send the link again, Log out, and a way bac
   const html = renderVerify();
   assert.match(html, /<b>Verify your email<\/b>/);
   for (const act of ['verify-retry', 'verify-resend', 'logout', 'menu']) assert.match(html, new RegExp(`data-act="${act}"`), act);
-  assert.match(html, /We sent a verification link to <b><\/b>\. Open it, then tap Continue\./, 'no account on this page: no address');
+  assert.match(html, /We sent a link to <b><\/b>\. Open it, then tap Continue\./, 'no account on this page: no address');
   assert.equal(unverified(), false, 'no Firebase here: nothing to verify');
 });
 test('My Stats: Log out and Delete account; the question (No / Yes, delete) only after a tap, and gone on No', () => {

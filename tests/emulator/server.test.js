@@ -329,6 +329,17 @@ test('matchmaking: one queue, players paired by wait time only (ratings play no 
   for (const [p, r] of [[ps[0], g1], [ps[3], r3]]) await p.call('resign', { game: r.game });
 });
 
+test('matchmaking: Find Match the admin\'s alone while features/findMatchAdmin is on (the launch lineup): anyone else refused; off, open again', async () => {
+  await clearQueue();
+  const a = await player('FmGateA');
+  await put('features/findMatchAdmin', true);
+  try { await assert.rejects(a.call('findMatch', {}), e => /permission[_-]denied/i.test(String(e.code)) && /not open yet/.test(String(e.message)), 'refused'); }
+  finally { await put('features/findMatchAdmin', null); }
+  assert.ok((await a.call('findMatch', {})).status, 'switched off: searching again');
+  await a.call('cancelSearch', {}).catch(() => {});
+  await clearQueue();
+});
+
 test('matchmaking: Cancel leaves the queue; one queue whatever is asked; a guest or a player without a name cannot search', async () => {
   const p = await player('Ivy');
   await put(`queue/casual60/${p.uid}`, { since: Date.now(), seen: Date.now(), name: 'Ivy' });   // left by an older page

@@ -130,7 +130,7 @@ main.scr.cc { overflow: clip; }
 @keyframes ccinL { from { transform: skew(var(--cc-skew)) translateX(-120vw); } }
 @keyframes ccinR { from { transform: skew(var(--cc-skew)) translateX(120vw); } }
 .cc .pn > b, .cc .pn > small, .cc .pn > svg { transform: skew(7deg); }
-.cc .pn > b { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 clamp(26px, 4.6vh, 34px)/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; padding: 4px .16em 0; box-sizing: border-box; }   /* (the inline padding keeps the slanted letters' overhang, and a stroke, inside the box the ellipsis clips to) */
+.cc .pn > b { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 clamp(26px, 4.6vh, 34px)/1.16 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; padding: 2px .16em 1px; box-sizing: border-box; }   /* (the inline padding keeps the slanted letters' overhang, and a stroke, inside the box the ellipsis clips to) */
 .cc .pn > small { display: block; font: 700 15px/1.1 'Comic Neue', 'Patrick Hand', sans-serif; margin-top: 2px; }
 .cc .pn:active:not(:disabled) { transform: skew(var(--cc-skew)) translate(4px, 4px); box-shadow: 2px 2px 0 var(--ink); }
 .cc .pn:disabled { opacity: .5; cursor: default; }
@@ -225,7 +225,7 @@ main.scr.cc { overflow: clip; }
 .cc .endvs .pn.sm { height: 46px; padding: 2px 12px 0; } .cc .endvs .pn.sm > b { font-size: 18px; max-width: 130px; }
 .cc .endvs .orec { font: 700 15px/1 'Comic Neue', 'Patrick Hand', sans-serif; }
 .cc .endgo { width: 100%; margin-top: 8px; }
-.cc .pn.big { height: clamp(62px, 11vh, 82px); }
+.cc .pn.big { height: auto; min-height: clamp(62px, 11vh, 82px); padding-top: 6px; padding-bottom: 6px; }   /* (grows with its line and its second line: Rematch! and "same again?" once overlapped, the caps cut at the foot) */
 .cc .pn.big > b { font-size: clamp(32px, 5.6vh, 42px); }
 .cc .rmwrap { display: block; width: 100%; }
 .cc .rmline { height: 52px; display: flex; align-items: center; justify-content: center; }
@@ -248,12 +248,20 @@ main.scr.cc { overflow: clip; }
 .cc .bar .back:active:not(:disabled) { transform: skew(var(--cc-skew)) translate(3px, 3px) !important; box-shadow: var(--cc-sh-in) !important; }
 .cc .bar .ttl > b { display: block; font: 400 clamp(26px, 4.6vh, 32px)/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: #fff; -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; transform: rotate(-2deg); padding: 4px 4px 0 6px; margin-bottom: 4px; }   /* (the stroke's half and the slant's overhang inside its box: the J of Join game was clipped; clear of the line under it) */
 .cc .bar .ttl small { font: 700 15px/1.2 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); margin-top: 2px; padding-left: 2px; -webkit-line-clamp: 1; }
+/* The screen titles (December 2026): the bar grows with its title instead of holding the fixed 56px (the title's stroke,
+   slant and a line under it once spilled over the bar's foot onto the screen below, and the bottom-left of the slanted
+   letters was cut off): the title's line tall enough for Bangers' caps with the stroke all round, its slant's overhang
+   inside its own padding, nothing clipped, and a clear gap under the bar. */
+main.scr.cc:not(.mini) > .bar { height: auto; min-height: var(--bar); padding: 6px 0 10px; align-items: center; overflow: visible; }
+main.scr.cc:not(.mini) > .bar .ttl { overflow: visible; min-width: 0; }
+main.scr.cc:not(.mini) > .bar .ttl > b { line-height: 1.18; padding: 5px 10px 6px 12px; margin: 0; overflow: visible; white-space: normal; overflow-wrap: anywhere; transform-origin: 0 100%; }
+main.scr.cc:not(.mini) > .bar .ttl small { margin-top: 2px; padding-left: 12px; line-height: 1.3; }
 
 /* ----- Play Computer: the VS card, the choices, the mini-games, Start the one big action ----- */
 .cpuset .setup-box { max-width: 380px; padding: 6px 10px 12px; gap: clamp(10px, 2vh, 18px); flex: 0 1 auto; overflow-x: clip; }
 .cpuset .vscard { position: relative; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 10px 6px 8px; border: 3.5px solid var(--ink); background: linear-gradient(108deg, var(--x) 0 50%, var(--o) 50%); }
 .cpuset .vsme { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.cpuset .vsme > b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 22px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: #fff; -webkit-text-stroke: 5px var(--ink); paint-order: stroke fill; padding: 3px .2em 0; box-sizing: border-box; }
+.cpuset .vsme > b { max-width: 100%; overflow: visible; white-space: normal; overflow-wrap: anywhere; text-align: center; font: 400 22px/1.1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: #fff; -webkit-text-stroke: 5px var(--ink); paint-order: stroke fill; padding: 3px .2em 0; box-sizing: border-box; }
 .cpuset .vsface { position: relative; display: block; width: clamp(56px, 10vh, 74px); height: clamp(56px, 10vh, 74px); }
 .cpuset .vsface .pc { width: 100%; height: 100%; animation: bob 1s ease-in-out infinite; transform-origin: 50% 100%; }
 .cpuset .vsface.rflip .pc { position: absolute; inset: 0; animation: bob 1s ease-in-out infinite, ccflipA 2.4s steps(1) infinite; }
@@ -268,7 +276,7 @@ main.scr.cc { overflow: clip; }
 .cpuset .pickrow { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .cpuset .opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; width: 100%; padding-right: 6px; }
 .cpuset .pn.opt { width: auto; margin: 0; height: clamp(50px, 8.6vh, 62px); padding: 4px 2px 2px; box-shadow: 5px 5px 0 var(--ink); }
-.cpuset .pn.opt > b { font-size: clamp(20px, 3.6vh, 24px); display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.cpuset .pn.opt > b { font-size: clamp(20px, 3.6vh, 24px); line-height: 1.05; display: flex; flex-direction: column; align-items: center; gap: 2px; overflow: visible; }
 .cpuset .pn.opt.gX > b { font-size: 34px; color: var(--x); -webkit-text-stroke: 1.5px var(--ink); }
 .cpuset .pn.opt.gO > b { font-size: 34px; color: var(--o); -webkit-text-stroke: 1.5px var(--ink); }
 .cpuset .pn.opt.on > b { color: var(--o); -webkit-text-stroke: 0; }
@@ -424,6 +432,41 @@ main.scr.cc { overflow: clip; }
 .find-scr.cc .searching .btn, .find-scr.cc .searching .primary { min-width: 160px; }
 .find-scr.cc .botoffer { display: flex; flex-direction: column; align-items: center; gap: 14px; margin: 4px 0 8px; animation: coachin .3s cubic-bezier(.3, 1.4, .5, 1) both; }   /* about 20 s alone: the computer offered (screens/find.js) */
 .find-scr.cc .botoffer .pn { min-width: 240px; height: 64px; } .find-scr.cc .botoffer .bub { font-size: 17px; }
+/* Find Match (December 2026, screens/find.js): the VS card (flat information: an ink frame, the players' colours, no shadow),
+   the state shouted under it, Cancel and Search panels. */
+.find-scr.cc .searching { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 8px 0 12px; text-align: center; }
+.find-scr.cc .fmcard { position: relative; width: 100%; max-width: 380px; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; padding: 14px 8px 12px; border: 3.5px solid var(--ink); background: linear-gradient(108deg, var(--x) 0 50%, var(--o) 50%); }
+.find-scr.cc .fmside { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.find-scr.cc .fmside > b { max-width: 100%; box-sizing: border-box; padding: 2px 6px 0; overflow-wrap: anywhere; text-align: center; font: 400 20px/1.15 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: #fff; -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; }
+.find-scr.cc .fmface { display: grid; place-items: center; width: 68px; height: 68px; }
+.find-scr.cc .fmface svg { width: 68px; height: 68px; }
+.find-scr.cc .fmq { border: 3.5px solid var(--ink); border-radius: 50%; background: #fff; box-sizing: border-box; font: 400 40px/1 'Bangers', 'Luckiest Guy', sans-serif; color: var(--ink); padding-top: 4px; animation: fmq 1s ease-in-out infinite; }
+@keyframes fmq { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg) scale(1.06); } }
+@keyframes fmin { from { transform: scale(.3); opacity: 0; } to { transform: none; opacity: 1; } }
+.find-scr.cc .fmcard.found .fmside:last-child .fmface { animation: fmin .4s cubic-bezier(.2, 1.4, .4, 1) both; }
+.find-scr.cc .fmvs { width: 74px; display: grid; place-items: center; } .find-scr.cc .fmvs svg { width: 74px; height: auto; }
+.find-scr.cc .fmrec { font-size: 14px; max-width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.find-scr.cc .fmshout { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: center; gap: 10px; min-height: 96px; justify-content: center; }
+.find-scr.cc .fmshout h2 { margin: 0; padding: 6px 12px 4px; line-height: 1.15; }
+.find-scr.cc .fmclock { font-size: 24px; padding: 4px 12px 2px; background: #fff; }
+.find-scr.cc .fmshout .ccrays { top: 50%; width: 520px; height: 520px; margin: -260px 0 0 -260px; }
+.find-scr.cc .fmbang { width: 230px; min-height: 104px; } .find-scr.cc .fmbang > span { font-size: 28px; max-width: 150px; }
+.find-scr.cc .fmhint { margin: 0; font: 700 16px/1.3 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); }
+.find-scr.cc .fmcancel, .find-scr.cc .fmgo { min-width: 180px; height: 56px; }
+@media (prefers-reduced-motion: reduce) { .find-scr.cc .fmq { animation: none; } }
+
+/* ----- Log in, sign up (Create account), verify, username (December 2026): the characters and a speech bubble say what the
+   screen is for (information: flat), the fields are ink boxes with caption names, Log in / Create account / Continue / Save are
+   panels; the Google and Apple buttons keep their own guidelines' look (.sso: never a panel). ----- */
+.login-scr.cc .acchead { display: flex; align-items: center; gap: 10px; margin: 2px 0 6px; }
+.login-scr.cc .accfaces { flex: none; display: flex; } .login-scr.cc .accfaces svg { width: 52px; height: 52px; } .login-scr.cc .accfaces svg + svg { margin-left: -10px; }
+.login-scr.cc .acchead .bub { flex: 1; min-width: 0; font-size: 16px; line-height: 1.3; overflow-wrap: anywhere; }
+.login-scr.cc .or { color: var(--ink); } .login-scr.cc .or::before, .login-scr.cc .or::after { opacity: 1; height: 3px; }
+.login-scr.cc .or .cap { font-size: 15px; }
+.login-scr.cc .row2 { gap: 14px; padding-right: 6px; } .login-scr.cc .row2 .btn { flex: 1; min-width: 0; height: 54px; font-size: 20px; }
+.login-scr.cc .sso { transform: none; box-shadow: none; }
+.login-scr.cc .agree, .login-scr.cc .hint { font: 700 14px/1.35 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); }
+.login-scr.cc .primary { width: calc(100% - 8px); }
 
 /* ----- Settings (the screen and the in-game menu's step) ----- */
 .cc .settings, .flash.pause .settings { gap: 16px; }

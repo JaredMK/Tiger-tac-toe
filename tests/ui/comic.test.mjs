@@ -15,6 +15,7 @@ for (const k of ['document', 'window', 'localStorage', 'sessionStorage', 'naviga
 }
 const require = createRequire(import.meta.url);
 const E = require('../engine.js');
+const { acct: ACCT } = await import('../../src/net/accounts.js');
 const MM = await import('../../src/net/matchmaking.js');
 const { renderMenu } = await import('../../src/ui/screens/menu.js');
 (await import('../../src/ui/onboard.js')).obState.done = true;   // (a returning player's menu: the first visit's is tests/ui/onboard.test.mjs)
@@ -38,7 +39,9 @@ test('the stylesheet and the two faces are the page\'s', () => {
 
 test('the main menu: a panel with a caption tag for each way to play (no second line: the copy sweep); Find Match not shown while off', () => {
   Object.assign(state, board(), { screen: 'menu', online: null });
-  MM.setFindOn(true);
+  MM.setFindOn(true); ACCT.admin = false;
+  assert.doesNotMatch(renderMenu(), /data-act="find-go"/, 'Find Match the admin\'s alone: not shown to anyone else');
+  ACCT.admin = true;
   let html = renderMenu();
   assert.match(html, /<main class="scr menu cc loud">/);
   for (const [act, b, tag] of [['cpu-go', 'Play Computer', '1 player'], ['friend-go', 'Play a Friend', '2 players'], ['find-go', 'Find Match', 'online']]) assert.match(html, new RegExp(`class="pn [^"]*" data-act="${act}"[^>]*><i class="ptag" aria-hidden="true">${tag}</i><b>${b}</b></button>`), b);
@@ -181,4 +184,29 @@ test('the remaining screens are Comic Chaos (calm); their dialogs and cards are 
   assert.match(CSS, /\n\.cc \.pcard \{[^}]*box-shadow: none/, 'a stats card: flat');
   const prof = fs.readFileSync(new URL('src/ui/screens/profile.js', ROOT), 'utf8');
   assert.doesNotMatch(prof, /class="(pk|pn)"/, 'never .pn (a panel) or .pk (a setting\'s pick) inside a row');
+});
+
+test('Find Match (searching, found) and the account screens in Comic Chaos: a VS card and bubbles as information, the actions as panels; the Google button keeps its own look; the screen titles never clipped; no Speed offer after a match', async () => {
+  const { renderFind } = await import('../../src/ui/screens/find.js');
+  const { renderLogin, renderVerify, renderUsername } = await import('../../src/ui/screens/account.js');
+  ACCT.profile = { username: 'Bartholomew_Longname', wins: 3, losses: 2, draws: 0 }; ACCT.user = null;
+  MM.search.on = true; MM.search.found = false; MM.search.since = Date.now();
+  let html = renderFind();
+  assert.match(html, /<main class="scr setup acct-scr find-scr cc calm">/);
+  assert.match(html, /class="fmcard"[\s\S]*Bartholomew_Longname[\s\S]*class="fmface fmq"/, 'this player against a rival still to come');
+  assert.match(html, /<h2>Searching…<\/h2>/); assert.match(html, /class="cap fmclock"/);
+  assert.deepEqual(panels(html).map(p => p.act), ['search-cancel']);
+  MM.search.found = true; html = renderFind();
+  assert.match(html, /class="fmcard found"/); assert.match(html, /class="bbadge y fmbang"[^>]*><span>Match found!<\/span>/);
+  assert.equal(panels(html).length, 0, 'nothing to tap while the match loads');
+  MM.search.on = false; MM.search.found = false;
+  ACCT.profile = null;
+  for (const [name, h] of [['login', renderLogin()], ['verify', renderVerify()], ['username', renderUsername()]]) {
+    assert.match(h, /login-scr cc calm">/, name); assert.match(h, /class="acchead"[^>]*>.*?<span class="bub/, `${name}: a bubble says what it is for`);
+  }
+  assert.match(renderLogin(), /<button class="sso google"/, 'the Google button: its own guidelines\' look, never a panel');
+  assert.match(CSS, /main\.scr\.cc:not\(\.mini\) > \.bar \{ height: auto; min-height: var\(--bar\);/, 'the title bar grows with its title');
+  assert.match(CSS, /main\.scr\.cc:not\(\.mini\) > \.bar \.ttl > b \{ line-height: 1\.18;[^}]*overflow: visible;/, 'the title\'s line tall enough for its letters, nothing clipped');
+  Object.assign(state, board(), { screen: 'win', winner: 'X', winReason: 'line', online: null });
+  assert.doesNotMatch(renderWin(), /Too slow|speed-try|Try Speed/);
 });

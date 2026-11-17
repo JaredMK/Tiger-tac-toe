@@ -507,8 +507,7 @@ Privacy link: Privacy policy
 ## Account screens [account]
 Agree: By continuing you agree to the {link}.
 Verify title: Verify your email
-Verify banner: Find Match, hosting and your username need a verified email
-Verify hint: We sent a verification link to <b>{email}</b>. Open it, then tap Continue.
+Verify hint: We sent a link to <b>{email}</b>. Open it, then tap Continue.
 
 ## Phone on its side [rotate]
 Rotate: Rotate your phone

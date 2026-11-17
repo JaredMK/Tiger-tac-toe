@@ -193,9 +193,8 @@ function loadModel(read, oldTypes) {
   // The account screens: the login's privacy line and the "Verify your email" screen (ui/screens/account.js).
   sec('other', 'account', 'Account screens', [
     fld('Agree', region(ACCOUNT, /<p class="agree">(.*?)<\/p>/, 'tpl', { link: "${privacyLink('Privacy policy')}" })),
-    fld('Verify title', region(ACCOUNT, /verify-scr">\n\s+<div class="bar">.*\n\s+<div class="ttl"><b>(.*?)<\/b>/, 'tpl')),
-    fld('Verify banner', region(ACCOUNT, /verify-scr">\n\s+<div class="bar">.*\n\s+<div class="ttl"><b>.*?<\/b><small>(.*?)<\/small>/, 'tpl')),
-    fld('Verify hint', region(ACCOUNT, /data-keep-scroll="verify">\n\s+<p class="hint">(.*?)<\/p>/, 'tpl', { email: '${esc(verifyEmail())}' })),
+    fld('Verify title', region(ACCOUNT, /verify-scr login-scr cc calm">\n\s+<div class="bar">.*\n\s+<div class="ttl"><b>(.*?)<\/b>/, 'tpl')),
+    fld('Verify hint', region(ACCOUNT, /data-keep-scroll="verify">\n\s+<div class="acchead">.*?\$\{bubble\(`(.*?)`, ''\)\}/, 'tpl', { email: '${esc(verifyEmail())}' })),
   ]);
   // A phone held on its side (the web): the page's own notice (index.html, shown by styles.css).
   sec('other', 'rotate', 'Phone on its side', [

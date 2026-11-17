@@ -4,6 +4,7 @@ import { privacyUrl } from '../../net/platform.js';
 import { esc } from '../app.js';
 import { connectWhy } from '../../net/connect.js';
 import { CHEV, toon } from '../art.js';
+import { bubble, cap } from '../comic.js';
 
 // The sign-in buttons follow each brand's own guidelines, logos included (the one exception to the game's no-logos rule,
 // CLAUDE.md "Original art only"): Google's "G" on a white button with a grey border, Roboto Medium; Apple's mark on a black
@@ -32,20 +33,21 @@ export function renderGate() {
 }
 export function renderLogin(gated) {
   if (acct.user || loginFinishing) {                       // signed in: the profile is on its way, then the username or the menu
-    return `<main class="scr setup acct-scr">
+    return `<main class="scr setup acct-scr login-scr cc calm">
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
-      <div class="ttl"><b>Log in</b><small>Signed in</small></div></div>
-    <div class="setup-box"><div class="searching" role="status" aria-live="polite"><div class="spinner" aria-hidden="true">${toon('X')}${toon('O')}</div><h2>Logging you in…</h2></div></div></main>`;
+      <div class="ttl"><b>Log in</b></div></div>
+    <div class="setup-box"><div class="acchead" role="status" aria-live="polite"><span class="accfaces" aria-hidden="true">${toon('X')}${toon('O')}</span>${bubble('Logging you in…', '')}</div></div></main>`;
   }
   const msg = loginMsg ? `<div class="${loginMsg.ok ? 'status ok' : 'warn'}" role="status">${esc(loginMsg.text)}${loginMsg.code ? `<small class="ecode">Error code: ${esc(loginMsg.code)}</small>` : ''}</div>` : '';
   const off = loginBusy ? ' disabled' : '';
-  return `<main class="scr setup acct-scr">
+  return `<main class="scr setup acct-scr login-scr cc calm">
     <div class="bar">${gated ? '' : `<button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>`}
-      <div class="ttl"><b>Log in</b><small>${gated ? 'Staging: for testers on the list only' : 'For Find Match, your stats and your game history'}</small></div></div>
+      <div class="ttl"><b>Log in</b></div></div>
     <div class="setup-box" data-keep-scroll="login">
+      <div class="acchead"><span class="accfaces" aria-hidden="true">${toon('X')}${toon('O')}</span>${bubble(gated ? 'Staging: for testers on the list only' : 'Log in to play friends online and keep your stats!', '')}</div>
       <button class="sso google" data-act="login-google"${off}>${GOOGLE_G}<span>Continue with Google</span></button>
       ${appleOn() ? `<button class="sso apple" data-act="login-apple"${off}>${APPLE_MARK}<span>Continue with Apple</span></button>` : ''}
-      <div class="or"><span>or with your email</span></div>
+      <div class="or">${cap('or with your email', 'w')}</div>
       <label class="field"><span>Email</span><input id="lemail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" value="${esc(loginMail)}"></label>
       <label class="field"><span>Password</span><input id="lpass" type="password" autocomplete="current-password" value="${esc(loginPass)}"></label>
       ${msg}
@@ -58,11 +60,11 @@ export function renderLogin(gated) {
 // then: { verify: true }, net/accounts.js needVerify). Continue checks again, the link can be sent again, or log out.
 export function renderVerify() {
   const off = loginBusy ? ' disabled' : '';
-  return `<main class="scr setup acct-scr verify-scr">
+  return `<main class="scr setup acct-scr verify-scr login-scr cc calm">
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
-      <div class="ttl"><b>Verify your email</b><small>Find Match, hosting and your username need a verified email</small></div></div>
+      <div class="ttl"><b>Verify your email</b></div></div>
     <div class="setup-box" data-keep-scroll="verify">
-      <p class="hint">We sent a verification link to <b>${esc(verifyEmail())}</b>. Open it, then tap Continue.</p>
+      <div class="acchead"><span class="accfaces" aria-hidden="true">${toon('X')}${toon('O')}</span>${bubble(`We sent a link to <b>${esc(verifyEmail())}</b>. Open it, then tap Continue.`, '')}</div>
       ${loginMsg ? `<div class="${loginMsg.ok ? 'status ok' : 'warn'}" role="status">${esc(loginMsg.text)}</div>` : ''}
       <button class="primary" data-act="verify-retry"${off}>Continue</button>
       <button class="btn" data-act="verify-resend"${off}>Send the link again</button>
@@ -70,10 +72,11 @@ export function renderVerify() {
     </div></main>`;
 }
 export function renderUsername() {
-  return `<main class="scr setup acct-scr">
+  return `<main class="scr setup acct-scr login-scr cc calm">
     <div class="bar"><button class="back" data-act="menu" aria-label="Back to the main menu">${CHEV}Menu</button>
-      <div class="ttl"><b>Pick a username</b><small>You can't change it later</small></div></div>
+      <div class="ttl"><b>Pick a username</b></div></div>
     <div class="setup-box" data-keep-scroll="username">
+      <div class="acchead"><span class="accfaces" aria-hidden="true">${toon('X')}${toon('O')}</span>${bubble('Pick your name! You can\'t change it later.', '')}</div>
       <label class="field"><span>Username</span><input id="uname" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(unameDraft)}"></label>
       <p class="hint">3 to 16 letters, numbers or underscores.</p>
       ${unameMsg ? `<div class="warn" role="status">${esc(unameMsg)}</div>` : ''}

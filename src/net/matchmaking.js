@@ -34,12 +34,15 @@ export function setFindOn(on) {
   if (!on && search.on) { cancelSearch(); return; }   // switched off mid-search: out of the queue, back to the main menu
   render();
 }
+// Find Match is the admin's alone for now (December 2026, the launch lineup): shown, and opened, only for an admin account
+// while the switch is on; the server refuses everyone else too (functions/index.js findMatch, features/findMatchAdmin).
+export const findVisible = () => findOn && !!(acct && acct.admin);
 export function isMM() { return !!(state.online && state.online.kind === 'mm'); }
 
 /* ----- Find Match: a queue on the server; the phone checks in every few seconds while it waits ----- */
 export async function openFind() {
   if (activeElsewhere()) { enterMatched(acct.active); return; }   // back to the match in progress
-  if (!findOn) { state.screen = 'menu'; commit(); return; }   // switched off: the greyed button on the main menu
+  if (!findVisible()) { state.screen = 'menu'; commit(); return; }   // switched off, or not the admin: back to the main menu
   if (!(await needAccount('find'))) return;
   search.msg = ''; search.found = false;
   state.screen = 'find'; commit();
@@ -94,7 +97,7 @@ export async function searchBot() {
 // A match against the computer from Find Match (its seat says bot: true).
 export function vsBot() { return isMM() && room && room.pub && room.pub.players && !!Object.values(room.pub.players).some(p => p && p.bot); }
 export function findAgain() {                          // the results screen: another game
-  if (!findOn) return;
+  if (!findVisible()) return;
   leaveRoom(true);
   state.screen = 'find'; commit();
   startSearch();

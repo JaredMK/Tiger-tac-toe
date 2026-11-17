@@ -33,7 +33,9 @@ const board = () => E.newMatch(E.makeRng('cm'), { games: ['ttt'] });
 test('Super Chaos is off in the code, for everyone', () => assert.equal(SUPER_CHAOS_ENABLED, false));
 test('the main menu: Play Computer, Play a Friend, Find Match, How to Play; no Play Local, Play Online or mode', () => {
   Object.assign(state, board(), { screen: 'menu', online: null });
-  MM.setFindOn(true);
+  MM.setFindOn(true); acct.admin = false;
+  assert.doesNotMatch(renderMenu(), /data-act="find-go"/, 'Find Match the admin\'s alone (the launch lineup): not shown to anyone else');
+  acct.admin = true;
   const html = renderMenu();
   const acts = [...html.matchAll(/data-act="([^"]+)"/g)].map(m => m[1]);
   for (const a of ['cpu-go', 'friend-go', 'find-go', 'howto', 'settings', 'login']) assert.ok(acts.includes(a), a);

@@ -19,6 +19,7 @@ const { CARD, cardData, fitSize, perspective, shareBtn, toonSvg, toonUrl, LAYOUT
 const { renderWin } = await import('../../src/ui/screens/win.js');
 const { renderMenu } = await import('../../src/ui/screens/menu.js');
 (await import('../../src/ui/onboard.js')).obState.done = true;   // (a returning player's menu: the first visit's is tests/ui/onboard.test.mjs)
+const { acct: ACCT } = await import('../../src/net/accounts.js');
 const MM = await import('../../src/net/matchmaking.js');
 const { state } = await import('../../src/ui/app.js');
 
@@ -106,7 +107,9 @@ test('the win screen shows Share result in every mode (and the draw screen)', ()
 });
 test('the main menu: Play Computer, Play a Friend, Find Match, How to Play; no Challenge a friend (as production\'s)', () => {
   Object.assign(state, finished('.........', null, null, {}), { screen: 'menu', winner: null, online: null });
-  MM.setFindOn(true);
+  MM.setFindOn(true); ACCT.admin = false;
+  assert.doesNotMatch(renderMenu(), /data-act="find-go"/, 'Find Match the admin\'s alone (the launch lineup): not shown to anyone else');
+  ACCT.admin = true;
   const html = renderMenu();
   assert.doesNotMatch(html, /challenge|Challenge a friend/);
   const acts = [...html.matchAll(/data-act="([^"]+)"/g)].map(m => m[1]).filter(a => ['cpu-go', 'friend-go', 'find-go', 'howto'].includes(a));

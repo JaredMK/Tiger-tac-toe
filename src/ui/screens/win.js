@@ -3,7 +3,7 @@ import { hashSvg } from '../hash.js';
 import { normCpu, playerName } from '../../core/match.js';
 import { other } from '../../core/util.js';
 import { connected } from '../../net/connect.js';
-import { findOn, isMM } from '../../net/matchmaking.js';
+import { findVisible, isMM } from '../../net/matchmaking.js';
 import { lobby, room } from '../../net/room.js';
 import { N, esc, save, state, isYou } from '../app.js';
 import { toonT } from '../art.js';
@@ -12,8 +12,7 @@ import { record, signed } from './profile.js';
 import { netBar } from '../turnbar.js';
 import { shareBtn, shareLine } from '../sharecard.js';
 import { CICON, bubble, burstBadge, panel, rays, smallPanel } from '../comic.js';
-import { ANIM } from '../../core/timer.js';
-import { markSpeedOffered, matchesDone, speedOffered } from '../onboard.js';
+import { matchesDone } from '../onboard.js';
 import { h2hLine, seriesView } from '../series.js';
 import { headToHead } from '../../net/statscache.js';
 import { acct } from '../../net/accounts.js';
@@ -118,17 +117,8 @@ function rematchNote() {
     : rm[other(me)] ? `<span class="rmbub" aria-live="polite">${bubble(`${esc(N(other(me)))} wants a rematch!`, 'l')}</span>` : '';
   return `<div class="rmline">${inner}</div>`;
 }
-// After the first match on this phone, once (CL-2): "Too slow?" and Try Speed (the player's Animation setting), in the
-// line under the big action (a local match's: a friend room's rematch note has it otherwise). Offered once: marked as it
-// first shows, kept up while this result screen is.
-function speedOffer() {
-  if (state.online || state.practice || ANIM.mode === 'speed') return '';
-  if (!state.speedAsk && !speedOffered() && matchesDone() === 1) { state.speedAsk = true; markSpeedOffered(); }
-  if (!state.speedAsk) return '';
-  return `<div class="rmline spdask">${bubble('Too slow?', 'r')}${smallPanel('speed-try', '', 'Try Speed', { cls: 'w spdtry', aria: 'Try Speed: faster animations (Settings)' })}</div>`;
-}
 // A Find Match game's next: another one (Find Match switched off meanwhile: the main menu).
-function findAgainBtn() { return findOn ? BIG('find-again', 'Find Match', 'another rival') : BIG('menu', 'Main menu', 'play again'); }
+function findAgainBtn() { return findVisible() ? BIG('find-again', 'Find Match', 'another rival') : BIG('menu', 'Main menu', 'play again'); }
 // The small panels under it: the board, the main menu, Share result.
 function smallRow() {
   return `<div class="ccsmall endsmall">${smallPanel('review', CICON.board, 'Board', { k: 7, aria: 'View board' })}${smallPanel(state.online ? 'leave' : 'menu', CICON.home, 'Menu', { cls: 'w fr', k: 8, aria: 'Main menu' })}${shareBtn()}</div>${shareLine()}`;
@@ -178,7 +168,7 @@ function endScreen(w, title, why, acts) {
     <div class="endhero"><div class="winburst ccpunch">${endBurst(m)}</div>${hero}</div>
     <h1 class="endttl${shut ? ' cheer' : ''}">${bubble(title, '', 'ccpunch')}</h1>
     <div class="endmid">${boardCard(w === 'draw' ? null : state.winLine)}<div class="facts">${facts}</div></div>
-    ${acts == null ? `<div class="endgo">${againBtns()}</div>${rematchNote() || speedOffer()}${smallRow()}` : acts}</div></main>`;
+    ${acts == null ? `<div class="endgo">${againBtns()}</div>${rematchNote()}${smallRow()}` : acts}</div></main>`;
 }
 export function renderWin(acts) {
   const w = state.winner;

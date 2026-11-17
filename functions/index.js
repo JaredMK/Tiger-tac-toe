@@ -473,6 +473,7 @@ exports.deleteAccount = onCall(CALL, async req => {
 exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async req => {
   const uid = await needAccount(req), client = await needCurrent(req);
   const isAdmin = !!(req.auth.token && req.auth.token.admin === true);
+  if (!isAdmin && (await db.ref('features/findMatchAdmin').get()).val() === true) throw new HttpsError('permission-denied', 'Find Match is not open yet.');   // (the launch lineup, December 2026: Find Match the admin's alone while this is on; scripts/set-releases.js findAdmin1)
   const key = R.queueKey(req.data && req.data.mode, SC_OK());   // Classic (the Super Chaos queue: kept as code, for the tests)
   const prof = (await db.ref(`users/${uid}`).get()).val();
   if (!prof || !prof.username) throw new HttpsError('failed-precondition', 'Pick a username first.');

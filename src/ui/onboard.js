@@ -9,7 +9,7 @@
 import { KEY } from './config.js';
 
 const OB_KEY = KEY + '.onboard';
-export const STARTER = ['ttt', 'c4', 'coins', 'hilo', 'memory', 'hangman', 'pig', 'snakes', 'bs'];   // the starter board (a fixed list: released, quick, familiar)
+export const STARTER = ['ttt', 'c4', 'coins', 'hilo', 'rps', 'hangman', 'pig', 'snakes', 'bs'];   // the starter board (a fixed list: released, quick, familiar)
 const ob = (() => { try { const v = JSON.parse(localStorage.getItem(OB_KEY) || 'null'); if (v && typeof v === 'object') return { done: !!v.done, seen: v.seen && typeof v.seen === 'object' ? v.seen : {}, n: Number(v.n) || 0, speed: !!v.speed, last: v.last || null, quiet: !!v.quiet }; } catch (e) { /* none kept */ } return { done: false, seen: {}, n: 0, speed: false, last: null, quiet: false }; })();
 // (quiet: the browser checks and smokes set it, ONBOARD_QUIET below: no first visit, no tips, no offers)
 export const ONBOARD_QUIET = JSON.stringify({ done: true, quiet: true, n: 9, speed: true });
