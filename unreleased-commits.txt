@@ -1,0 +1,172 @@
+8292d11 2026-11-17 Launch prep: copy-settings carries the admin's game templates (by email); the launch reset also clears the settings-version history (every ga
+63cc503 2026-11-17 Balance review (simulation baseline, slow games with simulated setting changes, match clock)
+cf48f02 2026-11-17 scripts/balance-sim.js: computer-vs-computer balance baseline (work in progress)
+917646b 2026-11-17 Balance tooling: settings versions, per-square version/first mover/time, balance counters, admin Balance report with filters and export
+0238217 2026-11-17 Play Computer: 'Computer difficulty' label
+49e09f5 2026-11-17 How to Play: WIN! burst clear of the marks, credits behind a Credits button; Codebreaker: select any slot then a colour, uniform guess rows
+7080381 2026-11-17 Higher/Lower may break after its slash on the board, so the label row's pip strip never makes it spill
+44df83c 2026-11-17 Layout fixes: Mini-games names keep their last letter, menu screens sized from the small viewport (--u) and tightened for 390x660, Settings A
+823be26 2026-11-17 Launch lineup (19 released), Find Match admin only, Comic Chaos Find Match and account screens, titles unclipped, overlap fixes, Speed offer 
+12d3118 2026-11-17 The health test reads the client version from the engine
+850f7ae 2026-11-17 Shell Game (Admin only, More skill): follow the ball as the cups shuffle; an attention game with its own levels (1 to 5, 2 to 7 cups each), G
+ee21c7c 2026-11-16 Safety and support (in progress): guest names held to the usernames' filter (seat names the server's alone); Report a problem from Settings t
+ceecd67 2026-11-16 Analytics: the first-run funnel and D1/D7/D30 retention by install cohort, rematch/share/invite events (invites by channel, opened, joined, f
+8b875b3 2026-11-16 First load: the page bundled and minified with esbuild into hashed, year-cached files (the views one chunk each, preloaded entry, fonts split
+bb9b259 2026-11-16 Reliability: a global error catcher and the error rate by day and build on the admin Overview (with platforms and client versions); a daily p
+cfaba08 2026-11-16 Matchmaking: a hidden skill rating per account (server-only Elo from human Find Match results) pairs the closest searchers first, anyone afte
+ceeae90 2026-11-16 Find Match: no hidden bots; after about 20 s alone the search screen offers the computer, labelled Computer in the game and on its results, n
+aa895dd 2026-11-16 After a shut-out: Rematch leads with one encouraging line, and in a player's first matches the computer quietly goes back to Easy
+34005ba 2026-11-16 Rematch as a best-of-3: the series score carried by every rematch (Decider! at 1-1, a new series once decided; friend rooms by account on the
+879c717 2026-11-16 Match drama: a square that would complete a line glows with a Match point! caption in that side's colour; every open square shows a pip for t
+590e3a5 2026-11-16 Faster computer turns: think 0.4 s, glow 0.4 s, its replay's Skip after 0.8 s and a tap anywhere finishes it; the first result screen offers 
+2109217 2026-11-16 Guided first match: a first visit's one big Play straight into the starter board (nine quick, familiar games, you first against Easy, guests 
+b071896 2026-11-16 Live score gauges with pending stripes in every scored game; your-turn pulse every 4 s until a square is opened
+f5522fe 2026-11-16 Setup screens: the Mini-games row and its note enter on Play Computer's stagger, and the host lobby, Same phone and Join pieces, which had no
+41b4f78 2026-11-16 Your turn: the # lines flash in your colour and hold a soft tint while it is your turn, and your character in the top bar pops (options 1 and
+2bf9c09 2026-11-16 Your-turn indicator mock-ups: turn-indicator.html on staging only (five non-blocking options beside the live burst, Simulate turn change, tap
+f4fab87 2026-11-16 Copy sweep: the rules line beside Start gone, panel second lines, restated rules and tap-to hints cut, 33 explainers tightened; the Mini-game
+bd31ea5 2026-11-16 Merge branch 'claude/insane-tac-toe-game-vtdi9y' of https://github.com/JaredMK/fruit-burger-codon into claude/insane-tac-toe-game-vtdi9y
+2f77b4d 2026-11-16 Condensed replays of the other side's turn (about 4 s, one glow; skipped when watched) and the turn clock starting at its end (move kind go);
+6eed343 2026-11-16 Fun review: checked against the iOS 1.20.0 notes
+e1a8403 2026-11-16 Merge branch 'claude/insane-tac-toe-game-vtdi9y' of https://github.com/JaredMK/fruit-burger-codon into claude/fun-review-wt
+803ef25 2026-11-16 Fun review: Super Chaos, Classic and a pre-launch checklist (docs/fun-review.md), with standalone mock-ups (docs/fun-review-mockups.html); do
+2b09cd9 2026-11-16 iOS 1.20.0: CLIENT_VERSION 1.20.0 and every game's minVersion audited against its rules (an older app is dealt only what it can still play); 
+46a7f57 2026-11-16 Backgammon Lite sim: Normal v Easy threshold 55% (the bar adds luck); notes carry the measured figures
+981625a 2026-11-16 Backgammon Lite: a hit piece goes to the bar (off the board before the start, a framed BAR in its start-side tray) and must come back in befo
+4df5d80 2026-11-16 First-mover handicaps removed (Dominoes' opener draw replaced by a random starter tile on the table, Backgammon Lite's one-die opening roll, 
+934da68 2026-11-15 Online play: the live layer (the opponent's open square glows, Watch follows their turn read-only, committed actions live, long real-time run
+9fd17da 2026-11-13 UI audit, round 2: the top bar's name over its clock (Computer and 12-letter names whole at 360px); the link-preview image redrawn in Comic C
+3f2dae7 2026-11-13 UI audit: the side reveal as a flat ink-framed card in Bangers and Comic Neue; the lobby's 'not joined yet', My Stats' opponent rows and the 
+cf0a31b 2026-11-13 Coin Pusher: the machine at 1.6x (its settle at the page's pace, faster in Speed); a move ends once settled (a full stroke with nothing falli
+8594581 2026-11-13 Share card test: ignore comments when checking for a rematch code
+9d950d4 2026-11-13 The share card in Comic Chaos: an ink-outlined comic panel, halftone, the headline in Bangers on a burst, the # board with comic claim bursts
+4eb9b9a 2026-11-13 Coin Pusher: one shared machine (each coin its owner's, scoring for them whenever it falls; the machine's own coins for the mover; both total
+12c1d72 2026-11-13 Comic Chaos, step 9's finish: every target 44 px (the small "?", the credits' links) without moving anything; the mini-games checklists keep 
+809d878 2026-11-13 The live check's match against the computer plays on in a square that keeps the turn (a roll before a bank) instead of waiting there until it
+776fd62 2026-11-13 Comic Chaos, step 9: Play a Friend, Join, the host's lobby, Same phone, Find Match's searching, My Stats, Settings, the in-game menu, its dia
+870299d 2026-11-13 Comic Chaos, step 8: every mini-game's icon in the menus drawn chunky in ink in a white disc tinted by its kind (luck red, skill blue, brain 
+eff1f74 2026-11-13 Comic Chaos, step 7: screen changes (a burst wipe into a match, a rematch and the results: a yellow and red burst grows over the page as it w
+b22c27d 2026-11-13 Comic Chaos, step 6: How to Play as three drawn comic panels (the core rules in an announcer's few words, each with its own picture of the #:
+5234584 2026-11-13 Comic Chaos, step 5: the copy pass (an announcer's and a speech bubble's voice: Your move!, KAPOW!, No line left, pick a mini-game or two; Ri
+45ab55a 2026-11-12 Comic Chaos, step 4: Play Computer's setup (the real X and O on a VS card, side and level as skewed panels with the chosen one inverted to in
+ace1d11 2026-11-12 Comic Chaos, step 3: the results (the burst and the winner over turning rays and falling confetti, the headline in a speech bubble, the board
+676000d 2026-11-12 Comic Chaos, step 2: the main menu (the logo punched in over rays on a red and yellow page, X and O either side of a speech bubble, a skewed 
+2eca68d 2026-11-12 Comic Chaos, step 1: the in-game screens (a VS top bar with both characters, names and clocks, the turn in a speech bubble, Menu, Board, ? an
+906ba5d 2026-11-12 Design review round 2 (mock-ups only, the game unchanged): Comic chaos in-game: the board during a match, its moments and the mini-game frame
+ffb7488 2026-11-12 Deploy: a change to any file the site build copies deploys the site (privacy.html, the icon pages and the design review were missed, so the r
+391a9ed 2026-11-12 Design review round 2 (mock-ups only, the game unchanged): Patchwork v2, direction A with one button language, one information language and o
+c001485 2026-11-12 Sticker book, steps 2-4: the results (Rematch the one big sticker, the board, menu and Share as round stickers, the facts as notes, a celebra
+8a2942b 2026-11-12 Sticker book, step 1: the main menu as stickers (the logo taped down, a sticker for each way to play with a line of copy, Find Match a small 
+80ccb80 2026-11-12 Live browser check: the invite check in a browser of its own (its join stayed on the device and the computer match after it opened on Join)
+5004784 2026-11-12 Menu design review page (staging only, linked from nowhere): critique, benchmark, three directions mocked beside the live screens, effort and
+927d642 2026-11-12 Staging access switch: Open (anyone with the link) or Allowlist, set Open; the page, the server and staging's rules follow it; tests for both
+35b9cf3 2026-11-12 Invite smoke check: staging's gate covers the lobby, so the handlers are called there
+c6cfaf8 2026-11-12 Invites: one buildInvite (code, then a /join/CODE link), /join/CODE links on the web and in the app, guards in unit, browser and live smoke t
+b1326c2 2026-11-12 Polish sweep round 2, batch 3: Snake, Muncher, Star Swarm, Brick Break, Headcount, Flash, Snapshot, Sky Hop, Scoop Stack polished (look, feel
+7106d02 2026-11-12 Polish sweep round 2, batch 3: work in progress (a Pinball replay plays its last step; attention games under way)
+5d5ce3e 2026-11-12 Polish sweep round 2, batch 3: work in progress (Sky Hop and Scoop Stack in)
+792622e 2026-11-12 Polish sweep round 2, batch 3: work in progress (Snake and Muncher in)
+e75eea1 2026-11-12 Polish sweep round 2, batch 2: Dominoes, Poker Hands, Rummy Lite, Dice Combo, Backgammon Lite, Rock Paper Scissors, Claw Machine, Hook-a-Duck
+a7ef506 2026-11-12 Polish sweep round 2, batch 2: work in progress (card and fairground games in; dice games under way)
+0f5af84 2026-11-12 Polish sweep round 2, batch 2: work in progress (Dominoes, Poker Hands, Rummy Lite in)
+8c601c2 2026-11-12 Polish sweep round 2, batch 2: work in progress (card, dice and fairground games under way)
+e078c66 2026-11-12 Polish sweep round 2, batch 1: Thirty-One reworked (one shared 32-card deck and pile, private hands, never on one phone, scoring fixed, targe
+36d420d 2026-11-12 Polish sweep round 2, batch 1: work in progress (Trivia, Patterns, Odd One Out in; the keyboard's wrong-key strike draws again)
+718b532 2026-11-12 Polish sweep round 2, batch 1: work in progress (the four runners in)
+d0de4f7 2026-11-12 Polish sweep round 2, batch 1: work in progress
+9b64161 2026-11-12 Polish sweep round 2, batch 1: work in progress (Flood, Seating, Shelves in)
+b371046 2026-11-12 Polish sweep round 2, batch 1: work in progress (Districts and Roads in; Thirty-One rework, runners, quiz and board games under way)
+59ea4ba 2026-11-12 Mini Golf terrain (slopes, sand, water, windmills) and aim arrow only; Bowling three sweeps; Pool cue-only line; Scratch press; four-colour d
+f064c84 2026-11-12 Bowling: three tap-to-stop sweeps (aim, curve, power) with a hook (WIP golf)
+3362a62 2026-11-12 RPS house at random, Coin Pusher pushes on 2.5 strokes, Sniff 8-way distance (WIP others)
+f5dd39b 2026-11-12 Pool cue-only sight, Scratch press fix, four-colour deck, Practice stops at once (WIP others)
+92286f2 2026-11-12 Work in progress: Mini Golf terrain, Bowling sweeps, small fixes (CLIENT_VERSION 1.15.0)
+50ad908 2026-11-12 Bullseye: the two-tap aim restored (the flick removed, the polish kept); dice tumble longer; keyboard centred; Practice always X
+4d5b7c0 2026-11-12 Dice tumble longer in every dice game; Bullseye restore under way (work in progress)
+ac905ce 2026-11-12 Keyboard fixed (Krabs' class had clobbered the keyboard rows), Practice always X and first; Bullseye and dice timing under way
+579fa09 2026-11-12 Polish sweep, batch 3: War, Scratch & Match, Shut the Box, Ship Captain & Crew, Apple Pick, Peg Drop, Bingo, Echo, Hex, Takeover, Sniff, Word
+cb7f0ab 2026-11-12 Polish sweep, batch 3: work in progress (Sniff, Word Tiles in)
+d37f188 2026-11-12 Polish sweep, batch 3: work in progress (Apple Pick, Peg Drop, Hex, Takeover in; nine games under way)
+2df57f5 2026-11-12 Emulator test: the bot-window check says what the server planned from when it misses
+8da5e55 2026-11-12 Polish sweep, batch 2: 21, Ride the Bus, Risky Rolls, Krabs, Little Wheel, Risky Spins, Snakes and Ladders, Candy Race, Bump (look, feel and 
+e5efbdc 2026-11-12 Polish sweep, batch 2: work in progress (Little Wheel, Risky Spins in)
+6a3ea9b 2026-11-12 Polish sweep, batch 2: work in progress (Risky Rolls, Krabs and the shared 3-D die in)
+70813b1 2026-11-12 Polish sweep, batch 2: work in progress (21, Ride the Bus in)
+b782e4a 2026-11-12 Polish sweep, batch 2: work in progress
+5053b29 2026-11-12 Polish sweep, batch 1: Tic-tac-toe, Four in a Row, Five Letters, Hangman, Sea Battle, Treasure Hunt, Higher/Lower, Codebreaker, Find the Pair
+0b2e7f0 2026-11-12 Polish sweep, batch 1: work in progress
+c7135e5 2026-11-11 Pinball, Bowling, Bullseye, Pool: the polish pass (Pinball's own ball physics, flippers, skill-shot launch and four tables; Bowling's flick a
+38d5c65 2026-11-11 Physics and skill polish: work in progress (Pinball fixes under way)
+ad42f5a 2026-11-11 Physics and skill polish: Pinball rework in, notes updated; Bowling's Equal rolls off by default (work in progress)
+6dd7e65 2026-11-11 Physics and skill polish: work in progress (Bullseye flick throw, Bowling flick and perspective lane, Pool cue and sight line, Pinball under 
+a983ab4 2026-11-11 Card motion in every card game and Dominoes: cards and tiles fly from source to place, live and in replays
+499f82e 2026-11-11 Card motion: work in progress
+9458ccd 2026-11-11 CLIENT_VERSION 1.12.0 for Backgammon Lite's whole-turn move
+b2c2a69 2026-11-11 Backgammon Lite: the backgammon-app move flow (lit pieces, labelled destinations, slides, greyed dice, Undo, forced steps, the turn as one mo
+a32d160 2026-11-11 Admin Games list: back from a game's page restores the scroll and lights the game just edited
+1426046 2026-11-11 Rummy Lite and Word Tiles shared with private hands; the carnival reworks need 1.11.0
+b894dcc 2026-11-11 Private hands, Rummy Lite and Word Tiles shared: work in progress
+ae5395e 2026-11-11 Coin Pusher: the bar always moving, three timed taps of a sliding dropper, played live with no waiting
+0217b06 2026-11-11 Claw Machine: notes and help text
+8bfde7d 2026-11-11 Claw Machine: one shared case, the claw sweeping by itself on a pendulum, a single Drop tap, no guide line
+e0e07a2 2026-11-11 Hook-a-Duck: notes, styles and help text
+defc8ee 2026-11-11 Hook-a-Duck: one shared pond, values hidden until hooked
+aebcabc 2026-11-11 Backgammon Lite: once home, any roll that reaches the end bears a piece off
+b9d62d4 2026-11-11 Word Tiles (Admin only): own 7x7 board and bag, ENABLE word list (2-7 letters, offensive words filtered), premium squares, best-word computer
+96181cb 2026-11-11 Word Tiles: work in progress
+000f1bb 2026-11-11 Word Tiles registered (Admin only, placeholder while built)
+8c06913 2026-11-11 Coin Pusher (Admin only): own machine, deterministic push simulation on the server and every phone, matching last turn; carnival batch tests
+09af002 2026-11-11 Coin Pusher: work in progress
+cd23fe2 2026-11-11 Claw Machine: notes, styles and help text
+5c8de18 2026-11-11 Claw Machine: rules, computer, view, miniature, tests and sim
+71daafd 2026-11-11 Hook-a-Duck: notes, styles and help text
+c32d355 2026-11-11 Hook-a-Duck: rules, computer, view, miniature, tests and sim
+941dd82 2026-11-11 Carnival games registered (Admin only, placeholders while built): Claw Machine, Hook-a-Duck, Coin Pusher
+f93d496 2026-11-11 Thirty-One (target 26) and the card batch's fixes: the admin's list, Rummy Lite's computer without a clock, the secrets test, Super Chaos see
+8d6a778 2026-11-11 Poker Hands: rules, computer, view, miniature, tests and sim
+f95cb47 2026-11-11 Rummy Lite: notes, styles and help text
+3cc857c 2026-11-11 Rummy Lite: rules, computer, view, miniature, tests and sim
+274b719 2026-11-11 Card games registered (Admin only, placeholders while built): Poker Hands, Thirty-One, Rummy Lite; CLIENT_VERSION 1.10.0
+9e8442e 2026-11-11 Rock Paper Scissors (Admin only): against the house's own deck, ties thrown again, first to 3; CLIENT_VERSION 1.9.0; Hangman race test helper
+b8af35d 2026-11-11 Backgammon Lite: pieces start on the board, bear off only from the home zone, doubles move four times; dice games' turn lines
+2c11a4f 2026-11-11 Ship, Captain & Crew miniature: the mast on the deck, the sail over the hull; Dice Combo's explainer lists every combo with its meaning
+88e7c11 2026-11-11 Four dice games (Admin only): Shut the Box, Dice Combo, Backgammon Lite, Ship, Captain & Crew; Super Chaos keeps its bonus shots and letters;
+c228740 2026-11-11 Dice games' shared hooks: a game's own timeoutClose, the held-turn subtitle (heldSub), styles; their names in the admin, rules and lists
+b32c525 2026-11-11 Shut the Box: rules, computer, view, miniature, tests and sim (registered with the other dice games next)
+ab95c02 2026-11-11 Ship, Captain & Crew: rules, computer, view, miniature, tests and sim (registered with the other dice games next)
+f748cb9 2026-11-11 Dice Combo: rules, computer, view, miniature, tests and sim (registered with the other dice games next)
+f7789a9 2026-11-11 Sky Hop and Scoop Stack: attempt time limit with a countdown bar
+9761a22 2026-11-11 Attempt time limits with a countdown bar (runners, Pinball, Snake, Muncher, Star Swarm, Brick Break); Snake: bombs, growth per food, own/oppo
+26fa357 2026-11-11 Go again on success: a per-game switch, off by default; Hex back to 4x4; Find the Pair race miniature spacing; admin Test play vs Hard like P
+8e74d59 2026-11-11 Seating reworked: sit at an empty table, score when the next customer sits across from you; 15 tables, 4 colours; new art, animations, AI, mi
+65b3883 2026-11-11 Bingo number tracker; War: a round won goes again; Scratch & Match: auto-scratch removed
+9d3b269 2026-11-10 Stats kept on the device: My Stats opens instantly from the cache and updates in place; background refresh at start, on the menu and after ea
+a5df59b 2026-11-10 Miniatures: X and O marks at full player colour and weight (Krabs, 21, Little Wheel, War and the rest were washed pale by the names' underlin
+bcb538f 2026-11-10 Hex: no swap rule (rules, AI, view, explainer); Practice stays inside the square, computer plays in place
+7321e72 2026-11-10 Scratch & Match: a pair in a line opens its third in the same move (AI, table, explainer); Find the Pair race boards: spacing, player-colour 
+c711fa4 2026-11-10 Templates: choosing one checks exactly its games; any change shows Custom; an exact match lights its template
+a813fbc 2026-11-10 Computer opponents rebuilt: match search, per-game tactics, Easy/Normal/Hard from one engine, Bot Settings difficulty card, docs/ai.md
+5230475 2026-11-10 Computer opponents rebuilt (work in progress): one engine for the three levels, a faster match search, stronger per-game Hard play, the admin
+473154e 2026-11-10 Sea Battle: the computer searches at random on a checkerboard, then targets round a hit; ship length setting (1-4 or Random, default 3) with 
+e49f39c 2026-11-09 Race mode reworked: each player their own hidden target of equal difficulty (word, ship, code, number, treasure, layout, questions), private 
+9983013 2026-11-09 Higher/Lower: a claimed Race square's miniature read the Shared guesses and threw, leaving the match on the square; render and miniature guar
+988c2fe 2026-11-09 Cup Pong rebuilt: a flick that maps exactly to the throw, a perspective table with a 3D arc and shadow, rim hops and drops, synthesised sound
+4b7411d 2026-11-09 Muncher reworked as a classic maze game: 13x15 mazes, four spooks with personalities and scatter/chase phases, power pellets, side tunnels, b
+ef29665 2026-11-09 Dominoes: the line laid as players lay it (end to end, doubles crosswise, snake corners, no gaps), draws one tile at a time
+f6ebf93 2026-11-09 Game templates (admin only: saved on the account, Use/Update/Rename/Delete in every setup's Mini-games section) and Practice from How to Play
+6e255d6 2026-11-09 Admin: one Games page (every mini-game's release switches, mode, settings, Test play, Save and Reset) in place of Releases and Mini-game Sett
+03688e0 2026-11-09 Notes: the Pool miniature's sizing and the build stamp
+183fd2b 2026-11-09 Pool miniature sized in container units (Safari dropped the percentage-height table); the build stamp in the menu foot; the live smoke accept
+ac1a008 2026-11-09 Online play: Start game answers at once (Starting…, one request), a tap never dies silently, a stuck result is cleared; two-phone emulator 
+c60841f 2026-11-09 Race mode: Treasure Hunt, Sniff, Find the Pair; the picked card's face stays with the picker; help text; miniature check's race option
+376aac5 2026-11-09 Race mode: Five Letters and Hangman; the header line redacts the other side's move
+96682cf 2026-11-09 Race mode: Sea Battle and Codebreaker
+cd29b19 2026-11-09 Race mode: Trivia and Patterns
+b092a52 2026-11-09 Race mode core: private sides, redaction, stats by mode, Higher/Lower
+a55b5ac 2026-11-08 Snake: 3 foods of each colour; Pool's miniature always a table; Bingo on 3x3 cards of 1-26
+e361bc8 2026-11-08 Deploy workflow: pin the runner to ubuntu-24.04 (ubuntu-latest moved to 26.04, where Playwright cannot install Chromium for the browser smoke
+b0996c6 2026-11-08 Roomier board and readable miniatures; Bingo's Pick numbers cage; Snake on grid steps with X/O food; no waiting on your own move online
+26d75e7 2026-11-08 Main board as a classic # grid: hand-drawn strokes, no boxes; glows for highlights; the same # everywhere
+8d54a93 2026-11-08 Scratch & Match: the header line names the find again (it has no result row of its own, so it leaves LINE_TYPES); its CLAUDE.md note
+91588c9 2026-11-08 New games batch 2: Dominoes, War, Scratch & Match, Bingo (Admin only)
+9d8f80f 2026-11-08 Four new skill mini-games (Admin only, CLIENT_VERSION 1.5.0): Muncher, Star Swarm, Brick Break, Snake; the server holds each run to the turn'

@@ -8,13 +8,14 @@ const path = require('node:path');
 const admin = require(path.join(__dirname, '..', 'functions', 'node_modules', 'firebase-admin'));
 
 const PROJECT = process.env.TTC_PROJECT || 'tic-tac-chaos';
-const LAUNCH = ['bullseye', 'bump', 'candy', 'coins', 'wordle', 'ttt', 'c4', 'bs', 'hangman', 'hilo', 'pig', 'wheels', 'rl', 'plinko', 'snakes', 'rps', 'war', 'claw', 'mastermind'];
+const LAUNCH = ['bullseye', 'bump', 'candy', 'coins', 'wordle', 'ttt', 'c4', 'bs', 'hangman', 'hilo', 'pig', 'rl', 'plinko', 'snakes', 'rps', 'war', 'claw', 'mastermind'];
 const ALL = ['ttt', 'c4', 'bs', 'wordle', 'hangman', 'hex', 'hilo', 'snakes', 'memory', 'candy', 'bump', 'coins', 'pig', 'hunt', 'mastermind', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'apple', 'dominoes', 'scratch', 'bingo', 'war', 'shut', 'combo', 'bglite', 'scc', 'rps', 'poker', 't31', 'rummy', 'claw', 'duck', 'pusher', 'wtiles', 'snake', 'swarm', 'bricks', 'muncher', 'sniff', 'headcount', 'flash', 'snapshot', 'shell', 'skyhop', 'scoop', 'pinball', 'clash', 'dice', 'hexapawn'];
 const SETS = [
   { id: 'rel1', set: { craps: true, wheels: true, flap: false, chopper: false } },   // Craps and Risky Spins released; Flap and Chopper admin only
   { id: 'rel2', set: { superchaos: false } },   // Super Chaos off (Classic only; core/config.js SUPER_CHAOS_ENABLED keeps it off for the admin too)
   { id: 'rel3', set: { shelves: false, hex: false } },   // Shelves admin only (a tie is a draw now, and its first mover wins nearly every other square); Hex admin only (5x5 with the swap rule, the first mover still over 60%)
-  { id: 'rel4', set: lineup() },   // the launch lineup (December 2026): these 19 released on the web and iOS, every other mini-game admin only
+  { id: 'rel4', set: lineup() },   // the launch lineup (December 2026): these 18 released on the web and iOS, every other mini-game admin only
+  { id: 'rel5', set: { wheels: false } },   // Risky Spins admin only at launch (out of the lineup; rel4 had released it where it already ran: staging)
 ];
 // The launch lineup: LAUNCH released (and any iOS-off switch of theirs cleared), every other game (TYPES and the retired ones)
 // admin only. tests/server/release-lineup.test.js holds ALL to the registry.
