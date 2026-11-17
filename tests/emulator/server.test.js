@@ -1064,13 +1064,13 @@ test('health: opens and errors counted per day and build; new devices near and a
   const guest = await player(null, { anonymous: true }), d = S.periodKeys(Date.now()).d;
   const h0 = (await get(`stats/health/${d}`)) || {};
   const dev = 'h' + Date.now().toString(16) + 'bb22';
-  assert.deepEqual(await guest.call('devlog', { dev, ev: 'open', o: 'hopen001', v: 'b1.2', client: { v: '1.21.0', p: 'web' } }), { ok: true });
+  assert.deepEqual(await guest.call('devlog', { dev, ev: 'open', o: 'hopen001', v: 'b1.2', client: { v: E.CLIENT_VERSION, p: 'web' } }), { ok: true });
   assert.deepEqual(await guest.call('devlog', { dev, ev: 'error', o: 'herr0001', msg: 'js: boom @main.js:1', v: 'b1.2' }), { ok: true });
   await guest.call('devlog', { dev, ev: 'error', o: 'herr0001', msg: 'js: boom @main.js:1', v: 'b1.2' });   // (sent again: counted once)
   const h1 = await get(`stats/health/${d}`);
   assert.equal((h1.opens || 0) - (h0.opens || 0), 1);
   assert.equal((h1.errors || 0) - (h0.errors || 0), 1);
-  assert.ok(h1.v.b1_2.errors >= 1 && h1.p.web >= 1 && h1.cv['1_21_0'] >= 1, 'by build, platform and client version');
+  assert.ok(h1.v.b1_2.errors >= 1 && h1.p.web >= 1 && h1.cv[E.CLIENT_VERSION.replace(/\./g, '_')] >= 1, 'by build, platform and client version');
   // growth: the cohort, the funnel's steps once each, a match finished, the events a day
   const c0 = (await get(`stats/cohorts/${d}`)) || {}, f0 = (await get(`stats/funnel/${d}`)) || {}, a0 = (await get(`stats/acts/${d}`)) || {};
   const nd = dev + 'g1';
