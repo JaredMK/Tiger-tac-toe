@@ -5,7 +5,7 @@ const FIREBASE_CONFIG = window.TTC_ENV.config;   // production or staging, by th
 const STAGING = window.TTC_ENV.staging;
 const MODES = [['local', 'Two players'], ['cpu', 'vs Computer'], ['chaos', 'Super Chaos'], ['cvc', 'Computer vs Computer (old)'], ['friend', 'Friend code'], ['match', 'Find Match'], ['bot', 'Find Match vs a bot'], ['casual', 'Casual (old)'], ['ranked', 'Ranked (old)']];
 const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', chaos: '#d9622b', cvc: 'var(--stone)', friend: 'var(--plum)', match: 'var(--green)', bot: '#2f7f6f', casual: '#8fbf7a', ranked: 'var(--x)' };
-const GAMES = { ttt: 'Tic-tac-toe', c4: 'Four in a Row', bs: 'Sea Battle', wordle: 'Five Letters', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Find the Pair', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Codebreaker', bj: '21', bus: 'Ride the Bus', rl: 'Little Wheel', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Peg Drop', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush', golf: 'Mini Golf', pool: 'Pool', bowling: 'Bowling', craps: 'Krabs', takeover: 'Takeover', flood: 'Flood', seating: 'Seating', districts: 'Districts', shelves: 'Shelves', roads: 'Roads', flap: 'Flap', chopper: 'Chopper', patterns: 'Patterns', wheels: 'Risky Spins', apple: 'Apple Pick', sniff: 'Sniff', clash: 'Standoff Grid', headcount: 'Headcount', flash: 'Flash', snapshot: 'Snapshot', skyhop: 'Sky Hop', scoop: 'Scoop Stack', pinball: 'Pinball', muncher: 'Muncher', swarm: 'Star Swarm', bricks: 'Brick Break', snake: 'Snake', dominoes: 'Dominoes', war: 'War', shut: 'Shut the Box', combo: 'Dice Combo', bglite: 'Backgammon Lite', scc: 'Ship, Captain & Crew', rps: 'Rock Paper Scissors', poker: 'Poker Hands', t31: 'Thirty-One', rummy: 'Rummy Lite', claw: 'Claw Machine', duck: 'Hook-a-Duck', pusher: 'Coin Pusher', wtiles: 'Word Tiles', scratch: 'Scratch & Match', bingo: 'Bingo' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
+const GAMES = { ttt: 'Tic-tac-toe', c4: 'Four in a Row', bs: 'Sea Battle', wordle: 'Five Letters', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Find the Pair', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Codebreaker', bj: '21', bus: 'Ride the Bus', rl: 'Little Wheel', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Peg Drop', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush', golf: 'Mini Golf', pool: 'Pool', bowling: 'Bowling', craps: 'Krabs', takeover: 'Takeover', flood: 'Flood', seating: 'Seating', districts: 'Districts', shelves: 'Shelves', roads: 'Roads', flap: 'Flap', chopper: 'Chopper', patterns: 'Patterns', wheels: 'Risky Spins', apple: 'Apple Pick', sniff: 'Sniff', clash: 'Standoff Grid', headcount: 'Headcount', flash: 'Flash', snapshot: 'Snapshot', shell: 'Shell Game', skyhop: 'Sky Hop', scoop: 'Scoop Stack', pinball: 'Pinball', muncher: 'Muncher', swarm: 'Star Swarm', bricks: 'Brick Break', snake: 'Snake', dominoes: 'Dominoes', war: 'War', shut: 'Shut the Box', combo: 'Dice Combo', bglite: 'Backgammon Lite', scc: 'Ship, Captain & Crew', rps: 'Rock Paper Scissors', poker: 'Poker Hands', t31: 'Thirty-One', rummy: 'Rummy Lite', claw: 'Claw Machine', duck: 'Hook-a-Duck', pusher: 'Coin Pusher', wtiles: 'Word Tiles', scratch: 'Scratch & Match', bingo: 'Bingo' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
 const app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let fb = null, user = null, stats = null, flagged = null, reports = [], view = { status: 'loading', error: '' };
@@ -551,7 +551,7 @@ async function allowEdit(el, email, on) {
 
 // ---------- game releases: Released or Admin only, per mini-game (releases/{type}, read by the game and the server) ----------
 // A game not in the database is as the code has it (TEST_TYPES in src/games/index.js, from each game's meta.js: admin only until released here).
-const TEST_TYPES = ['wtiles', 'claw', 'duck', 'pusher', 'poker', 't31', 'rummy', 'rps', 'shut', 'combo', 'bglite', 'scc', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'clash', 'hex', 'apple', 'muncher', 'swarm', 'bricks', 'snake', 'dominoes', 'war', 'scratch', 'bingo'];   // (as engine.js has them; the switches cover every game the stats know)
+const TEST_TYPES = ['shell', 'wtiles', 'claw', 'duck', 'pusher', 'poker', 't31', 'rummy', 'rps', 'shut', 'combo', 'bglite', 'scc', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'clash', 'hex', 'apple', 'muncher', 'swarm', 'bricks', 'snake', 'dominoes', 'war', 'scratch', 'bingo'];   // (as engine.js has them; the switches cover every game the stats know)
 const isReleased = t => (ctl.releases && typeof ctl.releases[t] === 'boolean' ? ctl.releases[t] : !TEST_TYPES.includes(t));
 // Per platform (src/core/client.js): a released game can be switched off on iOS alone (releases/platform/ios/{type} false);
 // on means as released. The web has no switch of its own: a game is off there by un-releasing it.
@@ -982,9 +982,29 @@ function gamePage(t) {
   const body = fields.length ? groups.map(([g, fs]) => `<h3>${esc(g)}</h3><div class="rform tform">${fs.map(inp).join('')}</div>`).join('') : `<p class="note">${own ? 'No settings beyond its tuning above.' : 'No settings.'}</p>`;
   const any = fields.length || own || isRaceGame(t);
   return `<div class="gpage" id="gamePage" data-game="${t}">${releaseCard(t)}${modeCard(t)}${own}
-    <div class="card ctl" id="tuneCard"><h2>Settings</h2>${body}
+    <div class="card ctl" id="tuneCard"><h2>Settings</h2>${presetRow(t)}${body}
       <div class="tbar"><button class="btn go" data-gamesave="${t}"${any ? '' : ' disabled'}>Save</button><button class="btn" data-tunereset="${t}">Reset to defaults</button><button class="btn tplay" data-testplay="${t}" title="Opens the game alone in a new tab with this page's values, saved or not (the live settings are not touched)">Test play</button><span class="unsaved" role="status"></span></div>
       <p class="note">Save: every value on this page${own ? ' (the tuning card\'s too)' : ''}${isRaceGame(t) ? ', the Mode included,' : ''} to the game and the server at once, for squares dealt from then on; only what differs from the defaults is kept. Reset to defaults: every value on this page back to the code's${own ? ' (the tuning card\'s too)' : ''}. Test play: a game of it alone against the computer on Hard, in a new tab, with the values as they are here, saved or not; back here when it ends.</p></div></div>`;
+}
+// A game's presets (its meta.js PRESETS: { name: { k: value, ... } }, e.g. Shell Game's Gentle, Normal, Brutal): a button
+// each, which fills those settings' fields on the page (marked unsaved, as any edit: nothing is saved until Save, and
+// each value can be changed by hand after); the one whose values the page holds now is lit.
+function presetRow(t) {
+  const ps = META[t] && META[t].PRESETS;
+  if (!ps) return '';
+  const saved = (ctl.tune && ctl.tune[t]) || {}, now = Object.assign(TUNE.tuneDefaults(t), saved);
+  const is = n => Object.keys(ps[n]).every(k => String(now[k]) === String(ps[n][k]));
+  return `<div class="presets" role="group" aria-label="Difficulty presets"><span>Difficulty presets</span>${Object.keys(ps).map(n => `<button class="btn${is(n) ? ' on' : ''}" data-preset="${esc(n)}" data-pgame="${t}" aria-pressed="${is(n)}">${esc(n)}</button>`).join('')}<small>${esc((META[t] && META[t].PRESET_NOTE) || 'Fills the fields below; change any by hand, then Save.')}</small></div>`;
+}
+function applyPreset(t, name, btn) {
+  const p = META[t] && META[t].PRESETS && META[t].PRESETS[name];
+  if (!p) return;
+  for (const el of app.querySelectorAll(`[data-tune="${t}"]`)) {
+    const v = p[el.dataset.k];
+    if (v === undefined || String(el.value) === String(v)) continue;
+    el.value = String(v); dirtyMark(el);
+  }
+  for (const b of app.querySelectorAll('[data-preset]')) { const on = b === btn; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }
 }
 // Save: the page's TUNE values (config/tune/<type>, the values that differ from the defaults alone) and its tuning card's
 // (config/<name>, the card's own shape), each written only where it changed; the mode rides the TUNE values.
@@ -1297,6 +1317,7 @@ app.addEventListener('click', e => {
   else if (b.dataset.act === 'save-keys') saveKeys();
   else if (b.dataset.testplay) testPlay(b.dataset.testplay);
   else if (b.dataset.gamesave) saveGame(b.dataset.gamesave, b);
+  else if (b.dataset.preset) applyPreset(b.dataset.pgame, b.dataset.preset, b);
   else if (b.dataset.tunereset) resetGame(b.dataset.tunereset, b);
   else if (b.dataset.airesets) resetAi(b);
   else if (b.dataset.animsave) saveAnimCfg(b, false);

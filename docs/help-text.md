@@ -354,6 +354,11 @@ Category: More brain
 Play: Take a seat at an empty table. You can see who's coming in next. If they sit across from you, you score.
 Win: Most customers seated across from you.
 
+## Shell Game [shell]
+Category: More skill
+Play: Watch the ball, then follow its cup as they shuffle. More cups each level.{goAgain}
+Win: Pick right {levels} times.
+
 ## Shelves [shelves]
 Category: More brain
 Play: Put a mark on a shelf. A grey mark lands somewhere after each move.

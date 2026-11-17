@@ -79,6 +79,7 @@ import * as sniffR from './sniff/rules.js'; import * as sniffA from './sniff/ai.
 import * as headcountR from './headcount/rules.js'; import * as headcountA from './headcount/ai.js'; import * as headcountM from './headcount/meta.js'; add('headcount', headcountR, headcountA, headcountM);
 import * as flashR from './flash/rules.js'; import * as flashA from './flash/ai.js'; import * as flashM from './flash/meta.js'; add('flash', flashR, flashA, flashM);
 import * as snapshotR from './snapshot/rules.js'; import * as snapshotA from './snapshot/ai.js'; import * as snapshotM from './snapshot/meta.js'; add('snapshot', snapshotR, snapshotA, snapshotM);
+import * as shellR from './shell/rules.js'; import * as shellA from './shell/ai.js'; import * as shellM from './shell/meta.js'; add('shell', shellR, shellA, shellM);
 import * as skyhopR from './skyhop/rules.js'; import * as skyhopA from './skyhop/ai.js'; import * as skyhopM from './skyhop/meta.js'; add('skyhop', skyhopR, skyhopA, skyhopM);
 import * as scoopR from './scoop/rules.js'; import * as scoopA from './scoop/ai.js'; import * as scoopM from './scoop/meta.js'; add('scoop', scoopR, scoopA, scoopM);
 import * as pinballR from './pinball/rules.js'; import * as pinballA from './pinball/ai.js'; import * as pinballM from './pinball/meta.js'; add('pinball', pinballR, pinballA, pinballM);

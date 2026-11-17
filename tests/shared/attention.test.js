@@ -62,14 +62,14 @@ test('attention games: the move\'s playback (someone else\'s round at full lengt
     const i = st.squares.findIndex(q => q.mini.type === type), r = st.squares[i].mini.round.X;
     E.playMove(st, i, E.attTruth(type, r), lcg(9));
     assert.deepEqual([st.flash.att.correct, st.flash.att.truth, st.flash.att.right.X], [true, E.attTruth(type, r), 1]);
-    assert.equal(E.playMs(st.flash), E.attMs(type, r) + E.ATT.pause + E.ATT.show, `${type}: the round, a pause, the result`);
+    assert.equal(E.playMs(st.flash), E.attMs(type, r) + E.ATT.pause + E.attShow(type), `${type}: the round, a pause, the result`);
     E.endFlash(st);
     st.timer = E.newTimer(60);
     const s0 = JSON.stringify(st.squares);
     assert.deepEqual([E.timeoutMove(st, lcg(10)), st.flash, JSON.stringify(st.squares) === s0], [{ ok: true, missed: 'O' }, null, true], 'no round started: the turn missed, nothing played');
     assert.equal(E.attStart(st, i, 'X').ok, true);
     const t = E.timeoutMove(st, lcg(10));
-    assert.equal(t.closed, true); assert.equal(st.flash.att.correct, false); assert.equal(E.playMs(st.flash), E.ATT.show, 'a round started and timed out: wrong, no round to replay');
+    assert.equal(t.closed, true); assert.equal(st.flash.att.correct, false); assert.equal(E.playMs(st.flash), E.attShow(type), 'a round started and timed out: wrong, no round to replay');
     // the computer against itself
     const m = E.newMatch(lcg(20), { games: [type] }), ra = lcg(30), rb = lcg(40); let n = 0;   // (one stream each: a fresh lcg's first draw is never below 0.23, so the computer would never hit a 20% chance)
     while (!m.winner && n++ < 600) { if (m.flash) E.endFlash(m); if (m.winner) break; const c = E.cpuMove(m, ra); const res = E.playMove(m, c.square, c.move, rb); assert.equal(res.ok, true, `${type}: ${JSON.stringify(c.move)}`); }
@@ -114,6 +114,7 @@ test('attention games online: a round is the server\'s until Start (the record s
       assert.equal(f.hidden, true, `${type}: ${p}'s round hidden`); assert.equal(f.level, 0);
       if (type === 'headcount') { assert.equal(f.t, mini.round[p].t, 'what to count shows (the screen says so before Start)'); assert.deepEqual(f.items, []); }
       else if (type === 'flash') { assert.deepEqual(f.items, []); assert.equal(f.q.text, ''); assert.equal(f.opts.length, mini.round[p].opts.length, 'as many options (the buttons\' places)'); assert.equal(f.ans, -1); }
+      else if (type === 'shell') assert.deepEqual(f, { level: 0, n: mini.round[p].n, hidden: true }, 'the cups in their row: never the ball\'s place, the seed or the shuffle\'s values');
       else { assert.deepEqual([f.c, f.r, f.cells, f.show, f.wait], [mini.round[p].c, mini.round[p].r, [], mini.round[p].show, mini.round[p].wait], 'the grid\'s size, no cells'); }
       assert.deepEqual(E.attFrame(type, f), f, 'a frame framed again is itself');
     }

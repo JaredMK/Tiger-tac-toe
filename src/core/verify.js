@@ -63,6 +63,7 @@ export function onlineCheck(mini, p, m, now, since) {
   if (ATT_TYPES.includes(type)) {
     if (started == null) return { why: 'start' };
     const r = mini.round && mini.round[p];
+    if (type === 'shell' && r && m !== 'auto' && now < started + attMs(type, r) - ATT.slackMs) return { why: 'fast' };   // (Shell Game: a pick before its shuffle has played: no page lets one be made)
     if (r && now > started + attMs(type, r) + (ATT.answerMs[type] || 15000) + ATT.slackMs) return { why: null, move: 'auto' };
     return null;
   }

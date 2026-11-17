@@ -71,7 +71,7 @@ function cpuMatch(me, squares, owners = []) {
 const tttOf = (...cells) => Object.assign(mini('ttt'), { cells: cells.map(c => c || null) });
 
 // ---- online match records: the public state and the secrets apart, moves applied to the pair ----
-const SECRET_KEYS = { wordle: 'word', hangman: 'word', hilo: 'target', bs: 'ship', hunt: 'treasure', memory: 'cards', mastermind: 'code' , trivia: 'answer', oddone: 'pos', patterns: 'answer', sniff: 'treasure', headcount: 'round', flash: 'round', snapshot: 'round', war: 'deck', wtiles: 'bag', duck: 'vals', t31: 'deck', rummy: 'deck', dominoes: 'pile', scratch: 'cards' };   // (round: an attention game's rounds are the server's until Start; the public state shows each as its frame)
+const SECRET_KEYS = { wordle: 'word', hangman: 'word', hilo: 'target', bs: 'ship', hunt: 'treasure', memory: 'cards', mastermind: 'code' , trivia: 'answer', oddone: 'pos', patterns: 'answer', sniff: 'treasure', headcount: 'round', flash: 'round', snapshot: 'round', shell: 'round', war: 'deck', wtiles: 'bag', duck: 'vals', t31: 'deck', rummy: 'deck', dominoes: 'pile', scratch: 'cards' };   // (round: an attention game's rounds are the server's until Start; the public state shows each as its frame)
 
 // ================================ Setup / match flow ================================
 test('setup: the app opens on the main menu with default names and every game ticked', () => {
@@ -80,7 +80,7 @@ test('setup: the app opens on the main menu with default names and every game ti
   assert.equal(st.screen, 'menu', 'the main menu comes first');
   assert.deepEqual(st.setup.names, { X: 'X', O: 'O' });
   assert.deepEqual(L.enabledGames(st.setup), L.TYPES);
-  assert.equal(L.TYPES.length, 69);
+  assert.equal(L.TYPES.length, 70);
   assert.ok(st.setup.games.coins && st.setup.games.pig && st.setup.games.hunt && st.setup.games.snakes && st.setup.games.bump, 'the newer games are on by default');
   assert.ok(st.setup.games.bj && st.setup.games.bus && st.setup.games.rl, 'and the card games and the wheel too');
   assert.ok(L.TEST_TYPES.every(t => st.setup.games[t] && L.TYPES.includes(t)), 'the games on test are in the pool and on by default (for the admin, who alone sees them)');
@@ -704,7 +704,7 @@ test('a match record keeps every secret out of the public state and puts it back
       assert.ok(rec.secrets[0], `${type}: a secret is kept`);
       if (type === 'hangman') assert.match(pub.word, /^_+$/, 'hangman shows only the length');
       else if (type === 'memory') assert.ok(pub.cards.every(c => c === null), 'no card is known');
-      else if (key === 'round') for (const p of ['X', 'O']) { const r = pub.round[p]; assert.equal(r.hidden, true, `${type}: ${p}'s round shows as its frame before Start`); assert.ok(!(r.items || []).length && !(r.cells || []).length && (r.ans == null || r.ans === -1), `${type}: nothing of the round itself`); }
+      else if (key === 'round') for (const p of ['X', 'O']) { const r = pub.round[p]; assert.equal(r.hidden, true, `${type}: ${p}'s round shows as its frame before Start`); assert.ok(!(r.items || []).length && !(r.cells || []).length && (r.ans == null || r.ans === -1) && r.ball === undefined && r.seed === undefined, `${type}: nothing of the round itself`); }
       else assert.ok(!(key in pub), `${type}: ${key} is not public`);
       if (type === 'hunt') assert.equal(pub.clues.length, 36);
     } else assert.equal(rec.secrets[0], undefined, `${type}: nothing to hide`);

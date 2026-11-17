@@ -44,7 +44,7 @@ test('registry: every game lists its settings (meta.js TUNE) for Mini-game Setti
     for (const f of T) {
       assert.match(f.k, /^[A-Za-z0-9_]{1,24}$/, `${t}: key ${f.k}`); assert.ok(!keys.has(f.k), `${t}: ${f.k} once`); keys.add(f.k);
       assert.ok(typeof f.label === 'string' && f.label.length > 2, `${t}.${f.k}: label`);
-      assert.ok(['Board', 'Rules', 'Timing', 'Computer'].includes(f.group), `${t}.${f.k}: group ${f.group}`);
+      assert.ok(['Board', 'Rules', 'Timing', 'Computer'].includes(f.group) || /^Level [1-5]$/.test(f.group), `${t}.${f.k}: group ${f.group}`);   // (Level N: a game with its own values per level, Shell Game)
       if (f.opts) assert.ok(f.opts.includes(f.def), `${t}.${f.k}: default among its choices`);
       else { assert.ok(f.min <= f.def && f.def <= f.max && f.step > 0, `${t}.${f.k}: default in range`); assert.equal(tuneValue(f, f.def), f.def, `${t}.${f.k}: default on its step`); }
     }

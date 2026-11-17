@@ -24,7 +24,8 @@ const { animMs } = await import('../../src/ui/fx.js');
 const { QUIZ } = await import('../../src/ui/quiz.js');
 const { ATT_T, attCellAt, attPre } = await import('../../src/ui/attention.js');
 const VIEWS = { headcount: await import('../../src/games/headcount/view.js'), flash: await import('../../src/games/flash/view.js'), snapshot: await import('../../src/games/snapshot/view.js') };
-for (const t of E.ATT_TYPES) GAMES[t].view = VIEWS[t];   // (the page registers the views in main.js; here by hand)
+const ATT3 = ['headcount', 'flash', 'snapshot'];   // (the three this file is about; Shell Game, the fourth attention game, has its own: tests/ui/shell.test.mjs)
+for (const t of ATT3) GAMES[t].view = VIEWS[t];   // (the page registers the views in main.js; here by hand)
 
 function match(type, turn = 'X') {
   Object.assign(state, E.newMatch(E.makeRng('att-' + type), { games: [type], vs: 'cpu' }), { screen: 'mini', zoom: 0, cpu: 'O', sc: null, flash: null, done: null, spot: null, winner: null, online: null, turn, lock: null });
@@ -42,7 +43,7 @@ test('motion is on here; someone else\'s answer goes in inside the pause before 
 });
 
 test('before Start: Start alone, in the mover\'s colour; nothing of the round on the page', () => {
-  for (const type of E.ATT_TYPES) {
+  for (const type of ATT3) {
     const m = match(type), html = renderMini(state.squares[0]);
     assert.deepEqual(acts(html).filter(a => a[2]), [['att-start', null, true]], `${type}: Start is the one control`);
     assert.match(html, /<button class="big X" data-act="att-start">Start<\/button>/, 'the same button, in the mover\'s colour');
@@ -124,7 +125,7 @@ test('Snapshot: this phone\'s cells stay as picked until the verdict; right cell
 });
 
 test('someone else\'s round plays first, then their answer goes in as they put it in, then the verdict', () => {
-  for (const type of E.ATT_TYPES) {
+  for (const type of ATT3) {
     const m = match(type, 'O'), r = m.round.O, len = E.attMs(type, r), truth = E.attTruth(type, r);
     assert.equal(E.playMove(state, 0, truth, E.makeRng('a')).ok, true);
     const f = state.flash, pre = attPre(f), T = pre + BEAT, html = renderMini(state.squares[0]);
@@ -160,7 +161,7 @@ test('someone else\'s round plays first, then their answer goes in as they put i
 });
 
 test('the winning answer: the pips hop once the point has landed, and the chime comes then on the mover\'s own phone too', () => {
-  for (const type of E.ATT_TYPES) {
+  for (const type of ATT3) {
     const m = match(type); m.right.X = 2;
     assert.equal(E.playMove(state, 0, E.attTruth(type, m.round.X), E.makeRng('a')).ok, true);
     const f = state.flash, html = renderMini(state.squares[0]);
@@ -173,7 +174,7 @@ test('the winning answer: the pips hop once the point has landed, and the chime 
 });
 
 test('a finished square, looked at later: the settled result, nothing animated', () => {
-  for (const type of E.ATT_TYPES) {
+  for (const type of ATT3) {
     const m = match(type); m.right.X = 2;
     assert.equal(E.playMove(state, 0, E.attTruth(type, m.round.X), E.makeRng('a')).ok, true);
     E.endFlash(state); state.flash = null; state.done = null;
@@ -184,7 +185,7 @@ test('a finished square, looked at later: the settled result, nothing animated',
 });
 
 test('a missed turn: no answer pressed, the right one shown', () => {
-  for (const type of E.ATT_TYPES) {
+  for (const type of ATT3) {
     match(type); state.timer = E.newTimer(60);
     assert.equal(E.attStart(state, 0, 'X').ok, true);
     assert.equal(E.timeoutMove(state, E.makeRng('t')).ok, true);

@@ -16,8 +16,10 @@ export function allowedTypes(releases, admin) { return admin ? TYPES.slice() : r
 // ball: pinball/rules.js pinReplayCheck), the attention games (the round is the server's until Start, the answer timed:
 // attention.js attentionHide, verify.js). Bullseye was held while a throw was where two sweeping lines were stopped
 // (the server cannot time a tap to better than a connection's slack); it is allowed again, the cheating risk accepted
-// (a phone can claim a better stop than it made: bullseye/rules.js). The list is empty.
-export const FIND_MATCH_HOLD = [];
+// (a phone can claim a better stop than it made: bullseye/rules.js). Held now: Shell Game (December 2026): its
+// round goes to the phone at Start with the ball's place and the shuffle's seed, so a changed page could work the
+// answer out; the server times the answer (verify.js) but cannot tell a watched pick from a computed one.
+export const FIND_MATCH_HOLD = ['shell'];
 export const findMatchTypes = types => types.filter(t => !FIND_MATCH_HOLD.includes(t));
 export function restrictGames(games, allowed) {
   if (!games || typeof games !== 'object') return games;

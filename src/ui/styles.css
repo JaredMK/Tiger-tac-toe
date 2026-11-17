@@ -3111,6 +3111,22 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .snstack > .snmsg { align-items: center; pointer-events: none; z-index: 1; }   /* the blank grid's words, over its middle (nothing moves) */
 .snmsg span { background: var(--panel); border: 3px solid var(--ink); border-radius: 999px; box-shadow: 0 3px 0 var(--ink); padding: 9px 16px 6px; font: 400 clamp(16px, 5vw, 21px)/1 'Luckiest Guy', 'Arial Black', sans-serif; text-align: center; max-width: 86%; }
 /* the grid sits in a tray (drawn round it, in the room the words' and the timer's rows give up: the grid and its cells keep their size) */
+/* Shell Game (games/shell/view.js): the table is a canvas, a button over each cup's place; the stage takes the room the tallies, the words and Start leave */
+.att-shell .atstage { flex: 1 1 auto; min-height: 0; align-items: center; }
+.shbox { position: relative; width: 100%; height: min(100%, clamp(150px, calc(var(--gh) - 196px), 300px)); min-height: 150px; touch-action: none; }
+.shbox .shcv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.shtaps { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(var(--n, 3), 1fr); padding: 0 calc(100% * .3 / (var(--n, 3) + .6)); }
+.shtap { appearance: none; -webkit-appearance: none; border: 0; background: none; padding: 0; margin: 0; min-width: 0; border-radius: 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.shtap:disabled { cursor: default; pointer-events: none; }
+.shbox.live .shtap:active { background: rgba(22, 18, 16, .08); }
+.shbox.live .shtap:focus-visible { outline: 3px solid var(--ink); outline-offset: -4px; }
+/* its miniature: the cups and the ball, each player's level as cups filling in */
+.tatt.shm { display: block; width: 100%; } .tatt.shm svg { width: 100%; }
+.tart.tshellw { gap: 3cqw; width: 94cqw; padding-right: 6cqw; box-sizing: border-box; } .tart.tshellw .tpic { width: 40cqw; } .tart.tshellw .tpip { gap: 5cqw; }   /* (clear of the leader's pip on the square's right edge) */
+.tshellw .tr { gap: 1.2cqw; } .tshellw .tr b { width: 8.5cqw; } .tshellw .tr u { display: block; flex: none; width: min(9.5cqw, calc(30cqw / var(--n, 3))); text-decoration: none; }
+.tshellw .tr u svg { display: block; width: 100%; height: auto; overflow: visible; }
+.tshellw .tr u path { fill: var(--paper); stroke: var(--ink); stroke-width: 1.7; stroke-linejoin: round; }
+.tshellw .tr.X u.on path { fill: var(--x); } .tshellw .tr.O u.on path { fill: var(--o); }
 .att-snapshot { gap: 5px; } .att-snapshot .atstage { padding: 8px 0 11px; } .att-snapshot .atwords { height: 40px; min-height: 40px; max-height: 40px; }
 .sngrid { position: relative; display: grid; gap: 5px; width: min(100%, 300px, max(120px, calc((var(--gh) - 222px) * var(--c) / var(--r)))); border-radius: 9px; box-shadow: 0 0 0 5px var(--panel-2), 0 0 0 8px var(--ink), 0 3px 0 8px var(--ink); }   /* as wide as the room for its rows allows */
 .snc { aspect-ratio: 1; border: 3px solid var(--ink); border-radius: 8px; background: #fff; padding: 0; position: relative; touch-action: manipulation; }

@@ -150,6 +150,23 @@ test('a game that is not a race game has no Mode switch; a game with a tuning ca
   for (const t of E.TYPES) { const h = draw(`#games/${t}`); assert.match(h, new RegExp(`data-gamesave="${t}"`), `${t}: Save`); assert.match(h, new RegExp(`data-tunereset="${t}"`)); assert.match(h, new RegExp(`data-rel="${t}"`)); assert.doesNotMatch(h, /undefined|NaN|\[object/, `${t}: nothing undrawn`); }
   for (const t of ['dash', 'lane', 'flap', 'chopper', 'bullseye', 'plinko', 'pig', 'roads', 'oddone', 'wheels', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball']) assert.ok(A.legacyPath(t), `${t}: a tuning card path`);
 });
+test('Shell Game\'s page: its settings by level, the difficulty presets (Gentle, Normal, Brutal: the one the page holds is lit), Save and Test play', async () => {
+  const { PRESETS } = await import('../../src/games/shell/meta.js');
+  A.ctl = ctl0();
+  let html = draw('#games/shell');
+  assert.match(html, /<div class="presets" role="group" aria-label="Difficulty presets">/);
+  assert.deepEqual([...html.matchAll(/data-preset="(\w+)" data-pgame="shell" aria-pressed="(\w+)"/g)].map(m => [m[1], m[2]]), [['Gentle', 'false'], ['Normal', 'true'], ['Brutal', 'false']], 'Normal is the defaults: lit');
+  for (const g of ['Rules', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Computer']) assert.ok(html.includes(`<h3>${g}</h3>`), `${g}: its own group`);
+  for (const k of ['levels', 'again', 'c1', 'ms1', 'sw1', 'pr1', 'far1', 'rp1', 'sh1', 'c5', 'ms5', 'ai1', 'ai5']) assert.ok(html.includes(`data-tune="shell" data-k="${k}"`), `${k}: a field`);
+  assert.match(html, /data-tune="shell" data-k="levels" min="1" max="5" step="1" value="3"/); assert.match(html, /data-tune="shell" data-k="c1" min="2" max="7" step="1" value="3"/); assert.match(html, /data-tune="shell" data-k="pr2" min="0" max="2" step="1" value="1"/);
+  assert.equal((html.match(/>Save</g) || []).length, 1); assert.equal((html.match(/>Test play</g) || []).length, 1);
+  A.ctl = Object.assign(ctl0(), { tune: { shell: PRESETS.Brutal } });
+  html = draw('#games/shell');
+  assert.deepEqual([...html.matchAll(/data-preset="(\w+)" data-pgame="shell" aria-pressed="(\w+)"/g)].map(m => m[2]), ['false', 'false', 'true'], 'Brutal saved: lit');
+  assert.match(html, /data-tune="shell" data-k="ms1" min="80" max="1200" step="5" value="255"/);
+  assert.doesNotMatch(draw('#games/flash'), /class="presets"/, 'a game without presets has no row');
+});
+
 test('the old hashes open the new pages: #settings and #releases the list, #settings/<type> the game\'s page', () => {
   A.ctl = ctl0();
   replaced.length = 0;

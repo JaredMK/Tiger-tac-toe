@@ -1,10 +1,12 @@
 // The attention-game framework (Headcount, Flash, Snapshot): Start locks the player in, three levels,
 // first to 3 correct; the shared table around each game's view.
-import { ATT, ATT_TYPES, attMs, attStart } from '../games/shared/attention.js';
+import { ATT, ATT_TYPES, attBeat, attGoal, attMs, attStart } from '../games/shared/attention.js';
 import { pipRows, thumbArt } from './thumbs.js';
 import { flashView } from '../games/flash/view.js';
 import { headView } from '../games/headcount/view.js';
 import { snapView } from '../games/snapshot/view.js';
+import { shellRoundSounds, shellView } from '../games/shell/view.js';
+import { SHELL } from '../games/shell/rules.js';
 import { SND } from '../audio/sound.js';
 import { FIREBASE_CONFIG, configured } from '../net/connect.js';
 import { dbStart } from '../net/moves.js';
@@ -65,8 +67,9 @@ function attArm(type, round) {
 }
 export function attTable(mini, a, o) {
   const type = mini.type, f = a && a.att ? a.att : null, l = mini.last, turn = o.turn, pre = f ? attPre(a) : 0;
-  const T = f ? pre + QUIZ.beat : null;                         // the verdict's moment into the move
-  const tal = p => arcTally(p, o, quizPips(p, Math.min(ATT.goal, mini.right[p]), ATT.goal, !!(f && f.correct && a.by === p), T, o.won));
+  const T = f ? pre + attBeat(type) : null;                     // the verdict's moment into the move (QUIZ.beat; Shell Game: its cup's tension first)
+  const goal = attGoal(mini);
+  const tal = p => arcTally(p, o, quizPips(p, Math.min(goal, mini.right[p]), goal, !!(f && f.correct && a.by === p), T, o.won));
   const shown = f || ((o.done || o.view) && l ? l : null);
   const mine = !o.view && !shown && !cpuTurn() && !remoteTurn();   // this phone's round to play (kept through a dropped connection or an answer on its way: still held to the square)
   const live = mine && !o.locked;                               // the controls answer only while this phone can send the move
@@ -81,13 +84,14 @@ export function attTable(mini, a, o) {
   if (started) attArm(type, round);
   const len = attMs(type, round), since = started ? Date.now() - attDraft.at : 0, playing = started && since < len, answering = started && !playing;
   const who = shown ? (f ? a.by : shown.by) || turn : turn;   // whose round is on the screen: its colour on the controls, the timer and the question's mark
-  const c = { o, f, shown, pre, T, fresh: !!f && !REDUCED, who, started, playing, answering, live, round, len, startPerf: started ? performance.now() - since : null };   // fresh: a move's verdict still to land (T into it)
-  const v = type === 'headcount' ? headView(c) : type === 'flash' ? flashView(c) : snapView(c);
+  const c = { o, f, a, shown, pre, T, fresh: !!f && !REDUCED, who, started, playing, answering, live, round, len, startPerf: started ? performance.now() - since : null };   // fresh: a move's verdict still to land (T into it)
+  const v = type === 'headcount' ? headView(c) : type === 'flash' ? flashView(c) : type === 'shell' ? shellView(c) : snapView(c);
   const W = p => `<b class="${p}">${N(p)}</b>`;
-  const truth = shown ? esc(v.say(shown.truth)) : '';
+  const truth = shown && !v.plain ? esc(v.say(shown.truth)) : '';   // (plain: the stage itself shows the right answer, Shell Game's cup lifting: the words say right or wrong alone)
   const named = !f || !ownMove(a);                              // someone else's round, or one looked at later: who it was (this phone's own, as it lands: the verdict alone)
   const two = (x, y) => `<span class="atr">${x}</span> <span class="atr">${y}</span>`;   // (the line's two halves: where it takes two lines, it breaks between them)
   const result = shown ? (shown.correct ? (type === 'headcount' ? two(named ? W(who) + ' got it right:' : 'Right!', truth) : named ? W(who) + ' got it right' : 'Right!')
+    : v.plain ? (named ? W(who) + (shown.answer == null ? ' ran out of time' : ' got it wrong') : shown.answer == null ? 'Out of time' : 'Not quite')
     : two(`${named ? W(who) + (shown.answer == null ? ' ran out of time' : ' got it wrong') : shown.answer == null ? 'Out of time' : 'Not quite'} ·`, `it was ${truth}`)) : '';
   // the words: one box, two lines tall, whatever it says (so nothing below it moves); a view may give them as HTML (Headcount: the creature's picture by its name); the phase's mark leads the line
   const vw = () => ATT_EYE + (v.watchHtml || esc(v.watch)), va = () => ATT_ASK + (v.askHtml || esc(v.ask));
@@ -96,7 +100,7 @@ export function attTable(mini, a, o) {
       : c.fresh ? `<span class="tu" style="--u:${T}ms">${shown.answer == null ? '' : va()}</span>${res}` : res)   // (this phone's own answer: the question stays the beat the verdict takes)
     : playing ? `<span class="atstack"${fxAttr(c.startPerf, 'rt')}><span class="tu" style="--u:${len - since}ms">${vw()}</span><span class="tf" style="--f:${len - since}ms">${va()}</span></span>`
     : answering ? `<span>${va()}</span>`
-    : mine ? `<span>Level ${round.level + 1} of 3${v.watch ? ' · ' + (v.watchHtml || esc(v.watch)) : ''}</span>`
+    : mine ? `<span>Level ${round.level + 1} of ${goal}${v.watch ? ' · ' + (v.watchHtml || esc(v.watch)) : ''}</span>`
     : o.view ? '' : `<span>${W(turn)}'s turn</span>`;   // (each in one span: the box is a grid, and a picture in the line stays in the line)
   const go = mine && !started, sub = type === 'snapshot' && answering;
   const btn = o.view ? '' : `<div class="cbtns one${go || sub ? '' : ' hold'}">${go ? `<button class="big ${turn}" data-act="att-start"${live && attStarting == null ? '' : ' disabled'}>Start</button>` : sub ? `<button class="big ${turn}" data-act="snap-submit"${live ? '' : ' disabled'}>Submit</button>` : '<button class="big" disabled tabindex="-1" aria-hidden="true">Start</button>'}</div>`;   // the row stays (hidden) so nothing moves; Start and Submit in the mover's colour
@@ -106,21 +110,23 @@ export function attTable(mini, a, o) {
 // The miniature: the game's emblem (each game's view passes its own: Flash's shapes, Headcount's ladybug, Snapshot's
 // grid; never a round's items), and both players' progress as pips (●●○).
 export function attentionMiniature(mini, final, art) {
-  const rows = pipRows(mini.right, ATT.goal), label = `X ${mini.right.X} and O ${mini.right.O} of ${ATT.goal}`;
+  const goal = attGoal(mini), rows = pipRows(mini.right, goal), label = `X ${mini.right.X} and O ${mini.right.O} of ${goal}`;
   return art ? thumbArt(art, rows, 'tattw', label) : `<div class="tpip" aria-label="${label}">${rows}</div>`;
 }
 export function attentionSounds(f, add, won, mini, last) {   // someone else's round: as it played (Start, the round's own sounds), their answer going in, then the verdict; this phone's own: the answer pressed in, the verdict
-  const pre = attPre(f), r = f.att && f.att.round, T = pre + QUIZ.beat;
+  const pre = attPre(f), r = f.att && f.att.round, T = pre + attBeat(f.type);
   if (pre && r) {
     const len = attMs(f.type, r), ans = f.att.answer;
     if (f.type === 'flash') { add('go', 0); r.items.forEach((_, i) => add('tickSoft', i * r.ms)); if (ans != null) add('tap', len + ATT_T.pick); }
+    else if (f.type === 'shell') { shellRoundSounds(r, add); if (ans != null) add('tap', len + ATT_T.pick); }
     else if (f.type === 'headcount') { add('go', 0); if (ans != null) { String(ans).split('').forEach((_, i) => add('key', len + ATT_T.type + i * ATT_T.step)); add('tap', len + ATT_T.send); } }
     else {
       add('reveal', 0); add('flipDown', r.show); for (let k = 1; k < Math.ceil((r.wait || 0) / 1000); k++) add('tickSoft', r.show + k * 1000); if (r.wait) add('go', r.show + r.wait);
       if (ans != null) { ans.forEach((_, i) => add('mark', len + attCellAt(i, ans.length))); add('tap', len + ATT_T.send); }
     }
   } else if (f.att && f.att.answer != null && ownMove(f)) add('tap', 0);   // this phone's own answer, pressed in (OK, the option, Submit)
-  if (f.att) { add(f.att.correct ? 'ding' : 'thud', T); if (f.att.correct && !REDUCED) add(...quizPoint(T)); }   // the verdict: the tick or the cross; a right one's point landing on its pip
+  if (f.att && f.type === 'shell') { if (f.att.answer != null && !REDUCED) add('shTense', Math.max(0, T - SHELL.tense)); add('shLift', T); if (f.att.correct) add('sparkle', T + SHELL.open - 80); }   // Shell Game: the roll under the picked cup, its lift, the ball found
+  if (f.att) { add(f.att.correct ? 'ding' : 'thud', T + (f.type === 'shell' ? SHELL.open - 120 : 0)); if (f.att.correct && !REDUCED) add(...quizPoint(T)); }   // the verdict: the tick or the cross; a right one's point landing on its pip
   return;
 }
 // Someone else's picked cells go in one after the other (Snapshot): the i-th of n, ms after their round has played.
@@ -151,7 +157,8 @@ export async function attStartAct(el, e, act) {
   attStart(state, i, p, Date.now());                          // held to the square here too (online, the server's hold and clock came first; a timeout then answers this round, wrong)
   if (!state.online) save();
   const len = attMs(type, r) / 1000;
-  if (type === 'headcount') { SND.play('go'); SND.play('reveal', { at: len }); }
+  if (type === 'shell') shellRoundSounds(r, (n, ms, rate) => SND.play(n, { at: ms / 1000, rate }));   // the cup up and down, each swap's whoosh (faster as the tempo rises), the cups settling
+  else if (type === 'headcount') { SND.play('go'); SND.play('reveal', { at: len }); }
   else if (type === 'flash') { SND.play('go'); r.items.forEach((_, i) => SND.play('tickSoft', { at: (i * r.ms) / 1000 })); SND.play('reveal', { at: len }); }
   else { SND.play('reveal'); SND.play('flipDown', { at: r.show / 1000 }); for (let k = 1; k < Math.ceil((r.wait || 0) / 1000); k++) SND.play('tickSoft', { at: r.show / 1000 + k }); if (r.wait) SND.play('go', { at: len }); }   // the pattern, the grid blank (each second of the countdown), then the taps
   render();
