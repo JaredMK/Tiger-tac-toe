@@ -16,6 +16,9 @@ const check = (ok, what) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`); if
 
 // A match against the computer (production, and staging while its access is Open: Allowlist lets only its testers past the gate): Play Computer, Start, a move of
 // ours in an open square, then the computer's reply played out and the turn back with us, no page error.
+// This browser's device id, always the same one: scripts/set-releases.js (own4) marks it as an owner device in both projects,
+// so the deploy's own opens and its match against the computer are left out of every number on the admin's page.
+const SMOKE_DEV = () => { try { localStorage.setItem('tiger-tac-toe.v4.dev', 'dsmoke-deploy-check-0001'); } catch (e) { /* (none) */ } };
 async function cpuMatch(ctx) {
   const cpu = await ctx.newPage(), perr = [];
   cpu.on('pageerror', e => perr.push(String(e.message).slice(0, 160)));
@@ -84,6 +87,7 @@ async function main() {
   await ctx.addInitScript(() => { try { localStorage.setItem('tiger-tac-toe.v4.onboard', JSON.stringify({ done: true, quiet: true, n: 9, speed: true })); } catch (e) { /* (none) */ } });   // (no first-visit menu, tips or offers: src/ui/onboard.js ONBOARD_QUIET)
   const csp = [], loaded = [];
   // every page and frame reports its own violations (and the console says so too): all of them counted
+  await ctx.addInitScript(SMOKE_DEV);
   await ctx.addInitScript(() => document.addEventListener('securitypolicyviolation', e => console.error(`[csp] ${e.violatedDirective} blocked ${e.blockedURI || '(inline)'}`)));
   const watch = p => {
     p.on('console', m => { const t = m.text(); if (/^\[csp\]|Content Security Policy|Refused to (load|frame|connect|execute|apply)/i.test(t)) csp.push(`${new URL(p.url() || SITE).pathname}: ${t.slice(0, 220)}`); });
@@ -128,6 +132,7 @@ async function main() {
   // (a browser of its own: the join it opens is kept on the device, and the next page there would open on the Join screen,
   // not the menu the match against the computer starts from)
   const ictx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ictx.addInitScript(SMOKE_DEV);
   try { await inviteCheck(ictx); } catch (e) { check(false, `the invite check stopped: ${String(e && e.message || e).split('\n')[0]}`); }
   await ictx.close().catch(() => {});
   // staging Open (the admin's Staging access, config/staging/mode): an outsider plays it as production's players do, so the

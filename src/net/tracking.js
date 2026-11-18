@@ -83,18 +83,20 @@ export async function flushOutbox() {
 const localMode = () => (state.sc ? 'chaos' : state.cpu === 'XO' ? 'cvc' : state.cpu ? 'cpu' : 'local');   // (Super Chaos: a mode of its own)
 // A practice match (How to Play's Practice, state.practice) is never counted: no start or end report, no local record or
 // history (reportLocal), no playtest event (devMatch).
+// Against the computer, the side this phone's player has (so the admin's page can say who won); on one phone, both: none.
+const humanSide = () => (localMode() === 'cpu' ? (state.cpu === 'X' ? 'O' : 'X') : undefined);
 export function trackStart() {
   if (state.online || state.practice) return;
   const id = Array.from(crypto.getRandomValues(new Uint8Array(10)), b => b.toString(16).padStart(2, '0')).join('');
   state.stats = { id, mode: localMode(), sent: false };
-  track({ ev: 'start', mode: state.stats.mode, id });
+  track({ ev: 'start', mode: state.stats.mode, id, side: humanSide() });
 }
 export function trackEnd() {
   const s = state.stats;
   if (!s || s.sent || !state.winner || state.online || state.practice) return;
   s.sent = true;
   const m = matchStats(state);
-  track({ ev: 'end', mode: s.mode, id: s.id, turns: m.turns, winner: m.winner, reason: m.reason, sc: m.sc, squares: m.squares });
+  track({ ev: 'end', mode: s.mode, id: s.id, side: humanSide(), turns: m.turns, winner: m.winner, reason: m.reason, sc: m.sc, squares: m.squares });
 }
 // ----- playtest activity, no account needed: this device's app opens and its matches (started, then
 // finished or left), for the admin's playtest page. The device is the random id above, kept in this

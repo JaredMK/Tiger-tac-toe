@@ -222,12 +222,15 @@ const sidesOf = cur => ({ X: parse(cur && cur.sides && cur.sides.X), O: parse(cu
 const packSides = sides => ({ X: JSON.stringify((sides && sides.X) || {}), O: JSON.stringify((sides && sides.O) || {}) });
 
 /* ===================== stats ===================== */
-// Counts to add, as one atomic multi-path update of increments (merged into `into` when given). own: an owner device's or an
-// admin's (statsRules.js metaFor: devmeta/, the admin's own devices; any match with an admin account or an owner device in
-// it): filed under statsOwn/ with the same shape, left out of every number on the dashboard until its "Include my devices".
-function statsUp(counts, into, own) {
-  const up = into || {}, root = own ? 'statsOwn/' : 'stats/';
-  for (const [k, n] of Object.entries(counts)) up[root + k] = ServerValue.increment(n);
+// Play is kept as rows (statsRules.js: mfacts/{day}/{id} a match, finds/{day}/{id} a Find Match search, devices/ and
+// devlog/ a device and its events): the admin dashboard counts over them (src/admin/metrics.js). No counters are kept.
+const factPath = (t0, id) => `mfacts/${S.periodKeys(t0).d}/${id}`;
+const factSafe = p => p.catch(e => logger.error('match row', e));
+// A match's row gains what its end adds (statsRules.js factEnd), as paths for a multi-path update.
+function factEndPaths(t0, id, sum, ms, t, own, up) {
+  up = up || {};
+  for (const [k, v] of Object.entries(S.factEnd(sum, ms, t))) up[`${factPath(t0, id)}/${k}`] = v;
+  if (own) up[`${factPath(t0, id)}/own`] = true;
   return up;
 }
 // ----- owner devices (devmeta/: statsRules.js metaFor) -----
@@ -256,20 +259,11 @@ async function markOwner(h, why) {
   }, undefined, false);
   metaAt = 0;
 }
-// Players active today, this week and this month: each counted once per period (by a hash only). An
-// account's own last activity (lastSeen/{uid}, for the admin's Accounts table) moves on too.
-async function markActive(ids, t, own) {
-  const k = S.periodKeys(t), up = {}, seen = {};
+// An account's own last activity (lastSeen/{uid}) moves on.
+async function seenNow(ids, t) {
+  const seen = {};
   for (const id of new Set(ids.filter(x => typeof x === 'string' && x.startsWith('u:')))) seen[`lastSeen/${id.slice(2)}`] = t;
   if (Object.keys(seen).length) await db.ref().update(seen);
-  for (const id of new Set(ids.filter(Boolean))) {
-    const h = S.hashId((own ? 'o:' : '') + id);                    // (the owner's activity counted apart: statsOwn/)
-    for (const p of ['d', 'w', 'm', 'a']) {                          // (a: all time, each player counted once ever)
-      const r = await db.ref(`statsSeen/${p}/${k[p]}/${h}`).transaction(cur => (cur ? undefined : true), undefined, false);
-      if (r.committed) { const path = `${S.PERIOD_PATH(p, k[p])}/active`; up[path] = (up[path] || 0) + 1; }
-    }
-  }
-  if (Object.keys(up).length) await db.ref().update(statsUp(up, null, own));
 }
 // A match counted once: statsSeen/match/{id} holds its start time and whether its start and end were counted.
 async function claimMatch(id, field, t) {
@@ -323,29 +317,30 @@ exports.track = onCall(CALL, async req => {
   const uid = needUid(req), d = req.data || {}, t = now();
   if (!(await rateOk('track', uid, TRACK_PER_MIN))) throw new HttpsError('resource-exhausted', 'Too many reports.');
   const who = !isAnon(req) ? 'u:' + req.auth.uid : S.idOk(d.dev) ? 'd:' + d.dev : null;
-  const own = !!(req.auth.token && req.auth.token.admin === true) || (S.idOk(d.dev) && await ownerDev(S.devHash(d.dev)));   // the owner's (an admin, or an owner device): statsOwn/
+  const h = S.idOk(d.dev) ? S.devHash(d.dev) : null, cl = clientOf(req);
+  const own = !!(req.auth.token && req.auth.token.admin === true) || (!!h && await ownerDev(h));   // the owner's (an admin, or an owner device): its match rows are marked
   if (d.ev === 'login') {
     if (isAnon(req)) return { ok: false };
-    await db.ref().update(statsUp(S.periodUpdates('logins', t), null, own));
-    await markActive([who], t, own);
+    if (h) await db.ref(`devlog/${h}/n${t.toString(36)}`).set({ t, ev: 'login' }).catch(() => {});   // (a sign-in, with the device's events)
+    await seenNow([who], t);
     return { ok: true };
   }
   if (!S.CLIENT_MODES.includes(d.mode) || !S.idOk(d.id)) throw new HttpsError('invalid-argument', 'Not a match.');
   const id = 'l_' + d.id;
+  const me = [{ s: d.mode === 'cpu' ? d.side : undefined, u: isAnon(req) ? undefined : req.auth.uid, h, pl: cl.p, cv: cl.v }];   // the one phone it is played on (against the computer: its player's side)
+  const start = t0 => S.factStart(d.mode, t0, me, { timer: 'none', own, sc: d.mode === 'chaos' });
   if (d.ev === 'start') {
     if (!(await claimMatch(id, 's', t))) return { ok: true, seen: true };
-    await db.ref().update(statsUp(S.startUpdates(d.mode, t), null, own));
+    await db.ref(factPath(t, id)).update(start(t));
   } else if (d.ev === 'end') {
     const sum = S.checkEnd(d, E.TYPES.concat(E.OLD_TYPES));         // a match from before may still hold a Dice race
     if (!sum) throw new HttpsError('invalid-argument', 'Not a match.');
     const c = await claimMatch(id, 'e', t);
     if (!c) return { ok: true, seen: true };
-    const started = !!(c.prev && c.prev.s), ms = started ? t - c.prev.t0 : Number(d.ms);
-    const up = statsUp(S.endUpdates(d.mode, sum, ms, t, !started, testTypesOf(await releasesNow())), null, own);   // a start never reported counts now
-    statsUp(S.balanceUpdates(d.mode, sum, ms, t, { admin: !!(req.auth.token && req.auth.token.admin === true), timer: 'none' }), up, own);   // (the Balance report: by settings version, an admin's own matches apart)
-    await db.ref().update(up);
+    const started = !!(c.prev && c.prev.s), ms = started ? t - c.prev.t0 : Number(d.ms), t0 = started ? c.prev.t0 : t - (Number.isFinite(ms) && ms > 0 && ms <= S.MAX_MS ? ms : 0);
+    await db.ref(factPath(t0, id)).update(Object.assign(started ? {} : start(t0), S.factEnd(sum, ms, t), own ? { own: true } : {}));   // (a start never reported: its row is made now)
   } else throw new HttpsError('invalid-argument', 'Not an event.');
-  await markActive([who], t, own);
+  await seenNow([who], t);
   return { ok: true };
 });
 
@@ -362,7 +357,6 @@ exports.devlog = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async r
   if (adminCall && !S.metaFor(await devMeta(), c.h)) await markOwner(c.h, 'admin');   // a device signed in to an admin account: the owner's, for good (logged out or a guest later)
   await db.ref(`lastDev/${uid}`).set(c.h).catch(() => {});        // the device this account (or guest) was last seen on: its matches are the owner's when it is
   if (c.ev.ev === 'mlog') { await clientLog(c, t); return { ok: true }; }   // (for the match's log only, not the device's)
-  const own = adminCall || await ownerDev(c.h);                   // the owner's events: statsOwn/ (the health, the funnel, retention, events, sources)
   const seen = (await db.ref(`devices/${c.h}/n`).get()).val();
   if (seen >= DEV_CAP) return { ok: false };
   if (seen == null) {                                             // a device never seen: so many new ones a day, no more (a loop making up ids stops here)
@@ -373,20 +367,15 @@ exports.devlog = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async r
   }
   const tx = await db.ref(`devlog/${c.h}/${c.k}`).transaction(cur => (cur ? undefined : c.ev), undefined, false);
   if (!tx.committed) return { ok: true, seen: true };          // sent before (a retry or a reload)
-  const hu = S.healthUpdates(c, t);                              // opens and errors per day, by build and platform (the admin's Overview)
-  if (Object.keys(hu).length) await db.ref().update(statsUp(hu, null, own)).catch(e => logger.error('stats', e));
   await clientLog(c, t);
-  let grow = {};
   await db.ref(`devices/${c.h}`).transaction(cur => {
-    const d = cur || {}, isNew = !cur || !cur.first;
+    const d = cur || {};
     d.first = Math.min(d.first || t, t); d.last = Math.max(d.last || 0, t); d.n = (d.n || 0) + 1;
-    grow = S.growthMarks(d, c, t, isNew);                         // the funnel, retention and events (statsRules.js): marks on the device, counts to add (the committed run's)
     if (!d.tag && c.tag) d.tag = c.tag;
     if (c.ev.p) { d.p = c.ev.p; d.cv = c.ev.cv || null; }        // the client it last opened (web or ios, its version)
     if (!isAnon(req) && (!d.u || d.u[uid] || Object.keys(d.u).length < 20)) d.u = Object.assign({}, d.u || {}, { [uid]: t });   // the accounts signed in on it (the Devices page's usernames; at most 20)
     return d;
   }, undefined, false);
-  if (Object.keys(grow).length) await db.ref().update(statsUp(grow, null, own)).catch(e => logger.error('stats', e));
   if (!isAnon(req)) await db.ref(`lastSeen/${req.auth.uid}`).set(t);
   return { ok: true };
 });
@@ -457,7 +446,6 @@ exports.claimUsername = onCall(CALL, async req => {
   }, undefined, false);
   if (!made.committed) { await db.ref(`usernames/${lower}`).remove(); return { ok: false, reason: 'You already have a username' }; }
   await syncProfile(uid);
-  await db.ref().update(statsUp(Object.assign(S.periodUpdates('newAccounts', now()), src ? { [`sources/${src}/signups`]: 1 } : {}), null, await ownerUid(uid))).catch(e => logger.error('stats', e));
   return { ok: true, username: name };
 });
 
@@ -511,7 +499,6 @@ exports.deleteAccount = onCall(CALL, async req => {
   for (const key of ALL_QUEUES()) up[`queue/${key}/${uid}`] = null;
   for (const node of ['users', 'profiles', 'history', 'oppStats', 'localStats', 'localHistory', 'lastSeen', 'active', 'leaderboard', 'prefs', 'templates', 'skill']) up[`${node}/${uid}`] = null;   // (skill: the hidden rating)   // (templates: the admin's game templates go with the account)
   up[`review/flaggedNames/names/${uid}`] = null;
-  statsUp(S.periodUpdates('deletedAccounts', t), up);
   await db.ref().update(up);
   await admin.auth().deleteUser(uid).catch(e => { if (e.code !== 'auth/user-not-found') throw e; });
   logger.info('account deleted', { h: S.hashId('u:' + uid) });
@@ -564,7 +551,7 @@ exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async
       q[a] = Object.assign(q[a], { game: id, side: xFirst ? 'X' : 'O', vs: b, at: t });
       q[b] = Object.assign(q[b], { game: id, side: xFirst ? 'O' : 'X', vs: a, at: t });
       made.push({ id, a, b });
-      waits.push(['people', t - q[a].since], ['people', t - q[b].since]);
+      waits.push(['people', t - q[a].since, a], ['people', t - q[b].since, b]);
     }
     if (!q[uid].game) {
       alone = !Object.entries(q).some(([u, e]) => u !== uid && e && !e.game);
@@ -572,7 +559,7 @@ exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async
         const bot = free[crypto.randomInt(free.length)], id = db.ref('games').push().key;
         q[uid] = Object.assign(q[uid], { game: id, side: crypto.randomInt(2) === 0 ? 'X' : 'O', vs: bot.uid, at: t });
         botGame = { id, bot };
-        waits.push(['bot', t - q[uid].since]);
+        waits.push(['bot', t - q[uid].since, uid]);
       }
     }
     entry = Object.assign({}, q[uid]);
@@ -583,7 +570,11 @@ exports.findMatch = onCall(Object.assign({ secrets: BOUND_SECRETS }, HOT), async
     const act2 = await activeGame(uid);
     return act2 ? matchedOf(act2) : { status: 'searching' };
   }
-  if (waits.length) { const fu = {}; for (const [k, ms] of waits) for (const [p, n] of Object.entries(S.findUpdates(k, ms, now()))) fu[p] = (fu[p] || 0) + n; await db.ref().update(statsUp(fu, null, await ownerUid(uid))).catch(e => logger.error('stats', e)); }   // Find Match's waits and the bot fill rate (statsRules.js findUpdates)
+  if (waits.length) {                                             // Find Match's waits and the computer's fill rate: a row per search ended (statsRules.js factFind)
+    const fu = {}, day = S.periodKeys(now()).d;
+    for (const [k, ms, who] of waits) fu[`finds/${day}/${db.ref().push().key}`] = S.factFind(k, ms, now(), who, await ownerUid(who).catch(() => false));
+    await db.ref().update(fu).catch(e => logger.error('find row', e));
+  }
   for (const p of made) await createGame(key, p.id).catch(e => logger.error('createGame', p.id, e));
   if (botGame) await createBotGame(key, uid, botGame.id, botGame.bot).catch(e => logger.error('createBotGame', botGame.id, e));
   if (!mine) {
@@ -604,7 +595,7 @@ exports.cancelSearch = onCall(CALL, async req => {
       return null;
     }, undefined, false);
   }
-  if (!game && since != null) await db.ref().update(statsUp(S.findUpdates('cancel', now() - since, now()), null, await ownerUid(uid))).catch(e => logger.error('stats', e));
+  if (!game && since != null) await db.ref(`finds/${S.periodKeys(now()).d}`).push(S.factFind('cancel', now() - since, now(), uid, await ownerUid(uid).catch(() => false))).catch(e => logger.error('find row', e));
   return game ? Object.assign({ status: 'matched' }, game) : { status: 'cancelled' };
 });
 // Find Match is on only while the admin page has switched it on (features/findMatch true); missing means off.
@@ -765,15 +756,18 @@ async function makeGame(key, id, X, O, opts) {
       bgNew = { bot: bot.uid, key: bot.key, side, human, live: true, created: t };
       up[`botGames/${id}`] = bgNew;
       up[`gpresence/${id}/${side}`] = { online: true, away: false, at: t };
-      up['botStats/started'] = ServerValue.increment(1);
     }
     if (Object.keys(up).length) await db.ref().update(up);
     const lmode = bot ? 'bot' : friend ? (Q.chaos ? 'friend-sc' : 'friend') : 'match';
     await mlogSafe(ML.mmKey(id), [{ t, k: 'start', mode: lmode, queue: friend ? undefined : key, timer: Q.timer, games: rec.state.squares.map(q => q.mini.type).join(' '), bot: bot ? bot.key : undefined, src: 'srv' }],
       Object.assign({ srv: true, mode: lmode, players: { X: { name: X.e.name, uid: X.uid }, O: { name: O.e.name, uid: O.uid } } }, friend ? { room: friend.code } : {}));
-    const own = await anyOwner([X, O].filter(p => !bot || p.uid !== bot.uid).map(p => p.uid)).catch(() => false);   // a match with the owner in it (an admin, or an owner device): statsOwn/
-    await db.ref().update(statsUp(Object.assign(S.startUpdates(bot ? 'bot' : Q.mode, t), Q.chaos ? {} : S.timerStartUpdates(E.timerSpec(Q.timer))), null, own)).catch(e => logger.error('stats', e));
-    await markActive([X, O].filter(p => (!bot || p.uid !== bot.uid) && (!friend || p.account)).map(p => 'u:' + p.uid), t, own).catch(e => logger.error('stats', e));
+    const own = await anyOwner([X, O].filter(p => !bot || p.uid !== bot.uid).map(p => p.uid)).catch(() => false);   // a match with the owner in it (an admin, or an owner device)
+    const who = await Promise.all([['X', X], ['O', O]].map(async ([sd, p]) => {
+      const isBot = !!(bot && p.uid === bot.uid), cl = isBot ? {} : E.normClient(p.e.client);
+      return { s: sd, u: p.uid, bot: isBot, pl: cl.p, cv: cl.v, h: isBot ? undefined : (await db.ref(`lastDev/${p.uid}`).get().then(v => v.val(), () => null)) || undefined };
+    }));
+    await factSafe(db.ref(factPath(t, id)).update(S.factStart(bot ? 'bot' : Q.mode, t, who, { timer: Q.chaos ? 'none' : E.timerSpec(Q.timer), own, sc: !!Q.chaos, room: friend ? friend.code : undefined })));   // the match's row (statsRules.js)
+    await seenNow([X, O].filter(p => (!bot || p.uid !== bot.uid) && (!friend || p.account)).map(p => 'u:' + p.uid), t).catch(e => logger.error('seen', e));
     if (bgNew) await (Q.chaos ? planScBot(id, rec.state.sc.round, bgNew, t + MATCH_GRACE_MS) : planBot(id, rec.state, rec.secrets, bgNew, t + MATCH_GRACE_MS, false)).catch(e => logger.error('bot plan', id, e));
   }
   return made.committed;
@@ -1311,21 +1305,15 @@ async function finishGame(id) {
   up[`games/${id}/pub/recorded`] = { at: now(), done: true };
   up[`games/${id}/dl`] = null;
   const humans = ['X', 'O'].filter(s => !(bg && pub.players[s].uid === bg.bot)).map(s => pub.players[s].uid);
-  const own = await anyOwner(humans).catch(() => false);           // a match with the owner in it (an admin account or an owner device): statsOwn/, every number of it
-  statsUp(S.endUpdates(bg ? 'bot' : pub.mode, E.matchStats(st), t - (pub.created || t), t, false, testTypesOf(await releasesNow())), up, own);
-  if (!pub.chaos) statsUp(S.timerEndUpdates(pub.clock || E.timerSpec(pub.timer), E.matchStats(st), t - (pub.created || t)), up, own);   // (by timer: a time per turn against a match clock)
-  if (!pub.chaos) {                                                // the Balance report (by settings version; a match with an admin in it apart)
-    const adm = (await Promise.all(humans.map(isAdminUser))).some(Boolean);
-    statsUp(S.balanceUpdates(bg ? 'bot' : pub.mode, E.matchStats(st), t - (pub.created || t), t, { admin: adm, timer: pub.clock || E.timerSpec(pub.timer) }), up, own);
-  }
+  const own = await anyOwner(humans).catch(() => false);           // a match with the owner in it (an admin account or an owner device): marked on its row
+  factEndPaths(pub.created || t, id, E.matchStats(st), t - (pub.created || t), t, own, up);   // the match's row: its result, length and squares
+  up[`${factPath(pub.created || t, id)}/t0`] = pub.created || t; up[`${factPath(pub.created || t, id)}/m`] = bg ? 'bot' : pub.mode;   // (as its start wrote them: a match under way when rows began still has a whole row)
   if (bg) {
     Object.assign(up, { [`botGames/${id}/live`]: null, [`botGames/${id}/next`]: null, [`botGames/${id}/done`]: true, [`botGames/${id}/winner`]: st.winner || null });
-    up['botStats/finished'] = ServerValue.increment(1);
-    up[`botStats/${st.winner !== 'X' && st.winner !== 'O' ? 'draws' : st.winner === bg.side ? 'botWins' : 'playerWins'}`] = ServerValue.increment(1);
   }
   await db.ref().update(up);                                   // all of it at once: both ratings, records, leaderboard, history, stats
   for (const s of ['X', 'O']) if (named[s]) await syncProfile(pub.players[s].uid);   // the public profiles, with the new records
-  await markActive(['X', 'O'].filter(s => (!bg || pub.players[s].uid !== bg.bot) && (!friend || named[s])).map(s => 'u:' + pub.players[s].uid), t, own).catch(e => logger.error('stats', e));
+  await seenNow(['X', 'O'].filter(s => (!bg || pub.players[s].uid !== bg.bot) && (!friend || named[s])).map(s => 'u:' + pub.players[s].uid), t).catch(e => logger.error('seen', e));
   return true;
 }
 // The final state with every hidden value revealed, for history and the review board.
@@ -1597,16 +1585,19 @@ async function pruneRetained(t, up) {
   for (const key of Object.keys(repDays)) { up[`reportsDay/${key}`] = null; n++; }
   return n;
 }
-// What the stats have seen, once it can no longer matter: matches after three days, players once their
-// day, week or month is well over (the counts stay).
+// What can go: which local matches have been seen (their start and end each written once: claimMatch) after three days,
+// and the dashboard's rows past 90 days.
 async function pruneSeen(t, up) {
   const D = 86400000;
   const old = (await db.ref('statsSeen/match').orderByChild('t0').startAt(1).endAt(t - 3 * D).limitToFirst(200).get()).val() || {};
   for (const id of Object.keys(old)) up[`statsSeen/match/${id}`] = null;
-  if (new Date(t).getUTCMinutes() !== 7) return;               // the periods: once an hour is plenty, and no reading needed
-  for (let k = 4; k <= 9; k++) up[`statsSeen/d/${S.periodKeys(t - k * D).d}`] = null;          // days gone by
-  for (const k of [21, 28, 35, 42]) up[`statsSeen/w/${S.periodKeys(t - k * D).w}`] = null;    // weeks
-  for (const k of [62, 93]) up[`statsSeen/m/${S.periodKeys(t - k * D).m}`] = null;            // months
+  if (new Date(t).getUTCMinutes() !== 7 && process.env.FUNCTIONS_EMULATOR !== 'true') return;   // (once an hour is plenty; the emulator's tests: every sweep)
+  // the rows kept for the dashboard (mfacts/{day}, finds/{day}): 90 days, as the devices' events (a day or two a sweep)
+  const cut = S.periodKeys(t - RETAIN_MS).d;
+  for (const node of ['mfacts', 'finds']) {
+    const days = (await db.ref(node).orderByKey().endAt(cut).limitToFirst(2).get()).val() || {};
+    for (const day of Object.keys(days)) up[`${node}/${day}`] = null;
+  }
 }
 exports.sweep = onSchedule({ schedule: 'every 1 minutes', timeZone: 'Etc/UTC', retryCount: 0 }, async () => {
   const r = await sweep();

@@ -287,7 +287,10 @@
     "stats": {
       ".read": "auth != null && auth.token.admin === true"
     },
-    "statsOwn": {
+    "mfacts": {
+      ".read": "auth != null && auth.token.admin === true"
+    },
+    "finds": {
       ".read": "auth != null && auth.token.admin === true"
     },
     "devmeta": {

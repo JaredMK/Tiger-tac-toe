@@ -202,7 +202,7 @@ settings, `scripts/smoke-browser.js` the web's Google window), so do it by hand,
 - [ ] Log out, then in again with each; close and reopen the app: still logged in
 - [ ] Cancel each sheet: no message at all
 - [ ] Any failure: the message names the way and an **Error code**; the full error is in Safari → Develop → [the
-      simulator or phone] → the app → Console (`[login]` lines) and on the admin's Playtest page (the device's `login`
+      simulator or phone] → the app → Console (`[login]` lines) and on the admin's Players page, the device's player, Errors (the device's `login`
       errors). `not-enabled` = the plist was not built in; `auth/operation-not-allowed` = the provider is off in Firebase
       (`docs/login-setup.md`); `1000` = the Apple capability is missing or the device has no Apple ID signed in.
 

@@ -42,6 +42,7 @@ const CONFIG_SETS = [
   { id: 'own1', path: 'devmeta/0200d915', value: () => ({ nick: "Jared's computer", ex: true, why: 'set', at: Date.now() }) },
   { id: 'own2', path: 'devmeta/70fa84f0', value: () => ({ nick: "Jared's phone", ex: true, why: 'set', at: Date.now() }) },
   { id: 'own3', path: 'devmeta/e35cefb7', value: () => ({ nick: "Jared's work phone", ex: true, why: 'set', at: Date.now() }) },
+  { id: 'own4', path: 'devmeta/3c55bc1987e7b19109e7', value: () => ({ nick: 'Deploy check (automated)', ex: true, why: 'set', at: Date.now() }) },   // scripts/smoke-browser.js SMOKE_DEV: the browser the deploys check the live site with
 ];
 const ENV = process.env.TARGET || (PROJECT === 'tic-tac-chaos' ? 'production' : 'staging');   // (a set with env: that environment alone)
 (async () => {

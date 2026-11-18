@@ -213,13 +213,11 @@ test('deleting an account: refused in a match (Find Match or a friend room); the
   assert.ok(await until(() => get(`profiles/${a.uid}`), 10000, 'the profile')); assert.ok(await get(`lastSeen/${a.uid}`));
   assert.equal(await get('usernames/gone_a'), a.uid);
   const lobby = await openRoom(a, { games: { ttt: true }, timer: 0 });              // a lobby left open: it goes with the host
-  const before = (await get(`stats/${S.PERIOD_PATH('a')}/deletedAccounts`)) || 0;
   assert.deepEqual(await a.call('deleteAccount', {}), { ok: true });
   for (const node of ['users', 'profiles', 'history', 'oppStats', 'localStats', 'localHistory', 'lastSeen', 'active', 'leaderboard', 'queue/match']) assert.equal(await get(`${node}/${a.uid}`), null, node);
   assert.equal(await get('usernames/gone_a'), null, 'the username is free');
   assert.equal(await get(`rooms/${lobby}`), null, "the host's lobby");
   assert.equal(await authUser(a.uid), null, 'the login is gone');
-  assert.equal(await get(`stats/${S.PERIOD_PATH('a')}/deletedAccounts`), before + 1, 'counted, with nothing about whom');
   assert.equal((await get(`history/${b.uid}/${g.id}`)).opponent.name, 'Gone_A', "the other player's history stays");
   assert.equal((await get(`oppStats/${b.uid}/${a.uid}`)).name, 'Gone_A', 'and their tally against them');
   assert.ok(await get(`rooms/${fr.code}`), "a room whose match is over waits for the sweep");
@@ -714,8 +712,6 @@ test('friend rooms: the host\'s Random draws the sides each match; with both pho
 const S = require('../../functions/statsRules.js');
 const { execFile } = require('node:child_process');
 const path = require('node:path');
-const statsNow = async (root = 'stats') => (await get(root)) || {};
-const at = (o, p) => p.split('/').reduce((v, k) => (v == null ? undefined : v[k]), o) || 0;
 // How much each of these counters moved while `fn` ran (the counters are shared by every test).
 /* ===================== clients: versions and platforms (src/core/client.js) ===================== */
 test('clients: cross-play deals only the games on for both players\' platforms; below its platform\'s minimum a client is refused a new match ("Please update")', async () => {
@@ -762,81 +758,94 @@ test('clients: a seat keeps its latest report (a client older than it was): the 
   await host.call('resign', { game: st.game }); await recorded(st.game);
   assert.equal((await get(`games/${st.game}/pub/status`)), 'over', 'leaving from the stale screen resigns by the usual path: the loss recorded');
 });
-async function delta(paths, fn, root) {   // (root: 'statsOwn' for the owner's numbers: a match with an admin or an owner device in it)
-  const s0 = await statsNow(root);
-  await fn();
-  const s1 = await statsNow(root);
-  return Object.fromEntries(paths.map(p => [p, at(s1, p) - at(s0, p)]));
+// The match rows (mfacts/{day}/{id}: functions/statsRules.js factStart, factEnd; the admin's numbers are counted from them):
+// every row by its id, the rows a step added or changed, a row's squares.
+async function factsNow() { return Object.assign({}, ...Object.values((await get('mfacts')) || {})); }
+async function newFacts(fn) {
+  const a = await factsNow(); await fn(); const b = await factsNow();
+  return Object.fromEntries(Object.entries(b).filter(([k, v]) => JSON.stringify(a[k]) !== JSON.stringify(v)));
 }
+const sqOf = r => JSON.parse((r && r.sq) || '[]');
 const day = () => S.periodKeys(Date.now());
 
-test('stats: a phone reports its local matches (each local mode), counted once; bad reports are refused', async () => {
+test('stats: a phone reports its local matches; each is one row, written once; bad reports are refused', async () => {
   const guest = await player(null, { anonymous: true });
   const id = 'loc' + Date.now(), dev = 'dtest' + Date.now();
-  const squares = [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2 }, { t: 'ttt', end: 'draw', w: null, X: 4, O: 4 }, { t: 'coins', end: 'open', w: null, X: 2, O: 0 }];
-  const d = day().d;
-  const moved = await delta(['modes/cpu/started', 'modes/cpu/finished', 'modes/cpu/turns', 'modes/cpu/xWins', 'modes/cpu/timed', `days/${d}/started/cpu`, `days/${d}/finished/cpu`,
-    'mini/cpu/ttt/played', 'mini/cpu/ttt/won', 'mini/cpu/ttt/draw', 'mini/cpu/ttt/winMoves', 'mini/cpu/ttt/loseMoves', 'mini/cpu/ttt/allMoves', 'mini/cpu/ttt/xWins', 'mini/cpu/coins/open', `days/${d}/active`], async () => {
-    assert.deepEqual(await guest.call('track', { ev: 'start', mode: 'cpu', id, dev }), { ok: true });
-    assert.deepEqual(await guest.call('track', { ev: 'start', mode: 'cpu', id, dev }), { ok: true, seen: true }, 'a repeated start is not counted again');
-    assert.deepEqual(await guest.call('track', { ev: 'end', mode: 'cpu', id, dev, winner: 'X', reason: 'line', squares }), { ok: true });
-    assert.deepEqual(await guest.call('track', { ev: 'end', mode: 'cpu', id, dev, winner: 'X', reason: 'line', squares }), { ok: true, seen: true }, 'nor a repeated end');
+  const squares = [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2, v: 2, f: 'O', ms: 12000 }, { t: 'ttt', end: 'draw', w: null, X: 4, O: 4 }, { t: 'coins', end: 'open', w: null, X: 2, O: 0 }];
+  const rows = await newFacts(async () => {
+    assert.deepEqual(await guest.call('track', { ev: 'start', mode: 'cpu', id, dev, side: 'O' }), { ok: true });
+    const first = (await factsNow())['l_' + id];
+    assert.deepEqual([first.m, first.tm, first.t1], ['cpu', 'none', undefined], 'the row from its start: no result yet');
+    assert.deepEqual(await guest.call('track', { ev: 'start', mode: 'cpu', id, dev, side: 'O' }), { ok: true, seen: true }, 'a repeated start changes nothing');
+    assert.deepEqual(await guest.call('track', { ev: 'end', mode: 'cpu', id, dev, side: 'O', winner: 'X', reason: 'line', squares }), { ok: true });
+    assert.deepEqual(await guest.call('track', { ev: 'end', mode: 'cpu', id, dev, side: 'O', winner: 'X', reason: 'line', squares }), { ok: true, seen: true }, 'nor a repeated end');
   });
-  assert.deepEqual(moved, { 'modes/cpu/started': 1, 'modes/cpu/finished': 1, 'modes/cpu/turns': 15, 'modes/cpu/xWins': 1, 'modes/cpu/timed': 1, [`days/${d}/started/cpu`]: 1, [`days/${d}/finished/cpu`]: 1,
-    'mini/cpu/ttt/played': 2, 'mini/cpu/ttt/won': 1, 'mini/cpu/ttt/draw': 1, 'mini/cpu/ttt/winMoves': 3, 'mini/cpu/ttt/loseMoves': 2, 'mini/cpu/ttt/allMoves': 13, 'mini/cpu/ttt/xWins': 1, 'mini/cpu/coins/open': 1, [`days/${d}/active`]: 1 });
+  assert.deepEqual(Object.keys(rows), ['l_' + id], 'one row');
+  const r = rows['l_' + id];
+  assert.deepEqual([r.m, r.end, r.w, r.n, r.own], ['cpu', 'line', 'X', 15, undefined]); assert.ok(r.t1 >= r.t0 && r.ms >= 0);
+  assert.deepEqual(r.who, [{ s: 'O', h: S.devHash(dev), pl: 'web', cv: E.CLIENT_VERSION }], 'whose phone (its hash), its side against the computer, its client; a guest: no account');
+  assert.deepEqual(sqOf(r), [{ t: 'ttt', v: 2, end: 'won', w: 'X', X: 3, O: 2, f: 'O', ms: 12000 }, { t: 'ttt', end: 'draw', X: 4, O: 4 }, { t: 'coins', end: 'open', X: 2 }], 'every square: its game, version, result, moves, first mover, time');
+  assert.equal((await get(`mfacts/${day().d}/l_${id}`)).t0, r.t0, 'filed under its New York day');
+  const late = 'late' + Date.now();                                 // an end whose start never arrived: the row is made then
+  const made = await newFacts(() => guest.call('track', { ev: 'end', mode: 'local', id: late, dev, ms: 60000, winner: 'O', reason: 'line', squares: [] }));
+  assert.deepEqual([made['l_' + late].m, made['l_' + late].w, made['l_' + late].who[0].s], ['local', 'O', undefined]);
   // no login, no report: a phone signs in (anonymously at least) before it reports anything
   const plain = async data => { const r = await fetch(`${FN}/track`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ data }) }); return { status: r.status, body: await r.json() }; };
-  const m2 = await delta(['modes/local/started'], async () => {
+  // refused: no login, online modes (the server writes those rows itself), a broken match, nonsense
+  const none = await newFacts(async () => {
     const r = await plain({ ev: 'start', mode: 'local', id: 'nologin' + Date.now(), dev: 'dplain' + Date.now() });
     assert.equal(r.status, 401); assert.equal(r.body.error.status, 'UNAUTHENTICATED');
-  });
-  assert.deepEqual(m2, { 'modes/local/started': 0 });
-  // refused: online modes (the server counts those), a broken match, nonsense
-  const unchanged = await delta(['modes/ranked/finished', 'modes/local/finished'], async () => {
     for (const bad of [{ ev: 'end', mode: 'ranked', id: 'r' + Date.now(), squares: [] }, { ev: 'end', mode: 'local', id: 'b' + Date.now(), squares: [{ t: 'chess', end: 'won', w: 'X', X: 1, O: 1 }] },
       { ev: 'end', mode: 'local', id: 'c' + Date.now(), squares: [{ t: 'ttt', end: 'won', X: 1, O: 1 }] }, { ev: 'start', mode: 'local', id: 'x/y' }, { ev: 'boom', mode: 'local', id: 'z' + Date.now() }, {}]) {
       await assert.rejects(guest.call('track', bad), e => /invalid-argument/.test(String(e.code)), JSON.stringify(bad));
     }
   });
-  assert.deepEqual(unchanged, { 'modes/ranked/finished': 0, 'modes/local/finished': 0 });
+  assert.deepEqual(none, {}, 'no row for any of them');
 });
 
-test('stats: logins count accounts only; a new account counts on its day, week and month', async () => {
-  const k = day();
-  const moved = await delta([`days/${k.d}/logins`, `weeks/${k.w}/logins`, `months/${k.m}/logins`, `days/${k.d}/newAccounts`, `weeks/${k.w}/newAccounts`, `months/${k.m}/newAccounts`], async () => {
-    const p = await player('Newbie');                               // claims a username: a new account
-    assert.deepEqual(await p.call('track', { ev: 'login' }), { ok: true });
-    const anon = await player(null, { anonymous: true });
-    assert.deepEqual(await anon.call('track', { ev: 'login' }), { ok: false }, 'a guest session is not a login');
-  });
-  assert.deepEqual(Object.values(moved), [1, 1, 1, 1, 1, 1]);
+test('stats: a login is an event on the device, accounts only; no counter anywhere', async () => {
+  const p = await player('Newbie'), dev = 'dlogin' + Date.now();   // claims a username: a new account
+  assert.deepEqual(await p.call('track', { ev: 'login', dev }), { ok: true });
+  assert.ok(Object.values((await get(`devlog/${S.devHash(dev)}`)) || {}).some(e => e.ev === 'login'), 'with the device\'s events');
+  assert.ok((await get(`users/${p.uid}/joined`)) > 0, 'a new account is its own row: users/{uid}/joined');
+  const anon = await player(null, { anonymous: true });
+  assert.deepEqual(await anon.call('track', { ev: 'login', dev: 'danon' + Date.now() }), { ok: false }, 'a guest session is not a login');
+  assert.equal(await get('stats'), null, 'the server keeps no counters (December 2026): every number is counted from rows');
+  assert.equal(await get('statsOwn'), null);
 });
 
-test('stats: Find Match games are counted by the server, started when paired and finished with their mini-games', async () => {
-  const d = day().d;
-  let g;
-  const moved = await delta(['modes/match/started', 'modes/match/finished', 'modes/match/xWins', 'modes/match/timed', `days/${d}/started/match`, `days/${d}/finished/match`,
-    'mini/match/ttt/won', 'mini/match/ttt/winMoves', 'mini/match/ttt/xWins', 'modes/match/resigned'], async () => {
-    g = await pairUp(await player('StatA'), await player('StatB'));
+test('stats: a Find Match game is one row, written by the server: its players when paired, its result and squares when it ends', async () => {
+  let g, a, b;
+  const rows = await newFacts(async () => {
+    a = await player('StatA'); b = await player('StatB');
+    g = await pairUp(a, b);
+    const r0 = (await factsNow())[g.id];
+    assert.deepEqual([r0.m, r0.t1, r0.who.length], ['match', undefined, 2], 'the row from the pairing');
     await nearWin(g.id, 'X');
     assert.equal((await g.X.call('move', { game: g.id, square: 2, move: 2 })).ok, true);
     await recorded(g.id);
   });
-  assert.deepEqual(moved, { 'modes/match/started': 1, 'modes/match/finished': 1, 'modes/match/xWins': 1, 'modes/match/timed': 1, [`days/${d}/started/match`]: 1, [`days/${d}/finished/match`]: 1,
-    'mini/match/ttt/won': 1, 'mini/match/ttt/winMoves': 1, 'mini/match/ttt/xWins': 1, 'modes/match/resigned': 0 });
-  const res = await delta(['modes/match/started', 'modes/match/finished', 'modes/match/resigned', 'modes/match/oWins'], async () => {
-    const h = await pairUp(await player('StatC'), await player('StatD'), 'casual', 30);
+  const r = rows[g.id];
+  assert.deepEqual([r.m, r.end, r.w, r.own], ['match', 'line', 'X', undefined]); assert.ok(r.ms >= 0 && r.t1 >= r.t0);
+  assert.deepEqual(r.who.map(w => [w.s, w.u, w.pl, w.cv]).sort(), [['O', g.O.uid, 'web', E.CLIENT_VERSION], ['X', g.X.uid, 'web', E.CLIENT_VERSION]], 'both players: side, account, client');
+  assert.match(r.tm, /^(t\d+|m\d+\+\d+|off)$/, 'its timer');
+  assert.ok(sqOf(r).some(e => e.t === 'ttt' && e.end === 'won' && e.w === 'X'), 'the squares claimed in it');
+  let h;
+  const res = await newFacts(async () => {
+    h = await pairUp(await player('StatC'), await player('StatD'), 'casual', 30);
     assert.equal((await h.X.call('resign', { game: h.id })).ok, true);
     await recorded(h.id);
   });
-  assert.deepEqual(res, { 'modes/match/started': 1, 'modes/match/finished': 1, 'modes/match/resigned': 1, 'modes/match/oWins': 1 });
+  assert.deepEqual([res[h.id].end, res[h.id].w], ['resign', 'O'], 'a resignation: the row says so (abandoned, in the admin\'s numbers)');
+  const finds = Object.values((await get(`finds/${day().d}`)) || {});
+  assert.ok(finds.filter(f => f.k === 'people' && [a.uid, b.uid].includes(f.u)).length === 2, 'a search row each: paired with a person, with the wait');
 });
 
-test('stats: friend-room matches are counted by the server, start and end once each', async () => {
+test('stats: a friend-room match is one row, start and end once each', async () => {
   const host = await player('StatHost'), guest = await player(null, { anonymous: true }); guest.name = 'G';
-  const d = day().d;
-  const moved = await delta(['modes/friend/started', 'modes/friend/finished', 'modes/friend/oWins', `days/${d}/finished/friend`, 'mini/friend/hilo/won'], async () => {
-    const { id } = await friendRoom(host, guest, { games: only('hilo'), timer: 0 });
+  let id;
+  const rows = await newFacts(async () => {
+    ({ id } = await friendRoom(host, guest, { games: only('hilo'), timer: 0 }));
     const sec = JSON.parse(await get(`games/${id}/sec`));
     for (const i of [0, 1, 2]) {                                     // O claims three squares in a row by guessing each number (the turn handed to O each time)
       await rewrite(id, f => { f.turn = 'O'; f.lock = null; });
@@ -846,41 +855,50 @@ test('stats: friend-room matches are counted by the server, start and end once e
     await recorded(id);
     assert.equal((await gameState(id)).winner, 'O');
   });
-  assert.equal(moved['modes/friend/started'], 1); assert.equal(moved['modes/friend/finished'], 1); assert.equal(moved['modes/friend/oWins'], 1);
-  assert.equal(moved[`days/${d}/finished/friend`], 1); assert.equal(moved['mini/friend/hilo/won'], 3);
+  assert.deepEqual(Object.keys(rows), [id]);
+  const r = rows[id];
+  assert.deepEqual([r.m, r.end, r.w, r.tm], ['friend', 'line', 'O', 'off']); assert.match(r.rm, /^[A-Z0-9]{4,8}$/, 'its room');
+  assert.equal(sqOf(r).filter(e => e.t === 'hilo' && e.end === 'won' && e.w === 'O').length, 3);
+  assert.ok(r.who.some(w => w.u === host.uid) && r.who.some(w => w.u === guest.uid), 'the guest too, by their anonymous id');
 });
 
-test('stats: only the admin can read them, nobody can write them; make-admin.js gives and takes back the flag', async () => {
+test('stats: only the admin can read the rows, nobody can write them; make-admin.js gives and takes back the flag', async () => {
   const boss = await player('BossLady'), other = await player('Plain');
-  await denied(other.read('stats'), 'a player reading the stats');
-  await denied(boss.read('stats'), 'reading the stats before the flag');
-  await denied(other.write('stats/modes/local/started', 999), 'a player writing the stats');
+  for (const node of ['mfacts', 'finds', 'devlog', 'devices']) await denied(other.read(node), 'a player reading ' + node);
+  await denied(boss.read('mfacts'), 'reading the rows before the flag');
+  await denied(other.write(`mfacts/${day().d}/fake`, { t0: 1 }), 'a player writing a row');
   const anon = await player(null, { anonymous: true });
-  await denied(anon.read('stats/modes'), 'a guest reading the stats');
-  const statsReq = await fetch(`http://${DB_HOST}/stats.json?ns=${NS}`);
+  await denied(anon.read('mfacts'), 'a guest reading the rows');
+  const statsReq = await fetch(`http://${DB_HOST}/mfacts.json?ns=${NS}`);
   assert.equal(statsReq.status, 401, 'no reading without a login at all');
   const script = (...args) => new Promise((resolve, reject) => execFile(process.execPath, [path.join(__dirname, '..', '..', 'scripts', 'make-admin.js'), ...args],
     { env: Object.assign({}, process.env, { TTC_PROJECT: PROJECT, GCLOUD_PROJECT: PROJECT }) }, (e, out) => (e ? reject(new Error(out || e.message)) : resolve(out))));
   assert.match(await script('BossLady', 'grant'), /BossLady is now the admin/);
   await boss.auth.currentUser.getIdToken(true);                      // the flag comes with a fresh token
-  const s = await boss.read('stats');
-  assert.ok(s && s.modes, 'the admin reads the stats');
-  await denied(boss.write('stats/modes/local/started', 999), 'even the admin cannot write them');
-  await denied(other.read('stats'), 'still not the others');
+  const s = await boss.read('mfacts');
+  assert.ok(s && Object.keys(s).length, 'the admin reads the rows');
+  assert.ok(await boss.read('finds')); 
+  await denied(boss.write(`mfacts/${day().d}/fake`, { t0: 1 }), 'even the admin cannot write them');
+  await denied(other.read('mfacts'), 'still not the others');
   await assert.rejects(script('NoSuchPlayer', 'grant'), /No player has the username/);
   assert.match(await script('BossLady', 'revoke'), /no longer an admin/);
   await boss.auth.currentUser.getIdToken(true);
-  await denied(boss.read('stats'), 'reading the stats once the flag is gone');
+  await denied(boss.read('mfacts'), 'reading the rows once the flag is gone');
 });
 
-test('stats: the sweep forgets counted matches after three days (the counts stay)', async () => {
+test('stats: the sweep forgets which matches it has seen after three days (their rows stay), and drops rows past 90 days', async () => {
   await put('statsSeen/match/l_oldone', { t0: Date.now() - 4 * 86400000, s: 1 });
   await put('statsSeen/match/l_newone', { t0: Date.now() - 3600000, s: 1 });
-  const before = await get('stats/modes');
+  const before = await factsNow(), old = S.periodKeys(Date.now() - 91 * 86400000).d, kept = S.periodKeys(Date.now() - 89 * 86400000).d;
+  await put(`mfacts/${old}/ancient`, { t0: Date.now() - 91 * 86400000, m: 'cpu' }); await put(`finds/${old}/ancient`, { t: Date.now() - 91 * 86400000, k: 'bot' });
+  await put(`mfacts/${kept}/keptone`, { t0: Date.now() - 89 * 86400000, m: 'cpu' });
   await sweep();
   assert.equal(await get('statsSeen/match/l_oldone'), null, 'a match from four days ago is forgotten');
   assert.ok(await get('statsSeen/match/l_newone'), 'an hour-old one is kept');
-  assert.deepEqual(await get('stats/modes'), before, 'the counts are untouched');
+  assert.equal(await get(`mfacts/${old}`), null, 'a day of rows past 90 days goes'); assert.equal(await get(`finds/${old}`), null);
+  assert.ok(await get(`mfacts/${kept}/keptone`), '89 days old: kept');
+  await put(`mfacts/${kept}`, null);
+  assert.deepEqual(await factsNow(), before, 'the other rows are untouched');
 });
 
 /* ===================================== local matches ===================================== */
@@ -1068,32 +1086,32 @@ test('back-fill: games played as X and as O recounted from the history (Find Mat
 });
 
 /* ===================================== playtest activity and accounts ===================================== */
-test('health: opens and errors counted per day and build; new devices near and at the daily cap alert the admin, once each', async () => {
+test('health and growth: opens, errors, steps and events are rows on the device (its build, platform and client with them); new devices near and at the daily cap alert the admin, once each', async () => {
   await put('admin/config', null); await put('test/alertsSent', null); await put('alertOps', null);
   await put('admin/secrets', { resendKey: 're_test' });
   await put('admin/config/alerts', { enabled: false, sms: false, email: true, to: 'ops@example.com' });   // (the empty-queue alert off: operations alerts still come)
   const guest = await player(null, { anonymous: true }), d = S.periodKeys(Date.now()).d;
-  const h0 = (await get(`stats/health/${d}`)) || {};
+  const evs = async x => Object.values((await get(`devlog/${S.devHash(x)}`)) || {});
   const dev = 'h' + Date.now().toString(16) + 'bb22';
   assert.deepEqual(await guest.call('devlog', { dev, ev: 'open', o: 'hopen001', v: 'b1.2', client: { v: E.CLIENT_VERSION, p: 'web' } }), { ok: true });
   assert.deepEqual(await guest.call('devlog', { dev, ev: 'error', o: 'herr0001', msg: 'js: boom @main.js:1', v: 'b1.2' }), { ok: true });
   await guest.call('devlog', { dev, ev: 'error', o: 'herr0001', msg: 'js: boom @main.js:1', v: 'b1.2' });   // (sent again: counted once)
-  const h1 = await get(`stats/health/${d}`);
-  assert.equal((h1.opens || 0) - (h0.opens || 0), 1);
-  assert.equal((h1.errors || 0) - (h0.errors || 0), 1);
-  assert.ok(h1.v.b1_2.errors >= 1 && h1.p.web >= 1 && h1.cv[E.CLIENT_VERSION.replace(/\./g, '_')] >= 1, 'by build, platform and client version');
-  // growth: the cohort, the funnel's steps once each, a match finished, the events a day
-  const c0 = (await get(`stats/cohorts/${d}`)) || {}, f0 = (await get(`stats/funnel/${d}`)) || {}, a0 = (await get(`stats/acts/${d}`)) || {};
+  const log = await evs(dev), open = log.find(e => e.ev === 'open'), errs = log.filter(e => e.ev === 'error');
+  assert.equal(log.filter(e => e.ev === 'open').length, 1); assert.equal(errs.length, 1, 'an error sent twice is kept once');
+  assert.deepEqual([open.b, open.p, open.cv], ['b1.2', 'web', E.CLIENT_VERSION], 'the open: its build, platform and client version');
+  assert.deepEqual([errs[0].b, errs[0].msg], ['b1.2', 'js: boom @main.js:1'], 'the error: its build and its line');
+  // growth: a new device with its source tag, the funnel's steps once each, a match started and finished, an invite
   const nd = dev + 'g1';
   await guest.call('devlog', { dev: nd, ev: 'open', o: 'gopen001', tag: 'reddit' });
   await guest.call('devlog', { dev: nd, ev: 'step', step: 'tap' }); await guest.call('devlog', { dev: nd, ev: 'step', step: 'tap' });
   await guest.call('devlog', { dev: nd, ev: 'start', mode: 'cpu', g: 'lgrow0001' }); await guest.call('devlog', { dev: nd, ev: 'finish', mode: 'cpu', g: 'lgrow0001' });
   await guest.call('devlog', { dev: nd, ev: 'act', act: 'invite', ch: 'copy', o: 'gact0001' });
-  const c1 = await get(`stats/cohorts/${d}`), f1 = await get(`stats/funnel/${d}`), a1 = await get(`stats/acts/${d}`);
-  assert.equal(c1.n - (c0.n || 0), 1, 'one new device in today\'s cohort');
-  assert.deepEqual([f1.opened - (f0.opened || 0), f1.tap - (f0.tap || 0), (f1.finished || 0) - (f0.finished || 0)], [1, 1, 1], 'opened, the first tap once, a match finished');
-  assert.equal(a1.invite_copy - (a0.invite_copy || 0), 1, 'an invite copied');
-  assert.ok((await get('stats/sources/reddit/devices')) >= 1, 'its source tag');
+  const rec = await get(`devices/${S.devHash(nd)}`), glog = await evs(nd);
+  assert.equal(rec.tag, 'reddit', 'its source tag'); assert.ok(rec.first <= rec.last && S.periodKeys(rec.first).d === d, 'first seen today');
+  assert.equal(glog.filter(e => e.ev === 'step' && e.step === 'tap').length, 1, 'the first tap once');
+  assert.deepEqual(glog.filter(e => e.ev === 'act').map(e => [e.act, e.ch]), [['invite', 'copy']], 'an invite copied');
+  assert.deepEqual(glog.filter(e => ['start', 'finish'].includes(e.ev)).map(e => [e.ev, e.m, e.g]).sort(), [['finish', 'cpu', 'lgrow0001'], ['start', 'cpu', 'lgrow0001']]);
+  assert.equal(await get('stats'), null, 'no counter: the admin\'s page counts these rows (src/admin/metrics.js)');
   // the cap: 80% alerts once, the cap itself alerts once and refuses the new device
   await put(`devicesDay/${d}`, 15999);
   await guest.call('devlog', { dev: dev + 'n1', ev: 'open', o: 'hopen002' });
@@ -1108,19 +1126,16 @@ test('health: opens and errors counted per day and build; new devices near and a
   await put(`devicesDay/${d}`, null); await put('admin/config', null); await put('admin/secrets', null); await put('test/alertsSent', null); await put('alertOps', null);
 });
 
-test('owner devices: an owner device\'s matches and events go to statsOwn, not stats; the owner link and an admin account mark a device; a phone cannot write devmeta', async () => {
+test('owner devices: an owner device\'s match rows are marked mine; the owner link and an admin account mark a device; a phone cannot write devmeta', async () => {
   const crypto = require('node:crypto'), hashDev = d => crypto.createHash('sha256').update('ttc-dev:' + d).digest('hex').slice(0, 20);
   const guest = await player(null, { anonymous: true }), dev = 'downer' + Date.now(), h = hashDev(dev);
   await put(`devmeta/${h.slice(0, 8)}`, { ex: true, nick: 'Mine', why: 'manual', at: Date.now() });   // (marked by its short ID, as the Devices page and the deploy's set do)
   const id = 'own' + Date.now(), squares = [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2 }];
-  const own0 = (await get('statsOwn/modes/cpu/finished')) || 0;
-  const moved = await delta(['modes/cpu/started', 'modes/cpu/finished', 'mini/cpu/ttt/played'], async () => {
+  const rows = await newFacts(async () => {
     assert.deepEqual(await guest.call('track', { ev: 'start', mode: 'cpu', id, dev }), { ok: true });
     assert.deepEqual(await guest.call('track', { ev: 'end', mode: 'cpu', id, dev, winner: 'X', reason: 'line', squares }), { ok: true });
   });
-  assert.deepEqual(moved, { 'modes/cpu/started': 0, 'modes/cpu/finished': 0, 'mini/cpu/ttt/played': 0 }, 'left out of stats/');
-  assert.equal(((await get('statsOwn/modes/cpu/finished')) || 0) - own0, 1, 'filed under statsOwn/');
-  assert.ok((await get('statsOwn/mini/cpu/ttt/played')) >= 1);
+  assert.deepEqual([rows['l_' + id].own, rows['l_' + id].who[0].h], [true, h], 'its row is marked mine (left out of every number until Include my devices)');
   // the owner link: the admin's token marks the device that opens it (no login: a guest's anonymous sign-in)
   const dev2 = 'dlink' + Date.now(), h2 = hashDev(dev2);
   assert.deepEqual(await guest.call('markDevice', { dev: dev2, why: 'link', token: 'nope-nope-nope-nope' }), { ok: false, reason: 'token' }, 'no token set: refused');
@@ -1140,7 +1155,7 @@ test('owner devices: an owner device\'s matches and events go to statsOwn, not s
   assert.equal(await get(`devmeta/${h3}/ex`), false, 'the admin\'s own switch is never overridden');
   // a phone cannot write the owner marks or read the owner's numbers
   await denied(guest.write(`devmeta/${hashDev('dx' + Date.now())}`, { ex: true }), 'a phone writing devmeta');
-  await denied(guest.read('statsOwn'), 'a phone reading statsOwn');
+  await denied(guest.read('mfacts'), 'a phone reading the match rows');
   await put('admin/ownerToken', null); await put(`devmeta/${h.slice(0, 8)}`, null); await put(`devmeta/${h2}`, null); await put(`devmeta/${h3}`, null);
 });
 
@@ -1183,7 +1198,7 @@ test('playtest: a device\'s opens and matches are logged under a hash of its ran
   const d = await get(`devices/${h}`), log = await get(`devlog/${h}`);
   assert.equal(d.tag, 'sam', 'the first tag stays');
   assert.equal(d.n, 4); assert.ok(d.first <= d.last);
-  assert.deepEqual(Object.keys(d).sort(), ['ct', 'cv', 'first', 'last', 'mf', 'ms', 'n', 'p', 'tag', 'u'], 'only times, counts (events, matches started and finished), the cohort mark, the tag, the client it last opened (its platform and version, as every page sends them) and the accounts signed in on it (the admin\'s Devices page: admin read only)');
+  assert.deepEqual(Object.keys(d).sort(), ['cv', 'first', 'last', 'n', 'p', 'tag', 'u'], 'only times, the count of its events, the tag, the client it last opened (its platform and version, as every page sends them) and the accounts signed in on it (the admin\'s Players page: admin read only)');
   assert.deepEqual(Object.keys(d.u), [acct.uid], 'the account that signed in on it, never a guest');
   assert.deepEqual([d.p, d.cv], ['web', E.CLIENT_VERSION]);
   assert.deepEqual(Object.keys(log).sort(), ['elgame0001', 'oopen0001', 'plive0001', 'slgame0001'], 'an open, a start, an end and a live');
@@ -1243,8 +1258,9 @@ test('bots: never paired unasked (no hidden bots); a lone searcher who asks gets
   const b = await player('Lonely_B');
   const g = await pairUp(b, a);
   assert.equal(await get(`botGames/${g.id}`), null, 'two people: no bot');
-  const fd = await get(`stats/find/${S.periodKeys(Date.now()).d}`);
-  assert.ok(fd && fd.people >= 2 && fd.peopleMs >= 0, 'both waits counted');
+  const findRows = async () => Object.values((await get(`finds/${S.periodKeys(Date.now()).d}`)) || {});
+  assert.deepEqual((await findRows()).filter(f => [a.uid, b.uid].includes(f.u)).map(f => f.k).sort(), ['cancel', 'people', 'people'], 'a row a search: the one given up, then both paired, each with its wait');
+  assert.ok((await findRows()).every(f => f.ms >= 0 && f.t > 0));
   await a.call('resign', { game: g.id }); await recorded(g.id);
   const ska = await get(`skill/${a.uid}`), skb = await get(`skill/${b.uid}`);
   assert.ok(ska < 1000 && skb > 1000, `the hidden skill moved by the result (${ska}, ${skb})`);
@@ -1254,7 +1270,7 @@ test('bots: never paired unasked (no hidden bots); a lone searcher who asks gets
   const c = await player('Lonely_C');
   const r = await soloUntilBot(c);
   assert.ok(await get(`botGames/${r.game}`), 'the computer, asked for');
-  assert.ok((await get(`stats/find/${S.periodKeys(Date.now()).d}/bot`)) >= 1, 'the computer filling in, counted');
+  assert.ok((await findRows()).some(f => f.k === 'bot' && f.u === c.uid), 'the computer taken: its search row');
   await c.call('resign', { game: r.game }); await recorded(r.game);
   await put('admin/config', null);
 });
@@ -1384,9 +1400,9 @@ test('bots: after a player\'s move, the bot\'s move is planned inside its own wi
   await put('test/noBotTasks', null);
 });
 
-test('bots: the result is recorded; never on the player\'s Find Match record; bot matches counted apart in the stats', async () => {
+test('bots: the result is recorded; never on the player\'s Find Match record; a bot match\'s row has a mode of its own', async () => {
   await clearQueue(); await botsOn();
-  const statsBefore = (await get('stats/modes')) || {}, botStats0 = (await get('botStats')) || {};
+  const factsBefore = await factsNow();
   const h = await player('VsBot_Two');
   const finishWin = async () => {
     const r = await soloUntilBot(h), id = r.game, me = r.side;
@@ -1423,11 +1439,10 @@ test('bots: the result is recorded; never on the player\'s Find Match record; bo
   assert.deepEqual(pub2.result.records[g2.me], { wins: u1.wins || 0, losses: u1.losses || 0, draws: u1.draws || 0 }, 'the results screen shows the record unchanged');
   assert.ok(await get(`history/${h.uid}/${g2.id}`), 'still in the history');
   // the stats: a mode of their own; the bot matches counted for the dashboard
-  const m = (await get('stats/modes')) || {};
-  assert.equal(((m.bot || {}).finished || 0) - ((statsBefore.bot || {}).finished || 0), 2, 'counted as bot matches');
-  assert.equal(((m.match || {}).finished || 0), ((statsBefore.match || {}).finished || 0), 'not as Find Match between people');
-  const bs = await get('botStats');
-  assert.deepEqual([bs.started - (botStats0.started || 0), bs.finished - (botStats0.finished || 0), bs.playerWins - (botStats0.playerWins || 0)], [2, 2, 2]);
+  const made = Object.entries(await factsNow()).filter(([k]) => !factsBefore[k]).map(([, r]) => r);
+  assert.deepEqual(made.map(r => [r.m, !!r.t1, r.who.filter(w => w.bot).length, r.who.filter(w => !w.bot && w.u === h.uid).length]), [['bot', true, 1, 1], ['bot', true, 1, 1]], 'two rows, mode bot (not Find Match between people), the computer marked as such');
+  assert.ok(made.every(r => r.w && r.w !== r.who.find(w => w.bot).s), 'the player won both: the winner is on the row');
+  assert.equal(await get('botStats'), null, 'no counter');
   await put('admin/config', null);
 });
 
@@ -1609,18 +1624,19 @@ test('release control: an admin-only game exists for nobody but the admin: not i
   const sb = await boss.call('startRoom', { code: ac }); assert.equal(sb.ok, true, JSON.stringify(sb));
   const stb = await gameState(sb.game);
   assert.ok(stb.games.includes('ttt') && stb.squares.some(sq => sq.mini.type === 'ttt'), "the admin's room deals it");
-  const d = await delta(['mini/testing/ttt/won', 'mini/friend/ttt/won'], async () => {
+  const d = await newFacts(async () => {
     await nearWin(sb.game, 'X');
     assert.equal((await boss.call('move', { game: sb.game, square: 2, move: 2 })).ok, true);
     await recorded(sb.game);
-  }, 'statsOwn');   // (the admin played in it: the owner's numbers, statsOwn/)
-  assert.ok(d['mini/testing/ttt/won'] >= 1 && d['mini/friend/ttt/won'] === 0, `the admin-only game's squares under testing, not the mode (${JSON.stringify(d)})`);
-  assert.ok((await get(`users/${b.uid}`)).minis.ttt.lost >= 1, "the players' own records count them like any square");
-  // a local match reported by a phone: the same split
-  const dl = await delta(['mini/testing/ttt/won', 'mini/cpu/ttt/won', 'mini/cpu/hilo/won'], async () => {
-    await guest.call('track', { ev: 'end', mode: 'cpu', id: 'relloc' + Date.now(), dev: 'drel1', winner: 'X', reason: 'line', squares: [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2 }, { t: 'hilo', end: 'won', w: 'O', X: 1, O: 2 }] });
   });
-  assert.deepEqual(dl, { 'mini/testing/ttt/won': 1, 'mini/cpu/ttt/won': 0, 'mini/cpu/hilo/won': 1 });
+  assert.equal(d[sb.game].own, true, 'the admin played in it: the row is marked mine');
+  assert.ok(sqOf(d[sb.game]).some(e => e.t === 'ttt' && e.end === 'won'), 'its squares under the game\'s own name (the admin\'s page shows released games by default)');
+  assert.ok((await get(`users/${b.uid}`)).minis.ttt.lost >= 1, "the players' own records count them like any square");
+  // a local match reported by a phone: its squares the same way
+  const dl = Object.values(await newFacts(async () => {
+    await guest.call('track', { ev: 'end', mode: 'cpu', id: 'relloc' + Date.now(), dev: 'drel1', winner: 'X', reason: 'line', squares: [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2 }, { t: 'hilo', end: 'won', w: 'O', X: 1, O: 2 }] });
+  }));
+  assert.deepEqual(sqOf(dl[0]).map(e => [e.t, e.w]), [['ttt', 'X'], ['hilo', 'O']]);
   // released again: back in Find Match at once (new matches only)
   await boss.write('releases/ttt', true);
   const g2 = await pairUp(a, b);
@@ -1679,12 +1695,11 @@ test('runners (Dash, Lane Rush): the difficulty config is public, the admin alon
   assert.equal((await g.O.call('timeout', { game: g.id })).ok, true);
   const to = await gameState(g.id);
   assert.deepEqual([to.squares.filter(sq => sq.mini.runs && sq.mini.runs.O).length, to.turn, to.timer.miss.by], [0, 'X', 'O'], 'no run for O');
-  // the end: resigned by O, so the match is abandoned: its squares, runs and crashes are not counted
-  // (statsRules' unit tests cover what a finished match's runner squares add)
-  const before = JSON.stringify((await get('stats/mini/testing/dash')) || {});
+  // the end: resigned by O, so the match is abandoned: its row says so, and the admin's numbers count no square, run or
+  // crash of an abandoned match (src/admin/metrics.js: tests/core/admin-metrics.test.js)
   assert.equal((await g.O.call('resign', { game: g.id })).ok, true);
   await recorded(g.id);
-  assert.equal(JSON.stringify((await get('stats/mini/testing/dash')) || {}), before, 'an abandoned match adds nothing to the mini-game stats');
+  assert.equal((await factsNow())[g.id].end, 'resign', 'abandoned, on its row');
   assert.match(await script('RunBoss', 'revoke'), /no longer an admin/);
 });
 
@@ -2187,7 +2202,7 @@ test('Super Chaos Find Match against a bot: a lone searcher who asks gets a bot;
   const done = await get(`botGames/${id}`);
   assert.deepEqual([done.done, done.live, done.winner], [true, undefined, botSide]);
   assert.equal((await get(`history/${h.uid}/${id}`)).mode, 'match');
-  assert.ok((await get('botStats/finished')) >= 1, 'bot matches counted apart');
+  assert.deepEqual([(await factsNow())[id].m, (await factsNow())[id].w], ['bot', botSide], 'its row: a bot match, the computer the winner');
 });
 
 /* ===================================== the match clock ===================================== */
@@ -2198,7 +2213,6 @@ test('match clock: the admin\'s timer for Find Match; the clocks switch on every
   const a = await player('Clk_A'), b = await player('Clk_B');
   await denied(a.write('config/timer/spec', 'm3+2'), 'a player setting the timer');
   await put('config/timer', { spec: 'm3+2' });
-  const before = await statsNow();
   const g = await pairUp(a, b);
   let st = await gameState(g.id);
   assert.deepEqual([st.timer.kind, st.timer.spec, st.timer.inc, st.timer.bank], ['match', 'm3+2', 2, { X: 180000, O: 180000 }], 'Find Match plays the admin\'s match clock');
@@ -2239,8 +2253,8 @@ test('match clock: the admin\'s timer for Find Match; the clocks switch on every
   assert.equal(pub.result.how, 'clock');
   assert.equal((await get(`history/${g[p].uid}/${g.id}`)).how, 'clock');
   assert.deepEqual(pub.result.records[p], { wins: 0, losses: 1, draws: 0 }, 'a loss on the record');
-  const after = await statsNow(), dS = k => at(after, `timers/m3+2/${k}`) - at(before, `timers/m3+2/${k}`);
-  assert.deepEqual([dS('started'), dS('finished'), dS('done'), dS('clockOuts'), dS('timeouts')], [1, 1, 1, 1, 0], 'counted under its timer: a finish, by the clock');
+  const row = (await factsNow())[g.id];
+  assert.deepEqual([row.tm, row.end, row.w], ['m3+2', 'clock', q], 'its row: the timer, ended by the clock (a finish), the winner');
   const evs = Object.values(await until(async () => { const v = await get(`matchLogs/m${g.id}`); return v && Object.values(v).some(e => e.k === 'end') ? v : null; }, 10000, 'the end in the log'));
   assert.equal(evs.find(e => e.k === 'start').timer, 'm3+2', 'the log names the timer');
   assert.equal(evs.find(e => e.k === 'end').why, 'clock');
@@ -2309,4 +2323,33 @@ test('disconnects: offline 2 minutes in a row resigns the match (sweep and tick)
   const hs = await until(async () => { const v = await gameState(h.id); return v.winner ? v : null; }, 10000, 'the tick resigned the gone player');
   assert.deepEqual([hs.winner, hs.winReason, hs.resigned], ['X', 'resign', 'O']);
   await recorded(h.id);
+});
+
+/* ===================================== the admin's numbers, from the rows this run wrote ===================================== */
+// Every match, search and device event the tests above made went through the server's own code. The admin's page reads
+// those rows and counts every number from them (src/admin/metrics.js): here the same, against a count made straight from
+// the rows, with and without the owner's (the admin accounts and owner devices this run made).
+test('the admin\'s numbers: built from the rows the server wrote; each headline number is the count of its rows, and equals a direct count', async () => {
+  const X = await import('../../src/admin/metrics.js');
+  const [matches, finds, devices, logs, users, meta, bots, reports] = await Promise.all(['mfacts', 'finds', 'devices', 'devlog', 'users', 'devmeta', 'bots', 'reports'].map(p => get(p)));
+  const rows = Object.values(matches || {}).flatMap(d => Object.values(d));
+  assert.ok(rows.length >= 20, `this run's matches are all there (${rows.length})`);
+  assert.ok(rows.every(r => r.t0 > 0 && typeof r.m === 'string' && Array.isArray(r.who)), 'every row has its start, mode and players');
+  assert.ok(rows.filter(r => r.t1).every(r => typeof r.end === 'string' && Array.isArray(JSON.parse(r.sq))), 'every ended row its result and squares');
+  const M = X.build({ matches, finds, devices, logs, users, meta, bots, reports }, Date.now());
+  assert.equal(M.matches.length, rows.length);
+  for (const mine of [false, true]) {
+    const S = X.scope(M, { range: '7', mine }), v = id => X.metric(S, id).v, n = id => X.metric(S, id).rows.length;
+    const ms = rows.filter(r => mine || !r.own), ended = ms.filter(r => r.t1), fin = ended.filter(r => !['resign', 'timeout'].includes(r.end));
+    assert.equal(v('started'), ms.length, 'matches started'); assert.equal(v('finished'), fin.length, 'matches finished'); assert.equal(v('abandoned'), ended.length - fin.length, 'abandoned');
+    assert.equal(v('squares'), fin.filter(r => !r.sc).flatMap(r => JSON.parse(r.sq)).filter(e => e.end === 'won').length, 'completed squares');
+    const fs = Object.values(finds || {}).flatMap(d => Object.values(d)).filter(r => mine || !r.own);
+    assert.equal(v('findPeople'), fs.filter(r => r.k === 'people').length); assert.equal(v('findBot'), fs.filter(r => r.k === 'bot').length); assert.equal(v('findCancel'), fs.filter(r => r.k === 'cancel').length);
+    for (const id of ['active', 'newPlayers', 'played', 'sessions', 'started', 'finished', 'abandoned', 'unfinished', 'squares', 'opens', 'errors', 'reports', 'findPeople', 'findBot', 'findCancel']) assert.equal(v(id), n(id), `${id}: the count of its rows`);
+    assert.equal(v('started'), v('finished') + v('abandoned') + v('unfinished') + S.byStatus('playing').length, 'every match is in exactly one status');
+  }
+  const all = X.scope(M, { range: '7', mine: true }), out = X.scope(M, { range: '7' });
+  assert.ok(X.metric(all, 'started').v > X.metric(out, 'started').v, 'the owner\'s matches (an admin played, or an owner device) are left out until asked for');
+  assert.ok(X.metric(out, 'active').v >= 1 && X.metric(all, 'active').v >= X.metric(out, 'active').v, 'people who opened the game; never fewer with the owner\'s devices in');
+  assert.ok(M.matches.every(m => m.who.every(w => w.bot || w.pid || !(users || {})[w.u])), 'every player with an account is a person the Players page knows (a guest is, by their device, once it has opened the game)');
 });

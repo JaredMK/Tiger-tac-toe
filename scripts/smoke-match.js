@@ -1,7 +1,7 @@
 'use strict';
 // A friend match end to end on a live environment, through the server as the phones play it: a smoke account opens a
 // room, a second one joins with the code, the host starts it, and the match the server made is there (nine squares, a
-// player to move, both seats). Then the room, the match, its presence and its log are deleted, and the seats freed:
+// player to move, both seats). Then the room, the match, its presence, its log and its row for the admin's numbers are deleted, and the seats freed:
 // nothing reaches anyone's record, history or the stats (the match never finishes). Run by the Deploy workflow after the
 // live check (scripts/smoke-live.js) and so after every release.
 //   TTC_PROJECT=<project> GOOGLE_APPLICATION_CREDENTIALS=<key> node scripts/smoke-match.js production|staging
@@ -73,6 +73,8 @@ async function call(idToken, name, data) {
     const up = { [`active/${hostUid}`]: null, [`active/${guestUid}`]: null };
     if (code) { up[`rooms/${code}`] = null; up[`presence/${code}`] = null; }
     if (game) for (const p of [`games/${game}`, `gpresence/${game}`, `glive/${game}`, `matchLogs/m${game}`, `matchLogIndex/m${game}`, `matchLogs/${game}`, `matchLogIndex/${game}`]) up[p] = null;
+    if (game) for (const d of [0, 1]) up[`mfacts/${new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(Date.now() - d * 86400000))}/${game}`] = null;   // (its row for the admin's numbers: filed under its New York day)
+    for (const u of [hostUid, guestUid]) up[`lastSeen/${u}`] = null;
     await db.ref().update(up).catch(e => console.log('::warning::smoke match: could not clean up: ' + e.message));
   }
   console.log(`Call timings (the first call to each function is its cold start): ${timings.join(', ')}`);

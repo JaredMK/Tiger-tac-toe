@@ -426,11 +426,9 @@ test('Super Chaos stats: its own mode, reported by the phone; a line each in one
   assert.ok(S.MODES.includes('chaos') && S.CLIENT_MODES.includes('chaos') && S.DEV_MODES.includes('chaos'));
   const sum = S.checkEnd({ squares: [{ t: 'wordle', end: 'won', w: 'X', X: 3, O: 2 }, { t: 'hilo', end: 'draw', X: 1, O: 1 }], winner: 'draw', reason: 'both' }, E.TYPES);
   assert.equal(sum.reason, 'both');
-  const up = S.endUpdates('chaos', sum, 60000, Date.UTC(2026, 9, 17), true, []);
-  assert.equal(up['modes/chaos/draws'], 1);
-  assert.equal(up['modes/chaos/finished'], 1);
-  assert.equal(up['mini/chaos/wordle/won'], 1);
-  assert.equal(up['mini/chaos/hilo/draw'], 1);
+  const row = Object.assign(S.factStart('chaos', 1, [{ h: 'ab'.repeat(10), pl: 'web' }], { sc: true }), S.factEnd(sum, 60000, Date.UTC(2026, 9, 17)));   // the match's row
+  assert.deepEqual([row.m, row.sc, row.end, row.w], ['chaos', true, 'both', undefined], 'its own mode; a line each: no winner');
+  assert.deepEqual(JSON.parse(row.sq).map(e => [e.t, e.end]), [['wordle', 'won'], ['hilo', 'draw']]);
 });
 
 test('Super Chaos Higher/Lower: the same 5 guesses each; a 5th that misses hands the square over, for either player', () => {

@@ -59,10 +59,10 @@ const check = (good, what) => { console.log(`${good ? 'ok  ' : 'FAIL'} ${what}`)
     check(w.status === 401, `a phone cannot write a rating (HTTP ${w.status})`);
     const g = await fetch(`${DB}/games.json?shallow=true&auth=${s.idToken}`);
     check(g.status === 401, `a phone cannot list the games or their hidden values (HTTP ${g.status})`);
-    const st = await fetch(`${DB}/stats.json?shallow=true&auth=${s.idToken}`);
-    check(st.status === 401, `only the admin can read the stats (HTTP ${st.status})`);
-    const sw = await fetch(`${DB}/stats/modes/local/started.json?auth=${s.idToken}`, { method: 'PUT', body: '1' });
-    check(sw.status === 401, `a phone cannot write the stats (HTTP ${sw.status})`);
+    const st = await fetch(`${DB}/mfacts.json?shallow=true&auth=${s.idToken}`);
+    check(st.status === 401, `only the admin can read the match rows the stats are counted from (HTTP ${st.status})`);
+    const sw = await fetch(`${DB}/mfacts/2026-01-01/smoke.json?auth=${s.idToken}`, { method: 'PUT', body: '{"t0":1}' });
+    check(sw.status === 401, `a phone cannot write a match row (HTTP ${sw.status})`);
     const rv = await fetch(`${DB}/review.json?shallow=true&auth=${s.idToken}`);
     check(rv.status === 401, `only the admin can read the username review list (HTTP ${rv.status})`);
     const bg = await fetch(`${DB}/botGames.json?shallow=true&auth=${s.idToken}`);

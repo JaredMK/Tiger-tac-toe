@@ -1,29 +1,20 @@
 'use strict';
-/* The anonymous game stats: what one event adds to the totals. Pure (no database here), so the rules
- * can be tested on their own; functions/index.js applies the result as atomic increments.
+/* What the server keeps of play, as rows (December 2026): the admin dashboard works every number out from them with one
+ * set of definitions (src/admin/metrics.js). Pure (no database here), so the rules can be tested on their own;
+ * functions/index.js writes the results. No counters are kept: a number is always a count over rows.
  *
- * stats/ (readable by the admin only, written only by the server)
- *   miniMode/{shared|race}/{mode}/{type}   the same counters by the square's own mode (Race mode, core/race.js), for the comparison
- *   mini/{mode}/{type}     played, won, draw (reset), open (match ended first), winMoves, loseMoves,
- *                          allMoves, xWins, oWins: sums, averaged on the dashboard (mode 'testing': the
- *                          squares of games that were admin only when the match ended, kept apart; every
- *                          Super Chaos square, friend rooms' too, under 'chaos' ('testingSc' for the admin
- *                          only ones); an abandoned match's squares are not counted at all);
- *                          the runners (Dash, Lane Rush) add runs, distSum (metres, over all runs),
- *                          finishes, finishRuns (the winners' runs) and crash/{bin} (crashes per 50 m)
- *   modes/{mode}           started, finished, resigned, timeouts, turns, ms, timed (matches with a time),
- *                          xWins, oWins, draws (no line left for either side; Super Chaos: a line each in one round);
- *                          done, doneTurns, doneMs, doneTimed: the same over matches played to a result only
- *                          (not resigned or timed out: those, like a match never finished, are abandoned)
- *   days/{YYYY-MM-DD}      logins, active, newAccounts, started/{mode}, finished/{mode}, modes/{mode}/... (as modes/ above)
- *   weeks/{YYYY-Www}       logins, active, newAccounts, modes/{mode}/...
- *   months/{YYYY-MM}       logins, active, newAccounts, modes/{mode}/...
- *   alltime                logins, active (each player once, ever), newAccounts
- * Days, weeks (ISO, Monday to Sunday) and months are New York's (America/New_York, with its daylight saving), so
- * the admin's Today / This week / This month match the calendar there.
- * "Moves" in a mini-game are the turns a side spent in it: a Risky Rolls roll or a Hangman letter that earns
- * another go is part of the same turn. Players are counted as active by a one-way hash of their account
- * or of a random id their browser made up; nothing else about them is stored.
+ * mfacts/{day}/{id}   one row per match (day: New York's, of its start): t0 (start), m (mode: local, cpu, friend, match, bot,
+ *                     chaos), tm (timer: core/timer.js timerSpec, 'none' locally), who (its players: [{ s side, u account,
+ *                     h device hash, pl platform, cv client version, bot }]), own (an admin account or an owner device
+ *                     played in it), sc (Super Chaos), rm (a friend room's code); once ended: t1, end (line, blocked,
+ *                     majority, both, clock: finished; resign, timeout: abandoned), w (the winner), n (turns), ms (length)
+ *                     and sq, its squares as JSON: [{ t type, v settings version, end (won, draw, open), w, X, O (each
+ *                     side's turns in it), f (its first mover), ms (time spent in it), race, run (a runner's runs) }].
+ * finds/{day}/{id}    one row per Find Match search that ended: t, k (people: paired with a person; bot: took the
+ *                     computer; cancel: gave up), ms (the wait), u (the account), own.
+ * devices/{h}, devlog/{h}/{k}   a device and its events (below): opens, matches, errors, first-run steps, shares and invites.
+ * Days are New York's (America/New_York, with its daylight saving). "Moves" in a mini-game are the turns a side spent in
+ * it: a Risky Rolls roll or a Hangman letter that earns another go is part of the same turn.
  */
 const crypto = require('node:crypto');
 
@@ -51,14 +42,6 @@ function periodKeys(t) {
   const week = Math.ceil(((th - y0) / 86400000 + 1) / 7);
   return { d: day, w: `${th.getUTCFullYear()}-W${pad(week)}`, m: `${y}-${pad(m)}`, a: 'all' };
 }
-const PERIOD_NODE = { d: 'days', w: 'weeks', m: 'months', a: 'alltime' };
-const PERIOD_PATH = (p, key) => (p === 'a' ? PERIOD_NODE.a : `${PERIOD_NODE[p]}/${key}`);
-// The mode totals (modes/...) of one event, kept per day, week and month too: the admin's period filter reads them.
-function withPeriods(up, k) {
-  for (const [path, n] of Object.entries(up)) if (path.startsWith('modes/')) for (const p of ['d', 'w', 'm']) up[`${PERIOD_NODE[p]}/${k[p]}/${path}`] = n;
-  return up;
-}
-
 function hashId(id) { return crypto.createHash('sha256').update('ttc-stats:' + id).digest('hex').slice(0, 20); }
 const idOk = v => typeof v === 'string' && /^[-\w]{6,48}$/.test(v);
 const count = (v, max) => (Number.isInteger(v) && v >= 0 && v <= max ? v : null);
@@ -96,121 +79,35 @@ function checkRun(r) {
   }
   return out;
 }
-// What a match starting adds.
-// The online matches by their timer (the admin's Stats: completion and length, a time per turn against a match
-// clock): timers/{code}/... where code is core/timer.js timerSpec ('t30', 'm5+2'...). Started, finished, done (not
-// abandoned), resigned, two turns missed (timeouts), a match clock run out (clockOuts), turns and lengths.
+// ---------- match rows ----------
 const TIMER_CODE = /^(off|t\d{1,3}|m\d{1,2}\+\d{1,2})$/;
-function timerStartUpdates(spec) { return TIMER_CODE.test(spec) ? { [`timers/${spec}/started`]: 1 } : {}; }
-function timerEndUpdates(spec, sum, ms) {
-  if (!TIMER_CODE.test(spec)) return {};
-  const b = `timers/${spec}/`, up = {}, add = (p, n) => { if (n) up[b + p] = (up[b + p] || 0) + n; };
-  const turns = sum.squares.reduce((n, e) => n + e.X + e.O, 0), timed = Number.isFinite(ms) && ms >= 0 && ms <= MAX_MS;
-  add('finished', 1); add('turns', turns);
-  if (sum.reason === 'resign') add('resigned', 1);
-  if (sum.reason === 'timeout') add('timeouts', 1);
-  if (sum.reason === 'clock') add('clockOuts', 1);
-  if (timed) { add('ms', Math.round(ms)); add('timed', 1); }
-  if (ABANDONED.includes(sum.reason)) return up;
-  add('done', 1); add('doneTurns', turns);
-  if (timed) { add('doneMs', Math.round(ms)); add('doneTimed', 1); }
-  return up;
+const timerOf = v => (typeof v === 'string' && TIMER_CODE.test(v) ? v : 'none');
+const clean = o => { const out = {}; for (const [k, v] of Object.entries(o)) if (v !== undefined && v !== null && v !== false && v !== '') out[k] = v; return out; };
+// One player of a match, as its row keeps them: p { s, u, h, pl, cv, bot }.
+function factWho(p) {
+  p = p || {};
+  return clean({ s: p.s === 'X' || p.s === 'O' ? p.s : undefined, u: typeof p.u === 'string' ? p.u.slice(0, 40) : undefined, h: typeof p.h === 'string' && /^[0-9a-f]{20}$/.test(p.h) ? p.h : undefined,
+    pl: p.pl === 'ios' || p.pl === 'web' ? p.pl : undefined, cv: typeof p.cv === 'string' && /^\d{1,4}(\.\d{1,4}){0,2}$/.test(p.cv) ? p.cv : undefined, bot: p.bot ? true : undefined });
 }
-function startUpdates(mode, t) {
-  const k = periodKeys(t);
-  return withPeriods({ [`modes/${mode}/started`]: 1, [`days/${k.d}/started/${mode}`]: 1 }, k);
-}
-// What a finished match adds: the mode's totals and every mini-game played in it. `ms` is null when
-// the match has no usable time. testTypes: the mini-games that are admin only at the time (their
-// squares count under mini/testing, apart from the released games' numbers).
-function endUpdates(mode, sum, ms, t, withStart, testTypes) {
-  const k = periodKeys(t), up = withStart ? startUpdates(mode, t) : {};
-  const add = (p, n) => { if (n) up[p] = (up[p] || 0) + n; };
-  const turns = sum.squares.reduce((n, e) => n + e.X + e.O, 0);
-  add(`modes/${mode}/finished`, 1);
-  add(`days/${k.d}/finished/${mode}`, 1);
-  add(`modes/${mode}/turns`, turns);
-  if (sum.reason === 'resign') add(`modes/${mode}/resigned`, 1);
-  if (sum.reason === 'timeout') add(`modes/${mode}/timeouts`, 1);
-  if (sum.winner) add(`modes/${mode}/${sum.winner === 'X' ? 'xWins' : 'oWins'}`, 1);
-  else if (sum.reason === 'blocked' || sum.reason === 'both') add(`modes/${mode}/draws`, 1);   // a draw: no line left for either side, or (Super Chaos) a line each in the same round
-  const timed = Number.isFinite(ms) && ms >= 0 && ms <= MAX_MS;
-  if (timed) { add(`modes/${mode}/ms`, Math.round(ms)); add(`modes/${mode}/timed`, 1); }
-  if (ABANDONED.includes(sum.reason)) return withPeriods(up, k);      // abandoned: its squares say nothing about the mini-games
-  add(`modes/${mode}/done`, 1);
-  add(`modes/${mode}/doneTurns`, turns);
-  if (timed) { add(`modes/${mode}/doneMs`, Math.round(ms)); add(`modes/${mode}/doneTimed`, 1); }
-  const sc = !!sum.sc || mode === 'chaos';
-  for (const e of sum.squares) {
-    const test = testTypes && testTypes.includes(e.t);
-    const key = `${test ? (sc ? 'testingSc' : 'testing') : sc ? 'chaos' : mode}/${e.t}/`, b = `mini/${key}`;
-    for (const base of [b, `miniMode/${e.race ? 'race' : 'shared'}/${key}`]) {   // (and the same by the square's own mode: Shared or Race)
-      add(base + 'played', 1);
-      add(base + e.end, 1);
-      add(base + 'allMoves', e.X + e.O);
-      if (e.end === 'won') {
-        add(base + 'winMoves', e[e.w]);
-        add(base + 'loseMoves', e[e.w === 'X' ? 'O' : 'X']);
-        add(base + (e.w === 'X' ? 'xWins' : 'oWins'), 1);
-      }
-    }
-    if (e.run) {                                                        // a runner: every run and crash counts, finished square or not
-      add(b + 'runs', e.run.runs.X + e.run.runs.O);
-      add(b + 'distSum', e.run.dist.X + e.run.dist.O);
-      for (const p of ['X', 'O']) for (const c of e.run.crashes[p]) add(`${b}crash/${Math.floor(c / RUN_BIN) * RUN_BIN}`, 1);
-      if (e.end === 'won') { add(b + 'finishes', 1); add(b + 'finishRuns', e.run.runs[e.w]); }
-    }
-  }
-  return withPeriods(up, k);
-}
-// ---------- balance (December 2026): the admin's Balance report and the stats by settings version ----------
-// stats/bal/sq/{type}/v{n}/{day}/{seg}/   every square of a match played to its end, filed under the settings version it
-//     was dealt under (v1: none recorded, every square from before), the New York day and seg ('p': only players, 'a': an
-//     admin played in the match): n (squares), won, draw (reset), open (left open by the match's end), moves (both sides'
-//     turns summed), fd (decided squares whose first mover is known), fm (of those, won by the first mover), wm/m{k} (the
-//     winner's moves, a histogram, m40 = 40 or more), tn/tsum (won squares with a time, their seconds summed) and t/s{b} (the
-//     won square's time in seconds, a histogram by upper edge, s9999 beyond the last).
-// stats/bal/ml/{day}/{seg}/{mode}/{timer}/{fin|ab}/   every match reported (finished, or abandoned: resigned or two turns
-//     missed): n, turns/t{b} (its turns, by upper edge), tsum, mn/msum (with a time: how many, minutes summed) and mi/m{b}
-//     (its minutes, by upper edge). timer: core/timer.js timerSpec ('t30', 'm5+5', 'off'), 'none' for a local match.
-// Super Chaos matches are left out (simultaneous rounds: not comparable). Practice and the admin's Test play are never
-// reported at all (net/tracking.js, ui/sandbox.js).
-const BAL_SEG = admin => (admin ? 'a' : 'p');
-const MOVE_CAP = 40;
-const SQ_SECS = [5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 300, 420, 600, 900, 1200, 1800, 3600];
-const MATCH_TURNS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 100, 120, 160, 200];
-const MATCH_MINS = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 90, 120, 180];
-const edgeOf = (edges, x) => { const e = edges.find(b => x <= b); return e === undefined ? 9999 : e; };
-const BAL_TIMER = v => (typeof v === 'string' && TIMER_CODE.test(v) ? v : 'none');
-function balanceUpdates(mode, sum, ms, t, o) {
+// A match starting: its row. o: { timer, own, sc, room }.
+function factStart(mode, t, who, o) {
   o = o || {};
-  const up = {}, add = (p, n) => { if (n) up[p] = (up[p] || 0) + n; };
-  if (!sum || sum.sc || mode === 'chaos') return up;
-  const day = periodKeys(t).d, seg = BAL_SEG(o.admin), ab = ABANDONED.includes(sum.reason);
+  return clean({ t0: t, m: MODES.includes(mode) ? mode : 'local', tm: timerOf(o.timer), who: (who || []).map(factWho).filter(w => Object.keys(w).length), own: o.own ? true : undefined, sc: o.sc ? true : undefined, rm: typeof o.room === 'string' ? o.room.slice(0, 8) : undefined });
+}
+// A match ending: what its row gains. sum: checkEnd's or the engine's matchStats (squares, winner, reason).
+function factEnd(sum, ms, t) {
   const turns = sum.squares.reduce((n, e) => n + e.X + e.O, 0), timed = Number.isFinite(ms) && ms >= 0 && ms <= MAX_MS;
-  const mb = `bal/ml/${day}/${seg}/${mode}/${BAL_TIMER(o.timer)}/${ab ? 'ab' : 'fin'}/`;
-  add(mb + 'n', 1); add(mb + 'tsum', turns); add(`${mb}turns/t${edgeOf(MATCH_TURNS, turns)}`, 1);
-  if (timed) { const min = ms / 60000; add(mb + 'mn', 1); add(mb + 'msum', Math.round(ms / 1000)); add(`${mb}mi/m${edgeOf(MATCH_MINS, min)}`, 1); }
-  if (ab) return up;                                                    // (an abandoned match's squares say nothing about the mini-games)
-  for (const e of sum.squares) {
-    const b = `bal/sq/${e.t}/v${Number.isInteger(e.v) && e.v >= 1 ? e.v : 1}/${day}/${seg}/`;
-    add(b + 'n', 1); add(b + e.end, 1); add(b + 'moves', e.X + e.O);
-    if (e.end !== 'won') continue;
-    add(`${b}wm/m${Math.min(MOVE_CAP, Math.max(1, e[e.w] || 1))}`, 1);
-    if (e.f === 'X' || e.f === 'O') { add(b + 'fd', 1); if (e.f === e.w) add(b + 'fm', 1); }
-    if (Number.isFinite(e.ms)) { const s = e.ms / 1000; add(b + 'tn', 1); add(b + 'tsum', Math.round(s)); add(`${b}t/s${edgeOf(SQ_SECS, s)}`, 1); }
-  }
-  return up;
+  const sq = sum.squares.slice(0, 80).map(e => clean({ t: e.t, v: Number.isInteger(e.v) && e.v > 1 ? e.v : undefined, end: e.end, w: e.end === 'won' ? e.w : undefined, X: e.X || undefined, O: e.O || undefined,
+    f: e.f === 'X' || e.f === 'O' ? e.f : undefined, ms: Number.isFinite(e.ms) ? Math.round(e.ms) : undefined, race: e.race ? 1 : undefined, run: e.run || undefined }));
+  return clean({ t1: t, end: REASONS.includes(sum.reason) ? sum.reason : 'line', w: sum.winner === 'X' || sum.winner === 'O' ? sum.winner : undefined, n: turns || undefined, ms: timed ? Math.round(ms) : undefined, sq: JSON.stringify(sq), sc: sum.sc ? true : undefined });
 }
-// A login, or a new account: the counter for the day, the week, the month and all time.
-function periodUpdates(what, t) {
-  const k = periodKeys(t), up = {};
-  for (const p of ['d', 'w', 'm', 'a']) up[`${PERIOD_PATH(p, k[p])}/${what}`] = 1;
-  return up;
-}
+// A Find Match search that ended: its row.
+const FIND_KINDS = ['people', 'bot', 'cancel'];
+function factFind(kind, ms, t, uid, own) { return clean({ t, k: FIND_KINDS.includes(kind) ? kind : 'cancel', ms: Math.max(0, Math.round(ms || 0)), u: uid, own: own ? true : undefined }); }
 
 // ---------- playtest activity (no account needed) ----------
-// devices/{h}      first, last (times), n (events), tag (the tester tag of the first link that had one)
+// devices/{h}      first, last (times), n (events), tag (the tester tag of the first link that had one), p and cv (the
+//                  client it last opened: platform and version), u/{uid} (the accounts signed in on it, with when)
 // devlog/{h}/{k}   t, ev ('open', 'live', 'start', 'finish', 'leave'), m (the mode), g (the match)
 // h: a one-way hash of the random id the browser made up (kept in its own storage); nothing about the
 // person is sent or kept. k: one per app open and per 'live' (sent every 10 minutes while a match is
@@ -256,7 +153,7 @@ function checkDev(d, t) {
     else k = (d.ev === 'start' ? 's' : 'e') + d.g;                        // one start and one end (finished or left) per match
   }
   const out = { h: devHash(d.dev), k, ev, tag: tagOk(d.tag) ? d.tag : null };
-  if (typeof d.v === 'string' && /^[-\w.]{1,20}$/.test(d.v)) out.v = d.v;                // the app's version on the phone
+  if (typeof d.v === 'string' && /^[-\w.]{1,20}$/.test(d.v)) { out.v = d.v; if (d.ev === 'open' || d.ev === 'error') ev.b = d.v; }   // the app's build on the phone (kept on its opens and errors: the error rate by build)
   if (d.s === 'X' || d.s === 'O') out.s = d.s;                                           // the phone's side in the match
   if (d.ev === 'report') { out.note = typeof d.note === 'string' ? d.note.trim().replace(/[^\x20-\x7e -￿]/g, ' ').slice(0, 140) : ''; if (out.note) ev.note = out.note; }
   if (d.ev === 'mlog') out.e = d.e;
@@ -306,62 +203,14 @@ function reportText(r, who, env) {
   return `Tic Tac Chaos${env ? ' (' + env + ')' : ''}: a problem report from ${who} ${at}${cl ? ', ' + cl : ''}: ${r.note ? '"' + r.note + '"' : '(no note)'}`;
 }
 
-// ---------- growth (December 2026): the first-run funnel, retention by install cohort, rematch/share/invite events, sources ----------
-// A device's install cohort is the day it was first seen (devices/{h}/first, New York time). stats/cohorts/{day}: n (devices
-// first seen that day), d1, d7, d30 (of them, seen again exactly 1, 7 and 30 days later: each counted once per device,
-// flags r1/r7/r30 on the device). stats/funnel/{day} (the same cohort): opened, tap (the first tap on the board), move (the
-// first move made in a mini-game), claim (the first square claimed by anyone in their match), finished (the first match
-// finished), second (a second match started). stats/acts/{day}/{act}[_{ch}]: rematch, share (a result shared), invite
-// (sent: _share or _copy), invite-open (a join link opened), invite-join (joined a room), invite-done (a first match from an
-// invite finished). stats/sources/{tag}: devices (first seen with ?t=tag), signups (accounts made by them, users/{uid}/src).
+// The first-run steps and the events a phone reports (devlog 'step' and 'act'): the funnel, retention, invites and shares
+// are worked out from the devices' events by the dashboard (src/admin/metrics.js).
 const STEPS = ['tap', 'move', 'claim'];
 const ACTS = ['rematch', 'share', 'invite', 'invite-open', 'invite-join', 'invite-done'];
 const CHANNELS = ['share', 'copy'];
-const RETAIN = [1, 7, 30];
 const dayNum = d => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 86400000;
-// A kept event on the device (its record before, the record being written): its marks on the record (mutated) and the
-// counts to add. Pure.
-function growthMarks(dev, c, t, isNew) {
-  const up = {}, today = periodKeys(t).d, cohort = periodKeys(dev.first || t).d, ev = c.ev.ev;
-  if (isNew) { dev.ct = 1; up[`cohorts/${cohort}/n`] = 1; up[`funnel/${cohort}/opened`] = 1; if (c.tag) up[`sources/${c.tag}/devices`] = 1; }
-  if (ev === 'act') up[`acts/${today}/${c.ev.act}${c.ev.ch ? '_' + c.ev.ch : ''}`] = 1;
-  if (ev === 'start') dev.ms = (dev.ms || 0) + 1;                // matches started and finished on it: every device (the Devices page's games played)
-  if (ev === 'finish') dev.mf = (dev.mf || 0) + 1;
-  if (!dev.ct) return up;                                        // (a device first seen before cohorts were kept: in no cohort)
-  const off = dayNum(today) - dayNum(cohort);
-  if (RETAIN.includes(off) && !dev['r' + off]) { dev['r' + off] = 1; up[`cohorts/${cohort}/d${off}`] = 1; }
-  if (ev === 'step') up[`funnel/${cohort}/${c.ev.step}`] = 1;
-  if (ev === 'start' && dev.ms === 2) up[`funnel/${cohort}/second`] = 1;
-  if (ev === 'finish' && dev.mf === 1) up[`funnel/${cohort}/finished`] = 1;
-  return up;
-}
-
-// Find Match's waits (December 2026): stats/find/{day}: people (searchers paired with a person), peopleMs (their waits
-// summed), bot (searchers who took the computer), botMs, cancel (searches given up), cancelMs, and w/{bucket} the people's
-// waits by bucket (u10, u20, u30, u60, o60: seconds). The bot fill rate is bot / (people + bot).
-const WAIT_BUCKETS = [[10, 'u10'], [20, 'u20'], [30, 'u30'], [60, 'u60']];
-function findUpdates(kind, ms, t) {
-  const d = periodKeys(t).d, w = Math.max(0, Math.round(ms || 0)), up = { [`find/${d}/${kind}`]: 1, [`find/${d}/${kind}Ms`]: w };
-  if (kind === 'people') { const b = WAIT_BUCKETS.find(([s]) => w < s * 1000); up[`find/${d}/w/${b ? b[1] : 'o60'}`] = 1; }
-  return up;
-}
-
-// ---------- health (December 2026): app opens and errors per day, by build and platform (the admin's Overview error rate) ----------
-// stats/health/{day}/opens, /errors, /v/{build}/{opens|errors}, /p/{web|ios} (opens). Counted once per event kept (devlog's own
-// dedupe: a retry or a reload never counts twice).
-const keyOf = v => String(v).replace(/[.$#\[\]\/]/g, '_').slice(0, 24);
-function healthUpdates(c, t) {
-  const ev = c && c.ev && c.ev.ev, what = ev === 'open' ? 'opens' : ev === 'error' ? 'errors' : null;
-  if (!what) return {};
-  const d = periodKeys(t).d, up = { [`health/${d}/${what}`]: 1 };
-  if (c.v) up[`health/${d}/v/${keyOf(c.v)}/${what}`] = 1;
-  if (ev === 'open' && c.ev.p) up[`health/${d}/p/${c.ev.p}`] = 1;
-  if (ev === 'open' && c.ev.cv) up[`health/${d}/cv/${keyOf(c.ev.cv)}`] = 1;
-  return up;
-}
 
 module.exports = {
-  META_KEY, metaKey, metaFor, ownerOf,
-  balanceUpdates, BAL_SEG, MOVE_CAP, SQ_SECS, MATCH_TURNS, MATCH_MINS, edgeOf, BAL_TIMER,
-  checkReport, reportText, REPORT_WHERE, MODES, healthUpdates, findUpdates, growthMarks, STEPS, ACTS, CHANNELS, RETAIN, dayNum, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, PERIOD_NODE, PERIOD_PATH, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates, timerStartUpdates, timerEndUpdates,
+  META_KEY, metaKey, metaFor, ownerOf, factWho, factStart, factEnd, factFind, FIND_KINDS, timerOf,
+  checkReport, reportText, REPORT_WHERE, MODES, STEPS, ACTS, CHANNELS, dayNum, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, hashId, idOk, checkEnd, checkRun, RUN_BIN,
   DEV_EVENTS, DEV_MODES, TAG_RE, tagOk, devHash, checkDev };

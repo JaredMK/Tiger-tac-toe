@@ -25,7 +25,7 @@ h1, h2, .lg { font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weigh
 h1 { margin: 0; font-size: 28px; line-height: 1; padding-top: 4px; }
 h2 { margin: 0 0 10px; font-size: 20px; padding-top: 3px; }
 button, select { font: inherit; color: inherit; }
-.wrap { max-width: 1100px; margin: 0 auto; padding: 16px max(16px, env(safe-area-inset-right)) 40px max(16px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 16px; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 16px max(16px, env(safe-area-inset-right)) 40px max(16px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 16px; }
 .top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .top .sp { flex: 1; }
 .who { color: var(--muted); font-size: 15px; }
@@ -45,7 +45,7 @@ button, select { font: inherit; color: inherit; }
 .kpi b { font-family: 'Luckiest Guy', sans-serif; font-weight: 400; font-size: 26px; padding-top: 3px; }
 .kpi span { color: var(--muted); font-size: 14px; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; }
-.chart svg { width: 100%; height: auto; display: block; }
+.chart { max-width: 820px; } .chart svg { width: 100%; height: auto; display: block; }
 .chart .ax { stroke: var(--line); stroke-width: 1; }
 .chart text { font: 11px 'Patrick Hand', sans-serif; fill: var(--muted); }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; color: var(--muted); margin-top: 6px; }
@@ -61,9 +61,6 @@ th[aria-sort] { color: var(--ink); }
 th[aria-sort="ascending"] button::after { content: ' ▲'; }
 th[aria-sort="descending"] button::after { content: ' ▼'; }
 td.dim, span.dim { color: var(--muted); }
-td.sc { background: color-mix(in srgb, var(--o) 8%, transparent); }
-tr.sum td { background: var(--paper); border-bottom: 3px solid var(--ink); font-weight: 700; }
-.bar { display: inline-block; height: 9px; border-radius: 5px; background: var(--sky); vertical-align: middle; margin-left: 6px; }
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .row h2 { margin: 0; flex: 1; }
 .tabs { display: flex; gap: 6px; }
@@ -90,24 +87,9 @@ select { border: 2.5px solid var(--ink); border-radius: 10px; padding: 4px 8px; 
 .fields h3 { flex: 0 0 100%; margin: 6px 0 0; font: 400 14px 'Luckiest Guy', sans-serif; letter-spacing: .03em; color: var(--muted); }
 .set { color: var(--green); font-size: 14px; } .unset { color: var(--muted); font-size: 14px; }
 .res { font-size: 15px; } .bad { color: var(--x); } .good { color: var(--green); }
-.wide-chart { overflow-x: auto; } .wide-chart svg { min-width: 640px; }
-.chart .day { stroke: var(--ink); stroke-opacity: .25; stroke-width: 1; }
 .chart .hit { fill: transparent; } .chart .hit:hover { fill: rgba(22, 18, 16, .07); }
-.lnk { all: unset; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; font-family: ui-monospace, Menlo, monospace; font-size: 14px; }
-.lnk:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
-tr.dev, tr.mlrow, tr.acct { cursor: pointer; } tr.mlrow:hover td, tr.mlrow.open td, tr.acct:hover td, tr.acct.open td { background: var(--paper); } tr.mlrow.rep td:first-child { color: var(--x); font-weight: 800; }
-.mlfilt { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; } .mlfilt input, .mlfilt select { height: 36px; }
 .mltl { font: 13px/1.45 ui-monospace, Menlo, Consolas, monospace; overflow-wrap: anywhere; max-height: 420px; overflow: auto; margin: 6px 0 0; padding: 0; list-style: none; }
 .mltl li { padding: 2px 0; border-bottom: 1px dashed var(--stone); } .mltl .k { display: inline-block; min-width: 72px; font-weight: 800; } .mltl .k.reject, .mltl .k.error, .mltl .k.report { color: var(--x); } .mltl .k.offline { color: var(--plum); }
- tr.dev:hover td, tr.dev.open td { background: var(--paper); }
-.tlpanel { margin-top: 10px; border: 2.5px solid var(--ink); border-radius: 14px; background: var(--paper); padding: 10px 12px 12px; }
-.tlpanel .row { margin-bottom: 8px; } #acctDetail .tbl { margin-top: 10px; } #acctDetail .kpis { grid-template-columns: 1fr 1fr; } .tlpanel .row h3 { flex: 1; margin: 0; font: 400 16px 'Luckiest Guy', sans-serif; letter-spacing: .02em; }
-#playCard .kpis { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
-.tlist { display: flex; flex-direction: column; gap: 10px; }
-.tses h3 { margin: 0 0 4px; font: 400 14px 'Luckiest Guy', sans-serif; letter-spacing: .03em; }
-.tses p { margin: 0; color: var(--muted); font-size: 15px; }
-.tses ul { margin: 4px 0 0; padding-left: 18px; } .tses li { font-size: 15px; }
-.tag { display: inline-block; border: 2px solid var(--ink); border-radius: 999px; padding: 0 8px; font-size: 14px; background: var(--o-soft); }
 .funnel { display: grid; grid-template-columns: max-content 1fr max-content; gap: 6px 10px; align-items: center; font-size: 16px; margin-top: 6px; }
 .funnel .fb { height: 14px; border-radius: 7px; background: var(--sky); border: 1.5px solid var(--ink); min-width: 2px; }
 .mid-left { color: var(--x); } .mid-open { color: var(--plum); }
@@ -125,15 +107,8 @@ tr.dev, tr.mlrow, tr.acct { cursor: pointer; } tr.mlrow:hover td, tr.mlrow.open 
     .rform .rf input { width: 100%; padding: 4px 6px; font: inherit; border: 1px solid #bbb; border-radius: 6px; }
     .rform .btn { grid-column: 1 / -1; justify-self: start; margin-top: 4px; }
     .wgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; } .wgrid .rform { grid-template-columns: 1fr; margin-top: 0; }   /* Risky Spins' three wheels */
-/* the menu of sections, a section's head, the Mini-game Settings pages */
-.tiles, .gtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 14px; }
-.gtiles { grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 10px; }
-.tile, .gtile { display: flex; flex-direction: column; gap: 4px; color: inherit; text-decoration: none; background: var(--card); border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); border-radius: 18px 12px 20px 14px / 14px 20px 12px 18px; padding: 16px; min-height: 96px; }
-.gtile { min-height: 0; padding: 10px 12px; border-width: 2.5px; box-shadow: 0 3px 0 var(--ink); border-radius: 14px 10px 13px 9px; }
-.tile b, .gtile b { font: 400 20px/1.1 'Luckiest Guy', sans-serif; letter-spacing: .02em; padding-top: 3px; } .gtile b { font-size: 16px; }
-.tile small, .gtile small { color: var(--muted); font-size: 15px; }
-.tile:active, .gtile:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
-.tile:focus-visible, .gtile:focus-visible, .back:focus-visible { outline: 3px solid var(--sky); outline-offset: 3px; }
+/* a section's head, a game's settings page */
+.back:focus-visible { outline: 3px solid var(--sky); outline-offset: 3px; }
 .sechead { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; } .sechead h2 { margin: 0; font-size: 24px; }
 .btn.back { text-decoration: none; color: inherit; display: inline-block; }
 .chg { color: var(--x); }
@@ -166,27 +141,83 @@ tr.dev, tr.mlrow, tr.acct { cursor: pointer; } tr.mlrow:hover td, tr.mlrow.open 
 #tuneCard .tbar { margin-top: 16px; }
 #modeCard .row h2, #relCard .row h2 { flex: 1; }
 .atttab { border-collapse: collapse; margin: 6px 0 10px; } .atttab th, .atttab td { padding: 3px 6px; text-align: left; font-size: 13px; } .atttab input { width: 68px; }
-.balance .bfilters { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 8px 0 12px; } .balance .bfilters label { display: inline-flex; gap: 6px; align-items: center; }
-.balance h3 { margin: 16px 0 6px; } .balance td small, .balance th small { color: var(--muted, #6b5e55); }
 .bflag { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 999px; font-size: 12px; border: 1.5px solid currentColor; } .bflag.slow { color: #b3261e; } .bflag.small { color: #8a6d00; }
-.balance tr.flagged th { background: rgba(179, 38, 30, .06); } .vlog { margin: 6px 0 0; padding-left: 18px; } .vlog li { margin: 3px 0; }
-.top .mine { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; }
-.devs td, .devs th { vertical-align: top; }
-.devs tr.devx td { background: rgba(0, 0, 0, .035); }
-.devs .nick { background: none; border: 0; padding: 2px 0; font: inherit; font-weight: 700; text-align: left; cursor: pointer; text-decoration: underline dotted; color: inherit; }
-.devs .nickedit { display: inline-flex; gap: 6px; flex-wrap: wrap; }
-.devs .nickedit input { width: 150px; }
-.devs .sw { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; cursor: pointer; }
+.vlog { margin: 6px 0 0; padding-left: 18px; } .vlog li { margin: 3px 0; }
 .exrow { gap: 8px; flex-wrap: wrap; }
 .exrow input { flex: 1 1 160px; min-width: 0; }
-#devQ { flex: 1 1 220px; max-width: 360px; }
 .olink { word-break: break-all; padding: 4px 6px; background: rgba(0, 0, 0, .05); border-radius: 4px; }
+
+/* ---------- the dashboard (December 2026): one layout, one table, one chart ----------
+   The bar of sections on every page; the filters on every stats page; a number is a link to its rows; every table is
+   src/admin/table.js's; on a phone the bar and the tables scroll sideways and the filters wrap. */
+a { color: inherit; }
+.btn.sm { padding: 5px 10px 3px; font-size: 13px; border-width: 2.5px; box-shadow: 0 2px 0 var(--ink); border-radius: 11px 8px 10px 7px; }
+.nav { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 6px; margin: -6px 0; scrollbar-width: none; position: sticky; top: 0; z-index: 5; background: var(--bg); }
+.nav::-webkit-scrollbar { display: none; }
+.nav a { flex: none; text-decoration: none; border: 2.5px solid var(--ink); background: #fff; border-radius: 999px; padding: 6px 14px 3px; font: 400 15px/1.2 'Luckiest Guy', sans-serif; letter-spacing: .02em; }
+.nav a[aria-current="page"] { background: var(--ink); color: var(--paper); }
+.nav a:focus-visible, .jump a:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+.jump { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 16px; }
+.fbar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; background: var(--paper); border: 2.5px solid var(--ink); border-radius: 14px; padding: 8px 12px; font-size: 15px; }
+.fbar label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.fbar select, .fbar input[type="date"] { border: 2px solid var(--ink); border-radius: 9px; padding: 3px 6px; background: #fff; font: inherit; }
+.fbar .sw { font-size: 14px; } .fbar .sw input { width: 20px; height: 20px; }
+.fbar .frange { color: var(--muted); font-size: 14px; flex: 1 1 200px; text-align: right; }
+#gameStats .fbar { margin-bottom: 12px; }
+.kpi a.big, .kpi b.big { font: 400 26px/1.15 'Luckiest Guy', sans-serif; padding-top: 3px; text-decoration: none; color: var(--ink); }
+.kpi a.big { text-decoration: underline dotted 2px; text-underline-offset: 4px; text-decoration-color: var(--stone); }
+.kpi a.big:hover, .kpi a.big:focus-visible { text-decoration-color: var(--ink); }
+.kpi b.big a { text-decoration: underline dotted 2px; text-underline-offset: 4px; text-decoration-color: var(--stone); }
+.kpi b.big b { font: inherit; }
+.kpi .more, .card > .more { font-size: 14px; color: var(--muted); margin-top: 4px; display: inline-block; }
+.card .kpis .card.kpi { box-shadow: none; border-width: 2px; border-color: var(--line); border-radius: 12px; padding: 10px 12px; }
+.card h3 { margin: 14px 0 6px; font: 400 15px 'Luckiest Guy', sans-serif; letter-spacing: .03em; color: var(--muted); }
+.card > .kpis + .kpis, .card > .kpis + .tb, .card > .funnel + .kpis { margin-top: 12px; }
+.tipi { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--muted); color: var(--muted); font: 700 11px/1 system-ui, sans-serif; font-style: normal; cursor: help; vertical-align: 1px; margin-left: 3px; }
+.tipi:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
+#tip { position: fixed; z-index: 50; max-width: min(320px, calc(100vw - 16px)); background: var(--ink); color: var(--paper); border-radius: 10px; padding: 8px 10px; font: 14px/1.35 system-ui, sans-serif; pointer-events: none; box-shadow: 0 4px 14px rgba(0, 0, 0, .25); }
+.tb .tbbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.tb .tbbar h3 { margin: 0 6px 0 0; }
+.tb .tbbar input[type="search"] { flex: 0 1 240px; min-width: 120px; border: 2px solid var(--ink); border-radius: 10px; padding: 4px 8px; background: #fff; font: inherit; }
+.tb .tbbar .btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.tb .tbn { color: var(--muted); font-size: 14px; margin-left: auto; }
+.tb table { font: 14px/1.3 system-ui, -apple-system, 'Segoe UI', sans-serif; font-variant-numeric: tabular-nums; }
+.tb th, .tb td { text-align: left; padding: 6px 10px; }
+.tb th.num, .tb td.num { text-align: right; }
+.tb th { font-size: 12px; white-space: nowrap; }
+.tb td { max-width: 340px; overflow: hidden; text-overflow: ellipsis; }
+.tb td small { font-size: 12px; }
+.tb tr.tbf th { padding: 2px 4px 6px; border-bottom-width: 3px; }
+.tb tr.tbf input { width: 100%; min-width: 64px; border: 1.5px solid var(--stone); border-radius: 7px; padding: 2px 6px; background: #fff; font: 13px system-ui, sans-serif !important; }
+.tb tbody tr:hover td { background: var(--paper); }
+.tb tr[data-go] { cursor: pointer; }
+.tb > .btn { margin-top: 8px; }
+.tb code, .facts code { font: 13px ui-monospace, Menlo, Consolas, monospace; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 16px; }
+.facts dt { color: var(--muted); } .facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.badge.own { background: var(--o-soft); }
+.nick { background: none; border: 0; padding: 2px 0; font: inherit; font-weight: 700; text-align: left; cursor: pointer; text-decoration: underline dotted; color: inherit; }
+.nickedit { display: inline-flex; gap: 6px; flex-wrap: wrap; } .nickedit input { width: 150px; border: 2px solid var(--ink); border-radius: 8px; padding: 2px 6px; }
+.tb .sw { font: inherit; gap: 6px; white-space: nowrap; } .tb .sw input { width: 18px; height: 18px; }
+.funnel a { font-weight: 700; }
+.chart + .more { margin-top: 6px; }
+@media (max-width: 640px) {
+  .wrap { padding-top: 10px; gap: 12px; }
+  .card { padding: 12px; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .kpi a.big, .kpi b.big { font-size: 22px; }
+  .fbar { gap: 6px 10px; } .fbar .frange { text-align: left; flex-basis: 100%; }
+  .fbar label { flex: 1 1 46%; } .fbar select { flex: 1; min-width: 0; }
+  .tb .tbbar input[type="search"] { flex: 1 1 100%; }
+  .facts { grid-template-columns: 1fr; gap: 0; } .facts dd { margin-bottom: 6px; }
+  .funnel { grid-template-columns: minmax(0, 40%) 1fr max-content; font-size: 14px; }
+  .top .who { display: none; }
+}
 </style>
 </head>
 <body>
-<div class="wrap" id="app"><div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Loading…</p></div></div>
+<div class="wrap" id="app"><div class="card msg"><h1>Tic Tac Chaos Admin</h1><p>Loading…</p></div></div>
 <script src="src/env.js"></script>
-<script src="playtest.js"></script>
 <script src="admin.js"></script>
 </body>
 </html>

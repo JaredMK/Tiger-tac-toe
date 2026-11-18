@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -56,14 +57,17 @@ globalThis.document = { getElementById: id => (id === 'app' ? app : null), addEv
 globalThis.location = { hash: '#games', href: 'http://localhost/admin.html', search: '' };
 const replaced = [];
 globalThis.history = { replaceState: (_, __, h) => { replaced.push(h); location.hash = h; } };
-globalThis.localStorage = { getItem: () => null, setItem() {} };
+const stored = {};
+globalThis.localStorage = { getItem: k => (k in stored ? stored[k] : null), setItem(k, v) { stored[k] = String(v); } };
 globalThis.sessionStorage = {};
 globalThis.CSS = { escape: s => s };
 globalThis.confirm = () => true;
 globalThis.TTC_ENV = { config: {}, staging: false };
 globalThis.TTT_FIREBASE = { offline: true };
 globalThis.scrollTo = () => {};
-for (const f of ['playtest.js', 'admin.js']) new vm.Script(fs.readFileSync(path.join(ROOT, f), 'utf8'), { filename: path.join(ROOT, f), importModuleDynamically: vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER }).runInThisContext();
+for (const f of ['admin.js']) new vm.Script(fs.readFileSync(path.join(ROOT, f), 'utf8'), { filename: path.join(ROOT, f), importModuleDynamically: vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER }).runInThisContext();
+const W = createRequire(import.meta.url)('../admin-world.js');   // a few days of rows, as the server writes them
+Date.now = () => W.NOW;                                           // (the page counts back from now)
 const A = window.TTC_ADMIN;
 assert.ok(A, 'admin.js offers its parts to the tests when the Firebase hook says offline');
 await A.loadMetas();
@@ -82,12 +86,12 @@ const ctl0 = () => ({ config: {}, secretsSet: {}, bots: {}, botStats: {}, alertS
 const draw = hash => { location.hash = hash; app.edits = []; A.draw(); return app.innerHTML; };
 const btn = t => ({ dataset: { tunereset: t }, tagName: 'BUTTON', disabled: false, closest: () => null, insertAdjacentElement() {} });
 
-test('the Games list: every mini-game once, alphabetical, with its icon, category, release badges, the Race badge and the changed marker; Platforms and Pace on top', () => {
-  A.ready({});
+test('the Games list: every mini-game once, alphabetical, with its icon, category, release badges, the Race badge and the changed marker, under the comparison table; Platforms and Pace are on Settings', () => {
+  A.ready();
   A.ctl = Object.assign(ctl0(), { tune: { wordle: { mode: 'race' }, pig: { target: 60 } }, releases: { hex: true, pig: false, platform: { ios: { c4: false } } }, pigCfg: { sides: 6, target: 51 }, clients: { ios: '1.2.0' } });
   const html = draw('#games');
-  for (const t of E.TYPES) assert.equal((html.match(new RegExp(`href="#games/${t}"`, 'g')) || []).length, 1, `${t} listed once`);
-  assert.equal((html.match(/href="#games\//g) || []).length, E.TYPES.length, 'the pool and nothing else (the retired games are not listed)');
+  for (const t of E.TYPES) assert.equal((html.match(new RegExp(`class="grow" href="#games/${t}"`, 'g')) || []).length, 1, `${t} listed once`);
+  assert.equal((html.match(/class="grow" href="#games\//g) || []).length, E.TYPES.length, 'the pool and nothing else (the retired games are not listed)');
   const names = [...html.matchAll(/class="grow" href="#games\/(\w+)"/g)].map(m => E.GAMES[m[1]].meta.info.name);
   assert.deepEqual(names, names.slice().sort((a, b) => a.localeCompare(b)), 'alphabetical by the shown name');
   const row = t => (html.match(new RegExp(`<li><a class="grow" href="#games/${t}"[\\s\\S]*?</a></li>`)) || [''])[0];
@@ -101,11 +105,16 @@ test('the Games list: every mini-game once, alphabetical, with its icon, categor
   assert.match(row('wordle'), /badge race">Race</); assert.match(row('wordle'), /badge chg/, 'the mode is a saved setting');
   assert.doesNotMatch(row('hangman'), /badge race/, 'a race game in Shared: no badge');
   assert.doesNotMatch(row('ttt'), /badge race/);
-  assert.match(html, /id="clientsCard"/, 'the Clients card'); assert.match(html, /data-clientmin="ios" value="1.2.0"/);
-  assert.match(html, /id="scCard"[\s\S]*data-rel="superchaos"/, 'the Super Chaos switch'); assert.match(html, /SUPER_CHAOS_ENABLED/);
-  assert.match(html, /id="animCard"><h2>Pace<\/h2>/, 'the Pace card (the Animation figures)');
-  assert.ok(html.indexOf('id="clientsCard"') < html.indexOf('id="gamesCard"'), 'Platforms above the list');
-  assert.doesNotMatch(html, /Mini-game Settings|href="#settings|href="#releases/, 'no trace of the old pages');
+  assert.doesNotMatch(html, /id="clientsCard"|id="scCard"|id="animCard"/, 'nothing that is not a game\'s on the Games page');
+  assert.ok(html.indexOf('id="compareCard"') > 0 && html.indexOf('id="compareCard"') < html.indexOf('id="gamesCard"'), 'the comparison table above the list');
+  assert.match(html, /data-gf="version"/, 'the settings-version filter');
+  assert.doesNotMatch(html, /Mini-game Settings|href="#releases/, 'no trace of the old pages');
+  const set = draw('#settings');
+  assert.match(set, /id="clientsCard"/, 'the Clients card'); assert.match(set, /data-clientmin="ios" value="1.2.0"/);
+  assert.match(set, /id="scCard"[\s\S]*data-rel="superchaos"/, 'the Super Chaos switch'); assert.match(set, /SUPER_CHAOS_ENABLED/);
+  assert.match(set, /id="animCard"><h2>Pace<\/h2>/, 'the Pace card (the Animation figures)');
+  for (const id of ['timerCard', 'findCard', 'botsCard', 'aiCard', 'alertsCard', 'templatesCard', 'ownerCard']) assert.match(set, new RegExp(`id="${id}"`), id);
+  assert.doesNotMatch(set, /class="grow"/, 'no game on Settings');
 });
 test('the tuning card\'s stored values count as changed', () => {
   A.ctl = Object.assign(ctl0(), { pigCfg: { sides: 6, target: 51 } });
@@ -115,12 +124,15 @@ test('the tuning card\'s stored values count as changed', () => {
   A.ctl = Object.assign(ctl0(), { runCfg: { dash: { target: 550, v0: 13, ramp: 3, gapMin: 18, gapMax: 32, mix: { rock: 30, crate: 20, spike: 20, flyer: 20, pair: 11 } } } });
   assert.equal(A.gameChanged('dash'), true, 'a mix weight off the default');
 });
-test('the menu has the Games tile and no Mini-game Settings or Releases tile', () => {
+test('one bar of sections on every page: Overview, Players, Matches, Games, Growth, Health, Settings; no page is the old menu', () => {
   A.ctl = ctl0();
-  const html = draw('');
-  assert.match(html, /href="#games"><b>Games<\/b>/);
-  assert.doesNotMatch(html, /href="#settings"|href="#releases"/);
-  assert.match(html, /mini-games · \d+ released/);
+  for (const h of ['', '#overview', '#players', '#matches', '#games', '#games/ttt', '#growth', '#health', '#settings']) {
+    const html = draw(h);
+    assert.deepEqual([...html.matchAll(/<nav class="nav"[\s\S]*?<\/nav>/g)].length, 1, h);
+    assert.deepEqual([...html.match(/<nav class="nav"[\s\S]*?<\/nav>/)[0].matchAll(/href="#(\w+)"/g)].map(m => m[1]), ['overview', 'players', 'matches', 'games', 'growth', 'health', 'settings'], h);
+  }
+  assert.match(draw(''), /href="#overview" aria-current="page"/, 'no hash: the Overview');
+  assert.match(draw('#games/ttt'), /href="#games" aria-current="page"/);
 });
 test('a race game\'s page: the release switches, the Mode switch at the top, the settings without a mode field in them, one Save / Reset / Test play', () => {
   A.ctl = Object.assign(ctl0(), { tune: { wordle: { mode: 'race' } } });
@@ -169,13 +181,15 @@ test('Shell Game\'s page: its settings by level, the difficulty presets (Gentle,
   assert.doesNotMatch(draw('#games/flash'), /class="presets"/, 'a game without presets has no row');
 });
 
-test('the old hashes open the new pages: #settings and #releases the list, #settings/<type> the game\'s page', () => {
+test('the old hashes open where their content went: #settings/<type> and #releases to Games, Playtesters to Players, Stats and Balance to Games, Bots, Devices and Staging Access to Settings', () => {
   A.ctl = ctl0();
   replaced.length = 0;
-  location.hash = '#settings'; assert.deepEqual(A.route(), ['games']); assert.deepEqual(replaced, ['#games']);
+  location.hash = '#settings'; assert.deepEqual(A.route(), ['settings']); assert.deepEqual(replaced, [], 'Settings is a page of its own now');
   location.hash = '#settings/pig'; assert.deepEqual(A.route(), ['games', 'pig']); assert.equal(replaced.at(-1), '#games/pig');
-  location.hash = '#releases'; assert.deepEqual(A.route(), ['games']); assert.equal(replaced.at(-1), '#games');
-  location.hash = '#bots'; assert.deepEqual(A.route(), ['bots']); assert.equal(replaced.length, 3, 'another page: nothing rewritten');
+  for (const [from, to] of [['releases', 'games'], ['playtest', 'players'], ['stats', 'games'], ['balance', 'games'], ['bots', 'settings'], ['devices', 'settings'], ['access', 'settings']]) {
+    location.hash = '#' + from; assert.deepEqual(A.route(), [to], from); assert.equal(replaced.at(-1), '#' + to);
+  }
+  location.hash = '#nonsense'; assert.deepEqual(A.route(), ['overview']);
   const html = draw('#settings/dash');
   assert.match(html, /<h2>[\s\S]*Dash<\/h2>/); assert.match(html, /id="runCard"/); assert.equal(location.hash, '#games/dash');
   assert.match(draw('#releases'), /id="gamesCard"/);
@@ -243,55 +257,62 @@ test('Save writes what changed: the Mode as a TUNE value, a tuning card to its o
 });
 
 // The Balance report (December 2026, #balance; src/admin/balance.js) and a game's settings version card.
-test('Balance report: the released games for their current settings version, the filters, the match length, Export JSON; a game\'s version card', () => {
-  const sq = n => ({ '2026-11-17': { p: { n, won: n, wm: { m5: n }, fd: n, fm: Math.round(n / 2) }, a: { n: 9, won: 9, wm: { m2: 9 } } } });
-  A.ready({ bal: { sq: { ttt: { v2: sq(40) }, pig: { v1: sq(12) } }, ml: { '2026-11-17': { p: { cpu: { none: { fin: { n: 3, tsum: 90, turns: { t30: 3 }, mn: 3, msum: 1800, mi: { m10: 3 } } } } } } } } });
+const seedWorld = () => { const w = W.world(); A.seed(Object.assign({}, w, { devmeta: w.meta, token: 'abcdefghijklmnopqrstuvwx' })); return w; };
+const kpiOf = (html, id) => { const m = html.match(new RegExp(`data-metric="${id}"[\\s\\S]*?<a class="big"[^>]*>([^<]*)<`)); return m ? m[1] : null; };
+
+test('a game\'s numbers are on its own page, by settings version, and in the comparison table: the same figures; its version card', () => {
   A.ctl = Object.assign(ctl0(), { releases: { ttt: true, pig: true }, versions: { ttt: 2 }, versionLog: { ttt: { v2: { at: Date.parse('2026-11-16'), by: 'admin@x', ch: {} } } } });
-  const html = draw('#balance');
-  assert.match(html, /<h2>Balance report<\/h2>/);
-  assert.match(html, /Tic-tac-toe<\/a> <small>v2<\/small>/);
-  assert.match(html, /<td>40<\/td>/, 'the players\' squares only by default (an admin\'s 9 left out)');
-  assert.match(html, /Risky Rolls<\/a> <small>v1<\/small> <span class="bflag small"/, 'a sample under 30 is flagged');
-  assert.match(html, /data-balf="noadmin" checked/); assert.match(html, /Leave out Practice and Test play/);
-  assert.match(html, /data-balexport="1"/);
-  assert.match(html, /vs Computer/);
+  seedWorld(); A.setFilter('version', 'current'); A.setFilter('mine', false);
+  const list = draw('#games');
+  const row = (list.match(/<tr><td><a href="#games\/ttt">Tic-tac-toe<\/a><\/td>[\s\S]*?<\/tr>/) || [''])[0];
+  assert.match(row, />Released</); assert.match(row, />v2</);
+  assert.match(row, /<td class="num"><a href="#drill\/x:sq%3Attt"[^>]*>1<\/a><\/td>/, 'one square at version 2 (mine left out), a link to its rows');
   const page = draw('#games/ttt');
-  assert.match(page, /Settings version 2/); assert.match(page, /<b>v2<\/b> 2026-11-16/);
+  assert.match(page, /id="relCard"/, 'the settings page as ever'); assert.match(page, /Settings version 2/); assert.match(page, /<b>v2<\/b> 2026-11-16/);
+  assert.match(page, /id="gameStats"><h2>Tic-tac-toe: how it plays<\/h2>/);
+  assert.ok(page.indexOf('id="gameStats"') > page.indexOf('data-gamesave="ttt"'), 'under the settings');
+  assert.match(page, /Completed squares[\s\S]*?<b class="big"><a href="#drill\/x:sq%3Attt"[^>]*>1<\/a><\/b><span>version 2<\/span>/, 'the same count as the table\'s');
+  assert.match(page, /By settings version/); assert.match(page, /v2 <span class="badge rel">current<\/span>/); assert.match(page, />v1</, 'the version before, side by side');
+  A.setFilter('mine', true);
+  assert.match(draw('#games/ttt'), /<b class="big"><a href="#drill\/x:sq%3Attt"[^>]*>2<\/a><\/b>/, 'with my devices: the owner\'s square too');
+  A.setFilter('mine', false);
 });
 
-test('owner devices: Include my devices merges statsOwn into every number and the playtest devices; off by default', () => {
-  A.ctl = ctl0(); A.mine = false;
-  const play = { devices: { '0200d915aaaaaaaaaaaa': { first: 1, last: 5, p: 'web', u: { u1: 1 }, ms: 3 }, 'bbbbbbbbbbbbbbbbbbbb': { first: 2, last: 9, p: 'ios', cv: '1.22.0', ms: 1 } }, logs: { '0200d915aaaaaaaaaaaa': { o1: { ev: 'open' } }, 'bbbbbbbbbbbbbbbbbbbb': {} } };
-  A.devSeed({ statsBase: { modes: { cpu: { started: 4 } } }, statsOwn: { modes: { cpu: { started: 6 }, match: { started: 1 } } }, devmeta: { '0200d915': { ex: true, nick: "Jared's computer", why: 'set' } }, play, users: { u1: { username: 'jarhad' } } });
-  assert.equal(A.stats.modes.cpu.started, 4, 'left out by default');
-  assert.deepEqual(Object.keys(A.play.devices), ['bbbbbbbbbbbbbbbbbbbb'], 'the playtest pages without the owner device');
-  assert.equal(A.balOpts.admin, false);
-  A.setMine(true);
-  assert.equal(A.stats.modes.cpu.started, 10, 'added leaf by leaf'); assert.equal(A.stats.modes.match.started, 1);
-  assert.equal(Object.keys(A.play.devices).length, 2); assert.equal(A.balOpts.admin, true, 'the Balance report takes an admin\'s matches too');
-  assert.match(draw('#overview'), /data-mine="1" checked/, 'the switch in the top bar on every page');
-  A.setMine(false);
+test('Include my devices: off by default, on every stats page, remembered; every number takes my devices in or leaves them out together', () => {
+  A.ctl = ctl0(); seedWorld();
+  for (const h of ['#overview', '#players', '#matches', '#games', '#growth', '#health']) assert.match(draw(h), /<input type="checkbox" data-gf="mine">/, h + ': the switch, off');
+  assert.equal(kpiOf(draw('#overview'), 'active'), '3'); assert.equal(kpiOf(draw('#players'), 'active'), '3', 'the same number on its detail page');
+  assert.equal(kpiOf(draw('#overview'), 'finished'), kpiOf(draw('#matches'), 'finished'));
+  A.setFilter('mine', true);
+  assert.equal(JSON.parse(localStorage.getItem('ttc.admin.filters')).mine, true, 'kept in this browser');
+  assert.match(draw('#growth'), /data-gf="mine" checked/, 'the same choice on every page');
+  assert.equal(kpiOf(draw('#overview'), 'active'), '4'); assert.equal(kpiOf(draw('#players'), 'active'), '4');
+  A.setFilter('platform', 'ios');
+  assert.equal(kpiOf(draw('#overview'), 'active'), '1', 'the platform filter'); assert.match(draw('#health'), /<option value="ios" selected>/);
+  A.setFilter('platform', 'all'); A.setFilter('mine', false);
 });
-test('the Devices page: nickname, short ID, platform, seen, usernames, games, the Excluded switch; search; a prefix not seen yet; the owner link', async () => {
-  A.ctl = ctl0(); A.mine = false;
-  const m = mockDb(); A.fb = m.fb;
-  A.devSeed({ devmeta: { '0200d915': { ex: true, nick: "Jared's computer", why: 'set' }, 'e35cefb7': { ex: true, nick: "Jared's work phone", why: 'set' } },
-    play: { devices: { '0200d915aaaaaaaaaaaa': { first: 1, last: 5, p: 'web', u: { u1: 1 }, ms: 3 }, 'bbbbbbbbbbbbbbbbbbbb': { first: 2, last: 9, p: 'ios', cv: '1.22.0', ms: 1 } }, logs: {} }, users: { u1: { username: 'jarhad' } }, token: 'abcdefghijklmnopqrstuvwx' });
-  let html = draw('#devices');
-  for (const h of ['Nickname', 'Device ID', 'Platform', 'First seen', 'Last seen', 'Usernames', 'Games played', 'Excluded']) assert.match(html, new RegExp(`<th>${h}</th>`), h);
-  assert.match(html, /data-nick="0200d915aaaaaaaaaaaa"[^>]*>Jared&#39;s computer</, 'the prefix\'s nickname on its device');
-  assert.match(html, /<code>0200d915<\/code>/); assert.match(html, /jarhad/); assert.match(html, /ios 1\.22\.0/);
-  assert.match(html, /data-devex="0200d915aaaaaaaaaaaa" checked/); assert.match(html, /data-devex="bbbbbbbbbbbbbbbbbbbb" aria/, 'a tester\'s device: counted');
-  assert.match(html, /<code>e35cefb7<\/code> <span class="dim">\(prefix, not seen yet\)/);
-  assert.match(html, /\?owner=abcdefghijklmnopqrstuvwx/, 'the owner link');
-  assert.match(html, /id="exId"/); assert.match(html, /id="devQ"/);
-  A.devQ = 'jarhad'; assert.deepEqual(A.devRows().map(r => r.short), ['0200d915'], 'by username');
-  A.devQ = 'bbbb'; assert.deepEqual(A.devRows().map(r => r.short), ['bbbbbbbb'], 'by ID');
-  A.devQ = 'work'; assert.deepEqual(A.devRows().map(r => r.short), ['e35cefb7'], 'by nickname');
-  A.devQ = '';
-  await A.metaPut('bbbbbbbbbbbbbbbbbbbb', { nick: "Sam's phone" });
-  assert.deepEqual(m.writes.at(-1), ['devmeta/bbbbbbbbbbbbbbbbbbbb', { ex: false, at: m.writes.at(-1)[1].at, nick: "Sam's phone" }], 'a tester\'s device named, still counted');
-  await A.metaPut('0200d915aaaaaaaaaaaa', { ex: false });
-  assert.deepEqual([m.writes.at(-1)[0], m.writes.at(-1)[1].ex, m.writes.at(-1)[1].nick], ['devmeta/0200d915aaaaaaaaaaaa', false, "Jared's computer"], 'switched off on its own hash, its name kept');
-  assert.equal(A.devmeta['0200d915'].ex, true, 'the prefix entry untouched');
+
+test('Players: people and their devices together; a person\'s page has their devices (nickname, Excluded), matches, sessions and games; Settings lists my devices and the owner link', async () => {
+  A.ctl = ctl0(); const m = mockDb(); A.fb = m.fb; seedWorld();
+  let html = draw('#players');
+  for (const h of ['Player', 'Type', 'Username', 'Nickname', 'Devices', 'Device IDs', 'Platform', 'Source', 'First seen', 'Last seen', 'Sessions', 'Matches', 'Record', 'Excluded']) assert.match(html, new RegExp(`data-k="[a-z]+">${h}</button>`), h);
+  assert.match(html, /data-go="#players\/u%3Au1"/, 'an account'); assert.match(html, new RegExp(`data-go="#players/d%3A${W.H('a')}"`), 'a guest, by their device');
+  assert.doesNotMatch(html, /jarhad/, 'my own account left out');
+  html = draw('#players/' + encodeURIComponent('u:boss'));
+  assert.match(html, /<h2>jarhad<\/h2><span class="badge own">/); assert.match(html, /<code>dddddddd<\/code>/);
+  assert.match(html, new RegExp(`data-nick="${W.H('d')}"[^>]*>Mine<`), 'the prefix\'s nickname on its device'); assert.match(html, new RegExp(`data-devex="${W.H('d')}" checked`));
+  for (const h of ['Devices', 'Matches', 'Sessions', 'Mini-games played']) assert.match(html, new RegExp(`<h2>${h}</h2>`), h);
+  assert.match(html, /data-go="#matches\/l_d1"/, 'their match, a link to it');
+  html = draw('#players/' + encodeURIComponent('u:u1'));
+  assert.match(html, new RegExp(`data-devex="${W.H('b')}" aria`), 'a player\'s device: counted'); assert.match(html, /tiktok/, 'the source tag');
+  const set = draw('#settings');
+  assert.match(set, /\?owner=abcdefghijklmnopqrstuvwx/, 'the owner link'); assert.match(set, /id="exId"/);
+  assert.match(set, /<code>dddddddd<\/code>[\s\S]*?jarhad/, 'an excluded device, and who it is');
+  await A.metaPut(W.H('b'), { nick: "Sam's phone" });
+  assert.deepEqual(m.writes.at(-1), ['devmeta/' + W.H('b'), { ex: false, at: m.writes.at(-1)[1].at, nick: "Sam's phone" }], 'a player\'s device named, still counted');
+  assert.match(draw('#players'), /Sam&#39;s phone/, 'on the list at once');
+  await A.metaPut(W.H('d'), { ex: false });
+  assert.deepEqual([m.writes.at(-1)[0], m.writes.at(-1)[1].ex, m.writes.at(-1)[1].nick], ['devmeta/' + W.H('d'), false, 'Mine'], 'switched off on its own hash, its name kept');
+  assert.equal(A.devmeta.dddddddd.ex, true, 'the prefix entry untouched');
+  assert.equal(kpiOf(draw('#overview'), 'active'), '4', 'counted again at once');
 });

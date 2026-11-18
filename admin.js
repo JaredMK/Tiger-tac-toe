@@ -8,221 +8,42 @@ const MODE_COLORS = { local: 'var(--o)', cpu: 'var(--sky)', chaos: '#d9622b', cv
 const GAMES = { ttt: 'Tic-tac-toe', c4: 'Four in a Row', bs: 'Sea Battle', wordle: 'Five Letters', hangman: 'Hangman', hex: 'Hex', hilo: 'Higher/Lower', snakes: 'Snakes and Ladders', memory: 'Find the Pair', candy: 'Candy Race', bump: 'Bump', coins: 'Coin Flip', pig: 'Risky Rolls', hunt: 'Treasure Hunt', mastermind: 'Codebreaker', bj: '21', bus: 'Ride the Bus', rl: 'Little Wheel', bullseye: 'Bullseye', echo: 'Echo', plinko: 'Peg Drop', pong: 'Cup Pong', trivia: 'Trivia', oddone: 'Odd One Out', dash: 'Dash', lane: 'Lane Rush', golf: 'Mini Golf', pool: 'Pool', bowling: 'Bowling', craps: 'Krabs', takeover: 'Takeover', flood: 'Flood', seating: 'Seating', districts: 'Districts', shelves: 'Shelves', roads: 'Roads', flap: 'Flap', chopper: 'Chopper', patterns: 'Patterns', wheels: 'Risky Spins', apple: 'Apple Pick', sniff: 'Sniff', clash: 'Standoff Grid', headcount: 'Headcount', flash: 'Flash', snapshot: 'Snapshot', shell: 'Shell Game', skyhop: 'Sky Hop', scoop: 'Scoop Stack', pinball: 'Pinball', muncher: 'Muncher', swarm: 'Star Swarm', bricks: 'Brick Break', snake: 'Snake', dominoes: 'Dominoes', war: 'War', shut: 'Shut the Box', combo: 'Dice Combo', bglite: 'Backgammon Lite', scc: 'Ship, Captain & Crew', rps: 'Rock Paper Scissors', poker: 'Poker Hands', t31: 'Thirty-One', rummy: 'Rummy Lite', claw: 'Claw Machine', duck: 'Hook-a-Duck', pusher: 'Coin Pusher', wtiles: 'Word Tiles', scratch: 'Scratch & Match', bingo: 'Bingo' };   // the games in the pool (Hexapawn and the Dice race are gone; their numbers stay in the database)
 const app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-let BAL = null, balOpts = { admin: false, from: '', to: '', version: 'current', allGames: false };   // (the Balance report: src/admin/balance.js; its filters: an admin's matches left out by default)
-let fb = null, user = null, stats = null, flagged = null, reports = [], view = { status: 'loading', error: '' };
+let BAL = null;                                                            // src/admin/balance.js: a game's version card (its saves)
+let P = null, PS = null;                                                   // src/admin/pages.js (the pages, the metrics layer P.X, the table P.T); src/ui/pstats.js (an account's own record)
+let fb = null, user = null, flagged = null, view = { status: 'loading', error: '' };
 let ctl = { config: {}, secretsSet: {}, bots: {}, botStats: {}, alertLog: [], alertStats: {} }, testResult = null, keyMsg = '';
 // The defaults the server uses for anything not set (functions/bots.js).
 const DEF = { bots: { enabled: false, waitMin: 40, waitMax: 70, countInRecords: true, level: 'normal' }, alerts: { enabled: false, sms: false, email: true, phone: '', to: '', after: 5, cooldownMin: 30, gapMin: 3, dailyCap: 20 } };
 const cfgGet = (sec, k) => { const v = ((ctl.config || {})[sec] || {})[k]; return v === undefined || v === null || v === '' ? DEF[sec][k] : v; };
-let sortBy = { k: 'avgWin', dir: 1 }, miniMode = 'all', miniRace = 'all', period = 'd';   // miniRace: the squares' own mode (all | shared | race: Race mode, core/race.js)
-let accts = null, acctSort = { k: 'joined', dir: -1 };                       // the Accounts table: newest first
-let acctOpen = null, acctView = 'all', PS = null;                             // the player detail: whose, which games; src/ui/pstats.js (the numbers as the profile adds them up)
-let play = null, devSort = { k: 'last', dir: -1 }, devOpen = null, tagPick = '', allSessions = false;   // the playtest section
-// The owner's devices (December 2026: functions/statsRules.js metaFor, devmeta/): every number on this page leaves them out,
-// and any match with an admin account or an owner device in it (the server files those under statsOwn/), until "Include my
-// devices" (top right, kept in this browser) adds them back. statsBase/statsOwn: the two trees as read; stats: what the pages show.
-let statsBase = null, statsOwn = null, devmeta = {}, playAll = null, ownerToken = null, devQ = '', devEdit = null, devMsg = '';
-let mine = (() => { try { return localStorage.getItem('ttc.admin.mine') === '1'; } catch (e) { return false; } })();
+// ---------- the dashboard's data and its one set of filters (December 2026) ----------
+// Everything the pages count is read once as rows (raw: matches mfacts/, Find Match searches finds/, devices/ and devlog/,
+// users/, reports/, the match logs' index) and joined into the model (src/admin/metrics.js build); a page asks its numbers
+// of the model under the filters (scope). The filters are the same on every page and kept in this browser.
+let raw = null, model = null, accts = null, templates = null;
+let devmeta = {}, ownerToken = null, devEdit = null, devMsg = '';
+let mlEvents = {};                                                          // the match logs read so far (matchLogs/{key})
+const FILTER_KEY = 'ttc.admin.filters';
+let filters = (() => { try { return JSON.parse(localStorage.getItem(FILTER_KEY) || '{}') || {}; } catch (e) { return {}; } })();
+const tstates = new Map(), drills = new Map();                             // each table's state (sort, search, filters); the row sets a number's link opens
+let scopeNow = null;                                                        // the model under the filters, kept until either changes
+function rebuild() { model = P && raw ? P.X.build(raw, Date.now()) : null; scopeNow = null; }
+function scopeOf() { if (!scopeNow && model) { filters = P.X.normFilters(filters); scopeNow = P.X.scope(model, filters); } return scopeNow; }
+function setFilter(k, v) {
+  filters = P.X.normFilters(Object.assign({}, filters, { [k]: v }));
+  try { localStorage.setItem(FILTER_KEY, JSON.stringify(filters)); } catch (e) { /* this visit only */ }
+  scopeNow = null; render();
+}
+const tstate = (id, def) => { if (!tstates.has(id)) tstates.set(id, P.T.newState(def)); return tstates.get(id); };
+const ctxOf = () => ({ S: scopeOf(), names: GAMES, released: isReleased, versions: ctl.versions || {}, ts: tstate, drills, logs: mlEvents, devEdit, devMsg, PS, accounts: accts, alertLog: ctl.alertLog || [], alertStats: ctl.alertStats || {} });
 const META_KEY = /^[0-9a-f]{6,20}$/;
 const metaKey = v => { const k = String(v == null ? '' : v).trim().toLowerCase().replace(/[^0-9a-f]/g, ''); return META_KEY.test(k) ? k : null; };
-function metaFor(h) {                                         // the entry naming device h: its own, else the longest prefix of it (statsRules.js metaFor)
-  if (!h) return null;
-  if (devmeta[h]) return Object.assign({ key: h }, devmeta[h]);
-  let best = null;
-  for (const [k, v] of Object.entries(devmeta || {})) if (v && META_KEY.test(k) && h.startsWith(k) && (!best || k.length > best.key.length)) best = Object.assign({ key: k }, v);
-  return best;
-}
-const ownerDev = h => { const m = metaFor(h); return !!(m && m.ex === true); };
-function deepSum(a, b) {                                      // two stats trees added leaf by leaf (numbers summed, the rest kept)
-  if (typeof a === 'number' || typeof b === 'number') return (typeof a === 'number' ? a : 0) + (typeof b === 'number' ? b : 0);
-  if (!a || typeof a !== 'object') return b && typeof b === 'object' ? b : a;
-  if (!b || typeof b !== 'object') return a;
-  const out = Object.assign({}, a);
-  for (const k of Object.keys(b)) out[k] = k in a ? deepSum(a[k], b[k]) : b[k];
-  return out;
-}
-function applyMine() {
-  stats = mine && statsOwn ? deepSum(statsBase || {}, statsOwn) : (statsBase || {});
-  balOpts.admin = mine;                                        // (the Balance report: an admin's matches only with my devices)
-  if (!playAll) { play = null; return; }
-  if (mine) { play = playAll; return; }
-  const keep = o => Object.fromEntries(Object.entries(o || {}).filter(([h]) => !ownerDev(h)));
-  play = { devices: keep(playAll.devices), logs: keep(playAll.logs) };
-}
-function setMine(on) { mine = !!on; try { localStorage.setItem('ttc.admin.mine', mine ? '1' : '0'); } catch (e) { /* this visit only */ } applyMine(); render(); }
-let mlogs = null, mlEvents = {}, mlOpen = null, mlFilt = { who: '', mode: '', from: '', to: '' };       // the match inspector: the logs' index, the logs opened, the filters
-const PT = window.Playtest;
 
-// ---------- the numbers ----------
+// ---------- small helpers ----------
 const n = v => (Number.isFinite(v) ? v : 0);
 const ratio = (a, b) => (b ? a / b : null);
-// Growth (December 2026, functions/statsRules.js growthMarks, findUpdates): the first-run funnel and retention by install
-// cohort (the day a device was first seen, New York time), the rematch, share and invite events a day, where players came
-// from (?t= tags: devices and sign-ups), Find Match's waits and how often the computer filled in.
-function growthPage() {
-  const st = stats || {}, co = st.cohorts || {}, fu = st.funnel || {}, ac = st.acts || {}, src = st.sources || {}, fd = st.find || {};
-  const days = Object.keys(Object.assign({}, co, fu)).sort().slice(-21).reverse();
-  const share = (a, b) => (b ? `${a} <small class="dim">${pct(ratio(a, b))}</small>` : '–');
-  const STEPS = [['opened', 'Opened'], ['tap', 'First tap'], ['move', 'First move'], ['claim', 'First claim'], ['finished', 'Match finished'], ['second', 'Second match']];
-  const funnel = days.map(d => { const f = fu[d] || {}, o = n(f.opened); return `<tr><td>${d}</td>${STEPS.map(([k]) => `<td>${k === 'opened' ? o : share(n(f[k]), o)}</td>`).join('')}</tr>`; }).join('');
-  const today = periodKeys(Date.now()).d, ago = (d, k) => (Date.parse(today) - Date.parse(d)) / 86400000 >= k;
-  const ret = days.map(d => { const c = co[d] || {}, m = n(c.n); return `<tr><td>${d}</td><td>${m}</td>${[1, 7, 30].map(k => `<td>${ago(d, k) ? share(n(c['d' + k]), m) : '<span class="dim">not yet</span>'}</td>`).join('')}</tr>`; }).join('');
-  const adays = Object.keys(ac).sort().slice(-7), sumA = k => adays.reduce((t, d) => t + n((ac[d] || {})[k]), 0);
-  const ACTS = [['rematch', 'Rematch taps'], ['share', 'Results shared'], ['invite_share', 'Invites sent (share sheet)'], ['invite_copy', 'Invites sent (copied)'], ['invite-open', 'Join links opened'], ['invite-join', 'Rooms joined'], ['invite-done', 'First match from an invite finished']];
-  const acts = ACTS.map(([k, l]) => `<tr><td>${l}</td><td>${sumA(k)}</td><td>${n((ac[today] || {})[k])}</td></tr>`).join('');
-  const srcs = Object.entries(src).sort((a, b) => n(b[1].devices) - n(a[1].devices)).map(([t, v]) => `<tr><td>${esc(t)}</td><td>${n(v.devices)}</td><td>${share(n(v.signups), n(v.devices))}</td></tr>`).join('');
-  const fdays = Object.keys(fd).sort().slice(-7).reverse();
-  const secs = (ms, k) => (k ? `${(ms / k / 1000).toFixed(1)} s` : '–');
-  const finds = fdays.map(d => { const f = fd[d] || {}, w = f.w || {}, p = n(f.people), b = n(f.bot); return `<tr><td>${d}</td><td>${p}</td><td>${secs(n(f.peopleMs), p)}</td><td>${b}</td><td>${pct(ratio(b, p + b))}</td><td>${n(f.cancel)} <small class="dim">${secs(n(f.cancelMs), n(f.cancel))}</small></td><td>${['u10', 'u20', 'u30', 'u60', 'o60'].map(k => n(w[k])).join(' / ')}</td></tr>`; }).join('');
-  const none = c => `<tr><td colspan="${c}" class="dim">Nothing yet</td></tr>`;
-  return `<div class="card"><h2>First-run funnel, by install day</h2><table class="tbl"><thead><tr><th>Day</th>${STEPS.map(([, l]) => `<th>${l}</th>`).join('')}</tr></thead><tbody>${funnel || none(7)}</tbody></table>
-      <p class="note">Devices first seen that day (a browser or the app; no account needed), and how many reached each step at least once. Counted from December 2026.</p></div>
-    <div class="card"><h2>Retention, by install day</h2><table class="tbl"><thead><tr><th>Day</th><th>New devices</th><th>D1</th><th>D7</th><th>D30</th></tr></thead><tbody>${ret || none(5)}</tbody></table>
-      <p class="note">Of the devices first seen that day, how many opened the game again exactly 1, 7 and 30 days later.</p></div>
-    <div class="grid2"><div class="card"><h2>Rematches, shares and invites</h2><table class="tbl"><thead><tr><th></th><th>Last 7 days</th><th>Today</th></tr></thead><tbody>${acts}</tbody></table></div>
-    <div class="card"><h2>Sources (?t= links)</h2><table class="tbl"><thead><tr><th>Tag</th><th>Devices</th><th>Sign-ups</th></tr></thead><tbody>${srcs || none(3)}</tbody></table>
-      <p class="note">A link with ?t=name (e.g. tictacchaos.com/?t=reddit): the devices first opened with it, and the accounts they made.</p></div></div>
-    <div class="card"><h2>Find Match waits</h2><table class="tbl"><thead><tr><th>Day</th><th>Paired with a person</th><th>Average wait</th><th>Took the computer</th><th>Computer fill rate</th><th>Gave up (avg wait)</th><th>Waits: under 10 / 20 / 30 / 60 s / longer</th></tr></thead><tbody>${finds || none(7)}</tbody></table></div>`;
-}
-// "Report a problem" (December 2026, reports/{id}, functions/index.js report): the last 20, newest first: when, the screen or
-// the match (its log in the Match inspector), the note, the build and client. Each one is also alerted (the alert channels).
-function reportsCard() {
-  const when = t => new Date(t).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-  const rows = reports.map(r => `<tr><td>${esc(when(r.at))}</td><td>${r.g ? `<a href="#matches">${esc(r.mode || '')} ${esc(r.g)}</a>` : esc(r.where || '')}</td><td>${r.note ? esc(r.note) : '<span class="dim">(no note)</span>'}</td><td>${esc([r.p, r.cv, r.v].filter(Boolean).join(' '))}</td></tr>`).join('');
-  return `<div class="card"><h2>Problem reports</h2><table class="tbl"><thead><tr><th>When</th><th>Where</th><th>Note</th><th>Client</th></tr></thead><tbody>${rows || '<tr><td colspan="4" class="dim">None</td></tr>'}</tbody></table>
-    <p class="note">"Report a problem" from the in-game menu or Settings (outside a match too). Each is emailed or texted through the alert channels (Bots: Alerts), at most 40 a day; kept 90 days.</p></div>`;
-}
-// The page's health (December 2026, stats/health/{day}, functions/statsRules.js healthUpdates): app opens and uncaught
-// errors a day (the page's global catcher: ui errors, rejected promises, and the hand-placed devError logs), errors per
-// 100 opens, by build; opens by platform and client version.
-function healthCard() {
-  const h = (stats && stats.health) || {}, days = Object.keys(h).sort().slice(-7).reverse();
-  if (!days.length) return '<div class="card"><h2>Errors and platforms</h2><p class="note">Nothing yet: counted from December 2026.</p></div>';
-  const rate = r => (r && r.opens ? (100 * (r.errors || 0) / r.opens).toFixed(1) : '–');
-  const sum = (key, f) => { const o = {}; for (const d of days) for (const [k, v] of Object.entries((h[d] || {})[key] || {})) o[k] = (o[k] || 0) + f(v); return o; };
-  const builds = {}; for (const d of days) for (const [b, v] of Object.entries((h[d] || {}).v || {})) { const x = builds[b] || (builds[b] = { opens: 0, errors: 0 }); x.opens += n(v.opens); x.errors += n(v.errors); }
-  const plat = sum('p', n), cv = sum('cv', n), tot = Object.values(plat).reduce((a, b) => a + b, 0);
-  const rows = days.map(d => `<tr><td>${d}</td><td>${n((h[d] || {}).opens)}</td><td>${n((h[d] || {}).errors)}</td><td>${rate(h[d])}</td></tr>`).join('');
-  const brows = Object.entries(builds).sort((a, b) => b[1].opens - a[1].opens).slice(0, 8).map(([b, x]) => `<tr><td>${esc(b)}</td><td>${x.opens}</td><td>${x.errors}</td><td>${rate(x)}</td></tr>`).join('');
-  return `<div class="grid2"><div class="card"><h2>Errors, last 7 days</h2><table class="tbl"><thead><tr><th>Day</th><th>Opens</th><th>Errors</th><th>per 100 opens</th></tr></thead><tbody>${rows}</tbody></table>
-      <h2 style="margin-top:12px">By build</h2><table class="tbl"><thead><tr><th>Build</th><th>Opens</th><th>Errors</th><th>per 100</th></tr></thead><tbody>${brows || '<tr><td colspan="4" class="dim">None</td></tr>'}</tbody></table>
-      <p class="note">Every uncaught error and rejected promise on a phone (each distinct one once a visit), and the game's own error logs. Detail: Playtesters & Devices.</p></div>
-    <div class="card"><h2>Platforms and versions, last 7 days</h2><table class="tbl"><thead><tr><th>Platform</th><th>Opens</th><th>Share</th></tr></thead><tbody>${Object.entries(plat).sort((a, b) => b[1] - a[1]).map(([p, v]) => `<tr><td>${p === 'ios' ? 'iOS app' : 'Web'}</td><td>${v}</td><td>${pct(ratio(v, tot))}</td></tr>`).join('') || '<tr><td colspan="3" class="dim">None</td></tr>'}</tbody></table>
-      <table class="tbl" style="margin-top:12px"><thead><tr><th>Client version</th><th>Opens</th></tr></thead><tbody>${Object.entries(cv).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<tr><td>${esc(k.replace(/_/g, '.'))}</td><td>${v}</td></tr>`).join('') || '<tr><td colspan="2" class="dim">None</td></tr>'}</tbody></table></div></div>`;
-}
 const pct = v => (v == null ? '–' : `${Math.round(v * 100)}%`);
 const num = (v, d = 1) => (v == null ? '–' : (Math.round(v * 10 ** d) / 10 ** d).toLocaleString());
 const pad = x => String(x).padStart(2, '0');
-const NY = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' });
-function periodKeys(t) {               // the same keys as the server (functions/statsRules.js): New York's day, ISO week and month
-  const o = {}; for (const x of NY.formatToParts(new Date(t))) if (x.type !== 'literal') o[x.type] = Number(x.value);
-  const th = new Date(Date.UTC(o.year, o.month - 1, o.day));
-  th.setUTCDate(th.getUTCDate() + 4 - (th.getUTCDay() || 7));
-  const week = Math.ceil(((th - new Date(Date.UTC(th.getUTCFullYear(), 0, 1))) / 86400000 + 1) / 7);
-  return { d: `${o.year}-${pad(o.month)}-${pad(o.day)}`, w: `${th.getUTCFullYear()}-W${pad(week)}`, m: `${o.year}-${pad(o.month)}` };
-}
-// The calendar days (YYYY-MM-DD) from one day to another, both included.
-function dayRange(from, to) {
-  const out = [], d = new Date(from + 'T12:00:00Z'), end = new Date(to + 'T12:00:00Z');
-  while (d <= end && out.length < 4000) { out.push(d.toISOString().slice(0, 10)); d.setUTCDate(d.getUTCDate() + 1); }
-  return out;
-}
-// The Overview's period (Today / This week / This month / All time), remembered on this device.
-const OV_KEY = 'ttc.admin.ovPeriod', OV_PERIODS = [['today', 'Today'], ['week', 'This week'], ['month', 'This month'], ['all', 'All time']];
-let ovPeriod = 'all';
-try { const v = localStorage.getItem(OV_KEY); if (OV_PERIODS.some(([k]) => k === v)) ovPeriod = v; } catch (e) { /* no storage: All time */ }
-function setOvPeriod(v) { ovPeriod = v; try { localStorage.setItem(OV_KEY, v); } catch (e) { /* not remembered */ } }
-// The days a period covers (New York's calendar): today; Monday to today; the 1st to today; every day since the first counted.
-function ovDays(p) {
-  const today = periodKeys(Date.now()).d;
-  if (p === 'today') return [today];
-  if (p === 'week') { const d = new Date(today + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return dayRange(d.toISOString().slice(0, 10), today); }
-  if (p === 'month') return dayRange(today.slice(0, 8) + '01', today);
-  const first = Object.keys(stats.days || {}).sort()[0];
-  return first && first < today ? dayRange(first, today) : [today];
-}
-// The bucket of a period: its players' counters and its mode totals (all time: stats.modes, which go back furthest).
-function ovBucket(p) {
-  const k = periodKeys(Date.now()), node = { today: ['days', k.d], week: ['weeks', k.w], month: ['months', k.m] }[p];
-  if (node) { const b = (stats[node[0]] && stats[node[0]][node[1]]) || {}; return { players: b, modes: b.modes || {} }; }
-  const a = stats.alltime || {}, sum = f => Object.values(stats.months || {}).reduce((s, m) => s + n(m[f]), 0);
-  return { players: { active: n(a.active), logins: Math.max(n(a.logins), sum('logins')), newAccounts: Math.max(n(a.newAccounts), sum('newAccounts')) }, modes: stats.modes || {} };
-}
-function modeRow(m) { return (stats.modes && stats.modes[m]) || {}; }
-function totals(modes = stats.modes || {}) {
-  const t = { started: 0, finished: 0, turns: 0, ms: 0, timed: 0, xWins: 0, oWins: 0, draws: 0, resigned: 0, timeouts: 0, done: 0, doneTurns: 0, doneMs: 0, doneTimed: 0 };
-  for (const [m] of MODES) if (m !== 'bot') for (const k of Object.keys(t)) t[k] += n((modes[m] || {})[k]);   // (matches against a bot: their own row, not the people's totals)
-  return t;
-}
-// A mini-game counts only once its square ended claimed by X or O: a square still open when the match
-// ended (won, drawn, left or resigned) and a board reset after a draw are left out. The stored counters
-// keep those apart (won / draw / open, and the winner's and loser's moves over claimed squares only), so
-// the table is worked out from the claimed ones alone, past matches included.
-function miniSums(t, pick) {
-  const s = { won: 0, draw: 0, open: 0, winMoves: 0, loseMoves: 0, xWins: 0, oWins: 0 };
-  const root = miniRace === 'all' ? stats.mini : stats.miniMode && stats.miniMode[miniRace];   // (Shared or Race alone: the counters kept by the square's own mode)
-  for (const m of pick) { const r = (root && root[m] && root[m][t]) || {}; for (const k of Object.keys(s)) s[k] += n(r[k]); }
-  return s;
-}
-// Normal and Super Chaos side by side: every Super Chaos square (vs the computer or in a friend room) is
-// kept under 'chaos' ('testingSc' for the admin-only games); the modes picked cover the normal ones.
-// Squares of abandoned matches (resigned, timed out, never finished) are not counted (from 21 Oct 2026).
-function miniRow(t, name, s, c) {
-  return { t, name, played: s.won, resets: s.draw, opened: s.open, avgWin: ratio(s.winMoves, s.won), avgLose: ratio(s.loseMoves, s.won), avgAll: ratio(s.winMoves + s.loseMoves, s.won),
-    xRate: ratio(s.xWins, s.won), oRate: ratio(s.oWins, s.won), left: s.draw + s.open,
-    scPlayed: c.won, scAvgWin: ratio(c.winMoves, c.won), scAvgAll: ratio(c.winMoves + c.loseMoves, c.won) };
-}
-function miniPick() { return (miniMode === 'all' ? MODES.map(m => m[0]).filter(m => m !== 'bot') : miniMode === 'people' ? MODES.map(m => m[0]).filter(m => m !== 'cvc' && m !== 'bot') : [miniMode]).filter(m => m !== 'chaos'); }   // (the bot's matches only when chosen)
-const scPick = () => [miniMode === 'testing' ? 'testingSc' : 'chaos'];
-function miniRows() { const pick = miniPick(), sc = scPick(); return Object.keys(GAMES).map(t => miniRow(t, GAMES[t], miniSums(t, pick), miniSums(t, sc))); }
-function miniAll() {                   // every completed square together: the sums of the rows' own counters
-  const pick = miniPick(), sc = scPick(), z = () => ({ won: 0, draw: 0, open: 0, winMoves: 0, loseMoves: 0, xWins: 0, oWins: 0 }), s = z(), c = z();
-  for (const t of Object.keys(GAMES)) { const r = miniSums(t, pick), q = miniSums(t, sc); for (const k of Object.keys(s)) { s[k] += r[k]; c[k] += q[k]; } }
-  const tst = z();                                     // (the admin-only games' squares, kept apart: counted in the reconciliation below)
-  if (miniMode !== 'testing') for (const t of Object.keys(GAMES)) { const r = miniSums(t, ['testing']); for (const k of Object.keys(tst)) tst[k] += r[k]; }
-  return Object.assign(miniRow('all', 'All mini-games', s, c), { draws: s.draw + c.draw, open: s.open + c.open, sc: c, testing: tst });
-}
-
-// ---------- charts: plain SVG ----------
-function barChart(days, series, opts = {}) {
-  const W = 640, H = 200, L = 34, B = 22, T = 8, R = 4, iw = W - L - R, ih = H - B - T;
-  const max = Math.max(1, ...days.map((d, i) => (opts.stack ? series.reduce((s, se) => s + se.values[i], 0) : Math.max(...series.map(se => se.values[i])))));
-  const step = iw / days.length, groups = opts.stack ? 1 : series.length, bw = Math.max(2, step * .8 / groups);
-  let bars = '';
-  days.forEach((d, i) => {
-    let y0 = T + ih;
-    series.forEach((se, k) => {
-      const v = se.values[i], h = v / max * ih;
-      if (!v) return;
-      if (opts.stack) { y0 -= h; bars += `<rect x="${(L + i * step + step * .1).toFixed(1)}" y="${y0.toFixed(1)}" width="${(step * .8).toFixed(1)}" height="${h.toFixed(1)}" fill="${se.color}"><title>${d} · ${se.name}: ${v}</title></rect>`; }
-      else bars += `<rect x="${(L + i * step + step * .1 + k * bw).toFixed(1)}" y="${(T + ih - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="${se.color}"><title>${d} · ${se.name}: ${v}</title></rect>`;
-    });
-  });
-  const ticks = [0, .5, 1].map(f => { const v = Math.round(max * f), y = T + ih - v / max * ih; return `<line class="ax" x1="${L}" x2="${W - R}" y1="${y}" y2="${y}"/><text x="${L - 5}" y="${y + 4}" text-anchor="end">${v}</text>`; }).join('');
-  const labels = days.map((d, i) => (i % Math.ceil(days.length / 6) === 0 || i === days.length - 1 ? `<text x="${(L + i * step + step / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle">${d.slice(5)}</text>` : '')).join('');
-  const legend = `<div class="legend">${series.map(se => `<span><i style="background:${se.color}"></i>${se.name}</span>`).join('')}</div>`;
-  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label || '')}">${ticks}${bars}${labels}</svg>${legend}</div>`;
-}
-function hbarChart(rows, key, label, fmt) {
-  const have = rows.filter(r => r[key] != null).sort((a, b) => a[key] - b[key]);
-  if (!have.length) return '<p class="note">No finished mini-games yet.</p>';
-  const max = Math.max(...have.map(r => r[key])), W = 640, rowH = 22, L = 120, H = have.length * rowH + 6;
-  const bars = have.map((r, i) => {
-    const w = Math.max(2, r[key] / max * (W - L - 50)), y = 3 + i * rowH;
-    return `<text x="${L - 8}" y="${y + 15}" text-anchor="end" style="fill:var(--ink);font-size:13px">${esc(r.name)}</text><rect x="${L}" y="${y + 3}" width="${w.toFixed(1)}" height="${rowH - 8}" rx="4" fill="var(--sky)" stroke="var(--ink)" stroke-width="1.5"><title>${esc(r.name)}: ${fmt(r[key])}</title></rect><text x="${L + w + 6}" y="${y + 15}" style="fill:var(--ink);font-size:13px">${fmt(r[key])}</text>`;
-  }).join('');
-  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${bars}</svg></div>`;
-}
-
-// Every square played in the modes picked, accounted for: completed + resets + left open (Super Chaos and the admin-only
-// games' squares counted apart, as their own columns and view keep them).
-function recon(all) {
-  const sum = x => x.won + x.draw + x.open, line = (x, what) => `${sum(x)} square${sum(x) === 1 ? '' : 's'} ${what}: ${x.won} completed + ${x.draw} reset${x.draw === 1 ? '' : 's'} + ${x.open} left open.`;
-  const t = all.testing, sc = all.sc;
-  return `<b>${line({ won: all.played, draw: all.resets, open: all.opened }, miniMode === 'testing' ? 'of admin-only games played' : 'played in the modes picked')}</b>`
-    + (sum(sc) ? ` Super Chaos: ${line(sc, 'played')}` : '')
-    + (miniMode !== 'testing' && sum(t) ? ` Admin-only games (in every mode, under "Admin-only games (testing)"): ${line(t, 'more')}` : '');
-}
 
 // ---------- the page ----------
 function render() { draw(); showNote(); }
@@ -239,112 +60,75 @@ function draw() {
     app.innerHTML = `<div class="card msg"><h1>Not for this account</h1><p>This page is for the game's admin only. ${view.error ? esc(view.error) : ''}</p><button class="btn" data-act="signout">Sign out</button></div>`;
     return;
   }
-  const ob = ovBucket(ovPeriod), t = totals(ob.modes), pl = ob.players, P = (node, k) => (stats[node] && stats[node][k]) || {};
-  const ovName = { today: 'today', week: 'this week', month: 'this month', all: 'all time' }[ovPeriod];
-  const kpi = (label, big, sub) => `<div class="card kpi"><small>${label}</small><b>${big}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;
-  const days = ovDays(ovPeriod), D = d => P('days', d);
-  const players = barChart(days, [
-    { name: 'Active players', color: 'var(--green)', values: days.map(d => n(D(d).active)) },
-    { name: 'Logins', color: 'var(--sky)', values: days.map(d => n(D(d).logins)) },
-    { name: 'New accounts', color: 'var(--o)', values: days.map(d => n(D(d).newAccounts)) },
-  ], { label: `Players per day, ${ovName}` });
-  const matches = barChart(days, MODES.map(([m, name]) => ({ name, color: MODE_COLORS[m], values: days.map(d => n((D(d).finished || {})[m])) })), { stack: true, label: `Matches finished per day by mode, ${ovName}` });
-  const mins = (ms, k) => { const v = ratio(ms, k); return v == null ? null : v / 60000; };
-  const modeTable = `<div class="tbl"><table><thead><tr><th>Mode</th><th>Started</th><th>Finished</th><th>Abandoned</th><th>of which resigned</th><th>timed out</th><th>never finished</th><th>Avg turns (finished)</th><th>Avg minutes (finished)</th><th>X (first) wins</th><th>Draws</th></tr></thead><tbody>${MODES.map(([m, name]) => {
-    const r = modeRow(m), st = n(r.started), quit = n(r.resigned) + n(r.timeouts), fin = Math.max(0, n(r.finished) - quit), never = Math.max(0, st - n(r.finished)), ab = never + quit, dec = n(r.xWins) + n(r.oWins);
-    return `<tr><td>${name}</td><td>${st}</td><td>${fin}</td><td>${ab} <span class="dim">${pct(ratio(ab, st))}</span></td><td>${n(r.resigned)}</td><td>${n(r.timeouts)}</td><td>${never}</td><td>${num(ratio(n(r.doneTurns), n(r.done)))}</td><td>${num(mins(n(r.doneMs), n(r.doneTimed)))}</td><td>${pct(ratio(n(r.xWins), dec))}</td><td>${pct(ratio(n(r.draws), n(r.finished)))}</td></tr>`;
-  }).join('')}</tbody></table></div><p class="note">Finished: played to a result (a line, a draw, a majority). Abandoned: resigned, lost on time, or never finished (left, or the app closed). The averages cover finished matches only, counted from 21 Oct 2026. Draws: ended once neither side could still make three in a row. Turns count a bonus move (a Risky Rolls roll, a Hangman letter) as part of its turn.</p>`;
-  const tmRows = Object.keys(stats.timers || {}).sort((a, b) => (a[0] === b[0] ? parseInt(a.slice(1)) - parseInt(b.slice(1)) : a < b ? 1 : -1));
-  const timerTable = `<div class="tbl"><table><thead><tr><th>Timer</th><th>Started</th><th>Finished</th><th>Completion</th><th>Resigned</th><th>2 missed turns</th><th>Ran out of time</th><th>never finished</th><th>Avg turns (finished)</th><th>Avg minutes (finished)</th><th>Avg minutes (all ended)</th></tr></thead><tbody>${tmRows.map(k => {
-    const r = stats.timers[k] || {}, st = n(r.started), never = Math.max(0, st - n(r.finished));
-    return `<tr><td>${esc(timerName(k))}</td><td>${st}</td><td>${n(r.done)}</td><td>${pct(ratio(n(r.done), st))}</td><td>${n(r.resigned)}</td><td>${n(r.timeouts)}</td><td>${n(r.clockOuts)}</td><td>${never}</td><td>${num(ratio(n(r.doneTurns), n(r.done)))}</td><td>${num(mins(n(r.doneMs), n(r.doneTimed)))}</td><td>${num(mins(n(r.ms), n(r.timed)))}</td></tr>`;
-  }).join('') || '<tr><td colspan="11" class="dim">Nothing yet</td></tr>'}</tbody></table></div><p class="note">Online matches (Find Match, bots and friend games) by the timer they were played with, counted from 2 Nov 2026. Finished: played to a result, a match clock run out included (resigned and 2 missed turns are abandoned). Completion: finished of started. The Timer setting is in Bot Settings.</p>`;
-  const rows = miniRows(), dir = sortBy.dir;
-  rows.sort((a, b) => { const x = a[sortBy.k], y = b[sortBy.k]; if (x == null && y == null) return a.name.localeCompare(b.name); if (x == null) return 1; if (y == null) return -1; return (typeof x === 'string' ? x.localeCompare(y) : x - y) * dir; });
-  const cols = [['name', 'Mini-game'], ['played', 'Completed'], ['resets', 'Resets'], ['opened', 'Left open'], ['avgWin', 'Avg winner moves'], ['avgLose', 'Avg loser moves'], ['avgAll', 'Avg total moves'], ['xRate', 'X wins'], ['oRate', 'O wins'], ['scPlayed', 'SC completed'], ['scAvgWin', 'SC avg winner moves'], ['scAvgAll', 'SC avg total moves']];
-  const maxWin = Math.max(1, ...rows.map(r => r.avgWin || 0)), all = miniAll();
-  const miniTr = (r, cls) => `<tr${cls ? ` class="${cls}"` : ''}><td>${esc(r.name)}</td><td>${r.played}</td><td>${r.resets}</td><td>${r.opened}</td><td>${num(r.avgWin)}${r.avgWin != null && !cls ? `<span class="bar" style="width:${Math.round(r.avgWin / maxWin * 60)}px"></span>` : ''}</td><td>${num(r.avgLose)}</td><td>${num(r.avgAll)}</td><td>${pct(r.xRate)}</td><td>${pct(r.oRate)}</td><td class="sc">${r.scPlayed}</td><td class="sc">${num(r.scAvgWin)}</td><td class="sc">${num(r.scAvgAll)}</td></tr>`;
-  const miniTable = `<div class="tbl"><table><thead><tr>${cols.map(([k, l]) => `<th${sortBy.k === k ? ` aria-sort="${dir > 0 ? 'ascending' : 'descending'}"` : ''}><button data-sort="${k}">${l}</button></th>`).join('')}</tr></thead><tbody>${miniTr(all, 'sum')}${rows.map(r => miniTr(r)).join('')}</tbody></table></div>
-    <p class="note">${miniMode === 'testing' ? 'Squares of games played while they were admin only, in every mode, kept apart from the released games\' numbers. ' : ''}${recon(all)} The averages count completed squares only: those that ended claimed by X or O. Resets: a square that ended level, its board reset with a new mini-game (counted under the game that ended level). Left open: a square with moves in it when the match ended. Moves: the turns each side spent in that square (a bonus roll or letter within a turn counts once); total moves are the winner's and the loser's together. The first columns are normal matches (the modes picked); the SC columns are every Super Chaos match (vs the computer and friend rooms). Squares of abandoned matches (resigned, timed out, never finished) are left out (from 21 Oct 2026; before, Super Chaos friend rooms counted under Friend code). Tap a heading to sort; the All row stays on top.</p>`;
-  const pnode = { d: 'days', w: 'weeks', m: 'months' }[period];
-  const keys = Object.keys(stats[pnode] || {}).sort().reverse().slice(0, period === 'd' ? 31 : 12);
-  const ptable = `<div class="tbl"><table><thead><tr><th>${{ d: 'Day', w: 'Week', m: 'Month' }[period]}</th><th>Active players</th><th>Logins</th><th>New accounts</th>${period === 'd' ? '<th>Matches started</th><th>Finished</th>' : ''}</tr></thead><tbody>${keys.map(k => {
-    const r = stats[pnode][k] || {}, sum = o => Object.values(o || {}).reduce((s, v) => s + n(v), 0);
-    return `<tr><td>${k}</td><td>${n(r.active)}</td><td>${n(r.logins)}</td><td>${n(r.newAccounts)}</td>${period === 'd' ? `<td>${sum(r.started)}</td><td>${sum(r.finished)}</td>` : ''}</tr>`;
-  }).join('') || '<tr><td colspan="6" class="dim">Nothing yet</td></tr>'}</tbody></table></div><p class="note">Days, weeks (ISO, Monday to Sunday) and months in New York time. Active: players (accounts, or guests' browsers) who played or logged in.</p>`;
-  const sec = {
-    overview: () => `<div class="card"><div class="row"><h2>Overview: ${ovName}</h2><div class="tabs">${OV_PERIODS.map(([k, l]) => `<button data-ovp="${k}" aria-pressed="${ovPeriod === k}">${l}</button>`).join('')}</div></div>
-      <p class="note">Every number and chart below covers the period picked, in New York time (weeks run Monday to Sunday). Today, this week and this month count matches from 24 Oct 2026, when they began to be kept per period.</p></div>
-    <div class="kpis">
-      ${kpi('Active players', n(pl.active), ovName)}
-      ${kpi('Logins', n(pl.logins), ovName)}
-      ${kpi('New accounts', n(pl.newAccounts), ovName)}
-      ${kpi('Matches', `${Math.max(0, t.finished - t.resigned - t.timeouts)} / ${t.started}`, 'finished / started')}
-      ${kpi('Abandon rate', pct(ratio(Math.max(0, t.started - t.finished) + t.resigned + t.timeouts, t.started)), 'resigned, timed out or never finished')}
-      ${kpi('Avg finished match', `${num(ratio(t.doneTurns, t.done))} turns`, `${num(mins(t.doneMs, t.doneTimed))} minutes`)}
-      ${kpi('First player (X) wins', pct(ratio(t.xWins, t.xWins + t.oWins)), `${t.xWins} of ${t.xWins + t.oWins} decided`)}
-    </div>
-    <div class="grid2"><div class="card"><h2>Players per day, ${ovName}</h2>${players}</div><div class="card"><h2>Matches finished per day, ${ovName}</h2>${matches}</div></div>
-    ${healthCard()}${reportsCard()}`,
-    players: () => `${accountsCard()}${flaggedCard()}
-    <div class="card"><div class="row"><h2>Players over time</h2><div class="tabs">${[['d', 'Days'], ['w', 'Weeks'], ['m', 'Months']].map(([k, l]) => `<button data-period="${k}" aria-pressed="${period === k}">${l}</button>`).join('')}</div></div>${ptable}</div>`,
-    playtest: () => playCard(),
-    devices: () => devicesPage(),
-    matches: () => matchCard(),
-    games: sub => (sub && GAMES[sub] ? gamePage(sub) : gamesIndex()),
-    balance: () => balancePage(),
-    growth: () => growthPage(),
-    bots: () => `${findCard()}${timerCard()}${botsCard()}${aiCard()}${alertsCard()}`,
-    access: () => accessCard(),
-    stats: () => `<div class="card"><h2>Matches by mode</h2>${modeTable}</div><div class="card"><h2>Matches by timer</h2>${timerTable}</div>
-    <div class="card"><div class="row"><h2>Mini-games</h2><label>Squares <select id="mrace">${[['all', 'Shared and Race'], ['shared', 'Shared only'], ['race', 'Race only']].map(([v, l]) => `<option value="${v}"${miniRace === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label><label>Modes <select id="mm">${[['all', 'All modes'], ['people', 'All but computer vs computer']].concat(MODES.filter(m => m[0] !== 'chaos'), [['testing', 'Admin-only games (testing)']]).map(([v, l]) => `<option value="${v}"${miniMode === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
-      <p class="note">All-time totals, every settings version together. By settings version (the current one by default, against the previous), with percentiles: the <a href="#balance">Balance report</a>.</p>
-      ${miniTable}<h2 style="margin-top:14px">Average winner moves</h2>${hbarChart(rows, 'avgWin', 'Average winner moves by mini-game', v => num(v))}</div>`,
-  };
-  const [where, sub] = route(), info = SECTIONS.find(x => x[0] === where);
-  const top = `<div class="top"><h1>Tic Tac Chaos Admin</h1><span class="sp"></span><label class="mine" title="My devices (the Devices page) and matches an admin played in"><input type="checkbox" data-mine="1"${mine ? ' checked' : ''}> Include my devices</label><span class="who">${esc(user.email || 'admin')}</span><button class="btn" data-act="refresh">Refresh</button><button class="btn" data-act="signout">Sign out</button></div>`;
-  if (!info) {
-    app.innerHTML = `${top}<nav class="tiles" aria-label="Sections">${SECTIONS.map(([k, label, line]) => `<a class="tile" href="#${k}"><b>${label}</b><small>${line()}</small></a>`).join('')}</nav>`;
-    return;
-  }
+  if (!P || !model) { app.innerHTML = '<div class="card msg"><h1>Tic Tac Chaos Admin</h1><p>Loading…</p></div>'; if (!P) loadMetas().then(() => { rebuild(); render(); }).catch(() => {}); return; }
+  const [where, sub] = route(), ctx = ctxOf();
   const game = where === 'games' && sub && GAMES[sub];
-  const back = game ? ['#games', 'Games'] : ['#', 'Menu'];
-  app.innerHTML = `${top}<div class="sechead"><a class="btn back" href="${back[0]}" aria-label="Back to ${back[1]}">‹ ${back[1]}</a><h2>${game ? `${gameIcon(sub)}${esc(GAMES[sub])}` : info[1]}</h2></div>${sec[where](sub)}`;
+  const pages = {
+    overview: () => P.overview(ctx),
+    players: () => (sub ? P.profile(ctx, decodeURIComponent(sub)) : P.players(ctx) + flaggedCard()),
+    matches: () => (sub ? P.match(ctx, decodeURIComponent(sub)) : P.matches(ctx)),
+    games: () => (game ? gamePage(sub) + P.gameStats(ctx, sub) : P.filterBar(ctx, { version: true }) + P.gamesCompare(ctx) + gamesIndex()),
+    growth: () => P.growth(ctx),
+    health: () => P.health(ctx),
+    settings: () => settingsPage(),
+    drill: () => P.drill(ctx, location.hash.replace(/^#\/?drill\//, '')),
+  };
+  const title = game ? `${gameIcon(sub)}${esc(GAMES[sub])}` : where === 'players' && sub ? 'Player' : where === 'matches' && sub ? 'Match' : where === 'drill' ? 'The rows behind a number' : (NAV.find(x => x[0] === where) || NAV[0])[1];
+  const back = game ? ['#games', 'Games'] : where === 'players' && sub ? ['#players', 'Players'] : where === 'matches' && sub ? ['#matches', 'Matches'] : where === 'drill' ? ['back', 'Back'] : null;
+  const nav = `<nav class="nav" aria-label="Sections">${NAV.map(([k, l]) => `<a href="#${k}"${k === where ? ' aria-current="page"' : ''}>${l}</a>`).join('')}</nav>`;
+  app.innerHTML = `<div class="top"><h1>Tic Tac Chaos Admin${STAGING ? ' <span class="badge adm">staging</span>' : ''}</h1><span class="sp"></span><span class="who">${esc(user.email || 'admin')}</span><button class="btn sm" data-act="refresh">Refresh</button><button class="btn sm" data-act="signout">Sign out</button></div>${nav}
+    <div class="sechead">${back ? (back[0] === 'back' ? '<button class="btn back" data-act="goback">‹ Back</button>' : `<a class="btn back" href="${back[0]}" aria-label="Back to ${back[1]}">‹ ${back[1]}</a>`) : ''}<h2>${title}</h2></div>${(pages[where] || pages.overview)()}`;
+  if (where === 'matches' && sub) { const m = model.matches.find(x => x.id === decodeURIComponent(sub)); if (m && mlEvents[m.logKey] === undefined) mlLoad(m.logKey); }
 }
-// ---------- the sections: a menu of tiles (#), each its own page (#<section>, a game's page #games/<type>) ----------
-const SECTIONS = [
-  ['overview', 'Overview', () => `${n(((stats.days || {})[periodKeys(Date.now()).d] || {}).active)} active today`],
-  ['players', 'Players & Accounts', () => (accts ? `${Object.keys(accts.users || {}).length} accounts` : 'Accounts, flagged names, players over time')],
-  ['playtest', 'Playtesters', () => (play ? `${Object.keys(play.devices || {}).length} devices` : 'Devices, sessions, retention')],
-  ['devices', 'Devices', () => { const all = Object.keys((playAll || {}).devices || {}), own = all.filter(ownerDev).length; return playAll ? `${all.length} devices · ${own} yours (left out of the stats)` : 'Nicknames, excluded devices, the owner link'; }],
-  ['matches', 'Matches', () => { const r = Object.values(mlogs || {}).filter(x => x && x.reported).length; return `Match inspector${r ? ` · ${r} reported` : ''}`; }],
-  ['games', 'Games', () => { const ts = Object.keys(GAMES), ch = ts.filter(gameChanged).length, off = ts.filter(iosOff).length, m = ctl.clients || {}, sp = ctl.anim && ctl.anim.speed; return `${ts.length} mini-games · ${ts.filter(isReleased).length} released${ch ? ` · ${ch} changed` : ''}${off ? ` · ${off} off on iOS` : ''}${m.web || m.ios ? ` · minimum ${['web', 'ios'].filter(p => m[p]).map(p => `${p} ${m[p]}`).join(', ')}` : ''}${sp && sp !== 1 ? ` · speed ${sp}×` : ''}`; }],
-  ['bots', 'Bot Settings', () => 'Find Match, timer, bots, empty-queue alerts'],
-  ['stats', 'Stats', () => 'Matches by mode and timer, moves to win'],
-  ['balance', 'Balance report', () => 'Moves and time per game by settings version, match length, export'],
-  ['growth', 'Growth', () => 'First-run funnel, retention, invites, sources, Find Match waits'],
-].concat(STAGING ? [['access', 'Staging Access', () => ctl.stagingMode === 'open' ? 'Open: anyone with the link' : `Allowlist: ${Object.keys(ctl.allow || {}).length} on the list`]] : []);   // (staging only: who may use it)
-// The Games page took over Mini-game Settings and Releases (November 2026): their old hashes (bookmarks) open it, #settings/<type> the game's page.
-const ALIAS = { settings: 'games', releases: 'games' };
+// ---------- the sections (December 2026): one bar on every page; a game's page is #games/<type>, a person #players/<id>,
+// a match #matches/<id>, the rows behind a number #drill/<metric> ----------
+const NAV = [['overview', 'Overview'], ['players', 'Players'], ['matches', 'Matches'], ['games', 'Games'], ['growth', 'Growth'], ['health', 'Health'], ['settings', 'Settings']];
+// The pages from before (bookmarks): each opens where its content went.
+const ALIAS = { playtest: 'players', devices: 'settings', stats: 'games', balance: 'games', bots: 'settings', access: 'settings', releases: 'games' };
 function route() {
   const parts = (location.hash || '').replace(/^#\/?/, '').split('/');
-  if (ALIAS[parts[0]]) { parts[0] = ALIAS[parts[0]]; const h = '#' + parts.filter(Boolean).join('/'); try { history.replaceState(null, '', h); } catch (e) { /* (drawn as the new page anyway) */ } }
+  let to = null;
+  if (!parts[0]) parts[0] = 'overview';
+  if (ALIAS[parts[0]]) to = [ALIAS[parts[0]]];
+  else if (parts[0] === 'settings' && parts[1] && GAMES[parts[1]]) to = ['games', parts[1]];   // (a game's old settings page)
+  if (to) { parts.length = 0; parts.push(...to); const h = '#' + to.join('/'); try { history.replaceState(null, '', h); } catch (e) { /* (drawn as the new page anyway) */ } }
+  if (!NAV.some(x => x[0] === parts[0]) && parts[0] !== 'drill') parts[0] = 'overview';
   return parts;
+}
+// Settings: everything that is not one game's (moved here from the Games list and the old Bot Settings, Staging Access and
+// Devices pages): the pace, Super Chaos and the platforms' minimum versions, the timer, Find Match and its bots, the
+// computer's levels, the alerts, staging's access, my game templates, my devices.
+function settingsPage() {
+  const jump = [['animCard', 'Pace'], ['clientsCard', 'Platforms'], ['timerCard', 'Timer'], ['findCard', 'Find Match'], ['botsCard', 'Bots'], ['aiCard', 'Computer difficulty'], ['alertsCard', 'Alerts']].concat(STAGING ? [['accessCard', 'Staging access']] : [], [['templatesCard', 'Templates'], ['ownerCard', 'My devices']]);
+  return `<nav class="jump" aria-label="On this page">${jump.map(([id, l]) => `<a href="#settings" data-jump="${id}">${l}</a>`).join('')}</nav>
+    ${animCard()}${platformsCard()}${timerCard()}${findCard()}${botsCard()}${aiCard()}${alertsCard()}${STAGING ? accessCard() : ''}${templatesCard()}${ownerCard()}`;
+}
+// My game templates (templates/{uid}: made and used on the game's own setup screens): listed here, each can be deleted.
+function templatesCard() {
+  const list = Object.entries(templates || {}).map(([id, t]) => ({ id, name: (t && t.name) || '', games: Object.keys((t && t.games) || {}).filter(g => GAMES[g]) })).sort((a, b) => a.name.localeCompare(b.name));
+  return `<div class="card ctl" id="templatesCard"><h2>Game templates</h2>
+    <p class="note">Your sets of mini-games. Make, rename and update them in the game itself: the Mini-games sheet on Play Computer, a friend room or Same phone.</p>
+    ${list.length ? `<div class="tbl"><table><thead><tr><th>Template</th><th>Games</th><th style="text-align:left">Mini-games</th><th></th></tr></thead><tbody>${list.map(t => `<tr><td>${esc(t.name)}</td><td>${t.games.length}</td><td style="text-align:left;white-space:normal">${esc(t.games.map(g => GAMES[g]).sort().join(', '))}</td><td><button class="btn sm" data-tpldel="${esc(t.id)}">Delete</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="dim">No templates yet.</p>'}</div>`;
+}
+async function tplDelete(b) {
+  if (!confirm('Delete this template?')) return;
+  try { await fb.dbM.set(fb.dbM.ref(fb.db, `templates/${user.uid}/${b.dataset.tpldel}`), null); if (templates) delete templates[b.dataset.tpldel]; } catch (e) { /* (kept) */ }
+  render();
 }
 // The Games list keeps its place (November 2026): leaving it for a game's page remembers the scroll position and the game opened,
 // and coming back (the page's Games link or the browser's Back) puts the list back where it was and flashes that game's row.
 let gamesMemo = null;       // { y, t }: the list's scroll and the game last opened from it
 let lastHash = location.hash;
-const onGamesList = h => /^#(games|settings|releases)\/?$/.test(h);
+const onGamesList = h => /^#games\/?$/.test(h);
 window.addEventListener('hashchange', e => {
   if (view.status !== 'ready') { lastHash = location.hash; return; }
   const from = lastHash, to = location.hash;
   lastHash = to;
   if (onGamesList(from)) {                                  // leaving the list: its scroll stays, with the game opened (the hash's)
-    const m = /^#(?:games|settings)\/([\w-]+)/.exec(to);
+    const m = /^#games\/([\w-]+)/.exec(to);
     if (m) gamesMemo = { y: gamesMemo && gamesMemo.live != null ? gamesMemo.live : window.scrollY, t: m[1] };
   }
-  const game = /^#(?:games|settings)\/([\w-]+)/.exec(from), back = onGamesList(to);
+  const game = /^#games\/([\w-]+)/.exec(from), back = onGamesList(to);
   render();
   if (back && gamesMemo) {                                  // back at the list: where it was, the edited game lit up
     const { y, t } = gamesMemo, t2 = game ? game[1] : t;
@@ -356,41 +140,7 @@ window.addEventListener('hashchange', e => {
 // The list's scroll as it is now (a tap on a row changes the hash before the page moves: this has the number from just before).
 window.addEventListener('scroll', () => { if (onGamesList(location.hash)) gamesMemo = Object.assign(gamesMemo || {}, { live: window.scrollY }); }, { passive: true });
 
-// ---------- the match inspector: every logged match (matchLogIndex), reported ones first; a match's
-// event timeline (matchLogs/{key}) and its export as JSON. (functions/matchLogRules.js: the events.) ----------
-const ML_MODES = { match: 'Find Match', bot: 'Find Match vs a bot', friend: 'Friend code', 'friend-sc': 'Super Chaos (friend)', chaos: 'Super Chaos', local: 'Two players', cpu: 'vs Computer', cvc: 'Computer vs Computer' };
-function mlRows() {
-  const f = mlFilt, from = f.from ? Date.parse(f.from + 'T00:00:00') : null, to = f.to ? Date.parse(f.to + 'T23:59:59') : null, who = f.who.trim().toLowerCase();
-  return Object.entries(mlogs || {}).map(([key, x]) => Object.assign({ key }, x)).filter(r => (!f.mode || r.mode === f.mode) && (!who || (r.who || '').includes(who) || r.key.toLowerCase().includes(who))
-    && (from == null || (r.last || 0) >= from) && (to == null || (r.started || 0) <= to))
-    .sort((a, b) => (b.reported || 0) - (a.reported || 0) || (b.last || 0) - (a.last || 0));
-}
-const mlPlayers = r => ['X', 'O'].map(s => (r.players && r.players[s] && r.players[s].name ? `${s} ${esc(r.players[s].name)}` : '')).filter(Boolean).join(' · ') || '<span class="dim">–</span>';
-function mlTimeline(key) {
-  const ev = mlEvents[key];
-  if (!ev) return '<p class="note">Loading…</p>';
-  if (ev === 'error') return '<p class="note">Could not load this log.</p>';
-  const t0 = ev.length ? ev[0].t : 0, rel = t => { const s = Math.round((t - t0) / 1000); return `+${Math.floor(s / 60)}:${pad(s % 60)}`; };
-  const fields = e => Object.entries(e).filter(([k]) => !['t', 'k'].includes(k)).map(([k, v]) => `${esc(k)}=${esc(typeof v === 'object' ? JSON.stringify(v) : v)}`).join(' ');
-  return `<ul class="mltl">${ev.map(e => `<li>${esc(PT.nyWhen(e.t))} <span class="dim">${rel(e.t)}</span> <span class="k ${esc(e.k)}">${esc(e.k)}</span> ${fields(e)}</li>`).join('') || '<li>No events.</li>'}</ul>`;
-}
-function matchCard() {
-  if (!mlogs) return '<div class="card"><h2>Match inspector</h2><p class="note">Not loaded.</p></div>';
-  const rows = mlRows(), shown = rows.slice(0, 200), nrep = rows.filter(r => r.reported).length;
-  const filt = `<div class="mlfilt"><input id="mlWho" type="search" placeholder="Player, uid, device or room" value="${esc(mlFilt.who)}">
-    <select id="mlMode"><option value="">All modes</option>${Object.entries(ML_MODES).map(([k, l]) => `<option value="${k}"${mlFilt.mode === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
-    <label>From <input id="mlFrom" type="date" value="${esc(mlFilt.from)}"></label><label>To <input id="mlTo" type="date" value="${esc(mlFilt.to)}"></label></div>`;
-  const body = shown.map(r => {
-    const open = mlOpen === r.key;
-    return `<tr class="mlrow${open ? ' open' : ''}${r.reported ? ' rep' : ''}" data-ml="${esc(r.key)}"><td>${r.reported ? `Reported ${esc(PT.nyWhen(r.reported))}${r.reports > 1 ? ` (${r.reports})` : ''}` : ''}</td><td>${r.started ? esc(PT.nyWhen(r.started)) : '–'}</td><td>${esc(ML_MODES[r.mode] || r.mode || '?')}</td><td>${mlPlayers(r)}</td><td>${n(r.n)}</td><td>${esc(r.vers || '')}</td><td>${esc(r.note || '')}</td></tr>`
-;
-  }).join('');
-  const sel = mlOpen && rows.find(r => r.key === mlOpen);       // the match opened: its timeline under the table (the table scrolls sideways on a phone; this does not)
-  const panel = sel ? `<div class="tlpanel" id="mlTimeline" role="region" aria-label="Match ${esc(sel.key)}: its log"><div class="row"><h3>${esc(sel.key)}${sel.room ? ` · room ${esc(sel.room)}` : ''}</h3><button class="btn" data-mlexport="${esc(sel.key)}">Export</button><button class="btn" data-mlclose="1">Close</button></div>${sel.note ? `<p class="note mid-left" style="margin:0">Reported: ${esc(sel.note)}</p>` : ''}${sel.devs ? `<p class="note" style="margin:0">Devices ${esc(sel.devs)}</p>` : ''}${mlTimeline(sel.key)}</div>` : '';
-  return `<div class="card" id="mlCard"><div class="row"><h2>Match inspector</h2><span class="note" style="margin:0">${rows.length} match${rows.length === 1 ? '' : 'es'}${nrep ? ` · ${nrep} reported` : ''} · kept 30 days</span></div>${filt}
-    <div class="tbl"><table><thead><tr><th>Reported</th><th>Started</th><th>Mode</th><th>Players</th><th>Events</th><th>App</th><th>Note</th></tr></thead><tbody>${body || '<tr><td colspan="7" class="dim">No matches</td></tr>'}</tbody></table></div>
-    ${rows.length > shown.length ? `<p class="note">The ${shown.length} most recent shown: narrow the filters for the rest.</p>` : ''}${panel}</div>`;
-}
+// ---------- a match's event log (matchLogs/{key}; functions/matchLogRules.js): read when its match is opened, and exported as JSON ----------
 async function mlLoad(key) {
   if (mlEvents[key] && mlEvents[key] !== 'error') return;
   try { const v = (await fb.dbM.get(fb.dbM.ref(fb.db, `matchLogs/${key}`))).val() || {}; mlEvents[key] = Object.entries(v).map(([id, e]) => Object.assign({}, e, { id })).sort((a, b) => a.t - b.t || (a.id < b.id ? -1 : 1)).map(e => { delete e.id; return e; }); }
@@ -399,137 +149,11 @@ async function mlLoad(key) {
 }
 async function mlExport(key) {
   await mlLoad(key);
-  const blob = new Blob([JSON.stringify({ key, exported: new Date().toISOString(), summary: (mlogs || {})[key] || null, events: Array.isArray(mlEvents[key]) ? mlEvents[key] : [] }, null, 1)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ key, exported: new Date().toISOString(), summary: ((raw || {}).logIndex || {})[key] || null, events: Array.isArray(mlEvents[key]) ? mlEvents[key] : [] }, null, 1)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = `match-log-${key}.json`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-}
-
-// ---------- sorting a table: a heading's button flips its order ----------
-function sortRows(rows, by) {
-  return rows.sort((a, b) => {
-    const x = a[by.k], y = b[by.k];
-    if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1;
-    return (typeof x === 'string' ? x.localeCompare(y) : x - y) * by.dir;
-  });
-}
-const sortHead = (cols, by, attr) => `<thead><tr>${cols.map(([k, l]) => `<th${by.k === k ? ` aria-sort="${by.dir > 0 ? 'ascending' : 'descending'}"` : ''}><button data-${attr}="${k}">${l}</button></th>`).join('')}</tr></thead>`;
-const flip = (by, k, down) => ({ k, dir: by.k === k ? -by.dir : down.includes(k) ? -1 : 1 });
-
-// ---------- accounts: every player with a username (not the bots), from users/, localStats/ and lastSeen/ ----------
-function accountRows() {
-  const a = accts || {}, bots = ctl.bots || {};
-  return Object.entries(a.users || {}).filter(([uid, u]) => u && u.username && !bots[uid]).map(([uid, u]) => {
-    const parts = [u, u.friend || {}, (a.local || {})[uid] || {}];
-    const t = k => parts.reduce((s, r) => s + n(r[k]), 0);
-    const wins = t('wins'), losses = t('losses'), draws = t('draws');
-    return { uid, name: u.username, joined: n(u.joined) || null, last: n((a.seen || {})[uid]) || null, games: wins + losses + draws, wins, losses, draws,
-      rate: ratio(wins, wins + losses + draws), split: `Find Match ${n(u.wins)}-${n(u.losses)}-${n(u.draws)} · Friends ${n(parts[1].wins)}-${n(parts[1].losses)}-${n(parts[1].draws)} · Local ${n(parts[2].wins)}-${n(parts[2].losses)}-${n(parts[2].draws)}` };
-  });
-}
-function accountsCard() {
-  if (!accts) return '<div class="card"><h2>Accounts</h2><p class="note">Not loaded.</p></div>';
-  const rows = sortRows(accountRows(), acctSort);
-  const cols = [['name', 'Username'], ['joined', 'Signed up'], ['last', 'Last active'], ['games', 'Games'], ['wins', 'Record (W-L-D)'], ['rate', 'Win rate']];
-  return `<div class="card" id="accountsCard"><div class="row"><h2>Accounts</h2><span class="note" style="margin:0">${rows.length} account${rows.length === 1 ? '' : 's'}</span></div>
-    <div class="tbl"><table>${sortHead(cols, acctSort, 'asort')}<tbody>${rows.map(r => `<tr class="acct${acctOpen === r.uid ? ' open' : ''}" data-uid="${esc(r.uid)}"><td>${esc(r.name)}</td><td>${PT.nyDate(r.joined)}</td><td>${r.last ? PT.nyWhen(r.last) : '<span class="dim">–</span>'}</td><td>${r.games}</td><td title="${esc(r.split)}">${r.wins}-${r.losses}-${r.draws}</td><td>${pct(r.rate)}</td></tr>`).join('') || '<tr><td colspan="6" class="dim">No accounts yet</td></tr>'}</tbody></table></div>
-${acctPanel()}
-    <p class="note">Games and record: every game played with the account, Find Match, friends and local together (hover a record for the split). Last active: the last time the account played, logged in or opened the game. New York time. Bot accounts are left out. Tap an account for its record by side and by mini-game.</p></div>`;
-}
-// One player's detail (a tap on their row): the record as X and as O, and the squares won and lost per
-// mini-game (players no longer see these on their profile). Online (Find Match and friends), Local or All.
-function acctPanel() {
-  const u = acctOpen && accts && accts.users[acctOpen];
-  if (!u) return '';
-  if (!PS) return '<div class="tlpanel" id="acctDetail"><p class="note">Could not load the stats helpers.</p></div>';
-  const loc = (accts.local || {})[acctOpen] || {}, v = acctView;
-  const rec = PS.viewRec(u, loc, v), sides = PS.viewSides(u, loc, v), minis = PS.viewMinis(u, loc, v);
-  const sideRow = p => `<tr><td>As ${p}</td><td>${PS.games(sides[p])}</td><td>${PS.recText(sides[p])}</td><td>${PS.winPct(sides[p])}</td></tr>`;
-  const rate = (w, l) => `${Math.round(100 * w / (w + l))}%`;
-  const won = minis.reduce((t, r) => t + r.won, 0), lost = minis.reduce((t, r) => t + r.lost, 0);
-  const mini = minis.length ? `<tr class="sum"><td>All mini-games</td><td>${won}</td><td>${lost}</td><td>${rate(won, lost)}</td></tr>${minis.map(r => `<tr><td>${esc(r.name)}</td><td>${r.won}</td><td>${r.lost}</td><td>${rate(r.won, r.lost)}</td></tr>`).join('')}`
-    : '<tr><td colspan="4" class="dim">No squares won or lost yet</td></tr>';
-  return `<div class="tlpanel" id="acctDetail"><div class="row"><h3>${esc(u.username)}</h3><div class="tabs">${[['online', 'Online'], ['local', 'Local'], ['all', 'All']].map(([k, l]) => `<button data-aview="${k}" aria-pressed="${v === k}">${l}</button>`).join('')}</div><button class="btn" data-aclose="1">Close</button></div>
-    <div class="kpis"><div class="kpi"><small>Record (W-L-D)</small><b>${PS.recText(rec)}</b><span>${PS.games(rec)} game${PS.games(rec) === 1 ? '' : 's'}</span></div><div class="kpi"><small>Win rate</small><b>${PS.winPct(rec)}</b><span>draws count as games</span></div></div>
-    <div class="tbl"><table><thead><tr><th>Played as</th><th>Games</th><th>W-L-D</th><th>Win rate</th></tr></thead><tbody>${sideRow('X')}${sideRow('O')}</tbody></table></div>
-    <div class="tbl"><table><thead><tr><th>Mini-game</th><th>Won</th><th>Lost</th><th>Win rate</th></tr></thead><tbody>${mini}</tbody></table></div>
-    <p class="note">${{ online: 'Online: Find Match and friend games.', local: 'Local: games on this player\'s phone (as player 1).', all: 'All: online and local.' }[v]} Squares count once they ended claimed by X or O; only the games in the pool.</p></div>`;
-}
-
-// ---------- playtest activity (no account needed): devices/ and devlog/, worked out by playtest.js ----------
-function playRows() {
-  const rows = PT.deviceRows((play || {}).devices, (play || {}).logs);
-  return tagPick === '' ? rows : tagPick === '-' ? rows.filter(r => !r.tag) : rows.filter(r => r.tag === tagPick);
-}
-function hourChart(hours) {
-  const W = 840, H = 230, L = 30, B = 34, T = 10, R = 6, iw = W - L - R, ih = H - B - T;
-  const max = Math.max(1, ...hours.map(h => Math.max(h.started, h.finished, h.devices)));
-  const step = iw / hours.length, y = v => T + ih - v / max * ih;
-  let bars = '', hits = '', days = '', pts = [];
-  hours.forEach((h, i) => {
-    const x = L + i * step;
-    if (h.started) bars += `<rect x="${(x + step * .08).toFixed(1)}" y="${y(h.started).toFixed(1)}" width="${(step * .84).toFixed(1)}" height="${(h.started / max * ih).toFixed(1)}" fill="var(--sky)"/>`;
-    if (h.finished) bars += `<rect x="${(x + step * .3).toFixed(1)}" y="${y(h.finished).toFixed(1)}" width="${(step * .4).toFixed(1)}" height="${(h.finished / max * ih).toFixed(1)}" fill="var(--green)"/>`;
-    pts.push(`${(x + step / 2).toFixed(1)},${y(h.devices).toFixed(1)}`);
-    hits += `<rect class="hit" x="${x.toFixed(1)}" y="${T}" width="${step.toFixed(2)}" height="${ih}"><title>${esc(PT.nyWhen(h.t))}: ${h.started} started, ${h.finished} finished, ${h.devices} device${h.devices === 1 ? '' : 's'} active</title></rect>`;
-    if (h.label.endsWith(' 00:00') || i === 0) {
-      const d = h.label.slice(0, 10), [yy, mm, dd] = d.split('-').map(Number), wd = new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay();
-      days += `${i ? `<line class="day" x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${T}" y2="${T + ih + 4}"/>` : ''}<text x="${(x + 3).toFixed(1)}" y="${H - 18}">${'SunMonTueWedThuFriSat'.slice(wd * 3, wd * 3 + 3)} ${mm}/${dd}</text>`;
-    }
-  });
-  const ticks = [0, .5, 1].map(f => { const v = Math.round(max * f), yy = y(v); return `<line class="ax" x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}"/><text x="${L - 5}" y="${yy + 4}" text-anchor="end">${v}</text>`; }).join('');
-  const hrs = hours.map((h, i) => (i % 6 === 0 ? `<text x="${(L + i * step + step / 2).toFixed(1)}" y="${H - 4}" text-anchor="middle" style="font-size:9px">${+h.label.slice(11, 13)}</text>` : '')).join('');
-  const line = `<polyline points="${pts.join(' ')}" fill="none" stroke="var(--plum)" stroke-width="1.6" stroke-linejoin="round"/>`;
-  const legend = '<div class="legend"><span><i style="background:var(--sky)"></i>Games started</span><span><i style="background:var(--green)"></i>Games finished</span><span><i style="background:var(--plum)"></i>Active devices (line)</span></div>';
-  return `<div class="chart wide-chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Activity by hour, last 7 days, New York time">${ticks}${days}${bars}${line}${hrs}${hits}</svg></div>${legend}`;
-}
-const modeList = ms => ms.map(m => PT.MODE_NAMES[m] || m).join(', ') || '–';
-const midText = m => (m === 'left' ? '<span class="mid-left">Yes, left</span>' : m === 'open' ? '<span class="mid-open">Yes, unfinished</span>' : 'No');
-function timeline(r) {
-  const ses = r.sessions.slice().reverse();
-  return `<div class="tlist">${ses.map(s => {
-    const opens = s.events.filter(e => e.ev === 'open').length, errs = s.events.filter(e => e.ev === 'error');
-    const errLine = errs.length ? `<p class="mid-left">${errs.length} error${errs.length === 1 ? '' : 's'} on the phone: ${esc([...new Set(errs.map(e => e.msg || '?'))].slice(0, 3).join(' · '))}</p>` : '';
-    const auds = s.events.filter(e => e.ev === 'audio');
-    const audLine = auds.length ? `<p class="mid-open">Sound: ${esc(auds.slice(-6).map(e => `${PT.nyWhen(e.t).replace(/^\w+ \d+, /, '')} ${e.msg || '?'}`).join(' · '))}${auds.length > 6 ? ` (${auds.length} events)` : ''}</p>` : '';
-    const games = s.games.map(g => `<li>${PT.nyWhen(g.start).replace(/^\w+ \d+, /, '')} · ${esc(PT.MODE_NAMES[g.mode] || g.mode || '?')} · ${g.how === 'finish' ? `finished after ${PT.dur(g.end - g.start)}` : g.how === 'leave' ? `<span class="mid-left">left after ${PT.dur(g.end - g.start)}</span>` : '<span class="mid-open">not finished</span>'}</li>`).join('');
-    return `<div class="tses"><h3>${PT.nyWhen(s.start)} · ${PT.dur(s.ms)}</h3><p>${s.played} game${s.played === 1 ? '' : 's'} · ${s.streak} finished in a row · ${modeList(s.modes)} · ended mid-match: ${midText(s.mid)}${opens ? ` · opened the app${opens > 1 ? ` ${opens} times` : ''}` : ''}</p>${errLine}${audLine}${games ? `<ul>${games}</ul>` : ''}</div>`;
-  }).join('') || '<p class="note">No events.</p>'}</div>`;
-}
-// A device's timeline, under the devices table: its sessions, newest first, each with its games.
-function tlPanel(r) {
-  if (!r) return '';
-  return `<div class="tlpanel" id="devTimeline" role="region" aria-label="Device ${esc(r.short)}: sessions and games"><div class="row"><h3>Device ${esc(r.short)}${r.tag ? ` · ${esc(r.tag)}` : ''}</h3><button class="btn" data-dev="${esc(r.h)}">Close</button></div>
-    <p class="note" style="margin:0 0 8px">First seen ${PT.nyWhen(r.first)} · last seen ${PT.nyWhen(r.last)} · ${r.nSessions} session${r.nSessions === 1 ? '' : 's'} · ${r.games} game${r.games === 1 ? '' : 's'}</p>${timeline(r)}</div>`;
-}
-function playCard() {
-  if (!play) return '<div class="card"><h2>Playtest activity</h2><p class="note">Not loaded.</p></div>';
-  const all = PT.deviceRows(play.devices, play.logs), rows = playRows(), now = Date.now();
-  const tags = [...new Set(all.map(r => r.tag).filter(Boolean))].sort();
-  const pick = `<label>Devices <select id="tagPick"><option value=""${tagPick === '' ? ' selected' : ''}>All (${all.length})</option>${tags.map(t => `<option value="${esc(t)}"${tagPick === t ? ' selected' : ''}>Tester: ${esc(t)}</option>`).join('')}<option value="-"${tagPick === '-' ? ' selected' : ''}>No tester tag</option></select></label>`;
-  const hours = PT.hourly(rows, now), sum = k => hours.reduce((t, h) => t + h[k], 0);
-  const week = new Set(rows.filter(r => r.evs.some(e => e.t > now - 7 * 86400000)).map(r => r.h)).size;
-  const ret = PT.retention(rows, now), f = PT.funnel(rows);
-  const fRow = (label, v) => `<span>${label}</span><div class="fb" style="width:${f.opened ? Math.max(1, Math.round(v / f.opened * 100)) : 0}%"></div><b>${v}${f.opened ? ` · ${pct(v / f.opened)}` : ''}</b>`;
-  const kpis = `<div class="kpis">
-      <div class="kpi"><small>Devices seen</small><b>${rows.length}</b><span>${week} active in the last 7 days</span></div>
-      <div class="kpi"><small>Came back the next day</small><b>${ret.eligible ? pct(ret.nextDay / ret.eligible) : '–'}</b><span>${ret.nextDay} of ${ret.eligible} first seen before today</span></div>
-      <div class="kpi"><small>Came back within 7 days</small><b>${ret.eligible ? pct(ret.week / ret.eligible) : '–'}</b><span>${ret.week} of ${ret.eligible} (newer devices still have time)</span></div>
-      <div class="kpi"><small>Last 7 days</small><b>${sum('started')} / ${sum('finished')}</b><span>games started / finished</span></div></div>`;
-  const funnel = `<h2 style="margin-top:14px">Funnel</h2><div class="funnel">${fRow('Opened the app', f.opened)}${fRow('Started a game', f.started)}${fRow('Finished a game', f.finished)}${fRow('Started another', f.another)}</div>`;
-  // devices: newest first by default; a tap opens the device's sessions and games
-  const drows = sortRows(rows.slice(), devSort);
-  const dcols = [['short', 'Device'], ['tag', 'Tester'], ['first', 'First seen'], ['last', 'Last seen'], ['nSessions', 'Sessions'], ['games', 'Games'], ['perSession', 'Games / session'], ['back', 'Came back']];
-  const devTable = `<h2 style="margin-top:14px">Devices</h2><div class="tbl"><table>${sortHead(dcols, devSort, 'dsort')}<tbody>${drows.map(r => `<tr class="dev${devOpen === r.h ? ' open' : ''}" data-dev="${esc(r.h)}"><td><button class="lnk" data-dev="${esc(r.h)}" aria-expanded="${devOpen === r.h}" aria-label="Device ${esc(r.short)}: show its sessions and games">${esc(r.short)}</button></td><td>${r.tag ? `<span class="tag">${esc(r.tag)}</span>` : '<span class="dim">–</span>'}</td><td>${PT.nyWhen(r.first)}</td><td>${PT.nyWhen(r.last)}</td><td>${r.nSessions}</td><td>${r.games}</td><td>${num(r.perSession)}</td><td>${r.back ? 'Yes' : 'No'}</td></tr>`).join('') || '<tr><td colspan="8" class="dim">No devices yet</td></tr>'}</tbody></table></div>${tlPanel(rows.find(r => r.h === devOpen))}`;
-  // sessions, newest first
-  const ses = rows.flatMap(r => r.sessions.map(s => Object.assign({ dev: r }, s))).sort((a, b) => b.start - a.start);
-  const shown = allSessions ? ses : ses.slice(0, 30);
-  const sesTable = `<h2 style="margin-top:14px">Sessions</h2><div class="tbl"><table><thead><tr><th>Started</th><th>Device</th><th>Tester</th><th>Length</th><th>Games</th><th>Finished in a row</th><th style="text-align:left">Modes</th><th>Ended mid-match</th></tr></thead><tbody>${shown.map(s => `<tr><td>${PT.nyWhen(s.start)}</td><td><button class="lnk" data-dev="${esc(s.dev.h)}">${esc(s.dev.short)}</button></td><td>${s.dev.tag ? esc(s.dev.tag) : '<span class="dim">–</span>'}</td><td>${PT.dur(s.ms)}</td><td>${s.played}</td><td>${s.streak}</td><td style="text-align:left">${esc(modeList(s.modes))}</td><td>${midText(s.mid)}</td></tr>`).join('') || '<tr><td colspan="8" class="dim">No sessions yet</td></tr>'}</tbody></table></div>${ses.length > 30 ? `<button class="btn" data-act="all-sessions" style="margin-top:8px">${allSessions ? 'Show the latest 30' : `Show all ${ses.length}`}</button>` : ''}`;
-  return `<div class="card" id="playCard"><div class="row"><h2>Playtest activity</h2>${pick}</div>${kpis}
-    <h2 style="margin-top:14px">Activity by hour</h2><p class="note" style="margin:0 0 6px">Last 7 days, New York time. Hover an hour for its numbers.</p>${hourChart(hours)}
-    ${funnel}${devTable}${sesTable}
-    <p class="note">Every device gets a random anonymous id, kept in its browser; nothing personal is collected. A tester tag comes from the link (add ?t=name to the game's address, e.g. ?t=sam) and stays with the device from the first time it is seen. A session ends after 30 minutes with nothing. Games: every match started on the device, any mode. Finished: played to a result; left: quit (resigned or left the match); unfinished: still under way when the session ended. Came back: seen again on a later day (New York days).</p></div>`;
 }
 
 // ---------- a save's outcome, beside what was saved: "Saved" (green) or why it was not (red). It stays until
@@ -671,15 +295,7 @@ function runCfg(t) {
   for (const [k] of RUN_MIX[t]) out.mix[k] = raw.mix && Number.isFinite(Number(raw.mix[k])) ? Number(raw.mix[k]) : d.mix[k];
   return out;
 }
-function runSums(t) {                                        // every mode together, the admin-only (testing) bucket included
-  const s = { runs: 0, distSum: 0, finishes: 0, finishRuns: 0, crash: {} };
-  for (const m of Object.keys(stats.mini || {})) {
-    const r = (stats.mini[m] && stats.mini[m][t]) || {};
-    s.runs += n(r.runs); s.distSum += n(r.distSum); s.finishes += n(r.finishes); s.finishRuns += n(r.finishRuns);
-    for (const [b, c] of Object.entries(r.crash || {})) s.crash[b] = (s.crash[b] || 0) + n(c);
-  }
-  return s;
-}
+const runSums = t => (P && model ? P.X.runStats(scopeOf(), t, RUN_BIN) : { runs: 0, distSum: 0, finishes: 0, finishRuns: 0, crash: {} });   // the squares under the page's filters (src/admin/metrics.js)
 function runnerCard(t) {   // one runner's card, on its page (#games/<type>): its numbers so far and its config/run fields (saved by the page's Save)
   const kpi = (label, big, sub) => `<div class="card kpi"><small>${label}</small><b>${big}</b>${sub ? `<span>${sub}</span>` : ''}</div>`;   // (as the dashboard's own, which lives inside render)
   {
@@ -921,7 +537,8 @@ async function loadMetas() {
   TUNE = await import('./src/core/tune.js');   // (the registry has registered every game's settings)
   CLIENT = await import('./src/core/client.js');
   RACE = await import('./src/core/race.js');   // (after the registry: the metas import its MODE_TUNE)
-  BAL = await import('./src/admin/balance.js');   // the Balance report and the stats by settings version (pure)
+  BAL = await import('./src/admin/balance.js');   // a game's version card (its saves)
+  P = await import('./src/admin/pages.js');       // the pages, with the metrics layer (P.X) and the table (P.T)
 }
 const tuneList = t => (META[t] && Array.isArray(META[t].TUNE) ? META[t].TUNE : []);
 const catName = t => { const c = CATS.find(x => META[t] && x[0] === META[t].category); return c ? c[1] : ''; };
@@ -994,7 +611,7 @@ function gamesIndex() {
     const k = tuneList(t).length + legacyCount(t);
     return `<li><a class="grow" href="#games/${t}">${gameIcon(t)}<span class="gnm"><b>${esc(GAMES[t])}</b><small>${esc(catName(t))} · ${k} setting${k === 1 ? '' : 's'}</small></span><span class="gbadges">${isReleased(t) ? badge('rel', 'Released') : badge('adm', 'Admin only')}${iosOff(t) ? badge('ios', 'iOS off') : ''}${raceOn(t) ? badge('race', 'Race') : ''}${gameChanged(t) ? badge('chg', 'changed') : ''}</span></a></li>`;
   }).join('');
-  return platformsCard() + animCard() + `<div class="card" id="gamesCard"><div class="row"><h2>Mini-games</h2><span class="note" style="margin:0">${ts.length} games · ${ts.filter(isReleased).length} released</span></div>
+  return `<div class="card" id="gamesCard"><div class="row"><h2>Mini-games</h2><span class="note" style="margin:0">${ts.length} games · ${ts.filter(isReleased).length} released</span></div>
     <ul class="glist">${rows}</ul>
     <p class="note">Each game's page: its release switches (the web's Released or Admin only; iOS on or off), its Mode where it has one (Shared or Race), every setting and, where it has one, its tuning card, then Save, Reset to defaults and Test play. A change applies to squares dealt from then on (a square under way keeps the values it was dealt with). "changed": a setting saved with a value other than the code's default.</p></div>`;
 }
@@ -1046,64 +663,35 @@ function applyPreset(t, name, btn) {
   }
   for (const b of app.querySelectorAll('[data-preset]')) { const on = b === btn; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }
 }
-// The Balance report (December 2026, #balance; src/admin/balance.js): per game, for its current settings version (or the
-// previous one, or all), the squares, the winner's moves and the time in the square (25th percentile, median, 75th), left
-// open, reset and first-mover rates, flags; the current version against the one before; match length by mode, timer and
-// finished or abandoned. Filters: an admin's matches left out (by default), dates, the version; Export JSON.
-let lastBal = null;
-// ---------- Devices (December 2026): every device the server has seen (devices/), by its short ID (the first 8 hex of its
-// hash: the ID the game's Settings shows), with its nickname and Excluded switch (devmeta/: statsRules.js metaFor, a whole
-// hash or a prefix of one); an owner device and any match with it in are left out of every stat until Include my devices.
-// The owner link (admin/ownerToken): /?owner=<token> marks whichever device opens it (functions/index.js markDevice). ----------
+// ---------- my devices (Settings; December 2026): an owner device (devmeta/{key}: functions/statsRules.js metaFor, a whole
+// hash or a prefix of one) and every match with it in are left out of every number until Include my devices. Each device's
+// nickname and Excluded switch are on its person's page (Players); here: exclude one by its ID before it is seen, the owner
+// link (admin/ownerToken: /?owner=<token> marks whichever device opens it, functions/index.js markDevice), and the list. ----------
 const devWhy = { set: 'set by a deploy', admin: 'signed in as admin', self: 'marked in Settings', link: 'opened the owner link', manual: 'added here' };
-function devRows() {
-  const devs = (playAll || {}).devices || {}, logs = (playAll || {}).logs || {}, users = (accts && accts.users) || {};
-  const rows = Object.entries(devs).map(([h, d]) => {
-    const m = metaFor(h), uids = Object.keys((d && d.u) || {}), starts = Object.values(logs[h] || {}).filter(e => e && e.ev === 'start').length;
-    return { key: h, h, short: h.slice(0, 8), m, nick: (m && m.nick) || '', ex: !!(m && m.ex), p: d.p || '', cv: d.cv || '', first: d.first || 0, last: d.last || 0,
-      names: uids.map(u => (users[u] && users[u].username) || '').filter(Boolean), games: Math.max(d.ms || 0, starts), tag: d.tag || '' };
-  });
-  for (const [k, v] of Object.entries(devmeta || {})) {          // an entry no device answers to yet (a prefix pasted, a device not seen here)
-    if (!v || Object.keys(devs).some(h => h.startsWith(k))) continue;
-    rows.push({ key: k, h: null, short: k.slice(0, 8), m: Object.assign({ key: k }, v), nick: v.nick || '', ex: !!v.ex, p: '', cv: '', first: 0, last: 0, names: [], games: 0, tag: '', unseen: true });
-  }
-  const q = devQ.trim().toLowerCase();
-  return rows.filter(r => !q || r.nick.toLowerCase().includes(q) || (/^[0-9a-f]+$/.test(q) && r.key.includes(q)) || r.names.some(nm => nm.toLowerCase().includes(q)) || r.tag.includes(q))
-    .sort((a, b) => b.ex - a.ex || b.last - a.last);
-}
-function devicesPage() {
-  if (!playAll) return '<div class="card"><h2>Devices</h2><p class="note">Not loaded (the devices need the admin flag).</p></div>';
-  const when = t => (t ? new Date(t).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '–');
-  const rows = devRows(), site = location.origin && /^https?:/.test(location.origin) ? location.origin : (STAGING ? 'https://staging.tictacchaos.com' : 'https://tictacchaos.com');
-  const link = ownerToken ? `${site}/?owner=${ownerToken}` : '';
-  const nickCell = r => (devEdit === r.key
-    ? `<span class="nickedit"><input id="nickIn" maxlength="40" value="${esc(r.nick)}" aria-label="Nickname"><button class="btn" data-act="nicksave" data-key="${esc(r.key)}">Save</button><button class="btn" data-act="nickcancel">Cancel</button></span>`
-    : `<button class="nick" data-nick="${esc(r.key)}" title="Edit the nickname">${r.nick ? esc(r.nick) : '<span class="dim">add a name</span>'}</button>`);
-  const body = rows.map(r => `<tr class="${r.ex ? 'devx' : ''}"><td>${nickCell(r)}</td><td><code>${esc(r.short)}</code>${r.unseen ? ' <span class="dim">(prefix, not seen yet)</span>' : ''}</td>
-    <td>${esc(r.p ? r.p + (r.cv ? ' ' + r.cv : '') : '–')}</td><td>${when(r.first)}</td><td>${when(r.last)}</td><td>${r.names.length ? r.names.map(esc).join(', ') : '<span class="dim">–</span>'}</td><td class="num">${r.games}</td>
-    <td><label class="sw"><input type="checkbox" data-devex="${esc(r.key)}"${r.ex ? ' checked' : ''} aria-label="Excluded"> <span>${r.ex ? 'Excluded' : 'Counted'}</span></label>${r.ex && r.m && r.m.why ? `<br><small class="dim">${esc(devWhy[r.m.why] || r.m.why)}</small>` : ''}</td></tr>`).join('');
-  return `<div class="card"><h2>Exclude a device</h2>
-    <p class="note">Paste a device ID (the short ID the game's Settings shows, or more of it) and give it a name: its play and any match with it in are left out of every stat (Overview, Balance, Growth, Stats, Playtesters) until <b>Include my devices</b> at the top. A device that signs in to an admin account is excluded by itself, for good.</p>
-    <div class="row exrow"><input id="exId" placeholder="Device ID, e.g. 0200d915" maxlength="40" aria-label="Device ID"><input id="exNick" placeholder="Nickname" maxlength="40" aria-label="Nickname"><button class="btn" data-act="exadd">Exclude</button></div>
-    ${devMsg ? `<p class="note">${esc(devMsg)}</p>` : ''}</div>
-    <div class="card"><h2>Owner link</h2>
-    <p class="note">Open this link on a device of yours to exclude it without logging in. Anyone with it can exclude their own device, so keep it to yourself; a new link stops the old one.</p>
-    <div class="row">${link ? `<code class="olink">${esc(link)}</code><button class="btn" data-act="ownercopy">Copy</button>` : '<span class="dim">No link yet.</span>'}<button class="btn" data-act="ownertok">${link ? 'Make a new link' : 'Make the link'}</button></div></div>
-    <div class="card"><div class="row"><h2>Devices</h2><input id="devQ" type="search" placeholder="Search nickname, username or ID" value="${esc(devQ)}" aria-label="Search devices"></div>
-    <p class="note">${rows.length} shown. Tap a nickname to edit it (any device: name your testers'). Games played: matches started on it.</p>
-    <div class="tw"><table class="devs"><thead><tr><th>Nickname</th><th>Device ID</th><th>Platform</th><th>First seen</th><th>Last seen</th><th>Usernames</th><th>Games played</th><th>Excluded</th></tr></thead><tbody>${body || '<tr><td colspan="8" class="dim">No devices match</td></tr>'}</tbody></table></div></div>`;
+function ownerCard() {
+  const site = location.origin && /^https?:/.test(location.origin) ? location.origin : (STAGING ? 'https://staging.tictacchaos.com' : 'https://tictacchaos.com');
+  const link = ownerToken ? `${site}/?owner=${ownerToken}` : '', devs = model ? [...model.devs.values()] : [];
+  const rows = Object.entries(devmeta || {}).filter(([, v]) => v && v.ex === true).map(([k, v]) => { const hit = devs.filter(d => d.h.startsWith(k)); return { k, v, hit }; }).sort((a, b) => String(a.v.nick || '').localeCompare(String(b.v.nick || '')));
+  return `<div class="card ctl" id="ownerCard"><h2>My devices</h2>
+    <p class="note">A device of mine, and any match with it in, is left out of every number until <b>Include my devices</b> is ticked in a page's filters. A device that signs in to an admin account is excluded by itself, for good. Every other device's nickname and switch are on its player's page (Players).</p>
+    <h3>Exclude a device</h3><div class="row exrow"><input id="exId" placeholder="Device ID, e.g. 0200d915" maxlength="40" aria-label="Device ID"><input id="exNick" placeholder="Nickname" maxlength="40" aria-label="Nickname"><button class="btn" data-act="exadd">Exclude</button></div>
+    ${devMsg ? `<p class="note">${esc(devMsg)}</p>` : ''}<p class="note">The ID is the one the game's Settings shows (or more of it).</p>
+    <h3>Owner link</h3><div class="row">${link ? `<code class="olink">${esc(link)}</code><button class="btn sm" data-act="ownercopy">Copy</button>` : '<span class="dim">No link yet.</span>'}<button class="btn sm" data-act="ownertok">${link ? 'Make a new link' : 'Make the link'}</button></div>
+    <p class="note">Open it on a device of yours to exclude it without logging in. Anyone with it can exclude their own device, so keep it to yourself; a new link stops the old one.</p>
+    <h3>Excluded now</h3><div class="tbl"><table><thead><tr><th style="text-align:left">Nickname</th><th>Device ID</th><th>Why</th><th>Seen as</th><th></th></tr></thead><tbody>${rows.map(r => `<tr><td style="text-align:left">${esc(r.v.nick || '')}</td><td><code>${esc(r.k.slice(0, 8))}</code></td><td>${esc(devWhy[r.v.why] || r.v.why || '')}</td>
+      <td>${r.hit.length ? r.hit.map(d => `<a href="#players/${encodeURIComponent(d.pid)}">${esc((model.people.get(d.pid) || {}).name || d.short)}</a>`).join(', ') : '<span class="dim">not seen yet</span>'}</td><td><label class="sw"><input type="checkbox" data-devex="${esc(r.k)}" checked aria-label="Excluded"> <span>Excluded</span></label></td></tr>`).join('') || '<tr><td colspan="5" class="dim">None</td></tr>'}</tbody></table></div></div>`;
 }
 // A device's entry written whole (devmeta/{key}: the rules want ex with it): the nickname and switch kept from the entry that
 // named it (a prefix's), written to the device's own hash so a prefix's other devices are untouched.
 async function metaPut(key, patch) {
-  const cur = devmeta[key] || metaFor(key) || {}, next = { ex: !!cur.ex, at: cur.at || Date.now() };
+  const cur = devmeta[key] || (P && P.X.metaFor(devmeta, key)) || {}, next = { ex: !!cur.ex, at: cur.at || Date.now() };
   if (cur.nick) next.nick = cur.nick;
   if (cur.why) next.why = cur.why;
   Object.assign(next, patch);
   if (!next.nick) delete next.nick;
   await fb.dbM.set(fb.dbM.ref(fb.db, `devmeta/${key}`), next);
   devmeta = Object.assign({}, devmeta, { [key]: next });
-  applyMine();
+  if (raw) { raw.meta = devmeta; rebuild(); }
 }
 async function nickSave(b) {
   const key = b.dataset.key, i = document.getElementById('nickIn'), v = i ? i.value.trim().slice(0, 40) : '';
@@ -1120,7 +708,7 @@ async function exAdd(b) {
   const idIn = document.getElementById('exId'), nkIn = document.getElementById('exNick');
   let key = metaKey(idIn && idIn.value);
   if (!key) { devMsg = 'A device ID is 6 to 20 letters and numbers (0-9, a-f), as Settings shows it.'; render(); return; }
-  const hits = Object.keys((playAll || {}).devices || {}).filter(h => h.startsWith(key));
+  const hits = Object.keys((raw || {}).devices || {}).filter(h => h.startsWith(key));
   if (hits.length === 1) key = hits[0];                          // (one device answers to it: its own hash)
   b.disabled = true;
   try {
@@ -1140,28 +728,9 @@ async function ownerCopy(b) {
   const el = app.querySelector('.olink');
   try { await navigator.clipboard.writeText(el ? el.textContent : ''); b.textContent = 'Copied'; } catch (e) { b.textContent = 'Copy failed'; }
 }
-function balancePage() {
-  if (!BAL) { loadMetas().then(() => render()).catch(() => {}); return '<div class="card"><p class="note">Loading…</p></div>'; }
-  const types = Object.keys(GAMES).filter(t => balOpts.allGames || isReleased(t)).sort((a, b) => GAMES[a].localeCompare(GAMES[b]));
-  lastBal = BAL.balanceReport(stats || {}, { versions: ctl.versions, log: ctl.versionLog, types, names: GAMES, env: STAGING ? 'staging' : 'production', now: Date.now() }, balOpts);
-  return BAL.balanceHtml(lastBal, { allGames: balOpts.allGames });
-}
-function balanceFilter(el) {
-  const k = el.dataset.balf;
-  if (k === 'noadmin') { setMine(!el.checked); return; }      // (the same switch as the top bar's Include my devices)
-  else if (k === 'allgames') balOpts.allGames = el.checked;
-  else if (k === 'from' || k === 'to' || k === 'version') balOpts[k] = el.value;
-  render();
-}
-function balanceExport() {
-  if (!lastBal || !BAL) return;
-  const blob = new Blob([JSON.stringify(lastBal, null, 2)], { type: 'application/json' }), a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = BAL.exportName(lastBal.env, lastBal.generatedAt); document.body.appendChild(a); a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-}
 // Settings versions (December 2026): every Save or Reset of a game's settings makes a new version (config/versions/<type>,
 // its number; config/versionLog/<type>/v<n>: when, by whom, what changed), so the squares dealt from then on are filed under
-// it (core/tune.js; the Balance report compares the versions). The first Save makes version 2: v1 is everything before.
+// it (core/tune.js; the game's numbers are shown by version). The first Save makes version 2: v1 is everything before.
 async function bumpVersion(t, ch, note) {
   const ref = fb.dbM.ref(fb.db, `config/versions/${t}`);
   const r = await fb.dbM.runTransaction(ref, cur => (Number.isInteger(cur) && cur >= 1 ? cur : 1) + 1);
@@ -1283,15 +852,13 @@ async function saveFeat(el) {
 const chk = (sec, k) => `<input type="checkbox" data-cfg="${sec}.${k}"${cfgGet(sec, k) ? ' checked' : ''}>`;
 const numIn = (sec, k, min, max) => `<input type="number" inputmode="numeric" data-cfg="${sec}.${k}" min="${min}" max="${max}" value="${esc(cfgGet(sec, k))}">`;
 function botsCard() {
-  const b = ctl.botStats || {}, list = Object.values(ctl.bots || {}).sort((x, y) => String(x.key).localeCompare(String(y.key)));
+  const list = Object.values(ctl.bots || {}).sort((x, y) => String(x.key).localeCompare(String(y.key)));
   return `<div class="card ctl" id="botsCard"><div class="row"><h2>Bots</h2></div>
     <p class="note">When someone has searched Find Match alone for about 20 seconds, the search screen offers them the computer. If they take it, a bot plays them, shown as "Computer", and the results say they played the computer; it never counts on their Find Match record. Nobody is paired with a bot unasked (December 2026: the hidden bots, their waits and the record switch are gone).</p>
     <div class="fields">
       <label>Bots play at <select data-cfg="bots.level">${[['easy', 'Easy'], ['normal', 'Normal'], ['hard', 'Hard']].map(([v, l]) => `<option value="${v}"${cfgGet('bots', 'level') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label></div>
     <p class="note">The computer's levels, as in Play Local: Easy is Normal with a careless move now and then; Normal the computer as it has always played, each bot with its own style; Hard searches inside the mini-games and plays the rest of the match out (Monte Carlo) before choosing its square, within about 0.3 s a move. The default for new bot matches; a match under way keeps its level.</p>
-    <div class="kpis" style="margin-top:12px">
-      <div class="kpi"><small>Bot matches run</small><b>${n(b.started)}</b><span>${n(b.finished)} finished</span></div>
-      <div class="kpi"><small>Players won</small><b>${n(b.playerWins)}</b><span>bots won ${n(b.botWins)} · draws ${n(b.draws)}</span></div></div>
+    <p class="note">How often the computer is taken, and how those matches end: <a href="#health">Health</a>, Find Match.</p>
     ${list.length ? `<div class="tbl" style="margin-top:8px"><table><thead><tr><th>Bot account</th><th style="text-align:left">Plays like</th></tr></thead><tbody>${list.map(x => `<tr><td>${esc(x.username)}</td><td style="text-align:left;white-space:normal">${esc(x.about || '')}</td></tr>`).join('')}</tbody></table></div>`
       : '<p class="note">The five bot accounts are made the first time a bot is needed. Their styles and pace are set in functions/bots.js.</p>'}</div>`;
 }
@@ -1306,7 +873,7 @@ function aiCard() {
   const w = ctl.ai || {}, set = Object.keys(w).filter(k => k in AI_DEF).length, val = k => (w[k] != null ? w[k] : AI_DEF[k]);
   const inp = (k, lo, hi, step) => `<input type="number" data-aik="${k}" min="${lo}" max="${hi}" step="${step}" value="${esc(val(k))}" aria-label="${k}"${w[k] != null && w[k] !== AI_DEF[k] ? ' class="chg"' : ''}>`;
   const lvRows = AI_LEVELS.map(([l, name]) => `<tr><td style="text-align:left"><b>${name}</b></td>${AI_LV.map(([k, , lo, hi, step]) => `<td>${inp(l + k, lo, hi, step)}</td>`).join('')}</tr>`).join('');
-  return `<div class="card ctl" id="aiCard"><div class="row"><h2>Computer difficulty</h2><span class="note" style="margin:0">${set ? `${set} changed${w.tuned ? ` · tuned ${PT.nyWhen(w.tuned)}` : ''}` : 'the code\'s defaults'}</span></div>
+  return `<div class="card ctl" id="aiCard"><div class="row"><h2>Computer difficulty</h2><span class="note" style="margin:0">${set ? `${set} changed${w.tuned ? ` · tuned ${P.when(w.tuned)}` : ''}` : 'the code\'s defaults'}</span></div>
     <p class="note">One engine plays all three levels (and the bots, at their level). <b>Search</b>: playouts of the rest of the match for each open square when it chooses where to play (0: it weighs the squares one step ahead, no search). <b>Sharpness</b>: how often it plays a square with its strongest tactics (its tables and searches) rather than the plain ones. <b>Mistakes</b>: how often it makes a careless move (any legal move, anywhere). <b>Risk appetite</b>: points added to what it banks at in the push-your-luck games (bolder above zero).</p>
     <div class="tbl"><table><thead><tr><th style="text-align:left">Level</th>${AI_LV.map(x => `<th>${x[1]}</th>`).join('')}</tr></thead><tbody>${lvRows}</tbody></table></div>
     <h3>The search</h3><p class="note">Shared by every level that searches. Time a decision: the most a decision may take on a phone or the server (it stops searching then). Tempo play: a square it leads by more than this many turns can wait while it plays elsewhere; it comes back once the lead is down to the margin.</p>
@@ -1414,40 +981,41 @@ async function boot() {
 }
 async function onUser(u) {
   user = u && !u.isAnonymous ? u : null;
-  stats = null;
+  raw = null; model = null;
   if (!user) { view.status = 'signin'; render(); return; }
   view = { status: 'loading', error: '' }; render();
   const tok = await fb.authM.getIdTokenResult(user, true).catch(() => null);   // fresh: a flag given a moment ago counts
   if (!tok || tok.claims.admin !== true) { view = { status: 'denied', error: '' }; render(); return; }
   await load();
 }
+// Everything the pages count, read once as rows (each part on its own: one refused or missing leaves the rest): the matches
+// and Find Match searches of the last 90 days (mfacts/{day}, finds/{day}: the server keeps no more), the devices and their
+// events, the accounts, the problem reports, the match logs' index (the latest 500 and every reported one), my devices.
+const ROW_DAYS = 92;
 async function load() {
   try {
-    const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(x => x.val()).catch(() => null);
-    const [snap, fl, own, meta, tok] = await Promise.all([fb.dbM.get(fb.dbM.ref(fb.db, 'stats')), fb.dbM.get(fb.dbM.ref(fb.db, 'review/flaggedNames')).catch(() => null), g('statsOwn'), g('devmeta'), g('admin/ownerToken')]);
-    statsBase = snap.val() || {}; statsOwn = own || {}; devmeta = meta || {}; ownerToken = typeof tok === 'string' ? tok : null;
-    stats = statsBase;
-    flagged = fl ? fl.val() : null;
-    reports = Object.values((await fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'reports'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(20))).then(s => s.val()).catch(() => null)) || {}).sort((a, b) => b.at - a.at);
-    await Promise.all([loadCtl(), loadPeople()]);
+    const M = fb.dbM, g = p => M.get(M.ref(fb.db, p)).then(x => x.val()).catch(() => null);
+    const since = new Date(Date.now() - ROW_DAYS * 864e5).toISOString().slice(0, 10);
+    const days = p => M.get(M.query(M.ref(fb.db, p), M.orderByKey(), M.startAt(since))).then(x => x.val()).catch(() => null);
+    const ix = (ord, lim) => M.get(M.query(M.ref(fb.db, 'matchLogIndex'), M.orderByChild(ord), ...lim)).then(x => x.val()).catch(() => null);
+    const probe = await M.get(M.ref(fb.db, 'devmeta'));      // (the admin's alone: refused = not the admin yet)
+    await loadMetas();
+    if (!PS) PS = await import('./src/ui/pstats.js').catch(() => null);
+    const [mf, fi, devices, logs, users, local, seen, reports, mlRecent, mlRep, fl, tok, tpl] = await Promise.all([days('mfacts'), days('finds'), g('devices'), g('devlog'), g('users'), g('localStats'), g('lastSeen'), g('reports'),
+      ix('last', [M.limitToLast(500)]), ix('reported', [M.startAt(1), M.limitToLast(200)]), g('review/flaggedNames'), g('admin/ownerToken'), g(`templates/${user.uid}`)]);
+    await loadCtl();
+    devmeta = probe.val() || {}; ownerToken = typeof tok === 'string' ? tok : null; flagged = fl; templates = tpl || {}; mlEvents = {};
+    setRaw({ matches: mf || {}, finds: fi || {}, devices: devices || {}, logs: logs || {}, users: users || {}, local: local || {}, seen: seen || {}, reports: reports || {}, logIndex: Object.assign({}, mlRecent || {}, mlRep || {}) });
     view = { status: 'ready', error: '' };
   } catch (e) {
-    view = { status: 'denied', error: /permission/i.test(String(e && (e.code || e.message))) ? 'The database refused: the admin flag is not on this account yet.' : 'Could not load the stats.' };
+    view = { status: 'denied', error: /permission/i.test(String(e && (e.code || e.message))) ? 'The database refused: the admin flag is not on this account yet.' : 'Could not load the dashboard.' };
   }
   render();
 }
-// The accounts (users/ is readable when logged in; localStats/ and lastSeen/ by the admin only) and the
-// playtest logs (devices/, devlog/: the admin only). Each part on its own: one refused leaves the rest.
-async function loadPeople() {
-  const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val() || {}).catch(() => null);
-  const q = (ord, lim) => fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'matchLogIndex'), fb.dbM.orderByChild(ord), ...lim)).then(s => s.val() || {}).catch(() => null);
-  if (!PS) PS = await import('./src/ui/pstats.js').catch(() => null);
-  const [users, local, seen, devices, logs, mlRecent, mlRep] = await Promise.all([g('users'), g('localStats'), g('lastSeen'), g('devices'), g('devlog'),
-    q('last', [fb.dbM.limitToLast(500)]), q('reported', [fb.dbM.startAt(1), fb.dbM.limitToLast(200)])]);   // (the match inspector: the latest, and every reported one)
-  mlogs = mlRecent || mlRep ? Object.assign({}, mlRecent || {}, mlRep || {}) : null; mlEvents = {};
-  accts = users ? { users, local: local || {}, seen: seen || {} } : null;
-  playAll = devices || logs ? { devices: devices || {}, logs: logs || {} } : null;
-  applyMine();
+function setRaw(d) {
+  raw = Object.assign({ matches: {}, finds: {}, devices: {}, logs: {}, users: {}, local: {}, seen: {}, reports: {}, logIndex: {} }, d, { meta: devmeta, bots: ctl.bots || {} });
+  accts = { users: raw.users, local: raw.local, seen: raw.seen };
+  rebuild();
 }
 async function loadCtl() {
   const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val()).catch(() => null);
@@ -1469,39 +1037,68 @@ async function signIn(how) {
     if (!/popup-closed|cancelled-popup/.test(String(e && e.code))) { view.error = 'Could not log in. Check the details and try again.'; render(); }
   }
 }
+// A table's controls (src/admin/table.js): its state is the page's (tstates), so a redraw keeps the sort, search and filters.
+function tableAct(b) {
+  const d = b.dataset, id = d.tsort || d.tfilt || d.tclear || d.tall || d.tcsv;
+  if (!id || !P) return false;
+  const st = tstate(id);
+  if (d.tsort) P.T.sortBy(st, P.T.colsOf(id), d.k);
+  else if (d.tfilt) st.open = !st.open;
+  else if (d.tclear) { st.q = ''; st.filt = {}; }
+  else if (d.tall) st.all = true;
+  else if (d.tcsv) { download(`${id.replace(/[^\w-]+/g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`, P.T.csvOf(id), 'text/csv'); return true; }
+  render();
+  return true;
+}
+function download(name, text, type) {
+  const a = document.createElement('a'), url = URL.createObjectURL(new Blob([text], { type: type || 'text/plain' }));
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+// A definition's "?" (data-tip): its one line beside it while the pointer or the focus is on it, or after a tap.
+let tipEl = null;
+function tipShow(i) {
+  if (!tipEl) { tipEl = document.createElement('div'); tipEl.id = 'tip'; tipEl.setAttribute('role', 'tooltip'); document.body.appendChild(tipEl); }
+  tipEl.textContent = i.dataset.tip; tipEl.hidden = false;
+  const r = i.getBoundingClientRect(), w = tipEl.offsetWidth, h = tipEl.offsetHeight, vw = document.documentElement.clientWidth;
+  tipEl.style.left = Math.max(8, Math.min(vw - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
+  tipEl.style.top = (r.top - h - 8 < 4 ? r.bottom + 8 : r.top - h - 8) + 'px';
+}
+const tipHide = () => { if (tipEl) tipEl.hidden = true; };
+const tipOf = e => (e.target.closest ? e.target.closest('[data-tip]') : null);
+app.addEventListener('mouseover', e => { const i = tipOf(e); if (i) tipShow(i); });
+app.addEventListener('mouseout', e => { if (tipOf(e)) tipHide(); });
+app.addEventListener('focusin', e => { const i = tipOf(e); if (i) tipShow(i); });
+app.addEventListener('focusout', tipHide);
+window.addEventListener('scroll', tipHide, { passive: true });
 app.addEventListener('click', e => {
-  let b = e.target.closest('button');
-  if (!b) { const tr = e.target.closest('tr.dev'); if (tr) b = tr.querySelector('button[data-dev]'); }   // a tap anywhere on a device's row
-  const ar = !b && e.target.closest('tr.acct');
-  if (ar && fb) { acctOpen = acctOpen === ar.dataset.uid ? null : ar.dataset.uid; render(); const el = acctOpen && document.getElementById('acctDetail'); if (el) el.scrollIntoView({ block: 'nearest' }); return; }   // an account's row: its detail
-  const mr = !b && e.target.closest('tr.mlrow');
-  if (mr && fb) { const k = mr.dataset.ml; mlOpen = mlOpen === k ? null : k; render(); if (mlOpen) { mlLoad(mlOpen); const el = document.getElementById('mlTimeline'); if (el) el.scrollIntoView({ block: 'nearest' }); } return; }   // a match's row: its timeline
-  if (!b || !fb) return;
-  if (b.dataset.balexport) { balanceExport(); return; }
+  const tip = tipOf(e);
+  if (tip) { tipShow(tip); return; }
+  tipHide();
+  const b = e.target.closest('button'), jump = !b && e.target.closest('a[data-jump]');
+  if (jump) { e.preventDefault(); const el = document.getElementById(jump.dataset.jump); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }   // (Settings: a card on the page)
+  if (!b) {                                                  // a row that opens something (a person, a match): anywhere on it but a link or a control
+    const tr = e.target.closest('tr[data-go]');
+    if (tr && !e.target.closest('a, input, select, label, button')) location.hash = tr.dataset.go;
+    return;
+  }
+  if (!fb) return;
+  if (tableAct(b)) return;
   if (b.dataset.nick) { devEdit = b.dataset.nick; devMsg = ''; render(); const i = document.getElementById('nickIn'); if (i) { i.focus(); i.select(); } return; }
   if (b.dataset.act === 'nicksave') { nickSave(b); return; }
   if (b.dataset.act === 'nickcancel') { devEdit = null; render(); return; }
   if (b.dataset.act === 'exadd') { exAdd(b); return; }
   if (b.dataset.act === 'ownertok') { ownerTok(b); return; }
   if (b.dataset.act === 'ownercopy') { ownerCopy(b); return; }
+  if (b.dataset.act === 'goback') { history.back(); return; }
+  if (b.dataset.tpldel) { tplDelete(b); return; }
   if (b.dataset.allowdel) { allowEdit(b, b.dataset.allowdel, false); return; }
   if (b.dataset.stmode) { setStagingMode(b, b.dataset.stmode); return; }
   if (b.dataset.act === 'allowadd') { const i = document.getElementById('allowAdd'); allowEdit(b, i && i.value, true); return; }
   if (b.dataset.mlexport) { mlExport(b.dataset.mlexport); return; }
-  if (b.dataset.mlclose) { mlOpen = null; render(); return; }
-  if (b.dataset.aclose) { acctOpen = null; render(); return; }
-  if (b.dataset.aview) { acctView = b.dataset.aview; render(); return; }
   if (b.dataset.act === 'google') signIn('google');
   else if (b.dataset.act === 'email') signIn('email');
   else if (b.dataset.act === 'signout') fb.authM.signOut(fb.auth);
   else if (b.dataset.act === 'refresh') { b.disabled = true; load(); }
-  else if (b.dataset.sort) { const k = b.dataset.sort; sortBy = { k, dir: sortBy.k === k ? -sortBy.dir : ['name', 'avgWin', 'avgLose', 'avgAll', 'scAvgWin', 'scAvgAll'].includes(k) ? 1 : -1 }; render(); }
-  else if (b.dataset.period) { period = b.dataset.period; render(); }
-  else if (b.dataset.ovp) { setOvPeriod(b.dataset.ovp); render(); }
-  else if (b.dataset.asort) { acctSort = flip(acctSort, b.dataset.asort, ['joined', 'last', 'games', 'wins', 'rate']); render(); }
-  else if (b.dataset.dsort) { devSort = flip(devSort, b.dataset.dsort, ['first', 'last', 'nSessions', 'games', 'perSession', 'back']); render(); }
-  else if (b.dataset.dev) { devOpen = devOpen === b.dataset.dev ? null : b.dataset.dev; render(); const el = devOpen && document.getElementById('devTimeline'); if (el) el.scrollIntoView({ block: 'nearest' }); }
-  else if (b.dataset.act === 'all-sessions') { allSessions = !allSessions; render(); }
   else if (b.dataset.act === 'save-keys') saveKeys();
   else if (b.dataset.testplay) testPlay(b.dataset.testplay);
   else if (b.dataset.gamesave) saveGame(b.dataset.gamesave, b);
@@ -1515,26 +1112,34 @@ app.addEventListener('click', e => {
   else if (b.dataset.act === 'test-alert') testAlert(b);
 });
 app.addEventListener('input', e => {
-  if (e.target.id === 'devQ') { devQ = e.target.value; const at = e.target.selectionStart; render(); const i = document.getElementById('devQ'); if (i) { i.focus(); try { i.setSelectionRange(at, at); } catch (x) { /* (a type without a caret) */ } } return; }   // (the Devices page's search: as it is typed)
-  if (note) { note = null; showNote(); } dirtyMark(e.target);
+  const d = e.target.dataset || {}, id = d.tq || d.tf;
+  if (id && P) {                                             // a table's search or a column's filter: as it is typed, the caret kept
+    const st = tstate(id), at = e.target.selectionStart, sel = d.tq ? `input[data-tq="${CSS.escape(id)}"]` : `input[data-tf="${CSS.escape(id)}"][data-k="${CSS.escape(d.k)}"]`;
+    if (d.tq) st.q = e.target.value; else st.filt[d.k] = e.target.value;
+    render();
+    const i = app.querySelector(sel); if (i) { i.focus(); try { i.setSelectionRange(at, at); } catch (x) { /* (a type without a caret) */ } }
+    return;
+  }
+  if (d.gf) return;                                          // (a filter: on its change)
+  if (note) { note = null; showNote(); } dirtyMark(e.target);   // (an edit after a save: its note goes; on a game's page the edit is marked unsaved)
 });
-app.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'nickIn') { e.preventDefault(); const b = app.querySelector('[data-act="nicksave"]'); if (b) b.click(); } else if (e.key === 'Escape' && e.target.id === 'nickIn') { devEdit = null; render(); } });   // (an edit after a save: its note goes; on a game's page the edit is marked unsaved)
+app.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'nickIn') { e.preventDefault(); const b = app.querySelector('[data-act="nicksave"]'); if (b) b.click(); } else if (e.key === 'Escape' && e.target.id === 'nickIn') { devEdit = null; render(); } });
 app.addEventListener('change', e => {
-  if (e.target.dataset && e.target.dataset.balf) { balanceFilter(e.target); return; }
-  if (e.target.dataset && e.target.dataset.mine) { setMine(e.target.checked); return; }
-  if (e.target.dataset && e.target.dataset.devex) { devExclude(e.target.dataset.devex, e.target.checked, e.target); return; }
-  if (e.target.id === 'mm') { miniMode = e.target.value; render(); }
-  if (e.target.id === 'mrace') { miniRace = e.target.value; render(); }
-  else if (['mlWho', 'mlMode', 'mlFrom', 'mlTo'].includes(e.target.id)) { mlFilt[{ mlWho: 'who', mlMode: 'mode', mlFrom: 'from', mlTo: 'to' }[e.target.id]] = e.target.value; mlOpen = null; render(); }
-  else if (['tmKind', 'tmMins', 'tmInc', 'tmSecs'].includes(e.target.id)) saveTimer();
-  else if (e.target.id === 'tagPick') { tagPick = e.target.value; devOpen = null; render(); }
-  else if (e.target.dataset && e.target.dataset.cfg) saveCfg(e.target);
-  else if (e.target.dataset && e.target.dataset.feat) saveFeat(e.target);
-  else if (e.target.dataset && e.target.dataset.rel) saveRelease(e.target);
-  else if (e.target.dataset && e.target.dataset.relios) saveRelIos(e.target);
+  const d = e.target.dataset || {};
+  if (d.gf) { setFilter(d.gf, e.target.type === 'checkbox' ? e.target.checked : e.target.value); return; }   // the page's filters: every page's, kept in this browser
+  if (d.tq || d.tf) return;
+  if (d.devex) { devExclude(d.devex, e.target.checked, e.target); return; }
+  if (['tmKind', 'tmMins', 'tmInc', 'tmSecs'].includes(e.target.id)) saveTimer();
+  else if (d.cfg) saveCfg(e.target);
+  else if (d.feat) saveFeat(e.target);
+  else if (d.rel) saveRelease(e.target);
+  else if (d.relios) saveRelIos(e.target);
   else dirtyMark(e.target);   // (a select or the Mode switch on a game's page)
 });
 if (window.TTT_FIREBASE && window.TTT_FIREBASE.offline) {   // the tests (tests/ui/admin-games.test.mjs): the page's parts without Firebase, the database stood in for
-  window.TTC_ADMIN = { get ctl() { return ctl; }, set ctl(v) { ctl = v; }, set fb(v) { fb = v; }, devSeed(o) { statsBase = o.statsBase || {}; statsOwn = o.statsOwn || {}; devmeta = o.devmeta || {}; playAll = o.play || null; accts = o.users ? { users: o.users, local: {}, seen: {} } : null; ownerToken = o.token || null; applyMine(); }, get stats() { return stats; }, get play() { return play; }, get devmeta() { return devmeta; }, get balOpts() { return balOpts; }, setMine, devRows, metaPut, exAdd, set devQ(v) { devQ = v; }, set mine(v) { mine = v; }, ready(st) { user = { email: 'test' }; stats = st || {}; view = { status: 'ready', error: '' }; }, loadMetas, loadCtl, draw, render, route, gamesIndex, gamePage, saveGame, resetGame, legacyPath, isReleased, iosOff, gameChanged, raceOn, TEST_TYPES };
+  window.TTC_ADMIN = { get ctl() { return ctl; }, set ctl(v) { ctl = v; }, set fb(v) { fb = v; }, get devmeta() { return devmeta; }, get model() { return model; }, get filters() { return filters; }, get scope() { return scopeOf(); },
+    seed(o) { devmeta = o.devmeta || {}; ownerToken = o.token || null; templates = o.templates || {}; flagged = o.flagged || null; setRaw(o); },   // the rows a page counts (src/admin/metrics.js build's data)
+    ready() { user = { email: 'test', uid: 'admin' }; view = { status: 'ready', error: '' }; if (!raw) setRaw({}); },
+    setFilter, tstate, metaPut, exAdd, loadMetas, loadCtl, draw, render, route, gamesIndex, gamePage, settingsPage, saveGame, resetGame, legacyPath, isReleased, iosOff, gameChanged, raceOn, TEST_TYPES };
 } else boot().catch(() => { app.innerHTML = '<div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Could not load. Check the connection and reload.</p></div>'; });
 document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false }); document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });   // (iPhone's pinch)

@@ -120,11 +120,11 @@ test('match clock: a clock at zero loses the match ("ran out of time"), a forfei
   assert.equal(E.clockDeadline(st.timer), null, 'no clock once the match is over');
   assert.equal(E.matchStats(st).reason, 'clock');
   const S = require('../../functions/statsRules.js');
-  assert.deepEqual(S.timerEndUpdates('m3+2', E.matchStats(st), 200000), { 'timers/m3+2/finished': 1, 'timers/m3+2/clockOuts': 1, 'timers/m3+2/ms': 200000, 'timers/m3+2/timed': 1, 'timers/m3+2/done': 1, 'timers/m3+2/doneMs': 200000, 'timers/m3+2/doneTimed': 1 }, 'a clock run out is a finish');
-  assert.deepEqual(S.timerStartUpdates('m3+2'), { 'timers/m3+2/started': 1 });
-  assert.deepEqual(S.timerStartUpdates('../x'), {}, 'nothing but a code');
-  assert.equal(S.timerEndUpdates('t30', { squares: [], reason: 'timeout' }, 1000)['timers/t30/timeouts'], 1);
-  assert.equal(S.timerEndUpdates('t30', { squares: [], reason: 'timeout' }, 1000)['timers/t30/done'], undefined, 'two missed turns: abandoned');
+  const row = S.factEnd(E.matchStats(st), 200000, 1);   // the match's row (the admin's numbers: src/admin/metrics.js)
+  assert.deepEqual([row.end, row.w, row.ms], ['clock', q, 200000]);
+  assert.ok(!S.ABANDONED.includes('clock'), 'a clock run out is a finish');
+  assert.ok(S.ABANDONED.includes('timeout') && S.ABANDONED.includes('resign'), 'two missed turns, a resignation: abandoned');
+  assert.equal(S.factStart('match', 1, [], { timer: 'm3+2' }).tm, 'm3+2'); assert.equal(S.factStart('match', 1, [], { timer: '../x' }).tm, 'none', 'nothing but a code');
 });
 
 test('match clock: per turn stays as it was: 30 s, two missed turns lose (timeout), and no banks', () => {

@@ -68,7 +68,7 @@ function build(env, sha, out) {
   const OUT = out || OUT_SITE;
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(OUT);
-  for (const f of ['index.html', 'privacy.html', 'admin.html', 'admin.js', 'playtest.js', 'trivia.json', 'styles.html']) if (fs.existsSync(path.join(ROOT, f))) fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));   // (privacy.html: the privacy policy, on both sites and in the app's build)
+  for (const f of ['index.html', 'privacy.html', 'admin.html', 'admin.js', 'trivia.json', 'styles.html']) if (fs.existsSync(path.join(ROOT, f))) fs.copyFileSync(path.join(ROOT, f), path.join(OUT, f));   // (privacy.html: the privacy policy, on both sites and in the app's build)
   fs.cpSync(path.join(ROOT, 'src'), path.join(OUT, 'src'), { recursive: true });
   const matter = path.join(ROOT, 'node_modules', 'matter-js', 'build', 'matter.min.js');
   if (fs.existsSync(matter)) fs.copyFileSync(matter, path.join(OUT, 'matter.min.js'));

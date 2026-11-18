@@ -1,6 +1,6 @@
 // A local match's stats (src/net/tracking.js): every square that ended in it reaches the admin's mini-game counts, the
 // match-winning square included: completed (claimed by X or O) + resets (ended level, its board reset) + left open
-// add up to every square played, as the server counts them (functions/statsRules.js checkEnd, endUpdates). The
+// add up to every square played, as the server counts them (functions/statsRules.js checkEnd, factEnd: the match's row). The
 // reports go through an outbox kept on the phone: a report the server could not take (offline, refused for now) is
 // kept and sent again, the match's end included; one refused as malformed is dropped. Rendered in Node with the
 // browser's names stubbed, a real localStorage and a stand-in SDK whose calls are recorded.
@@ -49,17 +49,14 @@ function playLocal(seed, cpu) {
   }
   assert.ok(state.winner || state.winReason, `match ${seed} played to its end`);
 }
-// What the server makes of the reports: the mini-game counts they add (mini/{mode}/{type}/...).
+// What the server makes of the reports: the squares on each match's row (mfacts: functions/statsRules.js factEnd).
 function counted(mode) {
   const ends = sent.filter(c => c.name === 'track' && c.data.ev === 'end' && c.data.mode === mode);
   const tot = { won: 0, draw: 0, open: 0, played: 0 }, won = [];
   for (const c of ends) {
     const sum = S.checkEnd(c.data, E.TYPES.concat(E.OLD_TYPES));
     assert.ok(sum, 'the server takes the report');
-    for (const [k, v] of Object.entries(S.endUpdates(mode, sum, 1000, Date.now(), false, []))) {
-      const m = k.match(/^mini\/[^/]+\/([^/]+)\/(won|draw|open|played)$/);
-      if (m) tot[m[2]] += v;
-    }
+    for (const e of JSON.parse(S.factEnd(sum, 1000, Date.now()).sq)) { tot.played++; tot[e.end]++; }   // the match's row: every square in it
     for (const e of sum.squares) if (e.end === 'won') won.push(`${e.t}:${e.w}`);
   }
   return { tot, won: won.sort(), ends: ends.length };

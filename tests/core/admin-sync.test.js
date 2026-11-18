@@ -67,8 +67,8 @@ test('admin page: the games\' own tuning cards are exactly the paths copy-settin
   assert.deepEqual([...cards].sort(), new Function(`return ${copy[1]};`)().filter(p => !shared.includes(p)).sort(), 'every game card the copy carries has a page here, and nothing else writes a config node');
   assert.match(admin, /import\('\.\/src\/core\/race\.js'\)/, 'the race games come from the engine');
   assert.doesNotMatch(admin, /^const RACE_TYPES/m, 'no copy of the race list');
-  assert.deepEqual(literal('ALIAS'), { settings: 'games', releases: 'games' });
-  assert.doesNotMatch(admin, /\['settings', |\['releases', /, 'no Mini-game Settings or Releases section');
+  assert.deepEqual(literal('ALIAS'), { playtest: 'players', devices: 'settings', stats: 'games', balance: 'games', bots: 'settings', access: 'settings', releases: 'games' }, 'every page from before opens where its content went');
+  assert.deepEqual(literal('NAV').map(x => x[0]), ['overview', 'players', 'matches', 'games', 'growth', 'health', 'settings'], 'the seven sections');
   assert.doesNotMatch(admin, /data-(runsave|bullsave|wheelsave|plinkosave|pigsave|roadssave|oddsave|attsave|fingsave|tunesave)=/, 'no Save of a card\'s own: the page\'s Save covers it');
   assert.equal((admin.match(/<button class="btn go" data-gamesave=/g) || []).length, 1, 'one Save button template'); assert.equal((admin.match(/<button class="btn" data-tunereset=/g) || []).length, 1, 'one Reset');
 });

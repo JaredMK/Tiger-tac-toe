@@ -1,5 +1,6 @@
 'use strict';
-// The stats rules (functions/statsRules.js): what one match, login or new account adds to the totals.
+// The stats rules (functions/statsRules.js): a phone's report checked, and the rows the server keeps (December 2026: one
+// row a match, mfacts/{day}/{id}: its start, then what its end adds; one a Find Match search; no counters).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const S = require('../../functions/statsRules.js');
@@ -26,58 +27,48 @@ test('stats: a phone\'s report of a match is checked and trimmed; anything that 
   assert.ok(S.idOk('abc123') && !S.idOk('a/b') && !S.idOk('x') && !S.idOk(5));
 });
 
-test('stats: a finished match adds its mode\'s totals and every mini-game played in it', () => {
-  const t = Date.parse('2026-10-13T12:00:00Z');
-  const sum = { winner: 'O', reason: 'line', squares: [
-    { t: 'ttt', end: 'won', w: 'O', X: 2, O: 3 }, { t: 'ttt', end: 'draw', w: null, X: 2, O: 2 }, { t: 'bs', end: 'open', w: null, X: 1, O: 0 }] };
-  const all = S.endUpdates('cpu', sum, 90000, t, false);
-  const up = Object.fromEntries(Object.entries(all).filter(([k]) => !/^(days|weeks|months)\/[^/]+\/modes\//.test(k) && !k.startsWith('miniMode/')));
-  for (const [k, n] of Object.entries(all)) if (k.startsWith('mini/')) assert.equal(all['miniMode/shared/' + k.slice(5)], n, 'every square is counted by its mode too: ' + k);   // Race mode: miniMode/{shared|race}/...
-  for (const [k, n] of Object.entries(all)) if (k.startsWith('modes/')) for (const p of ['days/2026-10-13', 'weeks/2026-W42', 'months/2026-10']) assert.equal(all[`${p}/${k}`], n, `${p}/${k}`);
-  assert.equal(Object.keys(all).length, Object.keys(up).length + 3 * Object.keys(up).filter(k => k.startsWith('modes/')).length + Object.keys(up).filter(k => k.startsWith('mini/')).length, 'only the mode totals are kept per period');
-  assert.deepEqual(up, {
-    'modes/cpu/finished': 1, 'days/2026-10-13/finished/cpu': 1, 'modes/cpu/turns': 10, 'modes/cpu/oWins': 1, 'modes/cpu/ms': 90000, 'modes/cpu/timed': 1,
-    'modes/cpu/done': 1, 'modes/cpu/doneTurns': 10, 'modes/cpu/doneMs': 90000, 'modes/cpu/doneTimed': 1,
-    'mini/cpu/ttt/played': 2, 'mini/cpu/ttt/won': 1, 'mini/cpu/ttt/allMoves': 9, 'mini/cpu/ttt/winMoves': 3, 'mini/cpu/ttt/loseMoves': 2, 'mini/cpu/ttt/oWins': 1, 'mini/cpu/ttt/draw': 1,
-    'mini/cpu/bs/played': 1, 'mini/cpu/bs/open': 1, 'mini/cpu/bs/allMoves': 1,
-  });
-  const gaveUp = S.endUpdates('cpu', Object.assign({}, sum, { reason: 'resign' }), 90000, t, false);   // abandoned: the mode's totals, none of its squares, no finished-only counters
-  assert.equal(gaveUp['modes/cpu/resigned'], 1); assert.equal(gaveUp['modes/cpu/done'], undefined);
-  assert.equal(Object.keys(gaveUp).filter(k => k.startsWith('mini/')).length, 0);
-  const chaos = S.endUpdates('friend', Object.assign({}, sum, { sc: true }), 90000, t, false, ['bs']);   // Super Chaos squares apart, a friend room's too
-  assert.equal(chaos['mini/chaos/ttt/won'], 1); assert.equal(chaos['mini/testingSc/bs/open'], 1); assert.equal(chaos['mini/friend/ttt/won'], undefined);
-  assert.equal(S.endUpdates('chaos', sum, 1, t, false)['mini/chaos/ttt/won'], 1);
-  assert.equal(S.checkEnd({ sc: true, squares: [] }, E.TYPES).sc, true);
-  const drawn = S.endUpdates('cpu', S.checkEnd({ winner: 'draw', reason: 'blocked', squares: [] }, E.TYPES), 60000, t, false);   // no line left for either side
-  assert.equal(drawn['modes/cpu/draws'], 1); assert.equal(drawn['modes/cpu/xWins'], undefined); assert.equal(drawn['modes/cpu/oWins'], undefined);
-  const late = S.endUpdates('local', { winner: 'X', reason: 'timeout', squares: [] }, S.MAX_MS + 1, t, true);
-  assert.equal(late['modes/local/started'], 1, 'a start never reported is counted with the end');
-  assert.equal(late['modes/local/timeouts'], 1);
-  assert.equal(late['modes/local/ms'], undefined, 'a match left for hours and picked up again has no time');
-  assert.deepEqual(S.startUpdates('ranked', t), { 'modes/ranked/started': 1, 'days/2026-10-13/started/ranked': 1,
-    'days/2026-10-13/modes/ranked/started': 1, 'weeks/2026-W42/modes/ranked/started': 1, 'months/2026-10/modes/ranked/started': 1 });
-  assert.deepEqual(S.periodUpdates('logins', t), { 'days/2026-10-13/logins': 1, 'weeks/2026-W42/logins': 1, 'months/2026-10/logins': 1, 'alltime/logins': 1 });
+test('a match\'s row: its start (mode, timer, players, mine) and what its end adds (result, length, every square); nothing unknown kept', () => {
+  const t = Date.parse('2026-10-13T12:00:00Z'), h = 'ab'.repeat(10);
+  const start = S.factStart('cpu', t, [{ s: 'O', u: 'uid1', h, pl: 'web', cv: '1.22.0', extra: 1 }], { timer: 'none', own: true });
+  assert.deepEqual(start, { t0: t, m: 'cpu', tm: 'none', who: [{ s: 'O', u: 'uid1', h, pl: 'web', cv: '1.22.0' }], own: true });
+  assert.deepEqual(S.factStart('friend', t, [{ s: 'X', u: 'a', h: 'nothex', pl: 'android', cv: 'x' }, { s: 'O', u: 'b', bot: true }, {}], { timer: 'm5+5', room: 'ABCDE' }),
+    { t0: t, m: 'friend', tm: 'm5+5', who: [{ s: 'X', u: 'a' }, { s: 'O', u: 'b', bot: true }], rm: 'ABCDE' }, 'a device hash, a platform and a version only as they should be; an empty player dropped');
+  assert.equal(S.factStart('nope', t, [], { timer: '../x' }).m, 'local'); assert.equal(S.factStart('cpu', t, [], { timer: '../x' }).tm, 'none', 'nothing but a timer code');
+  assert.equal(S.factStart('chaos', t, [], { sc: true }).sc, true);
+  const sum = { winner: 'O', reason: 'line', squares: [{ t: 'ttt', end: 'won', w: 'O', X: 2, O: 3, v: 2, f: 'X', ms: 20500.4 }, { t: 'ttt', end: 'draw', w: null, X: 2, O: 2, v: 1 }, { t: 'bs', end: 'open', w: null, X: 1, O: 0, race: 1 }] };
+  const end = S.factEnd(sum, 90000, t + 90000);
+  assert.deepEqual(Object.assign({}, end, { sq: JSON.parse(end.sq) }), { t1: t + 90000, end: 'line', w: 'O', n: 10, ms: 90000,
+    sq: [{ t: 'ttt', v: 2, end: 'won', w: 'O', X: 2, O: 3, f: 'X', ms: 20500 }, { t: 'ttt', end: 'draw', X: 2, O: 2 }, { t: 'bs', end: 'open', X: 1, race: 1 }] });
+  assert.equal(typeof end.sq, 'string', 'the squares as one string (a list in the database would be an object of numbered keys)');
+  assert.equal(S.factEnd(Object.assign({}, sum, { reason: 'resign' }), 1, t).end, 'resign');
+  assert.equal(S.factEnd({ winner: 'draw', reason: 'blocked', squares: [] }, 60000, t).w, undefined, 'a drawn match has no winner');
+  assert.equal(S.factEnd({ winner: 'X', reason: 'timeout', squares: [] }, S.MAX_MS + 1, t).ms, undefined, 'a match left for hours and picked up again has no time');
+  assert.equal(S.factEnd(S.checkEnd({ sc: true, squares: [] }, E.TYPES), 1, t).sc, true);
   assert.notEqual(S.hashId('u:abc'), 'u:abc'); assert.equal(S.hashId('u:abc'), S.hashId('u:abc')); assert.equal(S.hashId('u:abc').length, 20);
 });
 
-test('stats: the engine\'s match summary feeds the stats directly', () => {
+test('a Find Match search\'s row: how it ended, the wait, whose, mine', () => {
+  const t = Date.parse('2026-10-13T12:00:00Z');
+  assert.deepEqual(S.factFind('people', 6500.4, t, 'uid1', false), { t, k: 'people', ms: 6500, u: 'uid1' });
+  assert.deepEqual(S.factFind('bot', 21000, t, 'uid1', true), { t, k: 'bot', ms: 21000, u: 'uid1', own: true });
+  assert.equal(S.factFind('nope', -5, t, 'u').k, 'cancel'); assert.equal(S.factFind('cancel', -5, t, 'u').ms, 0);
+});
+
+test('stats: the engine\'s match summary feeds the match\'s row directly', () => {
   const st = E.newMatch(E.makeRng('stats'));
   st.squares[0].mini = E.newMini('ttt', E.makeRng('a'));
   for (const [i, m] of [[0, 0], [0, 3], [0, 1], [0, 4], [0, 2]]) { E.playMove(st, i, m, E.makeRng('m')); E.endFlash(st); }
   const sum = S.checkEnd(E.matchStats(st), E.TYPES);
   assert.deepEqual(sum.squares, [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2, v: 1, f: 'X' }]);
-  const up = S.endUpdates('local', sum, 1000, Date.now(), false);
-  assert.equal(up['mini/local/ttt/winMoves'], 3); assert.equal(up['mini/local/ttt/loseMoves'], 2); assert.equal(up['modes/local/turns'], 5);
+  const row = S.factEnd(sum, 1000, Date.now());
+  assert.deepEqual(JSON.parse(row.sq), [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2, f: 'X' }]); assert.equal(row.n, 5);
 });
 
-test('stats: Snakes and Ladders and Bump are counted; a Dice race from an older match still is, under its own name', () => {
+test('stats: Snakes and Ladders and Bump are kept; a Dice race from an older match still is, under its own name', () => {
   const types = E.TYPES.concat(E.OLD_TYPES);
   const sum = S.checkEnd({ winner: 'X', reason: 'line', squares: [{ t: 'snakes', end: 'won', w: 'X', X: 5, O: 4 }, { t: 'bump', end: 'won', w: 'O', X: 3, O: 4 }, { t: 'dice', end: 'open', X: 1, O: 1 }] }, types);
   assert.deepEqual(sum.squares.map(e => e.t), ['snakes', 'bump', 'dice']);
-  const up = S.endUpdates('local', sum, 60000, Date.parse('2026-10-13T12:00:00Z'), false);
-  assert.equal(up['mini/local/snakes/played'], 1); assert.equal(up['mini/local/snakes/xWins'], 1);
-  assert.equal(up['mini/local/bump/oWins'], 1);
-  assert.equal(up['mini/local/dice/open'], 1, 'kept apart as the Dice race');
+  assert.deepEqual(JSON.parse(S.factEnd(sum, 60000, Date.parse('2026-10-13T12:00:00Z')).sq).map(e => [e.t, e.end, e.w]), [['snakes', 'won', 'X'], ['bump', 'won', 'O'], ['dice', 'open', undefined]], 'kept apart as the Dice race');
   assert.equal(S.checkEnd({ squares: [{ t: 'dice', end: 'open', X: 1, O: 1 }] }, E.TYPES), null, 'only accepted where older games are allowed');
   // a match played with the new games: what the server records from it
   const st = E.newMatch(E.makeRng('sb'), { games: ['snakes', 'bump'] });
@@ -115,11 +106,8 @@ test('playtest log: an audio event (the phone\'s sound going down, coming back o
   assert.ok(S.DEV_EVENTS.includes('audio'));
 });
 
-test('stats: a runner square adds its runs, metres and crashes (a finished match), none when the match was abandoned', () => {
+test('stats: a runner square keeps its runs, metres and crashes on the match\'s row', () => {
   const run = { runs: { X: 2, O: 1 }, dist: { X: 120, O: 60 }, crashes: { X: [55, 120], O: [60] } };
   const sum = S.checkEnd({ winner: 'X', reason: 'line', squares: [{ t: 'dash', end: 'won', w: 'X', X: 2, O: 1, run }] }, E.TYPES);
-  const up = S.endUpdates('cpu', sum, 1000, Date.parse('2026-10-13T12:00:00Z'), false);
-  assert.equal(up['mini/cpu/dash/runs'], 3); assert.equal(up['mini/cpu/dash/distSum'], 180); assert.equal(up['mini/cpu/dash/crash/50'], 2); assert.equal(up['mini/cpu/dash/finishRuns'], 2);
-  const gaveUp = S.endUpdates('cpu', Object.assign({}, sum, { reason: 'resign' }), 1000, Date.parse('2026-10-13T12:00:00Z'), false);
-  assert.equal(gaveUp['mini/cpu/dash/runs'], undefined);
+  assert.deepEqual(JSON.parse(S.factEnd(sum, 1000, Date.parse('2026-10-13T12:00:00Z')).sq)[0].run, run);
 });

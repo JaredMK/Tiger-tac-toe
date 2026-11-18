@@ -52,7 +52,7 @@ function npmSdk(v) {
 }
 async function buildApp(env, sha, opts) {
   build(env, sha, OUT);
-  for (const f of ['admin.html', 'admin.js', 'playtest.js', 'styles.html', 'robots.txt', 'version.json']) fs.rmSync(path.join(OUT, f), { force: true });
+  for (const f of ['admin.html', 'admin.js', 'styles.html', 'robots.txt', 'version.json']) fs.rmSync(path.join(OUT, f), { force: true });
   fs.rmSync(path.join(OUT, '.well-known'), { recursive: true, force: true });
   const sdk = !(opts && opts.noSdk);
   const v = sdk ? await vendorSdk(path.join(OUT, 'vendor', 'firebase')) : null;

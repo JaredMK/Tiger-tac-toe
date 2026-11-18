@@ -931,88 +931,47 @@ the `staging` environment's `STAGING_TEST_PASSWORD` secret; the admin account is
 
 ## Game stats and the admin dashboard
 
-Every match in every mode is counted, anonymously: two players on one phone, against the computer,
-computer against computer (before it was taken out), friend code and Find Match (casual and ranked
-before it was one queue). Snakes and Ladders and Bump are counted like every mini-game; the Dice race
-and Hexapawn keep their own rows, marked "(old)", for the matches they were played in.
-Phones report their local matches to the
-`track` Cloud Function (a guest's with a random id the browser made up, never a name); the server
-counts online matches itself, where it runs or saves them. Nobody can write the stats directly, and
-only the admin can read them. Stats start from the first deploy with this feature (older matches were
-never counted).
+The dashboard is https://tictacchaos.com/admin.html (staging's: https://staging.tictacchaos.com/admin.html). It opens only for
+the account with the admin flag; the database rules refuse its data to everyone else.
 
-Per mini-game, counting only completed squares (those that ended claimed by X or O; a square still
-open when the match ended, by any route, and a board reset after a draw are left out, and the note
-under the table says how many): completed, average moves the winner made in it, the loser, and in
-total (the two together); X and O win rates; then the same for Super Chaos in columns of its own (SC
-completed, average winner moves, average total moves: every Super Chaos square, against the computer
-and in friend rooms, is counted under `mini/chaos`, so the mode picker covers normal matches only).
-Squares of abandoned matches (resigned, lost on time, never finished) are not counted at all (from
-21 Oct 2026; before that, resigned matches' squares counted, and friend-room Super Chaos squares counted
-under Friend code). An **All mini-games** row on top combines every completed
-square. The stored counters keep claimed squares apart from draws and open ones, so the table is
-worked out from them for past matches too.
-"Moves" are the turns a side spent in that square (a Risky Rolls roll or a Hangman letter that earns another go
-is part of the same turn). Overall: logins and active players per day, week and month (UTC; a login is
-an account signing in or coming back to the game); new accounts; matches started and finished by mode;
-finished (played to a result) and abandoned (resigned, lost on time or never finished, each counted)
-per mode; average match length in turns and minutes over finished matches only (`modes/{mode}/done`,
-`doneTurns`, `doneMs`, `doneTimed`, from 21 Oct 2026); how often X, who moves first, wins.
+**Where the numbers come from.** The server keeps rows, never counters, and the dashboard counts every number from those rows
+with one set of definitions (`src/admin/metrics.js`), so a number is the same on every page:
 
-The dashboard is https://tictacchaos.com/admin.html (staging's: https://staging.tictacchaos.com/admin.html). It opens on a menu of section tiles,
-each its own page with a back button (the address keeps the page: `#overview`, `#players`, `#playtest`,
-`#matches`, `#games`, `#games/<game>`, `#bots`, `#stats`; the old `#settings`, `#settings/<game>` and `#releases` redirect): **Overview** (the headline
-numbers and the players and matches charts), **Players & Accounts** (Accounts, usernames to review, players
-over time), **Playtesters & Devices**, **Matches** (the match inspector), **Games** (below: every game's release switches, mode and settings in one place),
-**Bot Settings** (Find Match on/off, the bots, the empty-queue alert) and **Stats** (Matches by
-mode, the mini-game table). What is on them: the **Find Match** on/off switch
-(see "Switching Find Match on and off"), the **Bots** and **Empty-queue alerts** controls (see
-"Matchmaking backfill and the empty-queue alert"), tables and charts, with the
-mini-game table sortable (by average winner moves to find games that are too fast or too slow), the
-**Runner tuning** card (Dash, Lane Rush, Flap and Chopper: the target distance, starting speed, speed ramp, obstacle
-spacing and mix, and Chopper's cave height at the start and the finish, saved to `config/run` and applied to squares dealt from then on; with the tracker:
-runs to finish, average distance per run, and where the crashes cluster, every 50 m), the **Bullseye tuning** card (the board's size, the bullseye's, the sweep speed and the speed-up per scoring throw, saved to `config/bulls`), the **Peg Drop tuning** card (the target, saved to `config/plinko`), the **Risky Rolls tuning** card (the die, 6 or 8 sides, and the target score, saved to `config/pig`), the **Roads tuning** card (the honeycomb of 7 hexagons or the smaller one of 4, saved to `config/roads`), the **Odd One Out tuning** card (the shade difference at each level, saved to `config/oddone`), the **Headcount**, **Flash** and **Snapshot tuning** cards (each level's difficulty: how many creatures and decoys and how fast they cross, the cards per round and the time per card, the grid sizes, cells filled, seconds on show and the countdown; saved to `config/headcount`, `config/flash` and `config/snapshot`), the **Sky Hop**, **Scoop Stack** and **Pinball tuning** cards (every difficulty value of the finger games, saved to `config/skyhop`, `config/scoop` and `config/pinball`, aimed at about 3 to 6 attempts to win for an average player), the **Risky Spins tuning** card (the target, each wheel's skulls and the ranges each square's wheels are drawn from, saved to `config/wheels`) and
-filterable by mode, the **Accounts** and **Playtest activity** cards (below), and the "Usernames to review" card (existing names the word list would refuse
-today, with the word that caught each; nothing is changed). It opens only for the account with the admin flag; the database rules refuse the
-stats to everyone else.
+- a match is one row (`mfacts/{day}/{id}`): its mode, timer, players (account, device, platform, client version), result,
+  length, and every square (game, settings version, winner, moves, first mover, time). A phone reports its local matches to
+  the `track` Cloud Function; the server writes online matches itself;
+- a Find Match search is one row (`finds/{day}/{id}`): paired with a person, took the computer, or gave up, and the wait;
+- a device's events (`devlog/{hash}`): app opens, matches started and finished, first-run steps, invites, shares, errors.
+  Every device has a random anonymous id made up by its browser; the server keeps a one-way hash of it;
+- accounts (`users/`) and problem reports (`reports/`).
 
-### Accounts
+Rows are kept 90 days, so no number reaches further back than that (an account's own record does). Nobody can write the rows
+directly, and only the admin can read them. Days are New York days.
 
-Every account with a username (not the bots): username, sign-up date, last active, games played and
-record (W-L-D, with the win rate), Find Match, friends and local games together (hover a record for
-the split). Sortable by any column; newest sign-ups first. Last active is the last time the account
-played, logged in or opened the game (`lastSeen/{uid}`, written by the server). Dates and times are
-New York time. Tapping an account opens its **player detail** under the table, with an **Online / Local / All**
-selector: the record and win rate, the **Played as** table (games played as X and as O, the record and the
-win rate of each) and the **Mini-games** table (squares won, squares lost and win rate per mini-game, most
-won first, with an **All mini-games** row on top). It counts a square only once it ended claimed by X or O,
-and lists only the games in the pool (Hexapawn's and the Dice race's numbers stay in the database). Players
-don't see these two tables: they are the admin's. The numbers come from `users/{uid}` (Find Match at the
-top, friend games under `friend`) and `localStats/{uid}`, added up by `src/ui/pstats.js`, which the
-profile uses for its record too.
+**Filters.** Every stats page has the same filters, applied to every number and table and remembered in the browser: Include
+my devices (off by default: my own devices and any match with them or an admin account in it are left out), the dates, the
+platform (web, iOS), the mode (vs Computer, Friend, Find Match) and, on Games, the settings version.
 
-### Playtest activity (no account needed)
+**Pages.** One bar on every page:
 
-Every device gets a random anonymous id, made up by its browser and kept in its own storage
-(`localStorage`, read and written inside try/catch; with no storage, an id for that visit only).
-Nothing personal is ever collected: the server keeps a one-way hash of the id, the times of the
-device's app opens and matches (started, then finished or left, with the mode), and an optional
-**tester tag**. To tell playtesters apart, send each one their own link with `?t=` and a name, for
-example `https://tictacchaos.com/?t=sam` (letters, numbers, `-` and `_`, up to 24,
-lower case). The tag is saved with that device the first time it is seen and never replaced (a later
-link with another tag keeps the first), and taken out of the address bar. The phone sends each event
-to the `devlog` Cloud Function; a retry or a reload never counts twice.
+- **Overview**: the numbers to check daily (active and new players, matches, completion, D1 and D7 retention, errors per 100
+  opens, problem reports), each linking to its detail page.
+- **Players**: people and their devices in one table (an account with every device it signed in on, or a guest by their
+  device). A row opens the person: account, devices (nickname, excluded or counted), matches, sessions, mini-games played.
+- **Matches**: the numbers, length and completion by mode and timer, and every match. A row opens the match: its players
+  (links to their pages), its squares, and its event log with Export JSON.
+- **Games**: every game side by side (completed squares, the winner's moves and the time in the square at the 25th
+  percentile, median and 75th, reset, left-open and first-mover rates), then the list of games. A game's page is its
+  settings (release switches, mode, every value, Test play, its settings version) with its numbers by version under them.
+- **Growth**: new players and accounts, retention, the first-run funnel, the invite funnel, sources (send a link with
+  `?t=name`, e.g. `https://tictacchaos.com/?t=reddit`, to tag whoever first opens the game with it), and a row per day.
+- **Health**: errors (by day, build, platform and client version), problem reports, Find Match's waits and how often the
+  computer is taken, and the alerts sent.
+- **Settings**: everything that is not one game's: pace, Super Chaos and the platforms' minimum versions, the timer, Find
+  Match and the bots, the computer's levels, alerts, staging access, game templates, my devices.
 
-The card (with a filter by tester) shows, in New York time (America/New_York, summer time included):
-**activity by hour** for the last 7 days (games started, games finished, active devices); the
-**funnel** opened the app → started a game → finished a game → started another; **retention**, the
-share of devices first seen before today that came back the next day and within 7 days; a
-**devices** table (shortened anonymous id, tester tag, first and last seen, sessions, games, average
-games per session, came back on a later day), where tapping a device opens its timeline of sessions
-and games; and **sessions** (a new one starts after 30 minutes with nothing): games played, the most
-finished in a row, length, modes, and whether it ended mid-match (left, or unfinished). Finished
-means played to a result; left means this device quit (resigned or left the match). The numbers are
-worked out in `playtest.js`, which the dashboard loads.
+Every table sorts by any column, has a search and a filter per column, and exports what it shows as CSV. Every number is a
+link to the rows it counts, and a "?" beside it gives its one-line definition.
 
 ### Making yourself the admin (once)
 
@@ -1030,7 +989,7 @@ also run it yourself (`node scripts/make-admin.js <username>`, with `GOOGLE_APPL
 pointing at a key). The username you type shows in the workflow's log, which is public for a public
 repository; usernames are public anyway (records and profiles).
 
-## Match logs and the match inspector (for debugging)
+## Match logs (for debugging)
 
 Every online match (Find Match, a friend room, Super Chaos in a friend room) and every Super Chaos match
 against the computer keeps a compact, timestamped log of what happened: the start (mode, players, the
@@ -1047,9 +1006,8 @@ deleted by the sweep 30 days after a match's last event. Keys: `m{game}` (every 
 friend room's), `l{id}` (a match on one phone). Rules: `functions/matchLogRules.js`; tests:
 `tests/server/match-log.test.js`, and the server's in `tests/emulator/server.test.js`.
 
-The admin dashboard's **Match inspector** lists the logged matches, reported ones first, filtered by player
-(name, uid, device or room), mode or dates; a match's row opens its event timeline, and **Export** downloads
-its log as JSON. In a match, the in-game menu's **Report a problem** takes an optional note (up to 140
+The admin dashboard's **Matches** page lists every match (search and filter by player, mode, status, dates or
+"Reported"); a match's row opens its page with its event timeline, and **Export JSON** downloads its log. In a match, the in-game menu's **Report a problem** takes an optional note (up to 140
 characters), flags the match and stamps the moment in its log (`src/ui/report.js`).
 
 ## Tests

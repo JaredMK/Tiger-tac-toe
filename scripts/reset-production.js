@@ -20,7 +20,7 @@ const crypto = require('node:crypto');
 const START_RATING = 1200;                                              // (functions/serverRules.js START_RATING)
 const DELETE = ['rooms', 'games', 'gpresence', 'glive', 'presence', 'reacts', 'active', 'queue', 'botGames', 'history', 'localHistory',
   'matchLogs', 'matchLogIndex', 'matchLogRoom', 'stats', 'statsSeen', 'localStats', 'oppStats', 'leaderboard', 'botStats',
-  'alertLog', 'alertStats', 'alertState', 'botsLock', 'devices', 'devlog', 'lastSeen', 'reports', 'reportsDay', 'rate', 'skill', 'alertOps', 'statsOwn', 'lastDev'];   // (statsOwn: the owner's own numbers; lastDev: each account's last device)
+  'alertLog', 'alertStats', 'alertState', 'botsLock', 'devices', 'devlog', 'lastSeen', 'reports', 'reportsDay', 'rate', 'skill', 'alertOps', 'statsOwn', 'lastDev', 'mfacts', 'finds', 'devicesDay'];   // (mfacts, finds: the dashboard's rows, a match and a Find Match search each; lastDev: each account's last device; stats, statsOwn: the old counters, read by nothing now)
 const DELETE_IN = ['config/versions', 'config/versionLog'];             // inside a kept root: the settings-version history (every game back to version 1; its settings stay)
 const KEEP = ['users', 'profiles', 'usernames', 'admin', 'config', 'releases', 'features', 'bots', 'meta', 'review', 'rate', 'prefs', 'templates', 'devmeta'];   // (prefs: a player's own settings, the Animation choice; templates: the admin's game templates; devmeta: the owner devices and the devices' nicknames)
 const RECORD = { wins: 0, losses: 0, draws: 0, games: 0, rating: START_RATING, friend: null, minis: null };
