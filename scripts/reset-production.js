@@ -23,8 +23,8 @@ const DELETE = ['rooms', 'games', 'gpresence', 'glive', 'presence', 'reacts', 'a
   'alertLog', 'alertStats', 'alertState', 'botsLock', 'devices', 'devlog', 'lastSeen', 'reports', 'reportsDay', 'rate', 'skill', 'alertOps', 'statsOwn', 'lastDev', 'mfacts', 'finds', 'devicesDay'];   // (mfacts, finds: the dashboard's rows, a match and a Find Match search each; lastDev: each account's last device; stats, statsOwn: the old counters, read by nothing now)
 const DELETE_IN = ['config/versions', 'config/versionLog'];             // inside a kept root: the settings-version history (every game back to version 1; its settings stay)
 const KEEP = ['users', 'profiles', 'usernames', 'admin', 'config', 'releases', 'features', 'bots', 'meta', 'review', 'rate', 'prefs', 'templates', 'devmeta'];   // (prefs: a player's own settings, the Animation choice; templates: the admin's game templates; devmeta: the owner devices and the devices' nicknames)
-const RECORD = { wins: 0, losses: 0, draws: 0, games: 0, rating: START_RATING, friend: null, minis: null };
-const PUBLIC_RECORD = ['wins', 'losses', 'draws', 'games', 'friend', 'minis'];   // the record's part of a public profile (profiles/{uid}: no rating), put back to 0-0-0 with it
+const RECORD = { wins: 0, losses: 0, draws: 0, games: 0, rating: START_RATING, friend: null, minis: null, sides: null };   // (sides: the record as X and as O)
+const PUBLIC_RECORD = ['wins', 'losses', 'draws', 'games', 'friend', 'minis', 'sides'];   // the record's part of a public profile (profiles/{uid}: no rating), put back to 0-0-0 with it
 const PROFILE = ['username', 'joined', ...Object.keys(RECORD)];        // the fields an account is known to have
 
 // What the reset does to a database snapshot: the root paths to delete (each child of a big root on its own,
