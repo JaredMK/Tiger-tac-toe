@@ -170,6 +170,17 @@ tr.dev, tr.mlrow, tr.acct { cursor: pointer; } tr.mlrow:hover td, tr.mlrow.open 
 .balance h3 { margin: 16px 0 6px; } .balance td small, .balance th small { color: var(--muted, #6b5e55); }
 .bflag { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 999px; font-size: 12px; border: 1.5px solid currentColor; } .bflag.slow { color: #b3261e; } .bflag.small { color: #8a6d00; }
 .balance tr.flagged th { background: rgba(179, 38, 30, .06); } .vlog { margin: 6px 0 0; padding-left: 18px; } .vlog li { margin: 3px 0; }
+.top .mine { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.devs td, .devs th { vertical-align: top; }
+.devs tr.devx td { background: rgba(0, 0, 0, .035); }
+.devs .nick { background: none; border: 0; padding: 2px 0; font: inherit; font-weight: 700; text-align: left; cursor: pointer; text-decoration: underline dotted; color: inherit; }
+.devs .nickedit { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.devs .nickedit input { width: 150px; }
+.devs .sw { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; cursor: pointer; }
+.exrow { gap: 8px; flex-wrap: wrap; }
+.exrow input { flex: 1 1 160px; min-width: 0; }
+#devQ { flex: 1 1 220px; max-width: 360px; }
+.olink { word-break: break-all; padding: 4px 6px; background: rgba(0, 0, 0, .05); border-radius: 4px; }
 </style>
 </head>
 <body>

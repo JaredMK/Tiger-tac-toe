@@ -5,7 +5,8 @@
 // net/accounts.js), whose value wins when it says something; a setting the account lacks gets this device's.
 import { SND } from '../audio/sound.js';
 import { ANIM } from '../core/timer.js';
-import { loggedIn, savePref } from '../net/accounts.js';
+import { acct, loggedIn, savePref } from '../net/accounts.js';
+import { devShort, markedMine } from '../net/owner.js';
 import { accountRow, deleteDialog } from './screens/account-row.js';
 import { canVibrate, setVibOn, vibOn } from '../net/platform.js';
 import { app, esc } from './app.js';
@@ -29,7 +30,17 @@ export function settingsBody(o) {
     ${canVibrate() ? row('Vibration', pick('set-vib', 'on', vibOn, 'On') + pick('set-vib', 'off', !vibOn, 'Off')) : ''}
     ${help}
     ${o && o.account && loggedIn() ? accountRow() : ''}
-    <p class="build" aria-label="Build ${esc(APP_VERSION)}">Build ${esc(APP_VERSION)}</p></div>`;   // (the build on this phone: a stale page is seen for what it is)
+    ${buildLine(o)}</div>`;   // (the build on this phone: a stale page is seen for what it is)
+}
+// The foot: the build, this device's short ID (net/owner.js devShort: the ID the admin's Devices page shows, so a tester can
+// say which device is theirs) and, for an admin on the Settings screen, "Mark this device as mine" (its stats left out by
+// default: functions/index.js markDevice), or a tick once it is.
+let markNote = '';
+export function setMarkNote(v) { markNote = v; }
+function buildLine(o) {
+  const id = devShort();
+  const mine = o && o.account && acct.admin ? (markedMine() || markNote === 'ok' ? '<span class="devmine">Marked as yours ✓</span>' : `<button class="link devmark" data-act="set-mine"${markNote === 'busy' ? ' disabled' : ''}>${markNote === 'fail' ? 'Not marked: try again' : 'Mark this device as mine'}</button>`) : '';
+  return `<p class="build" aria-label="Build ${esc(APP_VERSION)}${id ? `, device ${esc(id)}` : ''}">Build ${esc(APP_VERSION)}${id ? ` · Device <b class="devid">${esc(id)}</b>` : ''}</p>${mine ? `<p class="build devown">${mine}</p>` : ''}`;
 }
 // The Settings screen, from the main menu.
 export function renderSettings() {

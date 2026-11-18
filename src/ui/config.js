@@ -18,4 +18,4 @@ export const APP_VERSION = 'dev';
 export const RATINGS_ENABLED = false;
 
 // Contact support (Settings): the address players write to (December 2026: the privacy address, until a support mailbox exists).
-export const SUPPORT_EMAIL = 'privacy@tictacchaos.com';
+export const SUPPORT_EMAIL = 'tictacchaos@gmail.com';

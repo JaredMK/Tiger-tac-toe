@@ -287,6 +287,21 @@
     "stats": {
       ".read": "auth != null && auth.token.admin === true"
     },
+    "statsOwn": {
+      ".read": "auth != null && auth.token.admin === true"
+    },
+    "devmeta": {
+      ".read": "auth != null && auth.token.admin === true",
+      "$key": {
+        ".write": "auth != null && auth.token.admin === true",
+        ".validate": "$key.matches(/^[0-9a-f]{6,20}$/) && newData.hasChildren(['ex'])",
+        "ex": { ".validate": "newData.isBoolean()" },
+        "nick": { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "why": { ".validate": "newData.isString() && newData.val().matches(/^(set|admin|self|link|manual)$/)" },
+        "at": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
+    },
     "statsSeen": {
       "match": {
         ".indexOn": [
@@ -319,6 +334,11 @@
       "secretsSet": {
         ".read": "auth != null && auth.token.admin === true",
         ".write": "auth != null && auth.token.admin === true"
+      },
+      "ownerToken": {
+        ".read": "auth != null && auth.token.admin === true",
+        ".write": "auth != null && auth.token.admin === true",
+        ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{16,64}$/)"
       },
       "secrets": {
         "$key": {

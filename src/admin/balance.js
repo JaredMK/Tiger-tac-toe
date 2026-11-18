@@ -193,7 +193,7 @@ export function balanceHtml(rep, o) {
   const fl = rep.filters;
   return `<div class="card balance"><div class="row"><h2>Balance report</h2><button class="btn" data-balexport="1">Export JSON</button></div>
     <form class="bfilters" data-balform="1">
-      <label><input type="checkbox" data-balf="noadmin"${fl.admin ? '' : ' checked'}> Leave out matches an admin played in</label>
+      <label><input type="checkbox" data-balf="noadmin"${fl.admin ? '' : ' checked'}> Leave out my devices and matches an admin played in (the same as Include my devices, top right)</label>
       <label><input type="checkbox" checked disabled> Leave out Practice and Test play <small>(never recorded)</small></label>
       <label>From <input type="date" data-balf="from" value="${esc(fl.from || '')}"></label>
       <label>To <input type="date" data-balf="to" value="${esc(fl.to || '')}"></label>

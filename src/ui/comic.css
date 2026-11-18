@@ -715,3 +715,8 @@ main.scr.cc:not(.mini) > .bar .ttl small { margin-top: 2px; padding-left: 12px; 
   :is(.hostset, .sameset, .join-scr) .setup-foot .primary { height: 56px; }
   .cpuset .setup-foot { padding-top: 6px; }
 }
+/* Settings' foot (December 2026): the device's short ID beside the build, and the admin's "Mark this device as mine" (net/owner.js). */
+.settings .build .devid { font-weight: 700; color: var(--ink); letter-spacing: .06em; }
+.settings .build.devown { margin-top: 4px; }
+.settings .build .devmark { font: 700 12px/1.2 'Comic Neue', 'Patrick Hand', sans-serif; min-height: 32px; padding: 6px 10px; background: none; border: 0; text-decoration: underline; color: var(--ink); box-shadow: none; transform: none; }
+.settings .build .devmine { color: var(--ink); }

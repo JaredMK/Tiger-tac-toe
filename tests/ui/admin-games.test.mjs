@@ -258,3 +258,40 @@ test('Balance report: the released games for their current settings version, the
   const page = draw('#games/ttt');
   assert.match(page, /Settings version 2/); assert.match(page, /<b>v2<\/b> 2026-11-16/);
 });
+
+test('owner devices: Include my devices merges statsOwn into every number and the playtest devices; off by default', () => {
+  A.ctl = ctl0(); A.mine = false;
+  const play = { devices: { '0200d915aaaaaaaaaaaa': { first: 1, last: 5, p: 'web', u: { u1: 1 }, ms: 3 }, 'bbbbbbbbbbbbbbbbbbbb': { first: 2, last: 9, p: 'ios', cv: '1.22.0', ms: 1 } }, logs: { '0200d915aaaaaaaaaaaa': { o1: { ev: 'open' } }, 'bbbbbbbbbbbbbbbbbbbb': {} } };
+  A.devSeed({ statsBase: { modes: { cpu: { started: 4 } } }, statsOwn: { modes: { cpu: { started: 6 }, match: { started: 1 } } }, devmeta: { '0200d915': { ex: true, nick: "Jared's computer", why: 'set' } }, play, users: { u1: { username: 'jarhad' } } });
+  assert.equal(A.stats.modes.cpu.started, 4, 'left out by default');
+  assert.deepEqual(Object.keys(A.play.devices), ['bbbbbbbbbbbbbbbbbbbb'], 'the playtest pages without the owner device');
+  assert.equal(A.balOpts.admin, false);
+  A.setMine(true);
+  assert.equal(A.stats.modes.cpu.started, 10, 'added leaf by leaf'); assert.equal(A.stats.modes.match.started, 1);
+  assert.equal(Object.keys(A.play.devices).length, 2); assert.equal(A.balOpts.admin, true, 'the Balance report takes an admin\'s matches too');
+  assert.match(draw('#overview'), /data-mine="1" checked/, 'the switch in the top bar on every page');
+  A.setMine(false);
+});
+test('the Devices page: nickname, short ID, platform, seen, usernames, games, the Excluded switch; search; a prefix not seen yet; the owner link', async () => {
+  A.ctl = ctl0(); A.mine = false;
+  const m = mockDb(); A.fb = m.fb;
+  A.devSeed({ devmeta: { '0200d915': { ex: true, nick: "Jared's computer", why: 'set' }, 'e35cefb7': { ex: true, nick: "Jared's work phone", why: 'set' } },
+    play: { devices: { '0200d915aaaaaaaaaaaa': { first: 1, last: 5, p: 'web', u: { u1: 1 }, ms: 3 }, 'bbbbbbbbbbbbbbbbbbbb': { first: 2, last: 9, p: 'ios', cv: '1.22.0', ms: 1 } }, logs: {} }, users: { u1: { username: 'jarhad' } }, token: 'abcdefghijklmnopqrstuvwx' });
+  let html = draw('#devices');
+  for (const h of ['Nickname', 'Device ID', 'Platform', 'First seen', 'Last seen', 'Usernames', 'Games played', 'Excluded']) assert.match(html, new RegExp(`<th>${h}</th>`), h);
+  assert.match(html, /data-nick="0200d915aaaaaaaaaaaa"[^>]*>Jared&#39;s computer</, 'the prefix\'s nickname on its device');
+  assert.match(html, /<code>0200d915<\/code>/); assert.match(html, /jarhad/); assert.match(html, /ios 1\.22\.0/);
+  assert.match(html, /data-devex="0200d915aaaaaaaaaaaa" checked/); assert.match(html, /data-devex="bbbbbbbbbbbbbbbbbbbb" aria/, 'a tester\'s device: counted');
+  assert.match(html, /<code>e35cefb7<\/code> <span class="dim">\(prefix, not seen yet\)/);
+  assert.match(html, /\?owner=abcdefghijklmnopqrstuvwx/, 'the owner link');
+  assert.match(html, /id="exId"/); assert.match(html, /id="devQ"/);
+  A.devQ = 'jarhad'; assert.deepEqual(A.devRows().map(r => r.short), ['0200d915'], 'by username');
+  A.devQ = 'bbbb'; assert.deepEqual(A.devRows().map(r => r.short), ['bbbbbbbb'], 'by ID');
+  A.devQ = 'work'; assert.deepEqual(A.devRows().map(r => r.short), ['e35cefb7'], 'by nickname');
+  A.devQ = '';
+  await A.metaPut('bbbbbbbbbbbbbbbbbbbb', { nick: "Sam's phone" });
+  assert.deepEqual(m.writes.at(-1), ['devmeta/bbbbbbbbbbbbbbbbbbbb', { ex: false, at: m.writes.at(-1)[1].at, nick: "Sam's phone" }], 'a tester\'s device named, still counted');
+  await A.metaPut('0200d915aaaaaaaaaaaa', { ex: false });
+  assert.deepEqual([m.writes.at(-1)[0], m.writes.at(-1)[1].ex, m.writes.at(-1)[1].nick], ['devmeta/0200d915aaaaaaaaaaaa', false, "Jared's computer"], 'switched off on its own hash, its name kept');
+  assert.equal(A.devmeta['0200d915'].ex, true, 'the prefix entry untouched');
+});

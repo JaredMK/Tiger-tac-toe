@@ -25,7 +25,8 @@ import { checkResume, freshVisit, openFind, resumable } from './net/matchmaking.
 import { fetchReleases } from './net/releases.js';
 import { closeSeat, init as roomInit, joinCode, joinName, joinRoom, resumeOnline, setJoinCode, setJoinName } from './net/room.js';
 import { devAct, devAudio, devError, devOpen, devPulse, init as trackingInit, takeTag } from './net/tracking.js';
-import { clockTimer, commit, setClockTimer, state } from './ui/app.js';
+import { devShort, ownerLink } from './net/owner.js';
+import { clockTimer, commit, setClockTimer, setMenuNote, state } from './ui/app.js';
 import { fetchAttConfig } from './ui/attention.js';
 import { setTuneVersions, setTunes } from './core/tune.js';
 import { AI_CLOCK } from './core/ai.js';
@@ -104,6 +105,8 @@ function boot() {
   loadTrivia();                                               // the Trivia questions, for the match to come
   loadPhysics();                                              // Matter.js and physics.js, for Mini Golf, Pool and Bowling
   takeTag();                                                  // a playtester's link (?t=sam): before the address is tidied below
+  ownerLink(ok => { if (ok) { setMenuNote('This device is marked as yours'); render(); } });   // the owner link (?owner=<token>: net/owner.js): before the address is tidied below
+  devShort();                                                 // (this device's short ID, for Settings: worked out once)
   devOpen();
   setInterval(devPulse, 60000);
   try { setJoinName(localStorage.getItem(KEY + '.name') || ''); } catch (e) { /* no storage */ }

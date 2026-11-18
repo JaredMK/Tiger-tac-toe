@@ -714,7 +714,7 @@ test('friend rooms: the host\'s Random draws the sides each match; with both pho
 const S = require('../../functions/statsRules.js');
 const { execFile } = require('node:child_process');
 const path = require('node:path');
-const statsNow = async () => (await get('stats')) || {};
+const statsNow = async (root = 'stats') => (await get(root)) || {};
 const at = (o, p) => p.split('/').reduce((v, k) => (v == null ? undefined : v[k]), o) || 0;
 // How much each of these counters moved while `fn` ran (the counters are shared by every test).
 /* ===================== clients: versions and platforms (src/core/client.js) ===================== */
@@ -762,10 +762,10 @@ test('clients: a seat keeps its latest report (a client older than it was): the 
   await host.call('resign', { game: st.game }); await recorded(st.game);
   assert.equal((await get(`games/${st.game}/pub/status`)), 'over', 'leaving from the stale screen resigns by the usual path: the loss recorded');
 });
-async function delta(paths, fn) {
-  const s0 = await statsNow();
+async function delta(paths, fn, root) {   // (root: 'statsOwn' for the owner's numbers: a match with an admin or an owner device in it)
+  const s0 = await statsNow(root);
   await fn();
-  const s1 = await statsNow();
+  const s1 = await statsNow(root);
   return Object.fromEntries(paths.map(p => [p, at(s1, p) - at(s0, p)]));
 }
 const day = () => S.periodKeys(Date.now());
@@ -1108,6 +1108,42 @@ test('health: opens and errors counted per day and build; new devices near and a
   await put(`devicesDay/${d}`, null); await put('admin/config', null); await put('admin/secrets', null); await put('test/alertsSent', null); await put('alertOps', null);
 });
 
+test('owner devices: an owner device\'s matches and events go to statsOwn, not stats; the owner link and an admin account mark a device; a phone cannot write devmeta', async () => {
+  const crypto = require('node:crypto'), hashDev = d => crypto.createHash('sha256').update('ttc-dev:' + d).digest('hex').slice(0, 20);
+  const guest = await player(null, { anonymous: true }), dev = 'downer' + Date.now(), h = hashDev(dev);
+  await put(`devmeta/${h.slice(0, 8)}`, { ex: true, nick: 'Mine', why: 'manual', at: Date.now() });   // (marked by its short ID, as the Devices page and the deploy's set do)
+  const id = 'own' + Date.now(), squares = [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2 }];
+  const own0 = (await get('statsOwn/modes/cpu/finished')) || 0;
+  const moved = await delta(['modes/cpu/started', 'modes/cpu/finished', 'mini/cpu/ttt/played'], async () => {
+    assert.deepEqual(await guest.call('track', { ev: 'start', mode: 'cpu', id, dev }), { ok: true });
+    assert.deepEqual(await guest.call('track', { ev: 'end', mode: 'cpu', id, dev, winner: 'X', reason: 'line', squares }), { ok: true });
+  });
+  assert.deepEqual(moved, { 'modes/cpu/started': 0, 'modes/cpu/finished': 0, 'mini/cpu/ttt/played': 0 }, 'left out of stats/');
+  assert.equal(((await get('statsOwn/modes/cpu/finished')) || 0) - own0, 1, 'filed under statsOwn/');
+  assert.ok((await get('statsOwn/mini/cpu/ttt/played')) >= 1);
+  // the owner link: the admin's token marks the device that opens it (no login: a guest's anonymous sign-in)
+  const dev2 = 'dlink' + Date.now(), h2 = hashDev(dev2);
+  assert.deepEqual(await guest.call('markDevice', { dev: dev2, why: 'link', token: 'nope-nope-nope-nope' }), { ok: false, reason: 'token' }, 'no token set: refused');
+  await put('admin/ownerToken', 'tok_abcdefghijklmnop');
+  assert.deepEqual(await guest.call('markDevice', { dev: dev2, why: 'link', token: 'tok_abcdefghijklmnoX' }), { ok: false, reason: 'token' }, 'a wrong token');
+  assert.deepEqual(await guest.call('markDevice', { dev: dev2, why: 'link', token: 'tok_abcdefghijklmnop' }), { ok: true, short: h2.slice(0, 8) });
+  const m2 = await get(`devmeta/${h2}`); assert.deepEqual([m2.ex, m2.why], [true, 'link']);
+  await assert.rejects(guest.call('markDevice', { dev: dev2, why: 'self' }), /admin only/, 'Mark this device as mine: an admin account only');
+  // a device that signs in to an admin account: marked by itself, for good
+  const boss = await player('OwnBoss'); await runScript('make-admin.js', 'OwnBoss', 'grant'); await boss.auth.currentUser.getIdToken(true);
+  const dev3 = 'dboss' + Date.now(), h3 = hashDev(dev3);
+  assert.deepEqual(await boss.call('devlog', { dev: dev3, ev: 'open', o: 'o' + Date.now().toString(16) }), { ok: true });
+  const m3 = await get(`devmeta/${h3}`); assert.deepEqual([m3 && m3.ex, m3 && m3.why], [true, 'admin'], 'marked as the owner\'s');
+  assert.ok((await get(`devices/${h3}/u/${boss.uid}`)), 'the account noted on the device (the Devices page\'s usernames)');
+  await put(`devmeta/${h3}/ex`, false);                                      // switched off on the Devices page: it stays off
+  await boss.call('devlog', { dev: dev3, ev: 'open', o: 'o' + (Date.now() + 1).toString(16) });
+  assert.equal(await get(`devmeta/${h3}/ex`), false, 'the admin\'s own switch is never overridden');
+  // a phone cannot write the owner marks or read the owner's numbers
+  await denied(guest.write(`devmeta/${hashDev('dx' + Date.now())}`, { ex: true }), 'a phone writing devmeta');
+  await denied(guest.read('statsOwn'), 'a phone reading statsOwn');
+  await put('admin/ownerToken', null); await put(`devmeta/${h.slice(0, 8)}`, null); await put(`devmeta/${h2}`, null); await put(`devmeta/${h3}`, null);
+});
+
 test('reports: "Report a problem" from anywhere is kept for the admin, flags its match when there is one, alerts the admin once each; bad ones refused, three a minute', async () => {
   await put('admin/config', null); await put('test/alertsSent', null); await put('alertOps', null); await put('reports', null);
   await put('admin/secrets', { resendKey: 're_test' });
@@ -1123,6 +1159,7 @@ test('reports: "Report a problem" from anywhere is kept for the admin, flags its
   const sent = Object.values((await get('test/alertsSent')) || {});
   assert.equal(sent.filter(m => m.subject === 'Tic Tac Chaos: Problem report').length, 2, 'an alert each');
   assert.ok(sent.some(m => /a guest on the settings screen.*"The menu froze"/.test(m.text)), 'who, where and the note');
+  assert.ok(sent.filter(m => m.subject === 'Tic Tac Chaos: Problem report').every(m => m.to.split(',').includes('tictacchaos@gmail.com') && m.to.split(',').includes('ops@example.com')), 'to the support mailbox as well as the dashboard\'s address');
   assert.deepEqual(await guest.call('report', { dev, o: 'rep00003', where: 'menu' }), { ok: true }, 'a third in the minute (no note)');
   assert.deepEqual(await guest.call('report', { dev, o: 'rep00004', where: 'menu' }), { ok: false, reason: 'rate' }, 'a fourth: too many');
   await assert.rejects(guest.call('report', { o: 'rep00005' }), /Not a report/, 'no device: refused');
@@ -1146,12 +1183,14 @@ test('playtest: a device\'s opens and matches are logged under a hash of its ran
   const d = await get(`devices/${h}`), log = await get(`devlog/${h}`);
   assert.equal(d.tag, 'sam', 'the first tag stays');
   assert.equal(d.n, 4); assert.ok(d.first <= d.last);
-  assert.deepEqual(Object.keys(d).sort(), ['ct', 'cv', 'first', 'last', 'mf', 'ms', 'n', 'p', 'tag'], 'only times, counts (events, matches started and finished), the cohort mark, the tag and the client it last opened (its platform and version, as every page sends them)');
+  assert.deepEqual(Object.keys(d).sort(), ['ct', 'cv', 'first', 'last', 'mf', 'ms', 'n', 'p', 'tag', 'u'], 'only times, counts (events, matches started and finished), the cohort mark, the tag, the client it last opened (its platform and version, as every page sends them) and the accounts signed in on it (the admin\'s Devices page: admin read only)');
+  assert.deepEqual(Object.keys(d.u), [acct.uid], 'the account that signed in on it, never a guest');
   assert.deepEqual([d.p, d.cv], ['web', E.CLIENT_VERSION]);
   assert.deepEqual(Object.keys(log).sort(), ['elgame0001', 'oopen0001', 'plive0001', 'slgame0001'], 'an open, a start, an end and a live');
   for (const e of Object.values(log)) assert.ok(Object.keys(e).every(k => ['t', 'ev', 'm', 'g', 'p', 'cv'].includes(k)), 'an event: its time, kind, mode and match, and (an open) the client: ' + Object.keys(e).join(' '));
   assert.deepEqual([log.slgame0001.ev, log.slgame0001.m, log.slgame0001.g, log.elgame0001.ev], ['start', 'cpu', 'lgame0001', 'finish']);
-  assert.ok(!JSON.stringify([d, log]).includes(acct.uid) && !JSON.stringify([d, log]).includes(dev), 'no account and no raw id with the device');
+  const dNoU = Object.assign({}, d); delete dNoU.u;
+  assert.ok(!JSON.stringify([dNoU, log]).includes(acct.uid) && !JSON.stringify([d, log]).includes(dev), 'no raw id with the device, and the account only in its accounts list (u: the admin\'s Devices page)');
   assert.ok(Math.abs((await get(`lastSeen/${acct.uid}`)) - Date.now()) < 60000, 'the logged-in player\'s last activity moved on');
   assert.equal(await get(`lastSeen/${guest.uid}`), null, 'not for a guest');
   // a tag that is not one is ignored; a later good one is kept, once
@@ -1309,6 +1348,7 @@ test('bots: the match is an ordinary one against the computer, labelled as such,
 
 test('bots: after a player\'s move, the bot\'s move is planned inside its own window in every mini-game (3 to 8 s for the word games and Codebreaker)', async () => {
   await clearQueue(); await botsOn();
+  await put('test/noBotTasks', true);                            // (no queued Cloud Task from one game's plan racing the next game's board: each plan here comes from the tick)
   const h = await player('Window_Who');
   const r = await soloUntilBot(h);
   const id = r.game, botSide = r.side === 'X' ? 'O' : 'X';
@@ -1341,6 +1381,7 @@ test('bots: after a player\'s move, the bot\'s move is planned inside its own wi
   const made = Object.values(planned).filter(x => x != null).length;
   assert.ok(made >= E.TYPES.length - 2, `a plan for nearly every mini-game (${made} of ${E.TYPES.length})`);
   await patch(`botGames/${id}`, { live: true });
+  await put('test/noBotTasks', null);
 });
 
 test('bots: the result is recorded; never on the player\'s Find Match record; bot matches counted apart in the stats', async () => {
@@ -1572,7 +1613,7 @@ test('release control: an admin-only game exists for nobody but the admin: not i
     await nearWin(sb.game, 'X');
     assert.equal((await boss.call('move', { game: sb.game, square: 2, move: 2 })).ok, true);
     await recorded(sb.game);
-  });
+  }, 'statsOwn');   // (the admin played in it: the owner's numbers, statsOwn/)
   assert.ok(d['mini/testing/ttt/won'] >= 1 && d['mini/friend/ttt/won'] === 0, `the admin-only game's squares under testing, not the mode (${JSON.stringify(d)})`);
   assert.ok((await get(`users/${b.uid}`)).minis.ttt.lost >= 1, "the players' own records count them like any square");
   // a local match reported by a phone: the same split

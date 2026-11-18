@@ -115,7 +115,7 @@ test('report: quantiles from the histograms, the filters, the flags and the vers
   assert.equal(fin.n, 4); assert.ok(fin.turns.med > 25 && fin.turns.med <= 30); assert.equal(fin.mins.mean, 10);
   assert.ok(rep.matches.some(m => m.mode === 'vs Computer' && m.timer === 'group'), 'grouped by mode');
   const html = B.balanceHtml(rep);
-  assert.match(html, /data-balexport="1">Export JSON</); assert.match(html, /Leave out matches an admin played in/); assert.match(html, /bflag slow/);
+  assert.match(html, /data-balexport="1">Export JSON</); assert.match(html, /Leave out my devices and matches an admin played in/); assert.match(html, /bflag slow/);
   assert.ok(JSON.parse(JSON.stringify(rep)), 'the export is plain JSON');
 });
 

@@ -25,6 +25,7 @@ import {
 } from '../net/room.js';
 import { liveSquare, liveUnwatch, liveWatch, setWatch } from '../net/live.js';
 import { devAct, devStep, reportLocal, trackEnd, trackStart } from '../net/tracking.js';
+import { markMine } from '../net/owner.js';
 import {
   RNG, advOpen, app, commit, cpuPlan, cpuTimer, flashReady, menuNote, menuOpen, menuStep, save, setAdvOpen,
   sbx, setCpuPlan, setCpuTimer, setMenuNote, setMenuOpen, setMenuStep, state, zoomedType
@@ -41,7 +42,7 @@ import { render } from './render.js';
 import { updateNeeded } from './update.js';
 import { matchStale, setStaleConfirm } from './screens/stale.js';
 import { haptic, openUpdate, startLink } from '../net/platform.js';
-import { setSound, setVibration } from './settings.js';
+import { setMarkNote, setSound, setVibration } from './settings.js';
 import { scJointFrame, scPopup, scSkip } from './chaos.js';
 import { rep, repActive, repNote, repSkip, repVal } from './replay.js';
 import { runGo } from './runner.js';
@@ -182,6 +183,7 @@ export function init() {
     if (act === 'pause-back') { setMenuStep('main'); startFx('menu', menuStep); render(); return; }
     if (act === 'pause-leave') { quitMatch(); return; }
     if (act === 'pause-report') { openReport(); return; }
+    if (act === 'set-mine') { setMarkNote('busy'); render(); markMine().then(ok => { setMarkNote(ok ? 'ok' : 'fail'); render(); }); return; }   // (Settings, admin only: this device's stats left out by default, net/owner.js)
     if (act === 'set-report') { openReport('settings'); return; }                     // (Settings: a report from anywhere, outside a match too)                            // (a dialog of its own over the menu: ui/report.js)
     if (menuOpen) return;                         // the menu is up: nothing underneath reacts
     if (state.flash && !state.flash.live && !free.includes(act)) {         // everything else waits for the result to clear... (the other side's attempt streamed here, net/live.js, is not a result: the watcher's own taps go on)

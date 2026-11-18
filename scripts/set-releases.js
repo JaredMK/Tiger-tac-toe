@@ -38,6 +38,10 @@ const CONFIG_SETS = [
   { id: 'stagingOpen1', path: 'config/staging/mode', value: 'open', env: 'staging' },
   { id: 'findMatch1', path: 'features/findMatch', value: true, env: 'staging' },   // Find Match on on staging (the soft launch: a computer offered after about 20 s alone; the admin's switch can still turn it off)   // staging open to anyone with the link (the admin's Staging access switch; Allowlist puts the gate back)
   { id: 'findAdmin1', path: 'features/findMatchAdmin', value: true },   // Find Match the admin's alone (the launch lineup, December 2026): the server refuses anyone else (functions/index.js findMatch); the page shows it to the admin only (net/matchmaking.js findVisible)
+  // The owner's devices (December 2026: devmeta/, functions/statsRules.js metaFor), by the short device ID the admin saw: left out of every stat by default.
+  { id: 'own1', path: 'devmeta/0200d915', value: () => ({ nick: "Jared's computer", ex: true, why: 'set', at: Date.now() }) },
+  { id: 'own2', path: 'devmeta/70fa84f0', value: () => ({ nick: "Jared's phone", ex: true, why: 'set', at: Date.now() }) },
+  { id: 'own3', path: 'devmeta/e35cefb7', value: () => ({ nick: "Jared's work phone", ex: true, why: 'set', at: Date.now() }) },
 ];
 const ENV = process.env.TARGET || (PROJECT === 'tic-tac-chaos' ? 'production' : 'staging');   // (a set with env: that environment alone)
 (async () => {

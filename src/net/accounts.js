@@ -1,4 +1,5 @@
 // Accounts: signing in (Google, Apple, email: net/auth.js for the providers), the username, the account kept on this phone.
+import { ownerAuto } from './owner.js';
 import { PROVIDERS, providerSignIn, providerSignOut } from './auth.js';
 import { NET_MS, call, configured, connectStep, fb, loadFirebase, setConnectWhy } from './connect.js';
 import { enterMatched, holdResume, search, startSearch, stopSearch } from './matchmaking.js';
@@ -150,7 +151,7 @@ export function onAuthUser(u, again) {
   rememberAccount(!!uid);
   const c = cachedMe(); if (c && c.uid !== uid) { cacheMe(null); clearStats(); }    // a guest or another account now: the cached one goes
   setTemplates(null);                                                // (another account, or a guest: the templates go with the one before)
-  if (uid) { const me = acct; u.getIdTokenResult(true).then(r => { if (acct === me && r && r.claims && r.claims.admin === true) { me.admin = true; listenTemplates(uid); render(); } }).catch(() => {}); }   // the admin flag: admin-only games show, and the admin's game templates are read
+  if (uid) { const me = acct; u.getIdTokenResult(true).then(r => { if (acct === me && r && r.claims && r.claims.admin === true) { me.admin = true; listenTemplates(uid); ownerAuto(); render(); } }).catch(() => {}); }   // the admin flag: admin-only games show, and the admin's game templates are read
   if (uid && !again) track({ ev: 'login' });                     // a login (or a returning one) for the stats
   if (!uid && (state.screen === 'login' || state.screen === 'username')) return;   // a guest session starting: nothing on these screens changes
   if (uid) {

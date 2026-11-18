@@ -17,7 +17,7 @@ test('privacy: the bare minimum: what is collected, why, where it is stored, how
   for (const what of ['account email', 'username', 'gameplay and match data', 'anonymous device ID']) assert.match(html, new RegExp(what), what);
   assert.match(html, /Google Firebase/); assert.match(html, /Match logs: 30 days/); assert.match(html, /90 days/); assert.match(html, /until you delete your account/);
   assert.match(html, /<b>Delete account<\/b>/, 'the in-app button'); assert.match(html, /email us/, 'or by email');
-  assert.match(html, /not for children under 13/); assert.match(html, /mailto:privacy@tictacchaos\.com/, 'the contact');
+  assert.match(html, /not for children under 13/); assert.match(html, /mailto:tictacchaos@gmail\.com/, 'the contact'); assert.match(html, /run by Jared Krosser/, 'the operator'); assert.doesNotMatch(html, /DRAFT|placeholder|privacy@tictacchaos/i, 'no draft line or placeholder');
   assert.ok(html.replace(/<style>[\s\S]*?<\/style>/, '').replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length < 230, 'short: about one screen');
   assert.doesNotMatch(html, /<script/, 'no scripts: the CSP needs nothing for it');
   assert.match(html, /<link rel="stylesheet" href="src\/ui\/fonts\.css">/, "the game's fonts");

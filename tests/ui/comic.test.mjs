@@ -174,9 +174,9 @@ test('the remaining screens are Comic Chaos (calm); their dialogs and cards are 
   assert.match(renderSettings(), /<main class="scr setup settings-scr cc calm">/);
   const { settingsBody } = await import('../../src/ui/settings.js');
   assert.match(renderSettings(), /data-act="set-report">Report a problem</, 'Settings: Report a problem, from anywhere');
-  assert.match(renderSettings(), /<a class="btn support" href="mailto:privacy@tictacchaos\.com\?subject=/, 'Settings: Contact support by email');
+  assert.match(renderSettings(), /<a class="btn support" href="mailto:tictacchaos@gmail\.com\?subject=/, 'Settings: Contact support by email');
   assert.doesNotMatch(settingsBody(), /set-report/, 'the in-game Settings step: its menu has Report a problem already');
-  assert.match(settingsBody(), /mailto:privacy@tictacchaos\.com/, 'Contact support in the in-game Settings too');
+  assert.match(settingsBody(), /mailto:tictacchaos@gmail\.com/, 'Contact support in the in-game Settings too');
   state.setup.vs = 'same';
   assert.match(renderSetup(), /<main class="scr setup cc calm sameset">/);
   const rule = sel => { const m = new RegExp(sel.replace(/[.()[\]]/g, '\\$&') + '[^{]*\\{([^}]*)\\}').exec(CSS); return m ? m[1] : ''; };

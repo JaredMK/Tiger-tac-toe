@@ -263,6 +263,26 @@ function checkDev(d, t) {
   return out;
 }
 
+// ---------- owner devices (December 2026): the admin's own devices and accounts, kept out of every stat by default ----------
+// devmeta/{key} (admin read and write; kept by the launch reset): { nick, ex, why, at } for a device's hash h (the 20 hex of
+// devHash, the admin's device ID; its first 8 the short ID Settings shows) or a prefix of one (6 to 19 hex: a device not seen
+// yet, or one the admin pasted short). ex true: an owner device, everything it does filed under statsOwn/ instead of stats/
+// (the admin's "Include my devices" adds them back); nick: its name on the Devices page (any device, excluded or not). why:
+// 'set' (a deploy's set), 'admin' (it signed in to an admin account: marked at once, for good), 'self' (Settings' Mark this
+// device as mine), 'link' (the owner link, ?owner=<token>), 'manual' (the Devices page).
+const META_KEY = /^[0-9a-f]{6,20}$/;
+// A pasted device ID: hex, 6 to 20 of it (the short ID or the whole), lower case; anything else null.
+function metaKey(v) { const k = String(v == null ? '' : v).trim().toLowerCase().replace(/[^0-9a-f]/g, ''); return META_KEY.test(k) ? k : null; }
+// The entry that names device h: its own (the whole hash), else the longest prefix of it; null for none.
+function metaFor(meta, h) {
+  if (!meta || typeof h !== 'string' || !h) return null;
+  if (meta[h]) return Object.assign({ key: h }, meta[h]);
+  let best = null;
+  for (const [k, v] of Object.entries(meta)) if (v && META_KEY.test(k) && h.startsWith(k) && (!best || k.length > best.key.length)) best = Object.assign({ key: k }, v);
+  return best;
+}
+const ownerOf = (meta, h) => { const m = metaFor(meta, h); return !!(m && m.ex === true); };
+
 // ---------- "Report a problem" (December 2026): from anywhere in the page, a match or not ----------
 // What the phone sends (ui/report.js, net/tracking.js sendReport), checked: a note (up to 140 characters, may be empty),
 // the screen it was sent from (where), the match it was in (g and mode, if any), its side, the app's build and the client.
@@ -305,12 +325,14 @@ function growthMarks(dev, c, t, isNew) {
   const up = {}, today = periodKeys(t).d, cohort = periodKeys(dev.first || t).d, ev = c.ev.ev;
   if (isNew) { dev.ct = 1; up[`cohorts/${cohort}/n`] = 1; up[`funnel/${cohort}/opened`] = 1; if (c.tag) up[`sources/${c.tag}/devices`] = 1; }
   if (ev === 'act') up[`acts/${today}/${c.ev.act}${c.ev.ch ? '_' + c.ev.ch : ''}`] = 1;
+  if (ev === 'start') dev.ms = (dev.ms || 0) + 1;                // matches started and finished on it: every device (the Devices page's games played)
+  if (ev === 'finish') dev.mf = (dev.mf || 0) + 1;
   if (!dev.ct) return up;                                        // (a device first seen before cohorts were kept: in no cohort)
   const off = dayNum(today) - dayNum(cohort);
   if (RETAIN.includes(off) && !dev['r' + off]) { dev['r' + off] = 1; up[`cohorts/${cohort}/d${off}`] = 1; }
   if (ev === 'step') up[`funnel/${cohort}/${c.ev.step}`] = 1;
-  if (ev === 'start') { dev.ms = (dev.ms || 0) + 1; if (dev.ms === 2) up[`funnel/${cohort}/second`] = 1; }
-  if (ev === 'finish') { dev.mf = (dev.mf || 0) + 1; if (dev.mf === 1) up[`funnel/${cohort}/finished`] = 1; }
+  if (ev === 'start' && dev.ms === 2) up[`funnel/${cohort}/second`] = 1;
+  if (ev === 'finish' && dev.mf === 1) up[`funnel/${cohort}/finished`] = 1;
   return up;
 }
 
@@ -339,6 +361,7 @@ function healthUpdates(c, t) {
 }
 
 module.exports = {
+  META_KEY, metaKey, metaFor, ownerOf,
   balanceUpdates, BAL_SEG, MOVE_CAP, SQ_SECS, MATCH_TURNS, MATCH_MINS, edgeOf, BAL_TIMER,
   checkReport, reportText, REPORT_WHERE, MODES, healthUpdates, findUpdates, growthMarks, STEPS, ACTS, CHANNELS, RETAIN, dayNum, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, PERIOD_NODE, PERIOD_PATH, hashId, idOk, checkEnd, checkRun, RUN_BIN, startUpdates, endUpdates, periodUpdates, timerStartUpdates, timerEndUpdates,
   DEV_EVENTS, DEV_MODES, TAG_RE, tagOk, devHash, checkDev };

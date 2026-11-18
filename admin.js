@@ -18,6 +18,38 @@ let sortBy = { k: 'avgWin', dir: 1 }, miniMode = 'all', miniRace = 'all', period
 let accts = null, acctSort = { k: 'joined', dir: -1 };                       // the Accounts table: newest first
 let acctOpen = null, acctView = 'all', PS = null;                             // the player detail: whose, which games; src/ui/pstats.js (the numbers as the profile adds them up)
 let play = null, devSort = { k: 'last', dir: -1 }, devOpen = null, tagPick = '', allSessions = false;   // the playtest section
+// The owner's devices (December 2026: functions/statsRules.js metaFor, devmeta/): every number on this page leaves them out,
+// and any match with an admin account or an owner device in it (the server files those under statsOwn/), until "Include my
+// devices" (top right, kept in this browser) adds them back. statsBase/statsOwn: the two trees as read; stats: what the pages show.
+let statsBase = null, statsOwn = null, devmeta = {}, playAll = null, ownerToken = null, devQ = '', devEdit = null, devMsg = '';
+let mine = (() => { try { return localStorage.getItem('ttc.admin.mine') === '1'; } catch (e) { return false; } })();
+const META_KEY = /^[0-9a-f]{6,20}$/;
+const metaKey = v => { const k = String(v == null ? '' : v).trim().toLowerCase().replace(/[^0-9a-f]/g, ''); return META_KEY.test(k) ? k : null; };
+function metaFor(h) {                                         // the entry naming device h: its own, else the longest prefix of it (statsRules.js metaFor)
+  if (!h) return null;
+  if (devmeta[h]) return Object.assign({ key: h }, devmeta[h]);
+  let best = null;
+  for (const [k, v] of Object.entries(devmeta || {})) if (v && META_KEY.test(k) && h.startsWith(k) && (!best || k.length > best.key.length)) best = Object.assign({ key: k }, v);
+  return best;
+}
+const ownerDev = h => { const m = metaFor(h); return !!(m && m.ex === true); };
+function deepSum(a, b) {                                      // two stats trees added leaf by leaf (numbers summed, the rest kept)
+  if (typeof a === 'number' || typeof b === 'number') return (typeof a === 'number' ? a : 0) + (typeof b === 'number' ? b : 0);
+  if (!a || typeof a !== 'object') return b && typeof b === 'object' ? b : a;
+  if (!b || typeof b !== 'object') return a;
+  const out = Object.assign({}, a);
+  for (const k of Object.keys(b)) out[k] = k in a ? deepSum(a[k], b[k]) : b[k];
+  return out;
+}
+function applyMine() {
+  stats = mine && statsOwn ? deepSum(statsBase || {}, statsOwn) : (statsBase || {});
+  balOpts.admin = mine;                                        // (the Balance report: an admin's matches only with my devices)
+  if (!playAll) { play = null; return; }
+  if (mine) { play = playAll; return; }
+  const keep = o => Object.fromEntries(Object.entries(o || {}).filter(([h]) => !ownerDev(h)));
+  play = { devices: keep(playAll.devices), logs: keep(playAll.logs) };
+}
+function setMine(on) { mine = !!on; try { localStorage.setItem('ttc.admin.mine', mine ? '1' : '0'); } catch (e) { /* this visit only */ } applyMine(); render(); }
 let mlogs = null, mlEvents = {}, mlOpen = null, mlFilt = { who: '', mode: '', from: '', to: '' };       // the match inspector: the logs' index, the logs opened, the filters
 const PT = window.Playtest;
 
@@ -257,6 +289,7 @@ function draw() {
     players: () => `${accountsCard()}${flaggedCard()}
     <div class="card"><div class="row"><h2>Players over time</h2><div class="tabs">${[['d', 'Days'], ['w', 'Weeks'], ['m', 'Months']].map(([k, l]) => `<button data-period="${k}" aria-pressed="${period === k}">${l}</button>`).join('')}</div></div>${ptable}</div>`,
     playtest: () => playCard(),
+    devices: () => devicesPage(),
     matches: () => matchCard(),
     games: sub => (sub && GAMES[sub] ? gamePage(sub) : gamesIndex()),
     balance: () => balancePage(),
@@ -269,7 +302,7 @@ function draw() {
       ${miniTable}<h2 style="margin-top:14px">Average winner moves</h2>${hbarChart(rows, 'avgWin', 'Average winner moves by mini-game', v => num(v))}</div>`,
   };
   const [where, sub] = route(), info = SECTIONS.find(x => x[0] === where);
-  const top = `<div class="top"><h1>Tic Tac Chaos Admin</h1><span class="sp"></span><span class="who">${esc(user.email || 'admin')}</span><button class="btn" data-act="refresh">Refresh</button><button class="btn" data-act="signout">Sign out</button></div>`;
+  const top = `<div class="top"><h1>Tic Tac Chaos Admin</h1><span class="sp"></span><label class="mine" title="My devices (the Devices page) and matches an admin played in"><input type="checkbox" data-mine="1"${mine ? ' checked' : ''}> Include my devices</label><span class="who">${esc(user.email || 'admin')}</span><button class="btn" data-act="refresh">Refresh</button><button class="btn" data-act="signout">Sign out</button></div>`;
   if (!info) {
     app.innerHTML = `${top}<nav class="tiles" aria-label="Sections">${SECTIONS.map(([k, label, line]) => `<a class="tile" href="#${k}"><b>${label}</b><small>${line()}</small></a>`).join('')}</nav>`;
     return;
@@ -282,7 +315,8 @@ function draw() {
 const SECTIONS = [
   ['overview', 'Overview', () => `${n(((stats.days || {})[periodKeys(Date.now()).d] || {}).active)} active today`],
   ['players', 'Players & Accounts', () => (accts ? `${Object.keys(accts.users || {}).length} accounts` : 'Accounts, flagged names, players over time')],
-  ['playtest', 'Playtesters & Devices', () => (play ? `${Object.keys(play.devices || {}).length} devices` : 'Devices, sessions, retention')],
+  ['playtest', 'Playtesters', () => (play ? `${Object.keys(play.devices || {}).length} devices` : 'Devices, sessions, retention')],
+  ['devices', 'Devices', () => { const all = Object.keys((playAll || {}).devices || {}), own = all.filter(ownerDev).length; return playAll ? `${all.length} devices · ${own} yours (left out of the stats)` : 'Nicknames, excluded devices, the owner link'; }],
   ['matches', 'Matches', () => { const r = Object.values(mlogs || {}).filter(x => x && x.reported).length; return `Match inspector${r ? ` · ${r} reported` : ''}`; }],
   ['games', 'Games', () => { const ts = Object.keys(GAMES), ch = ts.filter(gameChanged).length, off = ts.filter(iosOff).length, m = ctl.clients || {}, sp = ctl.anim && ctl.anim.speed; return `${ts.length} mini-games · ${ts.filter(isReleased).length} released${ch ? ` · ${ch} changed` : ''}${off ? ` · ${off} off on iOS` : ''}${m.web || m.ios ? ` · minimum ${['web', 'ios'].filter(p => m[p]).map(p => `${p} ${m[p]}`).join(', ')}` : ''}${sp && sp !== 1 ? ` · speed ${sp}×` : ''}`; }],
   ['bots', 'Bot Settings', () => 'Find Match, timer, bots, empty-queue alerts'],
@@ -1017,6 +1051,95 @@ function applyPreset(t, name, btn) {
 // open, reset and first-mover rates, flags; the current version against the one before; match length by mode, timer and
 // finished or abandoned. Filters: an admin's matches left out (by default), dates, the version; Export JSON.
 let lastBal = null;
+// ---------- Devices (December 2026): every device the server has seen (devices/), by its short ID (the first 8 hex of its
+// hash: the ID the game's Settings shows), with its nickname and Excluded switch (devmeta/: statsRules.js metaFor, a whole
+// hash or a prefix of one); an owner device and any match with it in are left out of every stat until Include my devices.
+// The owner link (admin/ownerToken): /?owner=<token> marks whichever device opens it (functions/index.js markDevice). ----------
+const devWhy = { set: 'set by a deploy', admin: 'signed in as admin', self: 'marked in Settings', link: 'opened the owner link', manual: 'added here' };
+function devRows() {
+  const devs = (playAll || {}).devices || {}, logs = (playAll || {}).logs || {}, users = (accts && accts.users) || {};
+  const rows = Object.entries(devs).map(([h, d]) => {
+    const m = metaFor(h), uids = Object.keys((d && d.u) || {}), starts = Object.values(logs[h] || {}).filter(e => e && e.ev === 'start').length;
+    return { key: h, h, short: h.slice(0, 8), m, nick: (m && m.nick) || '', ex: !!(m && m.ex), p: d.p || '', cv: d.cv || '', first: d.first || 0, last: d.last || 0,
+      names: uids.map(u => (users[u] && users[u].username) || '').filter(Boolean), games: Math.max(d.ms || 0, starts), tag: d.tag || '' };
+  });
+  for (const [k, v] of Object.entries(devmeta || {})) {          // an entry no device answers to yet (a prefix pasted, a device not seen here)
+    if (!v || Object.keys(devs).some(h => h.startsWith(k))) continue;
+    rows.push({ key: k, h: null, short: k.slice(0, 8), m: Object.assign({ key: k }, v), nick: v.nick || '', ex: !!v.ex, p: '', cv: '', first: 0, last: 0, names: [], games: 0, tag: '', unseen: true });
+  }
+  const q = devQ.trim().toLowerCase();
+  return rows.filter(r => !q || r.nick.toLowerCase().includes(q) || (/^[0-9a-f]+$/.test(q) && r.key.includes(q)) || r.names.some(nm => nm.toLowerCase().includes(q)) || r.tag.includes(q))
+    .sort((a, b) => b.ex - a.ex || b.last - a.last);
+}
+function devicesPage() {
+  if (!playAll) return '<div class="card"><h2>Devices</h2><p class="note">Not loaded (the devices need the admin flag).</p></div>';
+  const when = t => (t ? new Date(t).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '–');
+  const rows = devRows(), site = location.origin && /^https?:/.test(location.origin) ? location.origin : (STAGING ? 'https://staging.tictacchaos.com' : 'https://tictacchaos.com');
+  const link = ownerToken ? `${site}/?owner=${ownerToken}` : '';
+  const nickCell = r => (devEdit === r.key
+    ? `<span class="nickedit"><input id="nickIn" maxlength="40" value="${esc(r.nick)}" aria-label="Nickname"><button class="btn" data-act="nicksave" data-key="${esc(r.key)}">Save</button><button class="btn" data-act="nickcancel">Cancel</button></span>`
+    : `<button class="nick" data-nick="${esc(r.key)}" title="Edit the nickname">${r.nick ? esc(r.nick) : '<span class="dim">add a name</span>'}</button>`);
+  const body = rows.map(r => `<tr class="${r.ex ? 'devx' : ''}"><td>${nickCell(r)}</td><td><code>${esc(r.short)}</code>${r.unseen ? ' <span class="dim">(prefix, not seen yet)</span>' : ''}</td>
+    <td>${esc(r.p ? r.p + (r.cv ? ' ' + r.cv : '') : '–')}</td><td>${when(r.first)}</td><td>${when(r.last)}</td><td>${r.names.length ? r.names.map(esc).join(', ') : '<span class="dim">–</span>'}</td><td class="num">${r.games}</td>
+    <td><label class="sw"><input type="checkbox" data-devex="${esc(r.key)}"${r.ex ? ' checked' : ''} aria-label="Excluded"> <span>${r.ex ? 'Excluded' : 'Counted'}</span></label>${r.ex && r.m && r.m.why ? `<br><small class="dim">${esc(devWhy[r.m.why] || r.m.why)}</small>` : ''}</td></tr>`).join('');
+  return `<div class="card"><h2>Exclude a device</h2>
+    <p class="note">Paste a device ID (the short ID the game's Settings shows, or more of it) and give it a name: its play and any match with it in are left out of every stat (Overview, Balance, Growth, Stats, Playtesters) until <b>Include my devices</b> at the top. A device that signs in to an admin account is excluded by itself, for good.</p>
+    <div class="row exrow"><input id="exId" placeholder="Device ID, e.g. 0200d915" maxlength="40" aria-label="Device ID"><input id="exNick" placeholder="Nickname" maxlength="40" aria-label="Nickname"><button class="btn" data-act="exadd">Exclude</button></div>
+    ${devMsg ? `<p class="note">${esc(devMsg)}</p>` : ''}</div>
+    <div class="card"><h2>Owner link</h2>
+    <p class="note">Open this link on a device of yours to exclude it without logging in. Anyone with it can exclude their own device, so keep it to yourself; a new link stops the old one.</p>
+    <div class="row">${link ? `<code class="olink">${esc(link)}</code><button class="btn" data-act="ownercopy">Copy</button>` : '<span class="dim">No link yet.</span>'}<button class="btn" data-act="ownertok">${link ? 'Make a new link' : 'Make the link'}</button></div></div>
+    <div class="card"><div class="row"><h2>Devices</h2><input id="devQ" type="search" placeholder="Search nickname, username or ID" value="${esc(devQ)}" aria-label="Search devices"></div>
+    <p class="note">${rows.length} shown. Tap a nickname to edit it (any device: name your testers'). Games played: matches started on it.</p>
+    <div class="tw"><table class="devs"><thead><tr><th>Nickname</th><th>Device ID</th><th>Platform</th><th>First seen</th><th>Last seen</th><th>Usernames</th><th>Games played</th><th>Excluded</th></tr></thead><tbody>${body || '<tr><td colspan="8" class="dim">No devices match</td></tr>'}</tbody></table></div></div>`;
+}
+// A device's entry written whole (devmeta/{key}: the rules want ex with it): the nickname and switch kept from the entry that
+// named it (a prefix's), written to the device's own hash so a prefix's other devices are untouched.
+async function metaPut(key, patch) {
+  const cur = devmeta[key] || metaFor(key) || {}, next = { ex: !!cur.ex, at: cur.at || Date.now() };
+  if (cur.nick) next.nick = cur.nick;
+  if (cur.why) next.why = cur.why;
+  Object.assign(next, patch);
+  if (!next.nick) delete next.nick;
+  await fb.dbM.set(fb.dbM.ref(fb.db, `devmeta/${key}`), next);
+  devmeta = Object.assign({}, devmeta, { [key]: next });
+  applyMine();
+}
+async function nickSave(b) {
+  const key = b.dataset.key, i = document.getElementById('nickIn'), v = i ? i.value.trim().slice(0, 40) : '';
+  b.disabled = true;
+  try { await metaPut(key, { nick: v }); devEdit = null; devMsg = ''; } catch (e) { devMsg = 'Could not save the nickname.'; }
+  render();
+}
+async function devExclude(key, on, el) {
+  el.disabled = true;
+  try { await metaPut(key, Object.assign({ ex: !!on }, on && !(devmeta[key] && devmeta[key].why) ? { why: 'manual' } : {})); devMsg = ''; } catch (e) { devMsg = 'Could not change it.'; }
+  render();
+}
+async function exAdd(b) {
+  const idIn = document.getElementById('exId'), nkIn = document.getElementById('exNick');
+  let key = metaKey(idIn && idIn.value);
+  if (!key) { devMsg = 'A device ID is 6 to 20 letters and numbers (0-9, a-f), as Settings shows it.'; render(); return; }
+  const hits = Object.keys((playAll || {}).devices || {}).filter(h => h.startsWith(key));
+  if (hits.length === 1) key = hits[0];                          // (one device answers to it: its own hash)
+  b.disabled = true;
+  try {
+    await metaPut(key, { ex: true, why: 'manual', at: Date.now(), nick: (nkIn && nkIn.value.trim().slice(0, 40)) || (devmeta[key] && devmeta[key].nick) || '' });
+    devMsg = `${key.slice(0, 8)} excluded${hits.length > 1 ? ` (${hits.length} devices start with it)` : hits.length ? '' : ' (no device seen with it yet: it is excluded once it shows up)'}.`;
+  } catch (e) { devMsg = 'Could not save it.'; }
+  render();
+}
+async function ownerTok(b) {
+  if (ownerToken && !confirm('Make a new link? The old one stops working.')) return;
+  const tok = Array.from(crypto.getRandomValues(new Uint8Array(18)), x => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'[x & 63]).join('');
+  b.disabled = true;
+  try { await fb.dbM.set(fb.dbM.ref(fb.db, 'admin/ownerToken'), tok); ownerToken = tok; devMsg = ''; } catch (e) { devMsg = 'Could not make the link.'; }
+  render();
+}
+async function ownerCopy(b) {
+  const el = app.querySelector('.olink');
+  try { await navigator.clipboard.writeText(el ? el.textContent : ''); b.textContent = 'Copied'; } catch (e) { b.textContent = 'Copy failed'; }
+}
 function balancePage() {
   if (!BAL) { loadMetas().then(() => render()).catch(() => {}); return '<div class="card"><p class="note">Loading…</p></div>'; }
   const types = Object.keys(GAMES).filter(t => balOpts.allGames || isReleased(t)).sort((a, b) => GAMES[a].localeCompare(GAMES[b]));
@@ -1025,7 +1148,7 @@ function balancePage() {
 }
 function balanceFilter(el) {
   const k = el.dataset.balf;
-  if (k === 'noadmin') balOpts.admin = !el.checked;
+  if (k === 'noadmin') { setMine(!el.checked); return; }      // (the same switch as the top bar's Include my devices)
   else if (k === 'allgames') balOpts.allGames = el.checked;
   else if (k === 'from' || k === 'to' || k === 'version') balOpts[k] = el.value;
   render();
@@ -1300,8 +1423,10 @@ async function onUser(u) {
 }
 async function load() {
   try {
-    const [snap, fl] = await Promise.all([fb.dbM.get(fb.dbM.ref(fb.db, 'stats')), fb.dbM.get(fb.dbM.ref(fb.db, 'review/flaggedNames')).catch(() => null)]);
-    stats = snap.val() || {};
+    const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(x => x.val()).catch(() => null);
+    const [snap, fl, own, meta, tok] = await Promise.all([fb.dbM.get(fb.dbM.ref(fb.db, 'stats')), fb.dbM.get(fb.dbM.ref(fb.db, 'review/flaggedNames')).catch(() => null), g('statsOwn'), g('devmeta'), g('admin/ownerToken')]);
+    statsBase = snap.val() || {}; statsOwn = own || {}; devmeta = meta || {}; ownerToken = typeof tok === 'string' ? tok : null;
+    stats = statsBase;
     flagged = fl ? fl.val() : null;
     reports = Object.values((await fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'reports'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(20))).then(s => s.val()).catch(() => null)) || {}).sort((a, b) => b.at - a.at);
     await Promise.all([loadCtl(), loadPeople()]);
@@ -1321,7 +1446,8 @@ async function loadPeople() {
     q('last', [fb.dbM.limitToLast(500)]), q('reported', [fb.dbM.startAt(1), fb.dbM.limitToLast(200)])]);   // (the match inspector: the latest, and every reported one)
   mlogs = mlRecent || mlRep ? Object.assign({}, mlRecent || {}, mlRep || {}) : null; mlEvents = {};
   accts = users ? { users, local: local || {}, seen: seen || {} } : null;
-  play = devices || logs ? { devices: devices || {}, logs: logs || {} } : null;
+  playAll = devices || logs ? { devices: devices || {}, logs: logs || {} } : null;
+  applyMine();
 }
 async function loadCtl() {
   const g = p => fb.dbM.get(fb.dbM.ref(fb.db, p)).then(s => s.val()).catch(() => null);
@@ -1352,6 +1478,12 @@ app.addEventListener('click', e => {
   if (mr && fb) { const k = mr.dataset.ml; mlOpen = mlOpen === k ? null : k; render(); if (mlOpen) { mlLoad(mlOpen); const el = document.getElementById('mlTimeline'); if (el) el.scrollIntoView({ block: 'nearest' }); } return; }   // a match's row: its timeline
   if (!b || !fb) return;
   if (b.dataset.balexport) { balanceExport(); return; }
+  if (b.dataset.nick) { devEdit = b.dataset.nick; devMsg = ''; render(); const i = document.getElementById('nickIn'); if (i) { i.focus(); i.select(); } return; }
+  if (b.dataset.act === 'nicksave') { nickSave(b); return; }
+  if (b.dataset.act === 'nickcancel') { devEdit = null; render(); return; }
+  if (b.dataset.act === 'exadd') { exAdd(b); return; }
+  if (b.dataset.act === 'ownertok') { ownerTok(b); return; }
+  if (b.dataset.act === 'ownercopy') { ownerCopy(b); return; }
   if (b.dataset.allowdel) { allowEdit(b, b.dataset.allowdel, false); return; }
   if (b.dataset.stmode) { setStagingMode(b, b.dataset.stmode); return; }
   if (b.dataset.act === 'allowadd') { const i = document.getElementById('allowAdd'); allowEdit(b, i && i.value, true); return; }
@@ -1382,9 +1514,15 @@ app.addEventListener('click', e => {
   else if (b.dataset.animreset) saveAnimCfg(b, true);
   else if (b.dataset.act === 'test-alert') testAlert(b);
 });
-app.addEventListener('input', e => { if (note) { note = null; showNote(); } dirtyMark(e.target); });   // (an edit after a save: its note goes; on a game's page the edit is marked unsaved)
+app.addEventListener('input', e => {
+  if (e.target.id === 'devQ') { devQ = e.target.value; const at = e.target.selectionStart; render(); const i = document.getElementById('devQ'); if (i) { i.focus(); try { i.setSelectionRange(at, at); } catch (x) { /* (a type without a caret) */ } } return; }   // (the Devices page's search: as it is typed)
+  if (note) { note = null; showNote(); } dirtyMark(e.target);
+});
+app.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'nickIn') { e.preventDefault(); const b = app.querySelector('[data-act="nicksave"]'); if (b) b.click(); } else if (e.key === 'Escape' && e.target.id === 'nickIn') { devEdit = null; render(); } });   // (an edit after a save: its note goes; on a game's page the edit is marked unsaved)
 app.addEventListener('change', e => {
   if (e.target.dataset && e.target.dataset.balf) { balanceFilter(e.target); return; }
+  if (e.target.dataset && e.target.dataset.mine) { setMine(e.target.checked); return; }
+  if (e.target.dataset && e.target.dataset.devex) { devExclude(e.target.dataset.devex, e.target.checked, e.target); return; }
   if (e.target.id === 'mm') { miniMode = e.target.value; render(); }
   if (e.target.id === 'mrace') { miniRace = e.target.value; render(); }
   else if (['mlWho', 'mlMode', 'mlFrom', 'mlTo'].includes(e.target.id)) { mlFilt[{ mlWho: 'who', mlMode: 'mode', mlFrom: 'from', mlTo: 'to' }[e.target.id]] = e.target.value; mlOpen = null; render(); }
@@ -1397,6 +1535,6 @@ app.addEventListener('change', e => {
   else dirtyMark(e.target);   // (a select or the Mode switch on a game's page)
 });
 if (window.TTT_FIREBASE && window.TTT_FIREBASE.offline) {   // the tests (tests/ui/admin-games.test.mjs): the page's parts without Firebase, the database stood in for
-  window.TTC_ADMIN = { get ctl() { return ctl; }, set ctl(v) { ctl = v; }, set fb(v) { fb = v; }, ready(st) { user = { email: 'test' }; stats = st || {}; view = { status: 'ready', error: '' }; }, loadMetas, loadCtl, draw, render, route, gamesIndex, gamePage, saveGame, resetGame, legacyPath, isReleased, iosOff, gameChanged, raceOn, TEST_TYPES };
+  window.TTC_ADMIN = { get ctl() { return ctl; }, set ctl(v) { ctl = v; }, set fb(v) { fb = v; }, devSeed(o) { statsBase = o.statsBase || {}; statsOwn = o.statsOwn || {}; devmeta = o.devmeta || {}; playAll = o.play || null; accts = o.users ? { users: o.users, local: {}, seen: {} } : null; ownerToken = o.token || null; applyMine(); }, get stats() { return stats; }, get play() { return play; }, get devmeta() { return devmeta; }, get balOpts() { return balOpts; }, setMine, devRows, metaPut, exAdd, set devQ(v) { devQ = v; }, set mine(v) { mine = v; }, ready(st) { user = { email: 'test' }; stats = st || {}; view = { status: 'ready', error: '' }; }, loadMetas, loadCtl, draw, render, route, gamesIndex, gamePage, saveGame, resetGame, legacyPath, isReleased, iosOff, gameChanged, raceOn, TEST_TYPES };
 } else boot().catch(() => { app.innerHTML = '<div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Could not load. Check the connection and reload.</p></div>'; });
 document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false }); document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });   // (iPhone's pinch)
