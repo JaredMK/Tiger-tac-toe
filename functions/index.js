@@ -454,18 +454,23 @@ exports.claimUsername = onCall(CALL, async req => {
 // (R.publicProfile: the username, the records, the squares per mini-game, the join date). Written here after
 // every write that changes it (claimUsername, finishGame) and, for every other write (the back-fills, the admin's
 // scripts), by the trigger below; scripts/backfill-profiles.js writes the first one for every account from before.
+// The profile is always made from the account as it is now, never from a trigger's snapshot: a trigger delivered late
+// once wrote an older record over a newer one. After writing, the account is read again and the write repeated if it
+// moved on meanwhile, so the last sync to finish always leaves the current record. No write when nothing public changed.
 async function syncProfile(uid) {
   try {
-    const u = (await db.ref(`users/${uid}`).get()).val();
-    await db.ref(`profiles/${uid}`).set(R.publicProfile(u));
+    const pub = async () => R.publicProfile((await db.ref(`users/${uid}`).get()).val());
+    let p = await pub();
+    for (let i = 0; i < 4; i++) {
+      const have = (await db.ref(`profiles/${uid}`).get()).val();
+      if (JSON.stringify(have || null) !== JSON.stringify(p)) await db.ref(`profiles/${uid}`).set(p);
+      const now = await pub();
+      if (JSON.stringify(now) === JSON.stringify(p)) return;
+      p = now;
+    }
   } catch (e) { logger.error('profile sync', uid, e); }
 }
-exports.profileSync = onValueWritten({ ref: '/users/{uid}' }, async event => {
-  const after = event.data.after.val();
-  const p = R.publicProfile(after);
-  const have = (await db.ref(`profiles/${event.params.uid}`).get()).val();
-  if (JSON.stringify(have || null) !== JSON.stringify(p)) await db.ref(`profiles/${event.params.uid}`).set(p);   // (no write when nothing public changed)
-});
+exports.profileSync = onValueWritten({ ref: '/users/{uid}' }, event => syncProfile(event.params.uid));
 
 /* ===================== deleting an account ===================== */
 // A player deletes their own account from their profile (App Store guideline 5.1.1(v)): refused while they are in an
