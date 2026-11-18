@@ -179,7 +179,7 @@ jobs:
           page=$(curl -sSL --max-time 20 https://jaredmk.github.io/Tiger-tac-toe/ || true)
           if printf '%s' "$page" | grep -q 'tictacchaos.com'; then echo "ok   old address https://jaredmk.github.io/Tiger-tac-toe/ redirects to tictacchaos.com: $(printf '%s' "$page" | grep -o '<meta[^>]*refresh[^>]*>' | head -1)"; else echo "::warning::The old GitHub Pages address does not redirect to tictacchaos.com."; printf '%s' "$page" | head -c 400; fi
           echo "old address, a deep link: $(curl -sSL --max-time 20 -o /dev/null -w '%{http_code} %{url_effective}' 'https://jaredmk.github.io/Tiger-tac-toe/admin.html' || true)"
-      - name: Staging starts fresh (once: its play data deleted, accounts and settings kept; the database as it was is the run's artifact)
+      - name: Staging starts fresh (once; its play data deleted, accounts and settings kept; the database as it was is the run's artifact)
         if: env.TARGET == 'staging'
         run: node scripts/wipe-staging.js "$RUNNER_TEMP/staging-before-wipe.json"
       - uses: actions/upload-artifact@v4
