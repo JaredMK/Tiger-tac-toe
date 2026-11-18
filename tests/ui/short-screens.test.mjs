@@ -20,10 +20,11 @@ test('the setup screens tighten under 700px tall', () => {
   assert.match(comic, /@media \(max-height: 700px\) \{\s*:is\(\.hostset, \.sameset, \.join-scr\) \.setup-box \{ gap: 8px; \}/);
 });
 test('the ahead pip sits in the label row\'s reserved strip, not over the miniature', () => {
-  assert.match(board, /info\.name\.replace\('\/', '\/<wbr>'\)\}<\/span>\$\{lead \? `<i class="leadp/, 'a name with a slash may break after it (Higher/Lower) so the narrower label never spills');
+  assert.match(board, /softName\(info\.name\)\}<\/span>\$\{lead \? `<i class="leadp/, 'the name (softName: a slash may break after it, Higher/Lower; long words at their soft hyphens) so the narrower label never spills');
+  assert.match(board, /\.replace\('\/', '\/<wbr>'\)/);
   assert.match(board, /<\/span>\$\{lead \? `<i class="leadp \$\{lead\}" aria-hidden="true"><\/i>` : ''\}<\/div><div class="thumb/, 'the pip is the label row\'s last child');
   assert.doesNotMatch(board, /\+ \(lead \? `<i class="leadp/, 'no pip laid over the square');
-  assert.match(comic, /\.board-scr:not\(\.review-scr\) \.board \.sq \.lab \{ position: relative; padding-right: 15px; \}/, 'the strip is reserved on every square');
+  assert.match(comic, /\.board-scr \.board \.sq \.lab \{ position: relative; padding-right: 15px; \}/, 'the strip is reserved on every square');
   assert.match(comic, /\.board \.sq \.lab \.leadp \{ position: absolute; top: 0; right: 0;/);
 });
 test('the Mini-games list names keep their last letter\'s overhang', () => {

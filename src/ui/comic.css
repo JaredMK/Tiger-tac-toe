@@ -685,7 +685,7 @@ main.scr.cc:not(.mini) > .bar .ttl small { margin-top: 2px; padding-left: 12px; 
 @media (prefers-reduced-motion: reduce) { .board-scr .foot .coach { animation: none; } }
 
 /* ----- match drama (ui/board.js matchPoint, leader; CL-3) ----- */
-.board .sq.mp::before { inset: 5%; border-radius: 14px; opacity: 1; background: radial-gradient(closest-side, color-mix(in srgb, var(--mpc) 42%, transparent) 30%, transparent 100%); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mpc) 70%, transparent); animation: mpglow 1.6s ease-in-out infinite; }
+.board .sq.mp::before { inset: 0; border-radius: 10px; opacity: 1; background: radial-gradient(closest-side, color-mix(in srgb, var(--mpc) 42%, transparent) 30%, transparent 100%); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mpc) 70%, transparent); animation: mpglow 1.6s ease-in-out infinite; }
 .board .sq.mp-X { --mpc: var(--x); } .board .sq.mp-O { --mpc: var(--o); } .board .sq.mp-XO { --mpc: #f08a1c; }
 .board .sq.mp.spot::before, .board .sq.mp.livesq::before { animation: none; }
 @keyframes mpglow { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--mpc) 45%, transparent); } }
@@ -693,7 +693,7 @@ main.scr.cc:not(.mini) > .bar .ttl small { margin-top: 2px; padding-left: 12px; 
   padding: 2px 7px 0; border: 2.5px solid var(--ink); background: var(--mpc, var(--x)); color: var(--ink); font: 400 16px/1.1 'Bangers', sans-serif; letter-spacing: .04em; }
 .mpcap.X { --mpc: var(--x); color: #fff; } .mpcap.O { --mpc: var(--o); } .mpcap.XO { background: linear-gradient(90deg, var(--x) 50%, var(--o) 50%); color: var(--ink); }
 /* The ahead pip (match drama) sits in a thin strip reserved at the right end of the square's label row, beside the name: the strip is there on every open or claimed square (nothing moves when a pip comes or goes), so the pip never covers the miniature, the name or the last-played badge (a disc inline at the name's start). */
-.board-scr:not(.review-scr) .board .sq .lab { position: relative; padding-right: 15px; }
+.board-scr .board .sq .lab { position: relative; padding-right: 15px; }   /* (the strip: see "Square titles" at the end) */
 .board .sq .lab .leadp { position: absolute; top: 0; right: 0; width: 13px; height: 13px; box-sizing: border-box; border-radius: 50%; border: 2.5px solid var(--ink); pointer-events: none; }
 .board .sq .lab .leadp::after { content: ''; position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform: translate(-50%, -58%); border: 2.5px solid transparent; border-bottom: 3.5px solid var(--ink); border-top: 0; }
 .board .sq .lab .leadp.X { background: var(--x); } .board .sq .lab .leadp.O { background: var(--o); }
@@ -720,3 +720,21 @@ main.scr.cc:not(.mini) > .bar .ttl small { margin-top: 2px; padding-left: 12px; 
 .settings .build.devown { margin-top: 4px; }
 .settings .build .devmark { font: 700 12px/1.2 'Comic Neue', 'Patrick Hand', sans-serif; min-height: 32px; padding: 6px 10px; background: none; border: 0; text-decoration: underline; color: var(--ink); box-shadow: none; transform: none; }
 .settings .build .devmine { color: var(--ink); }
+
+/* Square titles (December 2026): one fixed size and two lines at most ("..." past that), never measured live (no container
+   units: the zoom scales the board but the title is the same before and after a square is played). The name has the label's
+   width but for the strip at its right (15px, kept on every square): the ahead pip at its top, the last-played badge under
+   it. The badge is never in the name's line (inline it took the name's width: "Rock Paper Scissors" went to three and four
+   lines once played and ran into the drawing). */
+.board .sq .lab { position: relative; padding: 0 15px 0 0; font-size: 14.5px; }
+.board .sq .lab > .lnm { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; text-overflow: ellipsis;
+  font-size: 14.5px; line-height: 1.02; padding: .06em .04em .02em; letter-spacing: -.012em; text-wrap: wrap; }   /* (greedy: balancing would take a soft hyphen where the word fits) */
+.board .sq .lab.long > .lnm { letter-spacing: -.03em; }   /* (the long names, fixed per name: Backgammon Lite's first word fits the 360 px board's middle column) */
+.board .sq .lab > .lastcap { position: absolute; right: 0; top: 15px; width: 14px; height: 14px; min-width: 0; min-height: 0; margin: 0; border-width: 2px; z-index: 1; }
+/* The other side's square (spot): the ring is drawn round the square's own box, outside it (under the # lines between
+   squares), so it never crosses the title or the drawing: it once sat 5% inside and its corner ran through the name. It
+   pulses by its opacity alone (a scale would bring it in over the name). The halftone dots stop at the letters (a halo
+   in the page's colour round the name). */
+.board .sq.spot::before { inset: 0; border-radius: 10px; box-shadow: 0 0 0 2.5px var(--ink), 0 0 0 6px var(--spot), 0 0 0 8.5px var(--ink); animation-name: ccspot2; }
+@keyframes ccspot2 { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
+.board .sq.spot .lab > .lnm { text-shadow: 0 0 2px var(--bg), 0 0 3px var(--bg), 1.5px 0 0 var(--bg), -1.5px 0 0 var(--bg), 0 1.5px 0 var(--bg), 0 -1.5px 0 var(--bg); }

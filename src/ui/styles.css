@@ -4801,6 +4801,7 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .g-mm .mmrow .mmfb { grid-template-columns: repeat(2, 11px); gap: 2px; margin-left: 2px; }
 .g-mm .mmrow .mmfb i, .g-mm .mmrow .mmfb i.sd, .g-mm .mmrow .mmfb i.hw { width: 11px; height: 11px; border-width: 1.5px; }
 /* The slot being filled: a yellow ring with an ink edge, a little larger; a filled slot keeps its colour until a new one goes in. */
+.g-mm .mmcur { position: relative; z-index: 1; }   /* above the list: its negative margin and mask (a stacking context) once laid it over the slots and took every tap */
 .g-mm .mmcur .mmslot { transition: transform .08s; }
 .g-mm .mmcur .mmslot.at { border-style: solid; box-shadow: 0 0 0 4px var(--o), 0 0 0 7px var(--ink); transform: scale(1.08); }
 .g-mm .mmcur .mmslot.full { border-style: solid; }

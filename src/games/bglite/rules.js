@@ -14,10 +14,11 @@ import { goAgain, tune, tuneLive } from '../../core/tune.js';
 // player's. A double gives four moves of that number. A piece may land:
 //  - on an empty point or one of its own (any number of its own pieces stack);
 //  - on a point holding a single enemy piece: a hit, the enemy piece goes back to its start point (progress 1);
-//    a lone piece on its own start point is never hit (it is home already: the enemy piece simply shares the point);
+//    on every point from v 4, the last point too (v 2 and v 3: a lone piece on its own start point was never hit);
 //  - never on a point holding 2 or more enemy pieces (a block; the three on their start point block it at first);
 //  - past the far end: it is borne off (any overshoot; no exact roll needed), but only once every piece of that player
-//    still on the board stands in their home zone.
+//    still on the board stands in their home zone (the last `home` points, 6 by default from December 2026, v 4); a die
+//    that reaches the last point exactly lands there.
 // The bar (December 2026, `v: 3`): a hit piece goes to the bar, off the board before the start (progress 0), not back
 // to the start point. While a player has a piece on the bar, no other piece may move: each die must first bring a bar
 // piece in, onto the point of its own count from that player's start (die d: progress d, X's point d from the left, O's
@@ -42,9 +43,13 @@ import { goAgain, tune, tuneLive } from '../../core/tune.js';
 // default): on, a turn that bore a piece off rolls again.
 // A turn left part way (a timeout: core/board.js passes the turn with nothing played; the phone's draft is never sent)
 // leaves its dice behind with `by`: the next move by anyone else lets them go (the stale dice are nobody's: bglDice).
-export const BGL = { len: 8, pieces: 3, home: 3 };
+export const BGL = { len: 10, pieces: 3, home: 6 };   // (December 2026, v 4: 10 points and a home zone of 6; it was 8 and 3)
 export const bglV2 = mini => (mini.v || 1) >= 2;
 export const bglBar = mini => (mini.v || 1) >= 3;   // the bar: a hit piece waits off the board and must come in first
+export const bglV4 = mini => (mini.v || 1) >= 4;   // (v 4: every point hittable, the start point too; bearing off only past the last point)
+// May p's lone piece at progress a be hit? On every point from v 4 (the last point of the other side's way is this
+// side's start point: v 2 and v 3 never hit a lone piece there, so the last point could never be hit).
+export const bglHittable = (mini, a) => bglV4(mini) || !(bglV2(mini) && a === 1);
 export const bglStart = mini => (bglBar(mini) ? 0 : bglV2(mini) ? 1 : 0);   // where a hit piece goes back to (v 3: the bar, progress 0; v 2: its start point; v 1: waiting off the board)
 export const bglHome = mini => Math.max(1, Math.min(mini.n, Math.round(tune(mini).home || BGL.home)));
 // The dice a roll of a and b gives: a double four moves of that number (two on a square from before), else the two.
@@ -69,12 +74,15 @@ export function bglAt(mini, q, b) {
 }
 // The dice in play for p (stale ones, left by a timeout on someone else's turn, are none).
 export const bglDice = (mini, p) => (mini.dice && mini.dice.by === p ? mini.dice : null);
-// Where p's piece at progress a lands with v (n + 1: borne off). Once every piece is home (bglCanOff), a roll that reaches the
-// last point or passes it bears the piece off: no exact roll needed (November 2026; a square from before, v 1: only past it).
+// Where p's piece at progress a lands with v (n + 1: borne off; allowed once every piece is home, bglCan/bglCanOff). v 2 and
+// v 3: a roll that reached the last point or passed it bore the piece off (v 1: only past it).
+// v 4 (December 2026): a die that takes a piece past the last point bears it off (any overshoot), and one that reaches the
+// last point exactly lands there, so a lone enemy piece there can be hit (v 2 and v 3 bore it off instead: the last point
+// could never be landed on once home, one of the two reasons it could never be hit).
 export function bglTo(mini, p, a, v) {
   const n = mini.n, b = a + v;
   if (b > n) return n + 1;
-  return b === n && bglV2(mini) && bglCanOff(mini, p) ? n + 1 : b;
+  return b === n && bglV2(mini) && !bglV4(mini) && bglCanOff(mini, p) ? n + 1 : b;
 }
 // Can p's piece k move v points? Off the board at or past the end (once home); never onto 2 or more enemy pieces.
 export function bglCan(mini, p, k, v) {
@@ -131,7 +139,7 @@ export const bglLeft = (mini, p) => mini.pos[p].filter(a => a <= mini.n).length;
 export const bglPips = (mini, p) => mini.pos[p].reduce((s, a) => s + Math.max(0, mini.n + 1 - a), 0);   // the points still to travel
 export function create(type, rng) {
   const n = Math.max(4, Math.round(tuneLive(type).len || BGL.len));   // (the square keeps its length: n)
-  return { type, v: 3, n, pos: { X: [1, 1, 1], O: [1, 1, 1] }, dice: null, rolled: false, last: null };   // (every piece on its own start point)
+  return { type, v: 4, n, pos: { X: [1, 1, 1], O: [1, 1, 1] }, dice: null, rolled: false, last: null };   // (every piece on its own start point)
 }
 // One step for p: the move m played on the square (no checks): what it did.
 export function bglStep(mini, p, d, k) {
@@ -139,7 +147,7 @@ export function bglStep(mini, p, d, k) {
   let hit = null;
   if (to <= n) {
     const b = bglPoint(p, to, n), j = mini.pos[q].findIndex(a => a >= 1 && a <= n && bglPoint(q, a, n) === b);
-    if (j >= 0 && !(bglV2(mini) && mini.pos[q][j] === 1)) { hit = { k: j, from: mini.pos[q][j] }; mini.pos[q][j] = bglStart(mini); }   // (a lone piece on its own start point is never hit)
+    if (j >= 0 && bglHittable(mini, mini.pos[q][j])) { hit = { k: j, from: mini.pos[q][j] }; mini.pos[q][j] = bglStart(mini); }   // (a lone piece on its own start point is never hit)
   }
   mini.pos[p][k] = to; dc.used[d] = true;
   if (to > n) dc.off = (dc.off || 0) + 1;

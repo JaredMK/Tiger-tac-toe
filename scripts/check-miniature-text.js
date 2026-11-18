@@ -48,7 +48,7 @@ const srv = http.createServer((req, res) => { let p = decodeURIComponent(new URL
         const walker = document.createTreeWalker(sq, NodeFilter.SHOW_TEXT); let n, min = null, where = '';
         const bad = [];
         while ((n = walker.nextNode())) { const t = n.textContent.trim(); if (!t) continue; const el = n.parentElement; if (el.closest('.sr')) continue; const r = el.getBoundingClientRect(); if (!r.width || getComputedStyle(el).visibility === 'hidden' || getComputedStyle(el).opacity === '0' || getComputedStyle(el).color === 'rgba(0, 0, 0, 0)') continue; const m = cap(el); const part = el.closest('.lab') ? 'label' : 'thumb'; if (!min || m.cap < min.cap) { min = m; where = part + ':' + t.slice(0, 14); } const chain = []; let e = el; while (e && e !== sq && chain.length < 4) { chain.push((e.tagName.toLowerCase()) + (e.getAttribute('class') ? '.' + e.getAttribute('class').split(' ').join('.') : '')); e = e.parentElement; } bad.push({ t: t.slice(0, 10), cap: m.cap, px: m.px, chain: chain.join(' < ') }); }
-        const sr = sq.getBoundingClientRect(), th = sq.querySelector('.thumb').getBoundingClientRect(), lb = sq.querySelector('.lab span').getBoundingClientRect(); const spill = lb.left < sr.left - 0.5 || lb.right > sr.right + 0.5;
+        const sr = sq.getBoundingClientRect(), th = sq.querySelector('.thumb').getBoundingClientRect(), lb = sq.querySelector('.lab .lnm').getBoundingClientRect(); const spill = lb.left < sr.left - 0.5 || lb.right > sr.right + 0.5;
         out.push({ spill, bad, i, type: type.split(':')[1] ? type.split(':')[1].split(',')[0].trim() : type, min, where, sq: Math.round(sr.width), thumb: [Math.round(th.width), Math.round(th.height)] });
       });
       return { hint, out };

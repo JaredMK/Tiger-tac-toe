@@ -24,6 +24,13 @@ import { LINES } from '../core/board.js';
 import { reviewCtx } from './screens/profile.js';
 import { netBar } from './turnbar.js';
 import { cpuTurn } from './turns.js';
+// A square's title (December 2026): long words carry a soft hyphen where they may break, so a word wider than the narrowest
+// square (the middle column at 360 px: Codebreaker, Backgammon) breaks there, hyphenated, rather than being clipped; a
+// square wide enough never breaks it. "/" may break after it. The title is then held to two lines (comic.css).
+const SOFT = { Treasure: 'Trea\u00adsure', Codebreaker: 'Code\u00adbreaker', Bullseye: 'Bulls\u00adeye', Takeover: 'Take\u00adover', Districts: 'Dis\u00adtricts',
+  Patterns: 'Pat\u00adterns', Dominoes: 'Dom\u00adinoes', Backgammon: 'Backgam\u00admon', Scissors: 'Scis\u00adsors', Headcount: 'Head\u00adcount',
+  Snapshot: 'Snap\u00adshot', Standoff: 'Stand\u00adoff', Hexapawn: 'Hexa\u00adpawn', Captain: 'Cap\u00adtain' };
+export const softName = name => name.split(/(\s+)/).map(w => SOFT[w.replace(/\W+$/, '')] ? SOFT[w.replace(/\W+$/, '')] + w.match(/\W*$/)[0] : w).join('').replace('/', '/<wbr>');
 
 /* ----- main board ----- */
 // Whose move it is, at a glance. Waiting (the other phone is on the move; Super Chaos: this side's move is in and the
@@ -112,7 +119,7 @@ export function renderBoard(review) {
     if (plock) cls.push('plock');
     let lastCap = '';
     if (sq.owner) cls.push('own-' + sq.owner);
-    else if (!lastP && i === state.lastSquare && state.lastBy && !(spot && spot.square === i)) { cls.push('last-' + state.lastBy); if (!review) lastCap = `<span class="lastcap ${state.lastBy}" aria-hidden="true">${toon(state.lastBy)}</span>`; }   // (Comic Chaos: their character in a disc on the square's corner; no text, so nothing it can overlap)
+    else if (!lastP && i === state.lastSquare && state.lastBy && !(spot && spot.square === i)) { cls.push('last-' + state.lastBy); if (!review) lastCap = `<span class="lastcap ${state.lastBy}" aria-hidden="true">${toon(state.lastBy)}</span>`; }   // (Comic Chaos: their character in a disc in the label's right strip under the ahead pip, never in the name: the name keeps its width and lines)
     if (spot && spot.square === i) cls.push('spot', 'spot-' + spot.by);
     const lvHere = !review && !spot && liveAt === i;                 // the other side has this square open on their turn (net/live.js): it glows in their colour, live
     if (lvHere) cls.push('livesq', 'live-' + state.turn);
@@ -124,7 +131,7 @@ export function renderBoard(review) {
     if (drew) cls.push('drawfx');
     const dn = drew ? ` dnew"${fxAttr(drawAt)}` : '"';
     // a claimed square keeps its label and final state, with the owner's mark laid over them
-    const body = `<div class="lab${info.name.length > 14 ? ' long' : ''}${lastCap ? ' haslast' : ''}${dn}>${ICONS[sq.mini.type]}<span>${lastCap ? lastCap + ' ' : ''}${info.name.replace('/', '/<wbr>')}</span>${lead ? `<i class="leadp ${lead}" aria-hidden="true"></i>` : ''}</div><div class="thumb${dn}>${thumb(sq.mini, !!sq.owner)}</div>`
+    const body = `<div class="lab${info.name.length > 14 ? ' long' : ''}${lastCap ? ' haslast' : ''}${dn}>${ICONS[sq.mini.type]}${lastCap}<span class="lnm">${softName(info.name)}</span>${lead ? `<i class="leadp ${lead}" aria-hidden="true"></i>` : ''}</div><div class="thumb${dn}>${thumb(sq.mini, !!sq.owner)}</div>`
       + (drew ? drawOver(drawAt) : '')
       + (sq.owner ? `<div class="own-ov${stampOn && stamped(i) ? ' stamp' : ''}"${stampOn && stamped(i) ? fxAttr(stampAt) : ''} aria-hidden="true">${toon(sq.owner)}<b class="sr">${esc(sq.owner)}</b></div>` : '')   // a fresh claim stamps in
       + (lastP && (lastP.X === i || lastP.O === i) ? `<div class="lpbs" aria-hidden="true">${['X', 'O'].filter(p => lastP[p] === i).map(p => `<i class="lpb ${p}">${p}</i>`).join('')}</div>` : '')   // (both players' badges at once, in a fixed corner: nothing moves)

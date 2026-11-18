@@ -14,14 +14,16 @@ const mini = seed => E.newMini('bglite', E.makeRng(seed || 'bgl'));
 function laid(pos, p, v, ver) {
   const m = mini();
   m.pos = { X: pos.X.slice(), O: pos.O.slice() }; m.rolled = true; m.v = ver || 2;   // (v 2, the rules before the bar, unless a version is given: the bar's own tests lay v 3)
+  m.n = 8;   // (the positions below are laid on an 8-point track)
+  if (m.v < 4) m.tune = Object.assign({}, m.tune, { home: 3 });   // (a square from before v 4 was dealt with a home zone of 3: the default then)
   m.dice = p ? { by: p, v: v.slice(), used: v.map(x => !x), off: 0 } : null;
   return m;
 }
 
-test('bglite: a fresh square: an 8-point track, three pieces each on their own first point, no dice; Roll first, and the opening roll is two dice like any other', () => {
+test('bglite: a fresh square: a 10-point track, three pieces each on their own first point, no dice; Roll first, and the opening roll is two dice like any other', () => {
   const m = mini();
-  assert.equal(m.n, 8); assert.equal(m.v, 3); assert.deepEqual(m.pos, { X: [1, 1, 1], O: [1, 1, 1] }); assert.equal(m.dice, null);
-  assert.equal(R.bglPoint('X', 1, 8), 1); assert.equal(R.bglPoint('O', 1, 8), 8, "O's first point is the rightmost");
+  assert.equal(m.n, 10); assert.equal(m.v, 4); assert.deepEqual(m.pos, { X: [1, 1, 1], O: [1, 1, 1] }); assert.equal(m.dice, null);
+  assert.equal(R.bglPoint('X', 1, 10), 1); assert.equal(R.bglPoint('O', 1, 10), 10, "O's first point is the rightmost");
   for (const bad of [{ d: 0, k: 0 }, 'bank', null, 3, { d: 4, k: 0 }]) assert.equal(E.applyMove(mini(), 'X', bad, lcg(1)).ok, false);
   const r = E.applyMove(m, 'X', 'roll', lcg(2));
   assert.deepEqual([r.ok, r.outcome, r.again], [true, 'continue', true]);
@@ -68,7 +70,7 @@ test('bglite: a point holding two of a side blocks the other (the three on a sta
 
 test('bglite: home zone: a piece bears off past the end (any overshoot) only once all of its side\'s pieces on the board stand in the last `home` points; the last one off wins; Go again on rolls again after one off', () => {
   const n = 8, H = R.bglHome(mini());
-  assert.equal(H, 3, 'home: the last 3 points by default');
+  assert.equal(H, 6, 'home: the last 6 points by default (December 2026; the squares laid below are v 2, dealt with 3)');
   const m = laid({ X: [5, 8, n + 1], O: [1, 1, 1] }, 'X', [1, 2]);   // the piece on 5 is outside the home zone (6..8)
   assert.equal(R.bglCan(m, 'X', 1, 2), false, 'not yet: a piece still outside the home zone');
   assert.equal(E.applyMove(m, 'X', { d: 1, k: 1 }, lcg(1)).ok, false);
@@ -78,7 +80,7 @@ test('bglite: home zone: a piece bears off past the end (any overshoot) only onc
   const w = laid({ X: [n, n + 1, n + 1], O: [1, 1, 1] }, 'X', [1, 4]);
   assert.deepEqual(E.applyMove(w, 'X', { d: 0, k: 0 }, lcg(1)).outcome, 'win');
   E.setTune('bglite', { home: 5 });
-  try { const t = mini('h5'); t.pos.X = [4, 8, 8]; t.rolled = true; t.dice = { by: 'X', v: [2, 3], used: [false, false], off: 0 }; assert.equal(R.bglCan(t, 'X', 1, 3), true, 'home 5: points 4 to 8'); } finally { E.setTune('bglite', null); }
+  try { const t = mini('h5'); t.n = 8; t.pos.X = [4, 8, 8]; t.rolled = true; t.dice = { by: 'X', v: [2, 3], used: [false, false], off: 0 }; assert.equal(R.bglCan(t, 'X', 1, 3), true, 'home 5: points 4 to 8'); } finally { E.setTune('bglite', null); }
   E.setTune('bglite', { again: 'on' });
   try {
     const g = laid({ X: [7, 6, n + 1], O: [1, 1, 1] }, 'X', [5, 1]); g.tune = { again: 'on' };
@@ -121,7 +123,7 @@ test('bglite: dice left behind by a timeout are nobody\'s: the other player roll
   assert.equal(E.applyMove(m, 'O', { d: 0, k: 0 }, lcg(1)).ok, false);
   assert.ok(E.applyMove(m, 'O', 'roll', lcg(2)).ok); assert.equal(m.dice.by, 'O');
   const pm = E.publicMini(m);
-  assert.deepEqual(Object.keys(pm).sort(), ['dice', 'n', 'pos', 'rolled', 'type', 'v']);
+  assert.deepEqual(Object.keys(pm).filter(k => k !== 'tune').sort(), ['dice', 'n', 'pos', 'rolled', 'type', 'v']);   // (tune: the square's own settings, public as ever)
   assert.equal(E.randomLegalMove(laid({ X: [1, 1, 1], O: [1, 1, 1] }, null), 'X', lcg(1)), 'roll');
 });
 
@@ -168,9 +170,9 @@ test('bglite: whole squares between the computers end with a winner, in about 3 
   assert.ok(avg >= 3 && avg <= 6, `turns a player ${avg.toFixed(2)}`);
 });
 
-test('bglite: once every piece is home, a roll that reaches the last point bears the piece off (no exact roll needed); before that it just lands there', () => {
+test('bglite (v 2 and v 3): once every piece is home, a roll that reaches the last point bears the piece off (no exact roll needed); before that it just lands there', () => {
   const R = require('../../src/games/bglite/rules.js');
-  const m = E.newMini('bglite', E.makeRng('reach')), n = m.n;
+  const m = E.newMini('bglite', E.makeRng('reach')), n = m.n; m.v = 3; m.tune = Object.assign({}, m.tune, { home: 3 });
   m.pos.X = [n - 2, n - 1, n]; m.pos.O = [1, 1, 1];
   assert.equal(R.bglCanOff(m, 'X'), true);
   assert.equal(R.bglTo(m, 'X', n - 2, 2), n + 1, 'reaching the last point: off');
@@ -439,4 +441,73 @@ test('bglite bar: the computer brings the bar piece in first, at every level, an
       if (sq.pos[p].every(a => a > sq.n)) break; p = p === 'X' ? 'O' : 'X';
     }
   }
+});
+
+// v 4 (December 2026): a home zone of the last 6 points (the admin's `home`), bearing off past the last point with any
+// overshoot once every piece is home, a die that reaches the last point exactly landing there, and every point hittable.
+test('bglite v4: bearing off from each home point: the exact count and every larger die take it off once all pieces are home', () => {
+  const n = 8, H = 6;
+  assert.equal(R.bglHome(laid({ X: [1, 1, 1], O: [1, 1, 1] }, null, [], 4)), H, 'home: the last 6 points by default');
+  for (let a = n - H + 1; a <= n; a++) {                                    // each home point, progress 3..8
+    for (let v = n + 1 - a; v <= 6; v++) {                                 // the exact count off the board (n + 1 - a), and every die past it
+      const m = laid({ X: [a, n + 1, n + 1], O: [1, 1, 1] }, 'X', [v, 0], 4);
+      assert.equal(R.bglCanOff(m, 'X'), true);
+      assert.equal(R.bglTo(m, 'X', a, v), n + 1, `progress ${a}, die ${v}: off`);
+      const r = E.applyMove(m, 'X', { steps: [[0, 0]] }, lcg(1));
+      assert.deepEqual([r.ok, r.outcome, m.pos.X[0]], [true, 'win', n + 1], `progress ${a}, die ${v}: borne off, the last piece: the win`);
+    }
+    // O the same from its own side (its progress counts from the right)
+    const o = laid({ X: [1, 1, 1], O: [a, n + 1, n + 1] }, 'O', [n + 1 - a, 0], 4);
+    assert.equal(E.applyMove(o, 'O', { steps: [[0, 0]] }, lcg(1)).outcome, 'win', `O from its progress ${a}`);
+  }
+  // the home zone is the admin's: 4 makes progress 3 outside it
+  const t = laid({ X: [3, 8, 8], O: [1, 1, 1] }, 'X', [6, 1], 4); t.tune = Object.assign({}, t.tune, { home: 4 });
+  assert.equal(R.bglHome(t), 4); assert.equal(R.bglCanOff(t, 'X'), false, 'home 4: progress 3 is outside it');
+});
+
+test('bglite v4: overshooting with a large die bears off from anywhere in the home zone, never with a piece still outside it; reaching the last point exactly lands there', () => {
+  const n = 8;
+  const m = laid({ X: [3, 5, 7], O: [1, 1, 1] }, 'X', [6, 6, 6, 6], 4);   // every X piece home (3..8), a double 6
+  assert.equal(R.bglTo(m, 'X', 3, 6), n + 1, 'from the zone\'s first point, a 6 passes the end: off');
+  const r = E.applyMove(m, 'X', { steps: [[0, 0], [1, 1], [2, 2]] }, lcg(1));
+  assert.deepEqual([r.ok, r.outcome], [true, 'win'], 'all three off on 6s');
+  const out = laid({ X: [2, 7, 7], O: [4, 4, 9] }, 'X', [6, 0], 4);       // a piece on progress 2: not home (O's two on X's point 5, out of the way)
+  assert.equal(R.bglCanOff(out, 'X'), false);
+  assert.equal(R.bglCan(out, 'X', 1, 6), false, 'a 6 from 7 may not bear off while a piece is outside the home zone');
+  assert.deepEqual(R.bglMoves(out, 'X').map(x => x.k), [0], 'only the piece outside may take the 6');
+  const ex = laid({ X: [6, 7, n + 1], O: [3, 3, 9] }, 'X', [2, 0], 4);    // all home; a 2 from 6 reaches the last point exactly
+  assert.equal(R.bglTo(ex, 'X', 6, 2), n, 'reaching the last point exactly: it lands there (v 4)');
+  const old = laid({ X: [6, 7, n + 1], O: [3, 3, 9] }, 'X', [2, 0], 3);
+  assert.equal(R.bglTo(old, 'X', 6, 2), n + 1, 'a v 3 square bears it off, as it always did');
+});
+
+test('bglite v4: a lone piece on the final point is hit (onto the bar), for X and for O; the computer sees the shot; a v 3 square keeps its start point safe', () => {
+  const n = 8;
+  // X's final point (board point 8) is O's start point (O progress 1): a lone O there, X's 6 and a 2
+  const m = laid({ X: [6, 7, n + 1], O: [1, 3, 3] }, 'X', [2, 0], 4);
+  assert.equal(R.bglPoint('X', n, n), R.bglPoint('O', 1, n), 'the same board point');
+  assert.equal(R.bglHittable(m, 1), true);
+  const r = E.applyMove(m, 'X', { steps: [[0, 0]] }, lcg(1));
+  assert.deepEqual([r.ok, r.note], [true, 'hit'], JSON.stringify(r));
+  assert.equal(m.pos.X[0], n, 'X stands on the last point'); assert.equal(m.pos.O[0], 0, 'the O piece is on the bar');
+  // O's final point (board point 1) is X's start point
+  const o = laid({ X: [1, 4, 4], O: [5, 7, n + 1] }, 'O', [3, 0], 4);
+  const ro = E.applyMove(o, 'O', { steps: [[0, 0]] }, lcg(1));
+  assert.deepEqual([ro.ok, ro.note, o.pos.O[0], o.pos.X[0]], [true, 'hit', n, 0], 'O hits on its last point');
+  // the hit piece comes back in from the bar first
+  const back = E.applyMove(m, 'O', 'roll', lcg(7));
+  assert.ok(back.ok); assert.ok(R.bglMoves(m, 'O').every(x => x.k === 0), 'the bar piece moves first');
+  // every level of the computer may take the shot: a whole legal turn that hits
+  for (const level of ['easy', 'normal', 'hard']) {
+    const b = A.best(laid({ X: [6, 7, n + 1], O: [1, 3, 3] }, 'X', [2, 0], 4), 'X', lcg(3), null, { level, until: null });
+    assert.ok(b && b.move && b.move.steps.length === 1, level);
+  }
+  const nb = A.best(laid({ X: [6, 7, n + 1], O: [1, 3, 3] }, 'X', [2, 0], 4), 'X', lcg(3), null, { level: 'normal', until: null });
+  const c = laid({ X: [6, 7, n + 1], O: [1, 3, 3] }, 'X', [2, 0], 4);
+  assert.equal(E.applyMove(c, 'X', nb.move, lcg(1)).note, 'hit', 'Normal hits the lone piece on the last point');
+  // a square dealt before (v 3): the start point stays safe, the piece shares the point
+  const v3 = laid({ X: [6, 5, 5], O: [1, 3, 3] }, 'X', [2, 0], 3);
+  assert.equal(R.bglHittable(v3, 1), false);
+  const r3 = E.applyMove(v3, 'X', { steps: [[0, 0]] }, lcg(1));
+  assert.deepEqual([r3.ok, r3.note, v3.pos.O[0]], [true, 'move', 1], 'v 3: no hit there');
 });

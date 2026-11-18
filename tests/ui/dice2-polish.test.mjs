@@ -157,7 +157,7 @@ test('Rock Paper Scissors: both fists pump, open at the show, and the verdict st
 });
 
 // ---------- Backgammon Lite ----------
-const bgl = (pos, dice, last, ver) => { const m = E.newMini('bglite', E.makeRng('b')); m.v = ver || 2; m.rolled = true;   // (v 2, before the bar, unless a version is given)
+const bgl = (pos, dice, last, ver) => { const m = E.newMini('bglite', E.makeRng('b')); m.v = ver || 2; m.rolled = true; m.n = 8; if (m.v < 4) m.tune = Object.assign({}, m.tune, { home: 3 });   // (v 2, before the bar, unless a version is given; laid on 8 points with the home zone of 3 those squares were dealt with)
    m.pos = clone(pos); m.dice = dice ? { by: dice.by, v: dice.v, used: dice.v.map(() => false), off: 0 } : null; m.last = last || null; return m; };
 test('Backgammon Lite: the controls are as they were: Roll; a piece that can move is its button; the picked piece\'s rings carry die.piece; Undo in Roll\'s place', () => {
   assert.deepEqual(BV.BGLV, { auto: 400, commit: 450 }, 'the forced step\'s beat and the turn\'s beat before it goes in');

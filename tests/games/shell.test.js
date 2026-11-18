@@ -13,7 +13,7 @@ const roundOf = (name, level, seed) => E.shellRound(level, lcg(seed), Object.ass
 
 test('shell: its registry entry (Admin only, More skill, the newest client, real time, held back from Find Match)', () => {
   const m = E.metaOf('shell');
-  assert.deepEqual([m.release, m.category, m.minVersion, m.realTime, !!m.superChaos], ['admin', 'skill', E.CLIENT_VERSION, true, false]);
+  assert.deepEqual([m.release, m.category, m.minVersion, m.realTime, !!m.superChaos], ['admin', 'skill', '1.22.0', true, false]);   // (1.22.0: the client that brought it; 1.23.0 is Backgammon Lite's v 4)
   assert.ok(E.TEST_TYPES.includes('shell') && E.ATT_TYPES.includes('shell') && E.FIND_MATCH_HOLD.includes('shell'));
   assert.equal(m.explainer.win, 'Pick right {levels} times.');
   assert.deepEqual(E.shellPreset('Normal'), Object.fromEntries(Object.entries(E.tuneDefaults('shell')).filter(([k]) => /^(c|ms|sw|pr|far|rp|sh|ai)\d$/.test(k))), 'Normal is the defaults');

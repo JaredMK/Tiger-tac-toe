@@ -7,6 +7,9 @@
 //   4.12; length 9: 6.60 / 5.25 / 4.67 (the opener's single die on). Without the single die the first mover won 51-60%
 //   (length 8, home 3: 55.5%); with it, 46-53%. Picked: 8 points, a home zone of 3, the opening roll one die: about
 //   4.4 turns a player, the first mover about 49%.
+// December 2026 (v 4: a home zone of the last 6, bearing off only past the last point, every point hittable), Normal v
+//   Normal, 3,000 squares each, home 6: length 8 first mover 59.2%, the winner 4.18 turns; 9 58.3%, 4.73; 10 57.2%, 5.12;
+//   11 55.4%, 5.82; 12 55.5%, 6.38. Picked: 10 points (8 with home 6 measured 59-61%, at the 60% limit).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
