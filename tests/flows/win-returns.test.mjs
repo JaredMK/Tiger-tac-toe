@@ -65,9 +65,14 @@ ZOOM.off = false;                                                       // (Node
 const PASSES = [{ race: false, label: '' }, { race: true, label: ' (Race mode)' }];
 
 const SETTLE_MS = 12000;                                                // a claim's end (its hold, the zoom-out, the stamp) is over well within this
-const ALL = G.TYPES.filter(t => !G.OLD_TYPES.includes(t) && !G.SC_ONLY.includes(t));
+// FLOW_GAMES (the Deploy workflow, scripts/flow-games.js): only the games a change touches, NONE for none; unset or ALL, every game.
+const PICK = process.env.FLOW_GAMES, ONLY = PICK && PICK !== 'ALL' ? new Set(PICK === 'NONE' ? [] : PICK.split(',')) : null;
+if (ONLY) console.log(`# flow tests: only ${ONLY.size ? [...ONLY].join(', ') : 'no game'} (FLOW_GAMES)`);
+const ALL = G.TYPES.filter(t => !G.OLD_TYPES.includes(t) && !G.SC_ONLY.includes(t) && (!ONLY || ONLY.has(t)));
+const passTypes = pass => (pass.race ? ALL.filter(t => E.RACE_TYPES.includes(t)) : ALL);
+const noneHere = pass => passTypes(pass).length === 0 && 'no game this change touches plays here (FLOW_GAMES)';
 let types = ALL;
-function setPass(pass) { for (const t of E.RACE_TYPES) E.setTune(t, { mode: pass.race ? 'race' : 'shared' }); types = pass.race ? ALL.filter(t => E.RACE_TYPES.includes(t)) : ALL; }
+function setPass(pass) { for (const t of E.RACE_TYPES) E.setTune(t, { mode: pass.race ? 'race' : 'shared' }); types = passTypes(pass); }
 const needsStart = t => E.ATT_TYPES.includes(t) || E.FINGER_TYPES.includes(t);
 // The square and the move for the player on the move (a legal move at random, after Start where the game needs one).
 function pickMove(st, p, rng, full) {
@@ -127,7 +132,7 @@ async function playUntilClaim(mode, type, seed) {
 }
 
 for (const pass of PASSES) for (const mode of ['cpu', 'same']) {
-  test(`${mode === 'cpu' ? 'against the computer' : 'Same phone'}${pass.label}: winning a square comes back to the board, every mini-game`, async () => {
+  test(`${mode === 'cpu' ? 'against the computer' : 'Same phone'}${pass.label}: winning a square comes back to the board, every mini-game`, { skip: noneHere(pass) }, async () => {
     setPass(pass);
     const bad = [], skipped = [], checked = [];
     for (const type of types) {
@@ -143,7 +148,7 @@ for (const pass of PASSES) for (const mode of ['cpu', 'same']) {
       advance(30000); await flush();                                // (everything left of the match runs out)
     }
     assert.deepEqual(bad, [], 'every claim settles on the board');
-    assert.ok(checked.includes('hilo') && (pass.race || checked.includes('ttt')), `hilo checked (skipped: ${skipped.join('; ')})`);
+    assert.ok((!types.includes('hilo') || checked.includes('hilo')) && (pass.race || !types.includes('ttt') || checked.includes('ttt')), `hilo checked (skipped: ${skipped.join('; ')})`);
     assert.ok(checked.length >= types.length - (pass.race ? 2 : 12), `games checked: ${checked.length} of ${types.length} (skipped: ${skipped.join('; ')})`);
   });
 }
@@ -224,7 +229,7 @@ async function playOnlineUntilClaim(type, seed, timer) {
   return { skipped: 'no claim in 160 moves' };
 }
 for (const pass of PASSES) for (const timer of (pass.race ? ['m5+5'] : [0, 'm5+5'])) {
-  test(`online (a friend match, timer ${timer || 'none'})${pass.label}: winning a square comes back to the board, every mini-game, this phone's claims and the replayed ones`, async () => {
+  test(`online (a friend match, timer ${timer || 'none'})${pass.label}: winning a square comes back to the board, every mini-game, this phone's claims and the replayed ones`, { skip: noneHere(pass) }, async () => {
     setPass(pass);
     const bad = [], skipped = [], checked = [], theirs = [];
     for (const type of types) {
@@ -240,7 +245,7 @@ for (const pass of PASSES) for (const timer of (pass.race ? ['m5+5'] : [0, 'm5+5
       R.stopListening();
     }
     assert.deepEqual(bad, [], 'every claim settles on the board');
-    assert.ok(checked.includes('hilo'), `hilo checked (skipped: ${skipped.join('; ')})`);
+    assert.ok(!types.includes('hilo') || checked.includes('hilo'), `hilo checked (skipped: ${skipped.join('; ')})`);
     assert.ok(checked.length >= types.length - (pass.race ? 2 : 12), `games checked: ${checked.length} of ${types.length} (skipped: ${skipped.join('; ')})`);
   });
 }

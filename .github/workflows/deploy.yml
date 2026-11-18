@@ -81,10 +81,17 @@ jobs:
           if [ "$changed" = ALL ] || echo "$changed" | grep -v '/view\.js$' | grep -qE "$wf|^(functions/|src/core/|src/games/|trivia\.json|firebase\.json|\.firebaserc|scripts/sync-functions\.js)"; then only="${only:+$only,}functions"; fi
           if [ "$changed" = ALL ] || echo "$changed" | grep -qE "$wf|^(database\.rules\.json|firebase\.json|scripts/staging-rules\.js)"; then only="${only:+$only,}database"; fi
           echo "only=$only" >> "$GITHUB_OUTPUT"
+          # The long flow test plays only the games this change touches (scripts/flow-games.js: a game's own folder is that
+          # game's; anything shared, every game's; docs, server code and the like, none). npm run release plays them all.
+          if [ "$changed" = ALL ]; then flow=ALL; else flow=$(printf '%s\n' "$changed" | node scripts/flow-games.js); fi
+          echo "flow=$flow" >> "$GITHUB_OUTPUT"
+          echo "Flow tests for: $flow"
           echo "Deploying to $TARGET: ${only:-nothing}"
       - name: Unit tests
         run: npm test
-      - name: Flow tests (every mini-game's win comes back to the board, in every mode; the invite's Share and Copy tapped in a browser)
+      - name: Flow tests (the games this change touches, their wins back to the board in every mode; the browser flows)
+        env:
+          FLOW_GAMES: ${{ steps.what.outputs.flow }}
         run: |
           npm i --no-save --no-audit --no-fund playwright@1.56.1
           npx playwright install --with-deps chromium
