@@ -28,3 +28,16 @@ test('parseMatch: a field out of shape is no match at all', () => {
   assert.equal(E.parseMatch({ state: 'not json' }), null); assert.equal(E.parseMatch({ state: '[]' }), null); assert.equal(E.parseMatch(null), null);
   assert.deepEqual(E.parseMatch({ state: JSON.stringify(rec.state), secrets: '[1,2]' }).secrets, {}, 'secrets that are not a map are none');
 });
+
+// December 2026, the match data: what the engine keeps for it travels with an online match's record (the server's state between moves).
+test('the match data survives a record: the first move\'s time, the plays begun, the match point; each square\'s play facts', () => {
+  const E = require('../engine.js');
+  const st = E.newMatch(E.makeRng('rec'));
+  st.squares[0].mini = E.newMini('ttt', E.makeRng('a'));
+  let at = 1000;
+  for (const [i, m] of [[0, 0], [0, 3]]) { at += 2000; E.playMove(st, i, m, E.makeRng('m'), { at }); E.endFlash(st); }
+  st.mp = 'X'; st.mpn = 9; st.id = 'm'; st.seq = 0; st.recent = [];
+  const back = E.fullState(E.matchRecord(st));
+  assert.deepEqual([back.at0, back.picks, back.mp, back.mpn], [3000, 1, 'X', 9]);
+  assert.deepEqual([back.squares[0].k, back.squares[0].s0, back.squares[0].mt, back.squares[0].j], [1, 0, { X: 0, O: 2000 }, { X: 0, O: 1 }]);
+});

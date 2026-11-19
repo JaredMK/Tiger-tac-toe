@@ -600,7 +600,7 @@ test('a random wordle move is a dictionary word, a random hangman letter is ungu
   for (let k = 0; k < 30; k++) { const [a, b] = L.randomLegalMove(mem, 'X', rng); assert.notEqual(a, b); assert.ok(a >= 0 && a < 9 && b >= 0 && b < 9); }
 });
 
-const noMarks = sqs => JSON.stringify(sqs.map(q => Object.assign({}, q, { mini: Object.assign({}, q.mini, { marks: undefined }) })));   // (the coins the next player's flips would turn are dealt as a turn begins)
+const noMarks = sqs => JSON.stringify(sqs.map(q => Object.assign({}, q, { to: undefined, mini: Object.assign({}, q.mini, { marks: undefined }) })));   // (to: the play's turns run out, counted on its square)   // (the coins the next player's flips would turn are dealt as a turn begins)
 test('a timeout plays nothing: the turn is missed and passes, counted', () => {
   const st = matchWith(['ttt', 'c4', 'hex', 'bs', 'hunt', 'hilo', 'coins', 'dice', 'candy']);
   st.timer = L.newTimer(30);
@@ -894,15 +894,15 @@ test('stats: each mini-game counts the turns each side spent in it, bonus moves 
   turn(st, 3, 'P'); turn(st, 3, 'Z');                                                // X: a hit and a bonus miss, one turn
   assert.deepEqual(st.squares[0].mv, { X: 1, O: 0 });
   assert.deepEqual(st.squares[3].mv, { X: 1, O: 0 });
-  assert.deepEqual(st.sqlog, [{ t: 'bs', end: 'won', w: 'O', X: 0, O: 1, v: 1, f: 'O' }], 'with its settings version and its first mover (no clock given: no time)');
+  assert.deepEqual(st.sqlog, [{ t: 'bs', end: 'won', w: 'O', X: 0, O: 1, v: 1, f: 'O', i: 2, k: 2 }], 'with its settings version, its first mover, its square and pick number (no clock given: no time)');
   // a drawn square resets: its count goes to the log and the new game starts from zero
   st.squares[1].mini = tttOf('X', 'O', 'X', 'X', 'O', 'O', 'O', 'X', null);
   st.turn = 'X';
   turn(st, 1, 8, typeRng('ttt'));
-  assert.deepEqual(st.sqlog[1], { t: 'ttt', end: 'draw', w: null, X: 1, O: 0, v: 1, f: 'X' });
+  assert.deepEqual(st.sqlog[1], { t: 'ttt', end: 'draw', w: null, X: 1, O: 0, v: 1, f: 'X', i: 1, k: 4 });
   assert.deepEqual(st.squares[1].mv, { X: 0, O: 0 });
   const s = L.matchStats(st);
-  assert.deepEqual(s.squares.map(e => `${e.t}:${e.end}:${e.X}/${e.O}`), ['bs:won:0/1', 'ttt:draw:1/0', 'pig:open:1/0', 'hangman:open:1/0']);
+  assert.deepEqual(s.squares.map(e => `${e.t}:${e.end}:${e.X}/${e.O}:${e.i}:${e.k}`), ['pig:open:1/0:0:1', 'bs:won:0/1:2:2', 'hangman:open:1/0:3:3', 'ttt:draw:1/0:1:4'], 'every play in the order it began (k), with its square');
   assert.equal(s.turns, 4);
   assert.equal(s.winner, null);
   // the counts travel with an online record

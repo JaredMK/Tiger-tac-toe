@@ -59,9 +59,45 @@ test('stats: the engine\'s match summary feeds the match\'s row directly', () =>
   st.squares[0].mini = E.newMini('ttt', E.makeRng('a'));
   for (const [i, m] of [[0, 0], [0, 3], [0, 1], [0, 4], [0, 2]]) { E.playMove(st, i, m, E.makeRng('m')); E.endFlash(st); }
   const sum = S.checkEnd(E.matchStats(st), E.TYPES);
-  assert.deepEqual(sum.squares, [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2, v: 1, f: 'X' }]);
+  assert.deepEqual(sum.squares, [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2, v: 1, f: 'X', i: 0, k: 1, jX: 2, jO: 2 }]);
   const row = S.factEnd(sum, 1000, Date.now());
-  assert.deepEqual(JSON.parse(row.sq), [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2, f: 'X' }]); assert.equal(row.n, 5);
+  assert.deepEqual(JSON.parse(row.sq), [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2, f: 'X', i: 0, k: 1, jX: 2, jO: 2 }]); assert.equal(row.n, 5);
+});
+
+// December 2026, the match data: a match's setup and every play's facts, as the engine makes them, through the server's checks
+// (a local match's report: checkEnd) onto the row (factStart's su, factEnd's sq and the match's own facts).
+test('stats: the match data: setup, every play (square, pick, follows, times, sides, timeouts, "?" taps) and the match point reach the row', () => {
+  const st = E.newMatch(E.makeRng('facts'));
+  for (const i of [0, 4]) st.squares[i].mini = E.newMini('ttt', E.makeRng('t' + i));
+  let at = 5000;
+  const go = (i, m) => { at += 3000; const r = E.playMove(st, i, m, E.makeRng('m'), { at }); assert.ok(r.ok, JSON.stringify(r)); E.endFlash(st); };
+  go(4, 0);            // X begins square 4 (the centre): pick 1
+  go(4, 4);            // O follows X into it
+  go(0, 0);            // X begins the corner: pick 2, not where O just played
+  go(0, 4);            // O follows X into the corner
+  const m = E.matchStats(st);
+  assert.deepEqual(m.squares.map(e => [e.t, e.i, e.k, e.f, e.oj || 0, e.end]), [['ttt', 4, 1, 'X', 0, 'open'], ['ttt', 0, 2, 'X', 0, 'open']]);
+  assert.deepEqual([m.squares[0].jO, m.squares[0].jX, m.squares[0].s], [1, undefined, 0], 'O followed X into the centre; the first play begins at the match\'s first move');
+  assert.equal(m.squares[1].s, 6000, 'the corner begun two moves (6 s) later');
+  assert.deepEqual([m.squares[0].mX, m.squares[0].mO, m.squares[1].mX, m.squares[1].mO], [undefined, 3000, 3000, 3000], 'each side\'s time on its turns there');
+  // the report a phone sends (help taps added by the page), checked by the server and written as the row
+  m.squares[0].hX = 2;
+  const sum = S.checkEnd(Object.assign({}, m, { winner: null, reason: 'left', ab: 0, mp: 'X', mpn: 7, tmo: { X: 1, O: 0 } }), E.TYPES);
+  assert.equal(sum.squares[0].hX, 2); assert.deepEqual([sum.mp, sum.mpn, sum.ab, sum.tmo], ['X', 7, 0, { X: 1, O: 0 }]);
+  const row = S.factEnd(sum, 20000, Date.now());
+  assert.equal(row.end, 'left', 'a guest\'s match left part way: abandoned');
+  assert.deepEqual([row.mp, row.mpn, row.ab, row.tmo], ['X', 7, 0, { X: 1, O: 0 }]);
+  assert.deepEqual(JSON.parse(row.sq).map(e => [e.i, e.k, e.hX || 0]), [[4, 1, 2], [0, 2, 0]]);
+  assert.ok(S.ABANDONED.includes('left'));
+  // nonsense is dropped, the rest kept
+  const bad = S.checkEnd({ squares: [{ t: 'ttt', end: 'open', X: 1, O: 0, i: 12, k: -1, s: -5, jX: 'a', hO: 3 }], reason: 'left', ab: 40, mp: 'Z' }, E.TYPES);
+  assert.deepEqual(bad.squares[0], { t: 'ttt', end: 'open', w: null, X: 1, O: 0, v: 1, hO: 3 });
+  assert.deepEqual([bad.ab, bad.mp], [undefined, undefined]);
+  // the setup: what the checklist offered and left out, the nine dealt, the level, the first mover, a rematch's match
+  const su = S.factSetup({ av: ['ttt', 'c4', 'bs', 'nope'], ex: ['bs'], b: st.squares.map(q => q.mini.type), lv: 'hard', f1: 'X', rp: 'l_abcdef12' }, E.TYPES);
+  const start = S.factStart('cpu', 1000, [{ s: 'X', u: 'acct1' }], { su });
+  assert.deepEqual(JSON.parse(start.su), { av: ['ttt', 'c4', 'bs'], ex: ['bs'], b: st.squares.map(q => q.mini.type), lv: 'hard', f1: 'X', rp: 'l_abcdef12' });
+  assert.equal(S.factSetup({ b: ['ttt'] }, E.TYPES), undefined, 'a board that is not nine games: left out (and nothing else: no setup)');
 });
 
 test('stats: Snakes and Ladders and Bump are kept; a Dice race from an older match still is, under its own name', () => {

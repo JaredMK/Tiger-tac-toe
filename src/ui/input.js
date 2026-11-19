@@ -24,7 +24,7 @@ import {
   setNet, shareRoom, copyInvite, startOnline, validCode
 } from '../net/room.js';
 import { liveSquare, liveUnwatch, liveWatch, setWatch } from '../net/live.js';
-import { devAct, devStep, reportLocal, trackEnd, trackStart } from '../net/tracking.js';
+import { devAct, devStep, noteHelp, noteLeave, noteRematch, reportLocal, trackEnd, trackLeft, trackStart } from '../net/tracking.js';
 import { markMine } from '../net/owner.js';
 import {
   RNG, advOpen, app, commit, cpuPlan, cpuTimer, flashReady, menuNote, menuOpen, menuStep, save, setAdvOpen,
@@ -82,9 +82,11 @@ export let joinAsk = null;                             // a shared link opened d
 async function leaveAndJoin(code) {
   joinAsk = null;
   clearTimeout(cpuTimer); setCpuTimer(null); setCpuPlan(null);
+  noteLeave();
   if (isMM()) await resignMM();
   else if (state.online) leaveLobby();
   else if (leaveLoses() && resignLocal(state, state.setup.human === 'O' ? 'O' : 'X')) { trackEnd(); reportLocal(); }
+  else trackLeft();                                // (a guest's match left: abandoned, net/tracking.js)
   setMenuNote('');
   setJoinCode(code); state.online = null; state.setup.mode = 'two'; state.screen = 'join'; setNet('idle', '');
   commit();
@@ -160,7 +162,7 @@ export function init() {
       else if (act === 'stale-menu') leaveRoom();                                       // (the match over: the main menu, the other player told as ever)
       return;
     }
-    if (act === 'explain') { e.preventDefault(); openExplain(el.dataset.t); return; }    // never a move: open over anything, even mid-turn
+    if (act === 'explain') { e.preventDefault(); noteHelp(); openExplain(el.dataset.t); return; }   // (a "?" tapped in a square: counted for its play, net/tracking.js)    // never a move: open over anything, even mid-turn
     if (act === 'explain-close') { closeExplain(); return; }
     if (act === 'intro-close') { closeIntro(); return; }
     if (act === 'ask-stay') { joinAsk = null; render(); scheduleCpu(); return; }
@@ -268,6 +270,7 @@ export function init() {
     } else if (act === 'rematch') {               // the same settings again (a Random side drawn again)
       devAct('rematch');
       if (state.online) { rematchOnline(); return; }
+      noteRematch();                               // (the new match's row names this one: rematch rates)
       const ser = state.series;                    // the best-of-3 carried (ui/series.js): a decided one starts afresh
       const carry = () => { state.series = nextSeries(ser); };
       if (state.starter && !state.sc) { playStarter(false, carry); return; }   // (the starter board's: another, no tips)

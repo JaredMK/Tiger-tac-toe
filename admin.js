@@ -67,7 +67,7 @@ function draw() {
     overview: () => P.overview(ctx),
     players: () => (sub ? P.profile(ctx, decodeURIComponent(sub)) : P.players(ctx) + flaggedCard()),
     matches: () => (sub ? P.match(ctx, decodeURIComponent(sub)) : P.matches(ctx)),
-    games: () => (game ? gamePage(sub) + P.gameStats(ctx, sub) : P.filterBar(ctx, { version: true }) + P.gamesCompare(ctx) + gamesIndex()),
+    games: () => (game ? gamePage(sub) + P.gameStats(ctx, sub) : P.filterBar(ctx, { version: true, quality: true }) + P.gamesQuality(ctx) + P.gamesCompare(ctx) + gamesIndex()),
     growth: () => P.growth(ctx),
     health: () => P.health(ctx),
     settings: () => settingsPage(),

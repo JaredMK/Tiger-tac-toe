@@ -31,6 +31,7 @@ export function filterBar(ctx, o) {
     <label>Platform ${sel('platform', [['all', 'Web and iOS'], ['web', 'Web'], ['ios', 'iOS']])}</label>
     <label>Mode ${sel('mode', [['all', 'All modes'], ['cpu', 'vs Computer'], ['friend', 'Friend'], ['find', 'Find Match']])}</label>
     ${o && o.version ? `<label>Settings ${sel('version', [['current', 'Current version'], ['previous', 'Previous version'], ['all', 'All versions']])}</label>` : ''}
+    ${o && o.quality ? `<label>Opponent ${sel('opp', [['all', 'Anyone'], ['ai', 'The computer'], ['human', 'A person']])}</label><label>Board position ${sel('pos', [['all', 'Every square'], ['corner', 'Corners'], ['side', 'Sides'], ['center', 'Centre']])}</label>` : ''}
     <span class="frange">${esc(ctx.S.from === ctx.S.to ? ctx.S.from : `${ctx.S.from} to ${ctx.S.to}`)} · New York time${f.mine ? '' : ' · my devices left out'}${f.mode !== 'all' ? ' · the mode applies to matches and what is counted from them' : ''}</span></div>`;
 }
 
@@ -189,6 +190,28 @@ export function match(ctx, id) {
 // ---------- Games: every game side by side; a game's own numbers by settings version ----------
 const q3 = q => (q.med == null ? '–' : `${num(q.p25, 0)} / <b>${num(q.med, 0)}</b> / ${num(q.p75, 0)}`);
 const flagsHtml = s => s.flags.map(f => `<span class="bflag ${f}" title="${f === 'slow' ? `Median winner's moves above ${X.FLAG_MOVES}` : `Fewer than ${X.FLAG_SAMPLE} completed squares: too few to judge`}">${f === 'slow' ? 'slow' : 'small sample'}</span>`).join(' ');
+// The games' quality (December 2026, for the rotation): every number counted from the match rows (metrics.js gameQuality), under
+// every filter, the opponent type and the board position included; sortable, filterable, CSV like every table.
+const pctC = v => (v == null ? null : Math.round(v * 100));
+export function gamesQuality(ctx) {
+  const rows = X.gameQuality(ctx.S).filter(r => ctx.names[r.t]).map(r => Object.assign(r, { name: ctx.names[r.t], rel: ctx.released(r.t) }));
+  const P = (k, label, get, tip, of) => C(k, label, r => pctC(get(r)), { num: true, tip, html: of ? r => (get(r) == null ? '–' : `${pctC(get(r))}% <span class="dim">of ${of(r)}</span>`) : undefined });
+  const cols = [C('name', 'Mini-game', r => r.name, { html: r => `<a href="#games/${esc(r.t)}">${esc(r.name)}</a>` }), C('rel', 'Status', r => (r.rel ? 'Released' : 'Admin only')),
+    C('plays', 'Plays', r => r.plays, { num: true, tip: 'Every play of it: each time it was dealt into a square and played, finished or not', html: r => drillLink(ctx, 'q:' + r.t, `${r.name}: plays`, 'squares', r.rows, r.plays) }),
+    P('ex', 'Excluded %', r => r.exclusion, 'Of the setups that offered it (its checklist), the ones that left it out. The board position does not apply.', r => r.exOf),
+    P('pr', 'Played %', r => r.playRate, 'Of the matches it was dealt into (at the start or after a draw), the ones where someone played it', r => r.boardOf),
+    P('nv', 'Never played %', r => r.neverRate, 'Of the matches it was dealt into, the ones where nobody ever played it'),
+    P('un', 'Not finished %', r => r.unfinished, 'Of its plays, the ones begun and still open when the match ended (left, resigned, or the match won elsewhere)'),
+    C('secs', 'Seconds (median)', r => (r.secs == null ? null : Math.round(r.secs)), { num: true, tip: 'A finished play\'s length, its first move to its end' }),
+    C('turns', 'Turns (median)', r => r.turns, { num: true, tip: 'Both sides\' turns in a finished play' }),
+    P('dr', 'Draw %', r => r.drawRate, 'Of its finished plays, the ones drawn (the square dealt again)'),
+    P('fm', 'First mover wins %', r => r.firstMover, 'Of its won plays, the ones won by the side that moved first in it', r => r.fmOf),
+    P('hw', 'Human beats AI %', r => r.humanWin, 'Of its won plays against the computer (vs Computer, Find Match\'s bot), the ones the person won', r => r.humanOf),
+    C('pick', 'Avg pick order', r => (r.pick == null ? null : Math.round(r.pick * 10) / 10), { num: true, tip: 'When its plays began: 1 is the match\'s first square played' }),
+    C('help', 'Help taps / play', r => (r.help == null ? null : Math.round(r.help * 100) / 100), { num: true, tip: 'The "?" tapped inside the square, a play' }),
+    P('re', 'Rematch %', r => r.rematch, 'Of the finished matches it was played in, the ones followed by a rematch', r => r.remOf)];
+  return `<div class="card" id="qualityCard"><h2>Game quality</h2>${T.html('quality', cols, rows, ctx.ts('quality', { sort: { k: 'plays', dir: -1 }, open: true }), { note: 'Each game across every match in the filters, finished or not; the Opponent and Board position filters apply here. Counted from the match rows from December 2026 on: older matches carry no setup or square positions.' })}</div>`;
+}
 export function gamesCompare(ctx) {
   const rows = Object.keys(ctx.names).map(t => Object.assign({ t, name: ctx.names[t], rel: ctx.released(t) }, X.gameStats(ctx.S, t, ctx.versions)));
   const cols = [C('name', 'Mini-game', r => r.name, { html: r => `<a href="#games/${esc(r.t)}">${esc(r.name)}</a>` }), C('rel', 'Status', r => (r.rel ? 'Released' : 'Admin only')), C('ver', 'Version', r => r.current, { num: true, html: r => `v${r.current}${r.version != null && r.version !== r.current ? ` <span class="dim">(showing v${r.version})</span>` : ''}` }),

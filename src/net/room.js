@@ -22,7 +22,7 @@ import { dbGo, moveSeen, predicted, setPredicted, showNotice } from './moves.js'
 import { liveElapsed, liveSeen, liveStop, watch } from './live.js';
 import { listenReacts, stopReacts } from './reactions.js';
 import { scMode, timerDefault, visibleTypes } from './releases.js';
-import { matchLog, reportLocal, trackEnd, devAct } from './tracking.js';
+import { matchLog, noteLeave, reportLocal, trackEnd, trackLeft, devAct } from './tracking.js';
 import {
   NAV_SCREENS, spotMs, commit, cpuPlan, cpuTimer, flashTimer, holdTimer, menuNote, menuOpen, menuStep,
   pickKey, save, setCpuPlan, setCpuTimer, setFlashTimer, setHoldTimer, setMenuNote, setMenuOpen, setMenuStep,
@@ -553,10 +553,12 @@ export function leaveLoses() {
   return loggedIn();
 }
 export function quitMatch() {
+  noteLeave();                                                    // (the square on screen as the match is left: net/tracking.js)
   if (isMM()) { if (state.online.room) leaveMatch(); else resignMM(); return; }   // (a friend room's match: the loss, then the room marked left)
   if (state.online) { leaveLobby(); return; }
   let lost = false;
   if (leaveLoses() && resignLocal(state, state.setup.human === 'O' ? 'O' : 'X')) { trackEnd(); reportLocal(); lost = true; }   // a loss for player 1, recorded
+  else trackLeft();                                               // (a guest's local match left part way: abandoned, its end reported all the same)
   clearTimeout(cpuTimer); setCpuTimer(null); setCpuPlan(null);
   clearTimeout(spotTimer); setSpotTimer(null);
   clearTimeout(flashTimer); setFlashTimer(null);

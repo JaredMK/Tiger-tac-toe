@@ -773,9 +773,10 @@ test('stats: a phone reports its local matches; each is one row, written once; b
   const id = 'loc' + Date.now(), dev = 'dtest' + Date.now();
   const squares = [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2, v: 2, f: 'O', ms: 12000 }, { t: 'ttt', end: 'draw', w: null, X: 4, O: 4 }, { t: 'coins', end: 'open', w: null, X: 2, O: 0 }];
   const rows = await newFacts(async () => {
-    assert.deepEqual(await guest.call('track', { ev: 'start', mode: 'cpu', id, dev, side: 'O' }), { ok: true });
+    assert.deepEqual(await guest.call('track', { ev: 'start', mode: 'cpu', id, dev, side: 'O', setup: { av: ['ttt', 'coins', 'c4'], ex: ['c4'], b: Array(9).fill('ttt'), lv: 'hard', f1: 'X', rp: 'l_before1' } }), { ok: true });
     const first = (await factsNow())['l_' + id];
     assert.deepEqual([first.m, first.tm, first.t1], ['cpu', 'none', undefined], 'the row from its start: no result yet');
+    assert.deepEqual(JSON.parse(first.su), { av: ['ttt', 'coins', 'c4'], ex: ['c4'], b: Array(9).fill('ttt'), lv: 'hard', f1: 'X', rp: 'l_before1' }, 'its setup (December 2026)');
     assert.deepEqual(await guest.call('track', { ev: 'start', mode: 'cpu', id, dev, side: 'O' }), { ok: true, seen: true }, 'a repeated start changes nothing');
     assert.deepEqual(await guest.call('track', { ev: 'end', mode: 'cpu', id, dev, side: 'O', winner: 'X', reason: 'line', squares }), { ok: true });
     assert.deepEqual(await guest.call('track', { ev: 'end', mode: 'cpu', id, dev, side: 'O', winner: 'X', reason: 'line', squares }), { ok: true, seen: true }, 'nor a repeated end');
@@ -828,6 +829,11 @@ test('stats: a Find Match game is one row, written by the server: its players wh
   const r = rows[g.id];
   assert.deepEqual([r.m, r.end, r.w, r.own], ['match', 'line', 'X', undefined]); assert.ok(r.ms >= 0 && r.t1 >= r.t0);
   assert.deepEqual(r.who.map(w => [w.s, w.u, w.pl, w.cv]).sort(), [['O', g.O.uid, 'web', E.CLIENT_VERSION], ['X', g.X.uid, 'web', E.CLIENT_VERSION]], 'both players: side, account, client');
+  const su = JSON.parse(r.su);                                        // (the match data, December 2026: its setup, statsRules.js factSetup)
+  assert.equal(su.b.length, 9, 'the nine games dealt, by square'); assert.ok(su.av.length >= 1 && su.b.every(t => su.av.includes(t)), 'what it could have had');
+  assert.equal(su.f1, 'X', 'who moved first'); assert.equal(su.ex, undefined, 'Find Match leaves nothing out');
+  const won = sqOf(r).find(e => e.end === 'won');
+  assert.ok(won && won.i === 2 && Number.isInteger(won.k), 'the winning play: its square and pick number, from the server\'s own state');
   assert.match(r.tm, /^(t\d+|m\d+\+\d+|off)$/, 'its timer');
   assert.ok(sqOf(r).some(e => e.t === 'ttt' && e.end === 'won' && e.w === 'X'), 'the squares claimed in it');
   let h;

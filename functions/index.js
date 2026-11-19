@@ -328,7 +328,7 @@ exports.track = onCall(CALL, async req => {
   if (!S.CLIENT_MODES.includes(d.mode) || !S.idOk(d.id)) throw new HttpsError('invalid-argument', 'Not a match.');
   const id = 'l_' + d.id;
   const me = [{ s: d.mode === 'cpu' ? d.side : undefined, u: isAnon(req) ? undefined : req.auth.uid, h, pl: cl.p, cv: cl.v }];   // the one phone it is played on (against the computer: its player's side)
-  const start = t0 => S.factStart(d.mode, t0, me, { timer: 'none', own, sc: d.mode === 'chaos' });
+  const start = t0 => S.factStart(d.mode, t0, me, { timer: 'none', own, sc: d.mode === 'chaos', su: S.factSetup(d.setup, E.TYPES) });   // (its setup: the games it could have had and left out, the nine dealt, the level, the first mover, a rematch's match)
   if (d.ev === 'start') {
     if (!(await claimMatch(id, 's', t))) return { ok: true, seen: true };
     await db.ref(factPath(t, id)).update(start(t));
@@ -725,7 +725,7 @@ async function makeGame(key, id, X, O, opts) {
   const clients = [X, O].filter(p => !(bot && p.uid === bot.uid)).map(p => p.e.client);   // (a bot plays every game)
   const both = types => E.clientTypes(types, clients, rel);    // only games both players' clients have, on for both their platforms (core/client.js)
   const allowed = friend ? both(E.allowedTypes(rel, !!friend.admin)) : null;
-  let rec, node;
+  let rec, node, avail = null;
   if (Q.chaos) {                                                  // Super Chaos, run here (core/scgame.js): the released Super Chaos games (every one when both players are admins, or in the admin's room)
     if (friend && !(SC_OK() && (friend.admin || rel.superchaos === true))) return false;   // (Super Chaos not open to this room's host, or off everywhere)
     const admins = !bot && !friend && (await isAdminUser(X.uid)) && (await isAdminUser(O.uid));
@@ -739,7 +739,8 @@ async function makeGame(key, id, X, O, opts) {
     node = { pub, sec: {}, sides: {} };
     scPack(node, g, t);
   } else {
-    const types = friend ? E.TYPES.filter(g => allowed.includes(g) && on(g)) : both(E.findMatchTypes(E.releasedTypes(rel)));
+    avail = friend ? E.TYPES.filter(g => allowed.includes(g)) : both(E.findMatchTypes(E.releasedTypes(rel)));   // (what this match could have had: the setup's exclusions are the rest of the room's)
+    const types = friend ? avail.filter(on) : avail;
     if (!Array.isArray(types) || !types.length) return false;    // (nothing both clients have and may play: no match)
     rec = E.newOnlineMatch({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.TYPES.map(g => [g, types.includes(g)])), timer: Q.timer }, rng, id);   // released games only, whoever is playing
     if (!rec) return false;
@@ -771,7 +772,9 @@ async function makeGame(key, id, X, O, opts) {
       const isBot = !!(bot && p.uid === bot.uid), cl = isBot ? {} : E.normClient(p.e.client);
       return { s: sd, u: p.uid, bot: isBot, pl: cl.p, cv: cl.v, h: isBot ? undefined : (await db.ref(`lastDev/${p.uid}`).get().then(v => v.val(), () => null)) || undefined };
     }));
-    await factSafe(db.ref(factPath(t, id)).update(S.factStart(bot ? 'bot' : Q.mode, t, who, { timer: Q.chaos ? 'none' : E.timerSpec(Q.timer), own, sc: !!Q.chaos, room: friend ? friend.code : undefined })));   // the match's row (statsRules.js)
+    const su = Q.chaos ? undefined : S.factSetup({ av: avail, ex: avail ? avail.filter(g => !rec.state.games.includes(g)) : [], b: rec.state.squares.map(q => q.mini.type), f1: rec.state.turn,
+      lv: bot ? B.botConfig(await adminConfig()).level : undefined, rp: friend && friend.prev ? friend.prev : undefined }, E.TYPES);   // (its setup: statsRules.js factSetup)
+    await factSafe(db.ref(factPath(t, id)).update(S.factStart(bot ? 'bot' : Q.mode, t, who, { timer: Q.chaos ? 'none' : E.timerSpec(Q.timer), own, sc: !!Q.chaos, room: friend ? friend.code : undefined, su })));   // the match's row (statsRules.js)
     await seenNow([X, O].filter(p => (!bot || p.uid !== bot.uid) && (!friend || p.account)).map(p => 'u:' + p.uid), t).catch(e => logger.error('seen', e));
     if (bgNew) await (Q.chaos ? planScBot(id, rec.state.sc.round, bgNew, t + MATCH_GRACE_MS) : planBot(id, rec.state, rec.secrets, bgNew, t + MATCH_GRACE_MS, false)).catch(e => logger.error('bot plan', id, e));
   }
@@ -1511,7 +1514,7 @@ exports.startRoom = onCall(HOT, async req => {
     const named = await Promise.all(['X', 'O'].map(s => usernameOf(seats.players[s].uid)));
     const at = s => ({ uid: seats.players[s].uid, account: !!named[s === 'X' ? 0 : 1], e: { name: roomName(named[s === 'X' ? 0 : 1] || seats.players[s].name, s), client: seats.players[s].client } });   // (a username, always, for a player with one)
     const id = db.ref('games').push().key;
-    const ok = await makeGame(null, id, at('X'), at('O'), { friend: { code, setup: room.setup || {}, admin } });
+    const ok = await makeGame(null, id, at('X'), at('O'), { friend: { code, setup: room.setup || {}, admin, prev: rematch && room.game ? room.game : null } });   // (prev: a rematch's match, on the new row: rematch rates)
     if (!ok) { await db.ref(`rooms/${code}/starting`).remove(); return { ok: false, reason: 'games' }; }   // (no game left to deal: the setup refused)
     const sr = room.series || {}, decided = Object.entries(sr).some(([k, v]) => k !== 'n' && v >= 2);   // (a best-of-3 decided, or a first match: a new series)
     const up = { [`rooms/${code}/game`]: id, [`rooms/${code}/status`]: 'playing', [`rooms/${code}/rematch`]: null, [`rooms/${code}/left`]: null, [`rooms/${code}/starting`]: null, [`rooms/${code}/players/${side}/client`]: client };

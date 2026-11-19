@@ -22,8 +22,8 @@ const MODES = ['local', 'cpu', 'cvc', 'friend', 'match', 'bot', 'casual', 'ranke
 const CLIENT_MODES = ['local', 'cpu', 'cvc', 'chaos'];                 // the ones a phone reports; the server records the online ones itself
 const MAX_MS = 3 * 3600 * 1000;                                        // a match "lasting" longer was left and picked up again: no time for it
 const ENDS = ['won', 'draw', 'open'];
-const REASONS = ['line', 'blocked', 'majority', 'resign', 'timeout', 'both', 'clock'];   // clock: a match clock run out (core/board.js timeoutMove), a finish like any other   // both: a line each in the same Super Chaos round (a draw)
-const ABANDONED = ['resign', 'timeout'];                                // a match given up (or left to run out its clock): abandoned, not finished
+const REASONS = ['line', 'blocked', 'majority', 'resign', 'timeout', 'both', 'clock', 'left'];   // left (December 2026): a local match left part way by a guest (no loss to record), abandoned   // clock: a match clock run out (core/board.js timeoutMove), a finish like any other   // both: a line each in the same Super Chaos round (a draw)
+const ABANDONED = ['resign', 'timeout', 'left'];                                // a match given up (or left to run out its clock): abandoned, not finished
 
 const pad = n => String(n).padStart(2, '0');
 // The day, ISO week and month of a time, in New York (and 'all', the all-time bucket).
@@ -60,12 +60,34 @@ function checkEnd(d, types) {
     if (e.run !== undefined && !run) return null;
     const v = Number.isInteger(e.v) && e.v >= 1 && e.v <= 100000 ? e.v : 1, f = e.f === 'X' || e.f === 'O' ? e.f : null;   // (the settings version, the first mover, the time in it: core/board.js sqEntry)
     const ms = Number.isFinite(e.ms) && e.ms >= 0 && e.ms <= MAX_MS ? Math.round(e.ms) : null;
-    squares.push(Object.assign({ t: e.t, end: e.end, w, X, O, v }, f ? { f } : {}, ms !== null ? { ms } : {}, e.race ? { race: 1 } : {}, run ? { run } : {}));
+    squares.push(Object.assign({ t: e.t, end: e.end, w, X, O, v }, f ? { f } : {}, ms !== null ? { ms } : {}, e.race ? { race: 1 } : {}, run ? { run } : {}, playFacts(e)));
   }
   const winner = d.winner === 'X' || d.winner === 'O' ? d.winner : null;
-  return { squares, winner, reason: REASONS.includes(d.reason) ? d.reason : null, sc: d.sc === true };
+  return Object.assign({ squares, winner, reason: REASONS.includes(d.reason) ? d.reason : null, sc: d.sc === true }, matchFacts(d));
 }
 
+// A play's own facts (December 2026, core/board.js sqEntry), each kept only when it holds together: its square i, pick
+// number k, oj, start and end s and e (ms after the match's first move), and per side its time (mX, mO), the turns that
+// followed the other side in (jX, jO), the turns run out there (toX, toO) and the "?" taps on this phone (hX, hO).
+const msOk = v => Number.isFinite(v) && v >= 0 && v <= MAX_MS;
+function playFacts(e) {
+  const out = {};
+  if (Number.isInteger(e.i) && e.i >= 0 && e.i <= 8) out.i = e.i;
+  if (count(e.k, 999)) out.k = e.k;
+  if (e.oj === 1) out.oj = 1;
+  for (const k of ['s', 'e', 'mX', 'mO']) if (msOk(e[k])) out[k] = Math.round(e[k]);
+  for (const k of ['jX', 'jO', 'toX', 'toO', 'hX', 'hO']) if (count(e[k], 999)) out[k] = e[k];
+  return out;
+}
+// A match's own facts: mp (the side that reached match point first) and mpn (at which move), tmo (each side's turns missed on
+// the board), ab (the square on the leaving phone's screen when the match was left; -1 the board).
+function matchFacts(d) {
+  const out = {};
+  if (d.mp === 'X' || d.mp === 'O') { out.mp = d.mp; if (count(d.mpn, 9999)) out.mpn = d.mpn; }
+  if (d.tmo && typeof d.tmo === 'object' && count(d.tmo.X, 999) !== null && count(d.tmo.O, 999) !== null && d.tmo.X + d.tmo.O > 0) out.tmo = { X: d.tmo.X, O: d.tmo.O };
+  if (Number.isInteger(d.ab) && d.ab >= -1 && d.ab <= 8) out.ab = d.ab;
+  return out;
+}
 // A runner square's run data as a phone reports it: runs and distances per side, the crash points.
 const RUN_BIN = 50, RUN_MAX_M = 5000, RUN_MAX_CRASHES = 40;
 function checkRun(r) {
@@ -89,17 +111,34 @@ function factWho(p) {
   return clean({ s: p.s === 'X' || p.s === 'O' ? p.s : undefined, u: typeof p.u === 'string' ? p.u.slice(0, 40) : undefined, h: typeof p.h === 'string' && /^[0-9a-f]{20}$/.test(p.h) ? p.h : undefined,
     pl: p.pl === 'ios' || p.pl === 'web' ? p.pl : undefined, cv: typeof p.cv === 'string' && /^\d{1,4}(\.\d{1,4}){0,2}$/.test(p.cv) ? p.cv : undefined, bot: p.bot ? true : undefined });
 }
-// A match starting: its row. o: { timer, own, sc, room }.
+// A match starting: its row. o: { timer, own, sc, room, su (factSetup's string) }.
 function factStart(mode, t, who, o) {
   o = o || {};
-  return clean({ t0: t, m: MODES.includes(mode) ? mode : 'local', tm: timerOf(o.timer), who: (who || []).map(factWho).filter(w => Object.keys(w).length), own: o.own ? true : undefined, sc: o.sc ? true : undefined, rm: typeof o.room === 'string' ? o.room.slice(0, 8) : undefined });
+  return clean({ t0: t, m: MODES.includes(mode) ? mode : 'local', tm: timerOf(o.timer), who: (who || []).map(factWho).filter(w => Object.keys(w).length), own: o.own ? true : undefined, sc: o.sc ? true : undefined, rm: typeof o.room === 'string' ? o.room.slice(0, 8) : undefined,
+    su: typeof o.su === 'string' && o.su.length <= 4000 ? o.su : undefined });
 }
 // A match ending: what its row gains. sum: checkEnd's or the engine's matchStats (squares, winner, reason).
 function factEnd(sum, ms, t) {
   const turns = sum.squares.reduce((n, e) => n + e.X + e.O, 0), timed = Number.isFinite(ms) && ms >= 0 && ms <= MAX_MS;
-  const sq = sum.squares.slice(0, 80).map(e => clean({ t: e.t, v: Number.isInteger(e.v) && e.v > 1 ? e.v : undefined, end: e.end, w: e.end === 'won' ? e.w : undefined, X: e.X || undefined, O: e.O || undefined,
-    f: e.f === 'X' || e.f === 'O' ? e.f : undefined, ms: Number.isFinite(e.ms) ? Math.round(e.ms) : undefined, race: e.race ? 1 : undefined, run: e.run || undefined }));
-  return clean({ t1: t, end: REASONS.includes(sum.reason) ? sum.reason : 'line', w: sum.winner === 'X' || sum.winner === 'O' ? sum.winner : undefined, n: turns || undefined, ms: timed ? Math.round(ms) : undefined, sq: JSON.stringify(sq), sc: sum.sc ? true : undefined });
+  const sq = sum.squares.slice(0, 80).map(e => clean(Object.assign({ t: e.t, v: Number.isInteger(e.v) && e.v > 1 ? e.v : undefined, end: e.end, w: e.end === 'won' ? e.w : undefined, X: e.X || undefined, O: e.O || undefined,
+    f: e.f === 'X' || e.f === 'O' ? e.f : undefined, ms: Number.isFinite(e.ms) ? Math.round(e.ms) : undefined, race: e.race ? 1 : undefined, run: e.run || undefined }, playFacts(e))));
+  const mf = matchFacts(sum);
+  return clean({ t1: t, end: REASONS.includes(sum.reason) ? sum.reason : 'line', w: sum.winner === 'X' || sum.winner === 'O' ? sum.winner : undefined, n: turns || undefined, ms: timed ? Math.round(ms) : undefined, sq: JSON.stringify(sq), sc: sum.sc ? true : undefined,
+    mp: mf.mp, mpn: mf.mpn, tmo: mf.tmo, ab: mf.ab });
+}
+// A match's setup (December 2026), kept on its row as one JSON string `su` at its start: av the mini-games the players could
+// have had (the setup's checklist; online, what both clients have and may play), ex the ones left out of it (av less the
+// match's own list), b the nine dealt, by square (0-8: corners 0 2 6 8, sides 1 3 5 7, the centre 4), lv the computer's level
+// (vs Computer; a Find Match bot: the bots' level), f1 the side that moved first, rp the match this one is a rematch of (its row
+// id). Types are checked against the registry; a field that does not hold together is left out.
+const LEVELS = ['easy', 'normal', 'hard'];
+function factSetup(o, types) {
+  if (!o || typeof o !== 'object') return undefined;
+  const list = (v, n) => (Array.isArray(v) && v.length <= n ? [...new Set(v.filter(t => typeof t === 'string' && types.includes(t)))] : null);
+  const av = list(o.av, 120), ex = list(o.ex, 120), b = Array.isArray(o.b) && o.b.length === 9 && o.b.every(t => typeof t === 'string' && types.includes(t)) ? o.b : null;
+  const su = clean({ av: av && av.length ? av : undefined, ex: ex && ex.length ? ex : undefined, b: b || undefined, lv: LEVELS.includes(o.lv) ? o.lv : undefined, f1: o.f1 === 'X' || o.f1 === 'O' ? o.f1 : undefined,
+    rp: typeof o.rp === 'string' && /^[-\w]{4,60}$/.test(o.rp) ? o.rp : undefined });
+  return Object.keys(su).length ? JSON.stringify(su) : undefined;
 }
 // A Find Match search that ended: its row.
 const FIND_KINDS = ['people', 'bot', 'cancel'];
@@ -151,6 +190,11 @@ function checkDev(d, t) {
     ev.m = d.mode; ev.g = d.g;
     if (d.ev === 'live') { if (!idOk(d.o)) return null; k = 'p' + d.o; }
     else k = (d.ev === 'start' ? 's' : 'e') + d.g;                        // one start and one end (finished or left) per match
+    if (d.ev === 'finish' || d.ev === 'leave') {                  // (December 2026, an online match: this phone's side, its "?" taps by play, k:n, and the square it left on)
+      if (d.s === 'X' || d.s === 'O') ev.s = d.s;
+      if (typeof d.hp === 'string' && /^\d{1,3}:\d{1,3}(,\d{1,3}:\d{1,3}){0,39}$/.test(d.hp)) ev.hp = d.hp;
+      if (d.ev === 'leave' && Number.isInteger(d.ab) && d.ab >= -1 && d.ab <= 8) ev.ab = d.ab;
+    }
   }
   const out = { h: devHash(d.dev), k, ev, tag: tagOk(d.tag) ? d.tag : null };
   if (typeof d.v === 'string' && /^[-\w.]{1,20}$/.test(d.v)) { out.v = d.v; if (d.ev === 'open' || d.ev === 'error') ev.b = d.v; }   // the app's build on the phone (kept on its opens and errors: the error rate by build)
@@ -211,6 +255,6 @@ const CHANNELS = ['share', 'copy'];
 const dayNum = d => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 86400000;
 
 module.exports = {
-  META_KEY, metaKey, metaFor, ownerOf, factWho, factStart, factEnd, factFind, FIND_KINDS, timerOf,
+  META_KEY, metaKey, metaFor, ownerOf, factWho, factStart, factEnd, factFind, factSetup, playFacts, matchFacts, FIND_KINDS, timerOf,
   checkReport, reportText, REPORT_WHERE, MODES, STEPS, ACTS, CHANNELS, dayNum, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, hashId, idOk, checkEnd, checkRun, RUN_BIN,
   DEV_EVENTS, DEV_MODES, TAG_RE, tagOk, devHash, checkDev };

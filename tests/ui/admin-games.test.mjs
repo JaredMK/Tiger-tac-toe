@@ -263,8 +263,11 @@ const kpiOf = (html, id) => { const m = html.match(new RegExp(`data-metric="${id
 test('a game\'s numbers are on its own page, by settings version, and in the comparison table: the same figures; its version card', () => {
   A.ctl = Object.assign(ctl0(), { releases: { ttt: true, pig: true }, versions: { ttt: 2 }, versionLog: { ttt: { v2: { at: Date.parse('2026-11-16'), by: 'admin@x', ch: {} } } } });
   seedWorld(); A.setFilter('version', 'current'); A.setFilter('mine', false);
-  const list = draw('#games');
-  const row = (list.match(/<tr><td><a href="#games\/ttt">Tic-tac-toe<\/a><\/td>[\s\S]*?<\/tr>/) || [''])[0];
+  const list = draw('#games'), cmp = list.slice(list.indexOf('id="compareCard"'));
+  assert.ok(list.indexOf('id="qualityCard"') > 0 && list.indexOf('id="qualityCard"') < list.indexOf('id="compareCard"'), 'the games\' quality first (December 2026), then the comparison');
+  assert.match(list, /data-gf="opp"[\s\S]*?The computer[\s\S]*?data-gf="pos"[\s\S]*?Corners/, 'its own filters: the opponent type and the board position');
+  assert.match(list, /id="qualityCard"[\s\S]*?Excluded %[\s\S]*?Never played %[\s\S]*?Not finished %[\s\S]*?Human beats AI %[\s\S]*?Avg pick order[\s\S]*?Help taps \/ play[\s\S]*?Rematch %/);
+  const row = (cmp.match(/<tr><td><a href="#games\/ttt">Tic-tac-toe<\/a><\/td>[\s\S]*?<\/tr>/) || [''])[0];
   assert.match(row, />Released</); assert.match(row, />v2</);
   assert.match(row, /<td class="num"><a href="#drill\/x:sq%3Attt"[^>]*>1<\/a><\/td>/, 'one square at version 2 (mine left out), a link to its rows');
   const page = draw('#games/ttt');

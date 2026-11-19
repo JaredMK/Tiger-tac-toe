@@ -23,7 +23,7 @@ import { TYPES, rulesOf } from '../games/index.js';
  * last few moves, so a phone that was away can play back what it missed, one move at a time.
  */
 export const RECENT_MAX = 8;
-export const MATCH_FIELDS = ['id', 'seq', 'recent', 'games', 'squares', 'turn', 'lock', 'lockBy', 'moves', 'winner', 'winLine', 'winReason', 'resigned', 'counts', 'lastSquare', 'lastBy', 'pick', 'pickSq', 'timer', 'sqlog', 'sc', 'lastAt'];   // (lastAt: the last move's time, for the time spent in a square: core/board.js)   // (sc: a Super Chaos match's round, the moves sent in, the last recap)
+export const MATCH_FIELDS = ['id', 'seq', 'recent', 'games', 'squares', 'turn', 'lock', 'lockBy', 'moves', 'winner', 'winLine', 'winReason', 'resigned', 'counts', 'lastSquare', 'lastBy', 'pick', 'pickSq', 'timer', 'sqlog', 'sc', 'lastAt', 'at0', 'picks', 'mp', 'mpn'];   // (lastAt: the last move's time, for the time spent in a square: core/board.js)   // (sc: a Super Chaos match's round, the moves sent in, the last recap)
 // The hidden part of a mini-game, or null when it has none.
 export function secretOf(mini) {
   const game = rulesOf(mini.type);
@@ -81,6 +81,7 @@ const FIELD_OK = {
   winReason: v => v === null || typeof v === 'string', resigned: v => v === null || SIDE(v), counts: v => v === null || (v && typeof v === 'object'),
   lastSquare: v => v === null || Number.isInteger(v), lastBy: v => v === null || SIDE(v), pick: v => v === null || Number.isInteger(v), pickSq: v => v === null || Number.isInteger(v),
   timer: v => v === null || (v && typeof v === 'object'), sqlog: Array.isArray, sc: v => v === null || (v && typeof v === 'object'), lastAt: v => v === null || Number.isFinite(v),
+  at0: v => v === null || Number.isFinite(v), picks: v => v === null || (Number.isInteger(v) && v >= 0), mp: v => v === null || SIDE(v), mpn: v => v === null || Number.isInteger(v),   // (the match data, December 2026: its first move's time, the plays begun, who reached match point first and when: core/board.js)
 };
 export function parseMatch(v) {
   if (!v || typeof v.state !== 'string') return null;

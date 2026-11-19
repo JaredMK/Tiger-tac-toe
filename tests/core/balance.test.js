@@ -41,7 +41,8 @@ test('a finished square records its version, its first mover and the time spent 
   assert.equal(e.v, 2); assert.equal(e.f, 'X'); assert.equal(e.w, 'X');
   assert.equal(e.ms, 4 * 5000, 'four gaps of 5 s after the first move (no move before the first)');
   const m = E.matchStats(st);
-  assert.deepEqual(m.squares.find(x => x.end === 'won'), { t: 'ttt', end: 'won', w: 'X', X: 3, O: 2, v: 2, f: 'X', ms: 20000 });
+  assert.deepEqual(m.squares.find(x => x.end === 'won'), { t: 'ttt', end: 'won', w: 'X', X: 3, O: 2, v: 2, f: 'X', ms: 20000,
+    i: 0, k: 1, s: 0, e: 20000, mX: 10000, mO: 10000, jX: 2, jO: 2 }, 'the play: square 0, the first begun, from the first move to the win 20 s later, each side 10 s, every turn after the first following the other side in');
   assert.equal(m.sv.ttt, 2, 'the match carries every game\'s version on its board');
 });
 

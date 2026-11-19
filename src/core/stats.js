@@ -1,21 +1,26 @@
 // What a finished (or abandoned) match adds to the anonymous game stats.
-import { RUN_TYPES, runLog } from '../games/shared/runner.js';
-import { isRace } from './race.js';
+import { sqEntry } from './board.js';
 import { miniVersion } from './tune.js';
 
 // ---------- stats: what a finished (or abandoned) match adds to the anonymous game stats ----------
 // Every mini-game played: how it ended ('won', 'draw' when it reset, or 'open' when the match ended
 // first), who won it and the turns each side spent in it. A bonus move within a turn (a Risky Rolls roll,
 // a Hangman letter after a hit) is part of the same turn.
+// Each play's line is core/board.js sqEntry's (the settings version v, the first mover f, the time ms, the square i, the pick
+// number k, oj, s, e, the sides' time, follows and timeouts); a play still open when the match ended ('open': left unfinished)
+// is read off its square the same way, in the order the plays began (k). Also the match's own facts (December 2026): mp, the side
+// that reached match point first (mpn: at which move), and tmo, each side's turns missed on the board (timer.timeouts).
 export function matchStats(st) {
-  const extra = e => Object.assign({}, e.race ? { race: 1 } : {}, e.run ? { run: e.run } : {}, { v: Number.isInteger(e.v) && e.v >= 1 ? e.v : 1 }, e.f === 'X' || e.f === 'O' ? { f: e.f } : {}, Number.isFinite(e.ms) ? { ms: Math.round(e.ms) } : {});   // (v: the settings version, f: the first mover, ms: the time spent in it: core/board.js sqEntry)
-  const squares = (Array.isArray(st.sqlog) ? st.sqlog : []).map(e => Object.assign({ t: e.t, end: e.end, w: e.w || null, X: e.X || 0, O: e.O || 0 }, extra(e)));   // (race: a Race mode square, core/race.js)
-  for (const sq of st.squares || []) {
-    if (sq.owner || !sq.mv || !(sq.mv.X + sq.mv.O)) continue;
-    squares.push(Object.assign({ t: sq.mini.type, end: 'open', w: null, X: sq.mv.X, O: sq.mv.O }, extra(Object.assign({ race: isRace(sq.mini), v: miniVersion(sq.mini), f: sq.f, ms: sq.ms }, RUN_TYPES.includes(sq.mini.type) ? runLog(sq.mini) : {}))));
-  }
+  const squares = (Array.isArray(st.sqlog) ? st.sqlog : []).map(e => Object.assign({}, e, { w: e.w || null, X: e.X || 0, O: e.O || 0, v: Number.isInteger(e.v) && e.v >= 1 ? e.v : 1 }));
+  (st.squares || []).forEach((sq, i) => {
+    if (!sq || sq.owner || !sq.mv || !(sq.mv.X + sq.mv.O)) return;
+    squares.push(sqEntry(sq, sq.mini, 'open', null, i, undefined, st));
+  });
+  if (squares.every(e => Number.isInteger(e.k))) squares.sort((a, b) => a.k - b.k);   // (in the order the plays began; a match from before has no k: as it was)
   const turns = squares.reduce((n, e) => n + e.X + e.O, 0);
-  return { squares, turns, winner: st.winner || null, reason: st.winReason || null, sc: !!st.sc, sv: boardVersions(st) };   // sc: a Super Chaos match (its squares counted apart); sv: every game's settings version on its board
+  const tmo = st.timer && st.timer.timeouts ? { X: st.timer.timeouts.X || 0, O: st.timer.timeouts.O || 0 } : null;
+  return Object.assign({ squares, turns, winner: st.winner || null, reason: st.winReason || null, sc: !!st.sc, sv: boardVersions(st) },   // sc: a Super Chaos match (its squares counted apart); sv: every game's settings version on its board
+    st.mp ? { mp: st.mp, mpn: st.mpn } : {}, tmo && (tmo.X || tmo.O) ? { tmo } : {});
 }
 // The settings version of every mini-game on a match's board (December 2026): the squares on it now and every one played
 // out of it ({ type: version }; a type dealt under two versions keeps the higher).

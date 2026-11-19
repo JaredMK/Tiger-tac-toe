@@ -10,11 +10,11 @@
 
 export const GAP = 30 * 60000;                 // a session ends after this long with nothing from the device
 export const LIVE_MS = 3 * 3600000;            // a match started this long ago and never ended was left unfinished
-export const ABANDONED = ['resign', 'timeout'];
+export const ABANDONED = ['resign', 'timeout', 'left'];
 export const MODE_GROUP = { cpu: 'cpu', local: 'friend', friend: 'friend', match: 'find', bot: 'find', casual: 'find', ranked: 'find', chaos: 'other', cvc: 'other' };
 export const GROUP_LABEL = { cpu: 'vs Computer', friend: 'Friend', find: 'Find Match', other: 'Other' };
 export const MODE_LABEL = { cpu: 'vs Computer', local: 'Same phone', friend: 'Friend room', match: 'Find Match', bot: 'Find Match (took the computer)', chaos: 'Super Chaos', cvc: 'Computer vs computer' };
-export const END_LABEL = { line: 'Three in a row', blocked: 'Draw', majority: 'Majority', both: 'Draw', clock: 'Clock ran out', resign: 'Resigned', timeout: 'Two missed turns' };
+export const END_LABEL = { line: 'Three in a row', blocked: 'Draw', majority: 'Majority', both: 'Draw', clock: 'Clock ran out', resign: 'Resigned', timeout: 'Two missed turns', left: 'Left part way' };
 export const RETAIN = [1, 7, 30];
 export const FLAG_MOVES = 6, FLAG_SAMPLE = 30;
 
@@ -90,7 +90,7 @@ export function rangeOf(f, now = Date.now()) {
   const k = f.range === 'today' ? 1 : [7, 30, 90].includes(+f.range) ? +f.range : 30;
   return { from: addDays(today, 1 - k), to: today };
 }
-export const FILTER_DEFAULTS = { mine: false, range: '30', from: '', to: '', platform: 'all', mode: 'all', version: 'current' };
+export const FILTER_DEFAULTS = { mine: false, range: '30', from: '', to: '', platform: 'all', mode: 'all', version: 'current', opp: 'all', pos: 'all' };   // (opp, pos: the Games page's quality table, December 2026)
 export function normFilters(v) {
   const f = Object.assign({}, FILTER_DEFAULTS, v && typeof v === 'object' ? v : {});
   f.mine = f.mine === true;
@@ -98,6 +98,8 @@ export function normFilters(v) {
   if (!['all', 'web', 'ios'].includes(f.platform)) f.platform = 'all';
   if (!['all', 'cpu', 'friend', 'find'].includes(f.mode)) f.mode = 'all';
   if (!['current', 'previous', 'all'].includes(f.version)) f.version = 'current';
+  if (!['all', 'ai', 'human'].includes(f.opp)) f.opp = 'all';
+  if (!['all', 'corner', 'side', 'center'].includes(f.pos)) f.pos = 'all';
   return f;
 }
 
@@ -193,6 +195,8 @@ export function build(data, now = Date.now()) {
         who, sc: !!r.sc, room: r.rm || '', pls: new Set(humans.map(w => w.pl || (w.h && devs.get(w.h) ? devs.get(w.h).pl : 'web'))), sq: sq.map(e => Object.assign({ X: 0, O: 0, v: 1 }, e)),
         own: !!r.own || humans.some(w => (w.h && devs.get(w.h) && devs.get(w.h).owner) || (w.pid && people.get(w.pid) && people.get(w.pid).owner)) };
       m.status = m.t1 ? (ABANDONED.includes(m.end) ? 'abandoned' : 'finished') : now - m.t0 > LIVE_MS ? 'unfinished' : 'playing';
+      try { m.su = r.su ? JSON.parse(r.su) : null; } catch (e) { m.su = null; }   // (its setup, December 2026: factSetup)
+      m.mp = r.mp || null; m.ab = Number.isInteger(r.ab) ? r.ab : null; m.tmo = r.tmo || null;
       m.logKey = id.startsWith('l_') ? 'l' + id.slice(2) : 'm' + id;
       const ix = logIndex[m.logKey];
       m.log = ix ? { n: ix.n || 0, reported: ix.reported || 0, note: ix.note || '', vers: ix.vers || '' } : null;
@@ -202,6 +206,19 @@ export function build(data, now = Date.now()) {
   }
   matches.sort((a, b) => b.t0 - a.t0);
   for (const p of people.values()) p.matches.sort((a, b) => b.t0 - a.t0);
+  // an online match's "?" taps and the square its leaver had on screen ride each phone's end event (the server keeps the plays):
+  // its taps join their play by its pick number (hX, hO), as a local match's report carries them
+  const byLog = new Map(matches.map(m => [m.logKey, m]));
+  for (const dev of devs.values()) for (const e of dev.evs) {
+    if ((e.ev !== 'finish' && e.ev !== 'leave') || !e.g || !byLog.has(e.g)) continue;
+    const m = byLog.get(e.g);
+    if (e.ev === 'leave' && Number.isInteger(e.ab) && m.ab == null) m.ab = e.ab;
+    if (typeof e.hp !== 'string' || (e.s !== 'X' && e.s !== 'O')) continue;
+    for (const part of e.hp.split(',')) {
+      const [k, n] = part.split(':').map(Number), play = m.sq.find(x => x.k === k);
+      if (play && n > 0) play['h' + e.s] = (play['h' + e.s] || 0) + n;
+    }
+  }
   const finds = [];
   for (const byId of Object.values(data.finds || {})) for (const [id, r] of Object.entries(byId || {})) if (r && Number.isFinite(r.t)) finds.push({ id, day: nyDay(r.t), t: r.t, k: r.k, ms: r.ms || 0, u: r.u || '', pid: r.u && people.has('u:' + r.u) ? 'u:' + r.u : null, own: !!r.own || !!(r.u && people.get('u:' + r.u) && people.get('u:' + r.u).owner) });
   const reports = Object.entries(data.reports || {}).map(([id, r]) => Object.assign({ id }, r, { dev: r.h ? devs.get(r.h) : null })).map(r => Object.assign(r, { pid: r.uid && people.has('u:' + r.uid) ? 'u:' + r.uid : r.dev ? r.dev.pid : null, own: !!(r.dev && r.dev.owner) })).sort((a, b) => b.at - a.at);
@@ -333,6 +350,54 @@ export function gameStats(S, type, versions, pick) {
   const rows = v == null ? all : all.filter(e => (e.v || 1) === v);
   const byVersion = [...new Set(all.map(e => e.v || 1).concat(cur))].sort((a, b) => b - a).map(n => Object.assign({ v: n, current: n === cur }, sqStats(all.filter(e => (e.v || 1) === n))));
   return Object.assign({ type, version: v, current: cur }, sqStats(rows), { byVersion });
+}
+// ---------- a game's quality (December 2026, the Games page's quality table), every number from the match rows ----------
+// A square's place on the board: a corner (0 2 6 8), a side (1 3 5 7), the centre (4).
+export const posOf = i => (!Number.isInteger(i) ? null : i === 4 ? 'center' : i % 2 === 0 ? 'corner' : 'side');
+export const AI_MODES = ['cpu', 'bot', 'cvc'];
+const mean = a => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : null);
+// Of the matches in scope (the filters: dates, my devices, platform, mode) and, by the page's own filters, the opponent type (the
+// computer: vs Computer and Find Match's bot) and the board position (the plays in squares of that place; the board's games dealt
+// there), per game: exclusion (of the setups that offered it, left out), play and never-played (of the matches it was dealt into,
+// with a setup on their row: played, or never), started but not finished (plays left open when the match ended), the finished
+// plays' median length (its first move to its end) and turns, draws, the first mover's wins, the human's wins against the
+// computer, the average pick number, "?" taps a play, and rematches after the finished matches it was played in. Super Chaos apart.
+export function gameQuality(S) {
+  const f = S.f, posOk = i => f.pos === 'all' || posOf(i) === f.pos;
+  const oppOk = m => f.opp === 'all' || (f.opp === 'ai') === AI_MODES.includes(m.mode);
+  const ms = S.matches().filter(m => !m.sc && oppOk(m));
+  const rematched = new Set(S.M.matches.map(m => m.su && m.su.rp).filter(Boolean));
+  const G = new Map(), acc = t => { if (!G.has(t)) G.set(t, { t, av: 0, ex: 0, board: 0, played: 0, plays: [], remOf: 0, rem: 0 }); return G.get(t); };
+  for (const m of ms) {
+    const su = m.su || {};
+    if (Array.isArray(su.av)) for (const t of su.av) { const a = acc(t); a.av++; if (Array.isArray(su.ex) && su.ex.includes(t)) a.ex++; }
+    if (Array.isArray(su.b) && su.b.length === 9) {               // (the board's games: dealt at the start, and every game dealt there after a draw)
+      const dealt = new Set(su.b.filter((t, i) => posOk(i)));
+      for (const e of m.sq) if (Number.isInteger(e.i) && posOk(e.i)) dealt.add(e.t);
+      const played = new Set(m.sq.filter(e => posOk(e.i) && e.X + e.O > 0).map(e => e.t));
+      for (const t of dealt) { const a = acc(t); a.board++; if (played.has(t)) a.played++; }
+    }
+    for (const e of m.sq) if (f.pos === 'all' || posOk(e.i)) acc(e.t).plays.push(Object.assign({ m }, e));
+    if (m.t1 && !ABANDONED.includes(m.end)) for (const t of new Set(m.sq.filter(e => f.pos === 'all' || posOk(e.i)).map(e => e.t))) { const a = acc(t); a.remOf++; if (rematched.has(m.id)) a.rem++; }
+  }
+  return [...G.values()].map(a => {
+    const p = a.plays, done = p.filter(e => e.end === 'won' || e.end === 'draw'), won = p.filter(e => e.end === 'won');
+    const fm = won.filter(e => e.f === 'X' || e.f === 'O'), hum = won.map(e => ({ e, h: humanSide(e.m) })).filter(x => x.h);
+    const len = done.map(e => (Number.isFinite(e.e) && Number.isFinite(e.s) ? e.e - e.s : Number.isFinite(e.ms) ? e.ms : null)).filter(v => v != null);
+    const ks = p.filter(e => Number.isInteger(e.k)).map(e => e.k), withHelp = p.filter(e => Number.isInteger(e.k));
+    return { t: a.t, plays: p.length, rows: p,
+      exclusion: ratio(a.ex, a.av), exOf: a.av, playRate: ratio(a.played, a.board), neverRate: ratio(a.board - a.played, a.board), boardOf: a.board,
+      unfinished: ratio(p.filter(e => e.end === 'open').length, p.length), secs: quant(len.map(v => v / 1000), 0.5), turns: quant(done.map(e => e.X + e.O), 0.5),
+      drawRate: ratio(done.filter(e => e.end === 'draw').length, done.length), firstMover: ratio(fm.filter(e => e.f === e.w).length, fm.length), fmOf: fm.length,
+      humanWin: ratio(hum.filter(x => x.e.w === x.h).length, hum.length), humanOf: hum.length, pick: mean(ks),
+      help: withHelp.length ? withHelp.reduce((s, e) => s + (e.hX || 0) + (e.hO || 0), 0) / withHelp.length : null, rematch: ratio(a.rem, a.remOf), remOf: a.remOf };
+  });
+}
+// The human's side in a match against the computer (vs Computer: the side the phone reported; Find Match's bot: the seat that is no bot).
+function humanSide(m) {
+  if (!AI_MODES.includes(m.mode) || m.mode === 'cvc') return null;
+  const h = m.who.find(w => !w.bot && (w.s === 'X' || w.s === 'O'));
+  return h ? h.s : null;
 }
 // A runner's runs (Dash, Lane Rush, Flap, Chopper): runs to finish, distance, where the crashes were.
 export function runStats(S, type, bin = 50) {

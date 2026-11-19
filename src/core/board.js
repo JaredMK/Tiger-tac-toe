@@ -36,7 +36,10 @@ export function timeoutMove(state, rng) {
   }                                  // (each timeout once: the phones say so once)
   const held = state.lockBy === 'open' ? null : state.lock;      // (a square only opened, nothing begun there: a turn missed)
   if (held != null && state.squares[held] && !state.squares[held].owner) {
-    const m = timeoutClose(state.squares[held].mini, p);
+    const hs = state.squares[held];
+    if (!hs.to) hs.to = { X: 0, O: 0 };
+    hs.to[p] += 1;                                                // (a turn run out in this play: its timeouts)
+    const m = timeoutClose(hs.mini, p);
     if (m != null) {
       const r = playMove(state, held, m, rng, { forced: true, noAgain: true });
       if (r.ok) { t.miss = { by: p, kind: 'closed', n: t.missN }; return { ok: true, square: held, move: m, closed: true }; }
@@ -106,11 +109,38 @@ export function majorityResult(squares) {
 // first move (f) and the time spent in it (ms: the time from the move before, anywhere on the board, to each move made in
 // it, summed: opts.at, the clock the caller has, a gap capped at SQ_GAP_MS; none where the caller gave no clock).
 export const SQ_GAP_MS = 120000;
-export function sqEntry(sq, mini, end, w) {
+// A play's facts (December 2026, the match data for the games' quality and the players' stats; one entry per mini-game dealt
+// into a square and played, in the order the plays began): its square i (0-8: a corner 0 2 6 8, a side 1 3 5 7, the centre 4),
+// its pick number k (1 for the match's first play begun, then 2...), oj (1: begun in the square the other side had just played),
+// s and e (its first move and its end, ms after the match's first move), per side: the time spent on its turns there (mX, mO),
+// the turns that followed the other side into the square it had just played (jX, jO: the play's first turn too) and the turns
+// missed while held there (toX, toO). The side that began it is f (who picked it: whoever opens a square moves in it).
+export function sqEntry(sq, mini, end, w, i, at, state) {
   const e = Object.assign({ t: mini.type, end, w, X: sq.mv ? sq.mv.X : 0, O: sq.mv ? sq.mv.O : 0, v: miniVersion(mini) }, isRace(mini) ? { race: 1 } : {}, RUN_TYPES.includes(mini.type) ? runLog(mini) : {});   // (race: a Race mode square; a runner: its runs and crashes, for the tuning)
   if (sq.f === 'X' || sq.f === 'O') e.f = sq.f;
   if (Number.isFinite(sq.ms)) e.ms = Math.round(sq.ms);
+  if (Number.isInteger(i) && i >= 0 && i <= 8) e.i = i;
+  if (Number.isInteger(sq.k)) e.k = sq.k;
+  if (sq.oj) e.oj = 1;
+  if (Number.isFinite(sq.s0)) e.s = Math.round(sq.s0);
+  if (Number.isFinite(at) && state && Number.isFinite(state.at0)) e.e = Math.round(at - state.at0);
+  for (const p of ['X', 'O']) {
+    if (sq.mt && sq.mt[p] > 0) e['m' + p] = Math.round(sq.mt[p]);
+    if (sq.j && sq.j[p] > 0) e['j' + p] = sq.j[p];
+    if (sq.to && sq.to[p] > 0) e['to' + p] = sq.to[p];
+  }
   return e;
+}
+// A square's play under way, cleared when the square is dealt again (a draw): its facts start over with the new game.
+const PLAY_KEYS = ['mv', 'f', 'ms', 'k', 'oj', 's0', 'mt', 'j', 'to'];
+export function clearPlay(sq) { for (const k of PLAY_KEYS) delete sq[k]; sq.mv = { X: 0, O: 0 }; }
+// The side with a line of its own two claimed squares and the third open (a match point), the first time it happens
+// (state.mp, with the move count: who reached match point first). The claimer is checked first: a claim can give both.
+function notePoint(state, p) {
+  if (state.mp) return;
+  for (const s of [p, other(p)]) {
+    if (LINES.some(l => l.filter(k => state.squares[k].owner === s).length === 2 && l.some(k => !state.squares[k].owner))) { state.mp = s; state.mpn = state.moves + 1; return; }
+  }
 }
 export function playMove(state, i, m, rng, opts) {
   if (state.sc) return chaosPlay(state, i, m, rng, opts);   // Super Chaos: a move in a simultaneous round (core/chaos.js; in a friend room too, on this phone's own copy)
@@ -134,10 +164,18 @@ export function playMove(state, i, m, rng, opts) {
   if (mini.type === 'trivia' && res.outcome === 'continue') triviaDeal(state, sq, rng);   // a new question once the last was answered right (before the square is judged stuck), from the match's unasked ones
   if (!sq.mv) sq.mv = { X: 0, O: 0 };
   if (!bonus) sq.mv[p] += 1;                                    // turns each side has spent in this mini-game (for the stats)
-  if (sq.f !== 'X' && sq.f !== 'O') sq.f = p;                   // (the side that moved first in it: the first-mover rate)
+  if (Number.isFinite(opts.at) && !Number.isFinite(state.at0)) state.at0 = opts.at;   // (the match's first move: every play's times are from it)
+  if (sq.f !== 'X' && sq.f !== 'O') {                           // the play begins: who began it, its pick number, whether it followed the other side in, when
+    sq.f = p; sq.k = state.picks = (state.picks || 0) + 1;
+    if (state.lastBy === other(p) && state.lastSquare === i) sq.oj = 1;
+    if (Number.isFinite(opts.at) && Number.isFinite(state.at0)) sq.s0 = opts.at - state.at0;
+  }
+  if (!bonus && state.lastBy === other(p) && state.lastSquare === i) { if (!sq.j) sq.j = { X: 0, O: 0 }; sq.j[p] += 1; }   // a turn spent in the square the other side had just played
   if (Number.isFinite(opts.at)) {                                // (the time spent in it: from the move before, anywhere on the board)
     const dt = Number.isFinite(state.lastAt) ? Math.max(0, Math.min(SQ_GAP_MS, opts.at - state.lastAt)) : 0;
     sq.ms = (Number.isFinite(sq.ms) ? sq.ms : 0) + dt; state.lastAt = opts.at;
+    if (!sq.mt) sq.mt = { X: 0, O: 0 };
+    sq.mt[p] += dt;                                             // (and the mover's share of it: their time per turn)
   }
   if (!Array.isArray(state.sqlog)) state.sqlog = [];
   let outcome = res.outcome, note = res.note || null;
@@ -155,7 +193,7 @@ export function playMove(state, i, m, rng, opts) {
   if (outcome === 'win') {
     const w = res.winner || p;                   // a mini-game may hand the square to the other player
     sq.owner = w;
-    state.sqlog.push(sqEntry(sq, mini, 'won', w));
+    state.sqlog.push(sqEntry(sq, mini, 'won', w, i, opts.at, state));
     mini.winCells = res.cells || null;
     flash.winner = w; flash.counts = res.counts || null;
     const mr = state.practice ? { winner: w, line: null, reason: 'practice', counts: null } : mainResult(state.squares);   // (practice: the centre square is the whole match)
@@ -163,13 +201,14 @@ export function playMove(state, i, m, rng, opts) {
       state.winner = mr.winner; state.winLine = mr.line; state.winReason = mr.reason; state.counts = mr.counts || null;
       flash.kind = 'match';
     }
+    if (!state.practice) notePoint(state, w);
   } else if (outcome === 'draw') {
     flash.drawn = mini;                          // keep the full board for the result overlay
     flash.counts = res.counts || null;
     const dealt = (state.games || []).filter(t => TYPES.includes(t) && dealable(t));      // an older match's list may name a game no longer dealt
     const pool = dealt.length ? dealt : TYPES.filter(t => dealable(t));
-    state.sqlog.push(sqEntry(sq, mini, 'draw', null));
-    sq.mv = { X: 0, O: 0 }; delete sq.f; delete sq.ms;
+    state.sqlog.push(sqEntry(sq, mini, 'draw', null, i, opts.at, state));
+    clearPlay(sq);
     sq.mini = newMini(pickReset(state, pool, rng, i), rng, dealOpts(state)); // the square resets with a new mini-game from this match's list (one not used yet first)
     if (sq.mini.type === 'trivia') triviaDeal(state, sq, rng);
     flash.newType = sq.mini.type;

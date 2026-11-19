@@ -6,6 +6,7 @@ import { other } from '../core/util.js';
 import { connectQuiet, loggedIn, unverified } from './accounts.js';
 import { call, configured, fb } from './connect.js';
 import { isMM } from './matchmaking.js';
+import { setupTypes } from '../ui/screens/setup.js';
 import { state } from '../ui/app.js';
 import { APP_VERSION, KEY } from '../ui/config.js';
 
@@ -85,18 +86,74 @@ const localMode = () => (state.sc ? 'chaos' : state.cpu === 'XO' ? 'cvc' : state
 // history (reportLocal), no playtest event (devMatch).
 // Against the computer, the side this phone's player has (so the admin's page can say who won); on one phone, both: none.
 const humanSide = () => (localMode() === 'cpu' ? (state.cpu === 'X' ? 'O' : 'X') : undefined);
+// ---------- the match's facts the page alone knows (December 2026: the match data; functions/statsRules.js factSetup) ----------
+// A local match's setup, sent with its start: the games its checklist offered (av) and left out (ex), the nine dealt (b), the
+// computer's level, the first mover, and the match it is a rematch of (rp: its row id, from the result screen's Rematch).
+let rematchOf = null;
+export function noteRematch() { rematchOf = state.stats && state.stats.id && !state.online ? 'l_' + state.stats.id : null; }
+function localSetup() {
+  const games = Array.isArray(state.games) ? state.games : [];
+  let av = games;
+  try { if (!state.starter) av = [...new Set(setupTypes().concat(games))]; } catch (e) { /* (the checklist's list unknown: the match's own) */ }
+  const su = { av, ex: av.filter(t => !games.includes(t)), b: (state.squares || []).map(q => q && q.mini && q.mini.type), f1: state.turn, lv: state.cpu ? state.cpuLevel || 'normal' : undefined, rp: rematchOf || undefined };
+  rematchOf = null;
+  return su;
+}
+// The "?" opened inside a square during a match (ui/input.js, never the first visit's own): counted for the play under way there,
+// by the side tapping (online this phone's; against the computer its player's; on one phone the side to move). At the match's end
+// each play's taps ride its line (hX, hO: a local match's report) or this phone's end event (hp, online: the server keeps the plays).
+let helps = [];
+export function noteHelp() {
+  if (state.screen !== 'mini' || state.zoom == null || state.winner || state.practice || !Array.isArray(state.squares)) return;
+  const sq = state.squares[state.zoom];
+  if (!sq || !sq.mini || sq.owner) return;
+  const side = state.online ? state.online.me : humanSide() || state.turn;
+  helps.push({ i: state.zoom, t: sq.mini.type, k: Number.isInteger(sq.k) ? sq.k : null, side, g: matchKeyNow() });
+}
+const matchKeyNow = () => (state.online ? 'm' + (state.online.game || '') : state.stats ? 'l' + state.stats.id : '');
+// Each tap to its play: the play with its pick number, else (tapped before its first move) the first play of that game begun in that
+// square after the taps. { k: { X, O } }.
+export function helpByPlay(squares, g) {
+  const out = {}, mine = helps.filter(h => h.g === g);
+  for (const h of mine) {
+    const play = squares.find(e => e.k === h.k && Number.isInteger(h.k)) || squares.filter(e => e.i === h.i && e.t === h.t && Number.isInteger(e.k)).sort((a, b) => a.k - b.k)[0];
+    if (!play || (h.side !== 'X' && h.side !== 'O')) continue;
+    const r = (out[play.k] = out[play.k] || { X: 0, O: 0 }); r[h.side]++;
+  }
+  return out;
+}
+// The square on this phone's screen when it left the match (-1: the board), noted as it goes (net/room.js quitMatch).
+let leftOn = null;
+export function noteLeave() { leftOn = { g: matchKeyNow(), sq: state.screen === 'mini' && Number.isInteger(state.zoom) ? state.zoom : -1 }; }
+const leftAt = g => (leftOn && leftOn.g === g ? leftOn.sq : undefined);
 export function trackStart() {
   if (state.online || state.practice) return;
   const id = Array.from(crypto.getRandomValues(new Uint8Array(10)), b => b.toString(16).padStart(2, '0')).join('');
   state.stats = { id, mode: localMode(), sent: false };
-  track({ ev: 'start', mode: state.stats.mode, id, side: humanSide() });
+  helps = [];
+  track({ ev: 'start', mode: state.stats.mode, id, side: humanSide(), setup: localSetup() });
+}
+function endReport(reason) {
+  const s = state.stats, m = matchStats(state), g = 'l' + s.id;
+  const hp = helpByPlay(m.squares, g);
+  for (const e of m.squares) { const h = hp[e.k]; if (h) { if (h.X) e.hX = h.X; if (h.O) e.hO = h.O; } }
+  track(Object.assign({ ev: 'end', mode: s.mode, id: s.id, side: humanSide(), turns: m.turns, winner: reason ? null : m.winner, reason: reason || m.reason, sc: m.sc, squares: m.squares },
+    m.mp ? { mp: m.mp, mpn: m.mpn } : {}, m.tmo ? { tmo: m.tmo } : {}, leftAt(g) !== undefined ? { ab: leftAt(g) } : {}));
+  helps = helps.filter(h => h.g !== g);
 }
 export function trackEnd() {
   const s = state.stats;
   if (!s || s.sent || !state.winner || state.online || state.practice) return;
   s.sent = true;
-  const m = matchStats(state);
-  track({ ev: 'end', mode: s.mode, id: s.id, side: humanSide(), turns: m.turns, winner: m.winner, reason: m.reason, sc: m.sc, squares: m.squares });
+  endReport(null);
+}
+// A local match left part way with no loss to record (a guest: net/room.js quitMatch): its end all the same, 'left' (abandoned),
+// so it is not left "unfinished", with the square on screen.
+export function trackLeft() {
+  const s = state.stats;
+  if (!s || s.sent || state.winner || state.online || state.practice || !Array.isArray(state.squares)) return;
+  s.sent = true;
+  endReport('left');
 }
 // ----- playtest activity, no account needed: this device's app opens and its matches (started, then
 // finished or left), for the admin's playtest page. The device is the random id above, kept in this
@@ -198,7 +255,14 @@ export function devWatch() {
   devSent.add(k);
   if (!state.winner) { devEvent({ ev: 'start', mode: m.mode, g: m.g }); return; }
   const quit = !!state.resigned && (state.online ? state.resigned === state.online.me : true);   // this phone left it (a local match is only ever left by player 1)
-  devEvent({ ev: quit ? 'leave' : 'finish', mode: m.mode, g: m.g });
+  const extra = {};
+  if (state.online) {                                             // (online the server keeps the plays: this phone's taps and where it left, by the play's pick number)
+    const hp = helpByPlay(matchStats(state).squares, matchKeyNow()), side = state.online.me;
+    const s = Object.entries(hp).filter(([, v]) => v[side]).map(([k, v]) => `${k}:${v[side]}`).slice(0, 40).join(',');
+    if (s) extra.hp = s;
+    if (quit && leftAt(matchKeyNow()) !== undefined) extra.ab = leftAt(matchKeyNow());
+  }
+  devEvent(Object.assign({ ev: quit ? 'leave' : 'finish', mode: m.mode, g: m.g }, extra));
 }
 // Still playing: every 10 minutes while a match is under way on screen, so a long match stays one session.
 // The first-run funnel and the growth events (December 2026; functions/statsRules.js growthMarks): a funnel step once per
