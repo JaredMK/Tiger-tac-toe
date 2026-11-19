@@ -24,7 +24,7 @@ import { init as connectInit } from './net/connect.js';
 import { checkResume, freshVisit, openFind, resumable } from './net/matchmaking.js';
 import { fetchReleases } from './net/releases.js';
 import { closeSeat, init as roomInit, joinCode, joinName, joinRoom, resumeOnline, setJoinCode, setJoinName } from './net/room.js';
-import { devAct, devAudio, devError, devOpen, devPulse, init as trackingInit, takeTag } from './net/tracking.js';
+import { chunkFailed, devAct, devAudio, devError, devOpen, devPulse, init as trackingInit, takeTag } from './net/tracking.js';
 import { devShort, ownerLink } from './net/owner.js';
 import { clockTimer, commit, setClockTimer, setMenuNote, state } from './ui/app.js';
 import { fetchAttConfig } from './ui/attention.js';
@@ -54,7 +54,7 @@ debugInit();
 // load): the menu is drawn without them; a screen that draws a game waits for them (ui/render.js, games/index.js VIEWS).
 VIEWS.wait = Promise.all(Object.keys(GAMES).map(t => import(`./games/${t}/view.js`).then(v => { GAMES[t].view = v; })))
   .then(() => { VIEWS.done = true; render(); })
-  .catch(e => { VIEWS.done = true; devError('views', String(e && e.message || e)); render(); });   // (a view that failed to load: the rest play, the error logged)
+  .catch(e => { VIEWS.done = true; if (!chunkFailed(e && e.message || e)) devError('views', String(e && e.message || e)); render(); });   // (a view that failed to load: the rest play, the error logged)
 bullseyeInit();
 echoInit();
 fingerInit();

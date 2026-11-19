@@ -1,5 +1,5 @@
 // Anonymous stats and playtest activity: matches reported to the server, this device's events.
-import { dropParam, startLink } from './platform.js';
+import { dropParam, reloadOnce, startLink } from './platform.js';
 import { playerName } from '../core/match.js';
 import { matchStats } from '../core/stats.js';
 import { other } from '../core/util.js';
@@ -271,9 +271,19 @@ export function catchError(kind, msg, where) {
   return true;
 }
 function errWhere(f, l) { if (!f) return ''; const s = String(f).replace(/^.*\/(?=[^/]+$)/, ''); return `${s}:${l || 0}`; }
+// A dynamic import that failed because its hashed file is gone (the message differs by browser): the page reloads once for the
+// new build (platform.js reloadOnce, loop-guarded) after the device's log has the 'chunk' error; a second one in a row is logged
+// as 'chunk2' and left. The server keeps earlier builds' files 7 days (scripts/build-site.js retainBuilds), so this is the rare case.
+export const isChunkError = msg => /dynamically imported module|importing a module script failed|failed to fetch.*module/i.test(String(msg || ''));
+export function chunkFailed(msg, reload = reloadOnce) {
+  if (!isChunkError(msg)) return false;
+  try { devError('chunk', String(msg).slice(0, 110)); } catch (e) { /* (kept) */ }
+  setTimeout(() => { if (!reload()) { try { devError('chunk2', 'not reloaded again'); } catch (e) { /* (kept) */ } } }, 600);   // (the log call is on its way first)
+  return true;
+}
 export function catchErrors(win) {
   win.addEventListener('error', e => { if (e && (e.error || e.message)) catchError('js', (e.error && e.error.message) || e.message, errWhere(e.filename, e.lineno)); });
-  win.addEventListener('unhandledrejection', e => { const r = e && e.reason; catchError('promise', r && r.message ? r.message : String(r)); });
+  win.addEventListener('unhandledrejection', e => { const r = e && e.reason, m = r && r.message ? r.message : String(r); if (chunkFailed(m)) return; catchError('promise', m); });
 }
 export function init() {
   catchErrors(window);

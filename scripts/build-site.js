@@ -63,6 +63,44 @@ function bundle(OUT) {
   fs.writeFileSync(idx, html);
   return { main: path.basename(main), css: `app-${hash}.css`, files: fs.readdirSync(B).length };
 }
+// Previous builds' hashed files stay on Hosting for 7 days (December 2026): a deploy replaces the whole site, so a phone that
+// loaded the page before it and imports a chunk after it (every mini-game's view is a dynamic import) got a 404: "Failed to
+// fetch dynamically imported module". b/manifest.json lists every hashed file with the day it stopped being current; the build
+// reads the live site's manifest, downloads each file still within RETAIN_DAYS of that day into the new b/ and writes the
+// merged manifest, so a file lives 7 days after the build that last used it, chained build to build, with no store of its own.
+const RETAIN_MS = 7 * 86400000, hashed = f => /-[A-Z0-9]{8,}\.(js|css|woff2)$/i.test(f);
+async function retainBuilds(B, base, fetchFile, now) {
+  const mine = fs.readdirSync(B).filter(hashed), files = {};
+  for (const f of mine) files[f] = { out: null };
+  let prev = null;
+  try { prev = JSON.parse((await fetchFile(base + '/b/manifest.json')).toString('utf8')); } catch (e) { prev = await crawlLive(base, fetchFile); }
+  const kept = [], failed = [];
+  for (const [f, v] of Object.entries(prev && prev.files || {})) {
+    if (files[f] || !hashed(f)) continue;
+    const out = v && v.out ? v.out : new Date(now).toISOString();           // (first build without it: its 7 days start now)
+    if (now - Date.parse(out) >= RETAIN_MS) continue;
+    try { fs.writeFileSync(path.join(B, f), await fetchFile(`${base}/b/${f}`)); files[f] = { out }; kept.push(f); } catch (e) { failed.push(f); }
+  }
+  fs.writeFileSync(path.join(B, 'manifest.json'), JSON.stringify({ built: new Date(now).toISOString(), files }) + '\n');
+  return { current: mine.length, kept, failed };
+}
+// The first build with no manifest on the site yet: what the live page loads, found from its index.html and the names inside each
+// file (the entry names its chunks, the stylesheet its fonts), so the first deploy keeps the files already out there too.
+async function crawlLive(base, fetchFile) {
+  const seen = new Set(), todo = [], re = /(?:main|c|app|f)-[A-Z0-9]{8,}\.(?:js|css|woff2)/gi;
+  try {
+    const html = (await fetchFile(base + '/')).toString('utf8');
+    for (const m of html.match(re) || []) todo.push(m);
+    while (todo.length) {
+      const f = todo.pop(); if (seen.has(f)) continue; seen.add(f);
+      if (/\.woff2$/.test(f)) continue;
+      try { for (const m of (await fetchFile(`${base}/b/${f}`)).toString('utf8').match(re) || []) todo.push(m); } catch (e) { /* (gone already) */ }
+    }
+  } catch (e) { return null; }
+  return { files: Object.fromEntries([...seen].map(f => [f, { out: null }])) };
+}
+const SITES = { production: 'https://tictacchaos.com', staging: 'https://staging.tictacchaos.com' };
+async function fetchLive(url) { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error(`${r.status} ${url}`); return Buffer.from(await r.arrayBuffer()); }
 function robots(env) { return env === 'staging' ? 'User-agent: *\nDisallow: /\n' : 'User-agent: *\nAllow: /\n'; }
 function build(env, sha, out) {
   const OUT = out || OUT_SITE;
@@ -99,11 +137,14 @@ function build(env, sha, out) {
   fs.writeFileSync(path.join(OUT, 'version.json'), JSON.stringify({ sha, env, built: new Date().toISOString() }) + '\n');
   return OUT;
 }
-module.exports = { envOf, noindex, previewHost, robots, aasa, build, bundle, PRODUCTION_PROJECT };
+module.exports = { envOf, noindex, previewHost, robots, aasa, build, bundle, retainBuilds, RETAIN_MS, PRODUCTION_PROJECT };
 if (require.main === module) {
   const env = envOf(process.argv[2], process.env.GCLOUD_PROJECT);
   let sha = process.env.GITHUB_SHA || '';
   if (!sha) try { sha = execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim(); } catch (e) { sha = 'unknown'; }
   build(env, sha);
-  console.log(`Built _site/ for ${env} at ${sha.slice(0, 7)}.`);
+  (async () => {
+    const r = process.env.TTC_NO_BUNDLE || !SITES[env] ? null : await retainBuilds(path.join(OUT_SITE, 'b'), SITES[env], fetchLive, Date.now());
+    console.log(`Built _site/ for ${env} at ${sha.slice(0, 7)}.${r ? ` Kept ${r.kept.length} files of earlier builds (7 days)${r.failed.length ? `; ${r.failed.length} could not be fetched` : ''}.` : ''}`);
+  })().catch(e => { console.error(e); process.exit(1); });
 }

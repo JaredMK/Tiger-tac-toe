@@ -147,6 +147,19 @@ export function dropParam(k) {
   if (NATIVE) return;
   try { const u = new URL(location.href); if (!u.searchParams.has(k)) return; u.searchParams.delete(k); history.replaceState(history.state, '', u.pathname + u.search + u.hash); } catch (e) { /* (kept) */ }
 }
+// A page whose hashed file is gone from the site (a deploy replaced it before this page imported it): reloaded once for the new
+// build, never in a loop (a mark in this tab's session storage; a second failure within 10 minutes is left to the caller).
+const RELOAD_GUARD = 'ttc.chunkReload', RELOAD_GAP_MS = 10 * 60000;
+export function reloadOnce(now = Date.now()) {
+  if (NATIVE) return false;                                   // (the app's files are in it: nothing to fetch)
+  try {
+    const last = Number(sessionStorage.getItem(RELOAD_GUARD) || 0);
+    if (last && now - last < RELOAD_GAP_MS) return false;
+    sessionStorage.setItem(RELOAD_GUARD, String(now));
+    location.reload();
+    return true;
+  } catch (e) { return false; }
+}
 // "Please update": the App Store in the app (its id, once it has one: docs/ios-plan.md); the web page loads the latest by itself.
 export const APP_STORE_ID = '';   // (its Apple id, set once the app is made in App Store Connect)
 export function openUpdate() {
