@@ -6318,3 +6318,26 @@ button.wlc { cursor: pointer; touch-action: manipulation; }
 .tpline.ok { color: var(--green); } .tpline.no { color: var(--muted); }
 .g-tp .tpbtn { height: 56px; }
 .ttpw .tpic { width: 40cqw; } .ttp { width: 100%; display: block; } .ttpa { fill: #fff; stroke: var(--ink); stroke-width: 2; } .ttpb { fill: #3a3a4a; stroke: var(--ink); stroke-width: 2; } .ttpc { fill: var(--x); stroke: var(--ink); stroke-width: 1.4; } .ttpd { stroke: var(--ink); stroke-width: 3; stroke-linecap: round; } .ttpf { fill: var(--o); stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; }
+
+/* Heads or Tails: tallies, the table with the two-sided coin (a 3-D toss), the result line, the two call buttons. */
+.g-ht { width: min(var(--gw), 440px); height: min(var(--gh), 540px); display: flex; flex-direction: column; gap: 8px; }
+.g-ht > * { flex: none; }
+.httable { flex: 1 1 0; min-height: 0; position: relative; display: grid; place-items: center; container-type: size; border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 18px; background: radial-gradient(circle at 50% 62%, #45b3ab, #1f7a78); box-shadow: 0 4px 0 var(--ink); overflow: hidden; perspective: 700px; }
+.htshadow { position: absolute; left: 50%; top: 50%; width: min(50cqw, 56cqh); aspect-ratio: 3.2; margin-top: min(26cqw, 29cqh); transform: translateX(-50%); border-radius: 50%; background: rgba(22, 18, 16, .28); }
+.htshadow.toss { animation: htshade 1150ms ease-in-out both; }
+@keyframes htshade { 45% { transform: translateX(-50%) scale(.45); opacity: .5; } }
+.htcoin { position: relative; width: min(56cqw, 62cqh); aspect-ratio: 1; transform-style: preserve-3d; }
+.htcoin.t { transform: rotateX(180deg); }
+.htface { position: absolute; inset: 0; width: 100%; height: 100%; display: block; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.htface.ft { transform: rotateX(180deg); }
+.htcoin.toss.h { animation: httossh 1150ms cubic-bezier(.3, .1, .4, 1) both; } .htcoin.toss.t { animation: httosst 1150ms cubic-bezier(.3, .1, .4, 1) both; }
+@keyframes httossh { from { transform: translateY(0) rotateX(0); } 45% { transform: translateY(-30cqh) rotateX(900deg) scale(1.1); } 88% { transform: translateY(0) rotateX(1800deg); } 94% { transform: translateY(-3cqh) rotateX(1800deg); } to { transform: rotateX(1800deg); } }
+@keyframes httosst { from { transform: translateY(0) rotateX(0); } 45% { transform: translateY(-30cqh) rotateX(990deg) scale(1.1); } 88% { transform: translateY(0) rotateX(1980deg); } 94% { transform: translateY(-3cqh) rotateX(1980deg); } to { transform: rotateX(1980deg); } }
+.htline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.htline.ok { color: var(--green); } .htline.no { color: var(--muted); }
+.htbtns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.g-ht .htbtn { height: 60px; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.g-ht .htbtn .htface { position: static; width: 34px; height: 34px; flex: none; backface-visibility: visible; }
+.g-ht .htbtn.called { box-shadow: inset 0 0 0 3px var(--ink); }
+@media (prefers-reduced-motion: reduce) { .htcoin.toss.h { animation: none; transform: none; } .htcoin.toss.t { animation: none; transform: rotateX(180deg); } .htshadow.toss { animation: none; } }
+.thtw .tpic { width: 40cqw; } .tht { width: 100%; display: block; }

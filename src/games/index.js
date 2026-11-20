@@ -96,6 +96,7 @@ import * as twistR from './twist/rules.js'; import * as twistA from './twist/ai.
 import * as mancalaR from './mancala/rules.js'; import * as mancalaA from './mancala/ai.js'; import * as mancalaM from './mancala/meta.js'; add('mancala', mancalaR, mancalaA, mancalaM);
 import * as wallsR from './walls/rules.js'; import * as wallsA from './walls/ai.js'; import * as wallsM from './walls/meta.js'; add('walls', wallsR, wallsA, wallsM);
 import * as targetR from './target/rules.js'; import * as targetA from './target/ai.js'; import * as targetM from './target/meta.js'; add('target', targetR, targetA, targetM);
+import * as headsR from './heads/rules.js'; import * as headsA from './heads/ai.js'; import * as headsM from './heads/meta.js'; add('heads', headsR, headsA, headsM);
 import * as clashR from './clash/rules.js'; import * as clashA from './clash/ai.js'; import * as clashM from './clash/meta.js'; add('clash', clashR, clashA, clashM);
 import * as diceR from './dice/rules.js'; import * as diceA from './dice/ai.js'; import * as diceM from './dice/meta.js'; add('dice', diceR, diceA, diceM);
 import * as hexapawnR from './hexapawn/rules.js'; import * as hexapawnA from './hexapawn/ai.js'; import * as hexapawnM from './hexapawn/meta.js'; add('hexapawn', hexapawnR, hexapawnA, hexapawnM);

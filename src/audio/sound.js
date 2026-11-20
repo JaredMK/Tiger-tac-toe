@@ -319,6 +319,7 @@ def('wlStep', 0.09, (c, d, t) => { sfxTone(c, d, t, 480, .06, { to: 320, type: '
 def('wlWall', 0.2, (c, d, t) => { sfxTone(c, d, t, 210, .15, { to: 120, type: 'triangle', vol: .55 }); sfxNoise(c, d, t, .05, { f: 900, filter: 'lowpass', vol: .4 }); sfxTone(c, d, t, 640, .04, { to: 420, type: 'triangle', vol: .2 }); }, { level: .46 });
 // Target Practice: a slider or the circle stopped (a crisp tick), the dart thrown (a short whoosh), and a target hit (a
 // woody crack).
+def('htLand', 0.3, (c, d, t) => { sfxNoise(c, d, t, .02, { f: 3600, q: 2, vol: .4, att: .001 }); sfxTone(c, d, t, 2350, .26, { vol: .22 }); sfxTone(c, d, t + .09, 2350, .16, { vol: .1 }); sfxTone(c, d, t, 3520, .18, { vol: .1 }); }, { level: .4 });
 def('tpTick', 0.06, (c, d, t) => { sfxTone(c, d, t, 1150, .035, { to: 900, type: 'square', vol: .22 }); sfxNoise(c, d, t, .01, { f: 4200, q: 2, vol: .2 }); }, { level: .34 });
 def('tpThrow', 0.22, (c, d, t) => sfxNoise(c, d, t, .19, { f: 700, to: 2600, q: 1, vol: .3, att: .02 }), { level: .34 });
 def('tpHit', 0.2, (c, d, t) => { sfxNoise(c, d, t, .035, { f: 2400, q: 1.2, vol: .55, att: .001 }); sfxTone(c, d, t, 520, .11, { to: 260, type: 'triangle', vol: .5 }); }, { level: .48 });

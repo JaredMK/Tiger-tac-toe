@@ -216,6 +216,11 @@ Category: More brain
 Play: Count the critters the question asks for as they cross. Ignore the others.
 Win: Get 3 right.
 
+## Heads or Tails [heads]
+Category: More luck
+Play: Call heads or tails, then the coin flips. A right call is a point.{sharedText}
+Win: First to {wins} points.
+
 ## Hex [hex]
 Category: More brain
 Play: Claim a hex. X connects left to right, O connects top to bottom.
