@@ -274,6 +274,12 @@ def('clawSlip', 0.34, (c, d, t) => { sfxTone(c, d, t, 880, .32, { to: 300, vol: 
 def('dukSqueak', 0.22, (c, d, t) => { sfxTone(c, d, t, 1250, .08, { to: 1700, vol: .4, type: 'square', att: .006 }); sfxTone(c, d, t + .09, 1500, .11, { to: 2100, vol: .4, type: 'square', att: .006 }); }, { level: .3, vary: true });
 // Pig: the oink on a bust (two short nasal grunts, the second lower).
 def('pgOink', 0.34, (c, d, t) => { sfxTone(c, d, t, 310, .13, { to: 230, type: 'sawtooth', vol: .3, att: .015 }); sfxNoise(c, d, t, .12, { f: 900, to: 600, q: 3, vol: .22, att: .01 }); sfxTone(c, d, t + .16, 250, .16, { to: 170, type: 'sawtooth', vol: .32, att: .015 }); sfxNoise(c, d, t + .16, .15, { f: 760, to: 480, q: 3, vol: .22, att: .01 }); }, { level: .42 });
+// Glass Bridge: the jump (a short rising whoosh), glass that holds (a bright tink), a crack (dry ticks), the smash (a
+// burst of high noise over falling chimes).
+def('gbJump', 0.2, (c, d, t) => { sfxNoise(c, d, t, .16, { f: 600, to: 2000, q: .9, vol: .26, att: .02 }); sfxTone(c, d, t, 260, .14, { to: 480, type: 'triangle', vol: .2, att: .01 }); }, { level: .36, vary: true });
+def('gbTink', 0.3, (c, d, t) => { sfxTone(c, d, t, 2100, .22, { to: 1900, vol: .4 }); sfxTone(c, d, t, 3150, .14, { vol: .16 }); sfxNoise(c, d, t, .015, { f: 5000, q: 2, vol: .25 }); }, { level: .4, vary: true });
+def('gbCrack', 0.26, (c, d, t) => { for (let k = 0; k < 5; k++) sfxNoise(c, d, t + k * .045 + (k % 2) * .012, .02, { f: 3600 + k * 500, q: 3, vol: .34 + k * .05, att: .001 }); }, { level: .42 });
+def('gbSmash', 0.5, (c, d, t) => { sfxNoise(c, d, t, .32, { f: 5200, to: 2400, q: .8, vol: .5, att: .002 }); for (let k = 0; k < 5; k++) sfxTone(c, d, t + .03 + k * .05, 2900 - k * 330, .16, { to: 2300 - k * 300, vol: .16 }); }, { level: .46 });
 // Shell Game (December 2026): the cup lifting off the ball (a soft rising pop), coming down over it (a hollow knock),
 // each swap's whoosh (played faster as the shuffle's tempo rises: the view gives the rate), the cups settling (two soft
 // knocks), and the roll under a picked cup before it lifts.

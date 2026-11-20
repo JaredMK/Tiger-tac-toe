@@ -6025,3 +6025,47 @@ button.dukd:active .dukf, .dukd.rpress .dukf { scale: .88; }
 .g-risky.pgd .rrnums i.pgnew { animation: pgnew .32s var(--land) cubic-bezier(.3, 1.5, .5, 1) both; }
 @keyframes pgnew { 0% { transform: none; } 1% { transform: scale(.6); background: var(--ink); color: #fff; } 60% { transform: scale(1.2); background: var(--ink); color: #fff; } }
 .tdice .tmtray.tpgtray { background: radial-gradient(circle at 36% 40%, #ffb3c7, #f2789b); }
+
+/* A player's token (ui/tok.js): a disc in their colour with the drawn mark. */
+.ntok { display: grid; place-items: center; width: var(--tk, 26px); aspect-ratio: 1; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--x); box-shadow: 0 2px 0 var(--ink); font-style: normal; flex: none; }
+.ntok.O { background: var(--o); } .ntok svg { width: 74%; height: 74%; display: block; overflow: visible; } .ntok .tmk { stroke: #fff; } .ntok.O .tmk { stroke: var(--ink); }
+/* Glass Bridge: tallies, the bridge (rows bottom to top, the far bank's flag over them), the result line. Times: --hop,
+   --crk (the crack), --bk (back on the old row), --dr (the fall's length): the rules' BRIDGE, set on .g-gb. */
+.g-gb { width: min(var(--gw), 440px); height: min(var(--gh), 560px); display: flex; flex-direction: column; gap: 8px; }
+.g-gb > * { flex: none; }
+.g-gb .gbwrap { flex: 1 1 0; min-height: 0; display: flex; justify-content: center; gap: 14px; }
+.gbb { position: relative; height: 100%; width: min(100%, 290px); display: flex; flex-direction: column; gap: 5px; padding: 0 12px; border-left: 5px solid var(--ink); border-right: 5px solid var(--ink); background: linear-gradient(90deg, rgba(22, 18, 16, .1), transparent 12%, transparent 88%, rgba(22, 18, 16, .1)), #bfe3f2; --tk: clamp(20px, 7cqh, 32px); container-type: size; }
+.g-gb.sep .gbb { width: calc(50% - 7px); padding: 0 6px; }
+.gbwho { position: absolute; left: 50%; top: 2px; transform: translateX(-50%); z-index: 2; font: 400 16px/1 'Bangers', 'Arial Black', sans-serif; }
+.gbend { flex: 0 0 9%; min-height: 24px; display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 -12px; background: var(--panel-2); border-top: 3px solid var(--ink); }
+.g-gb.sep .gbend { margin: 0 -6px; }
+.gbend.far { border-top: 0; border-bottom: 3px solid var(--ink); background: repeating-conic-gradient(var(--ink) 0 25%, #fff 0 50%) 0 0 / 16px 16px; }
+.gbflag { display: none; }
+.gbrow { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 7px; }
+.gbp { position: relative; min-width: 0; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; gap: 3px; border: 2.5px solid var(--ink); border-radius: 8px 6px 9px 7px; background: linear-gradient(135deg, rgba(255, 255, 255, .85) 0 18%, rgba(255, 255, 255, .25) 18% 30%, rgba(255, 255, 255, .6) 30% 36%, rgba(255, 255, 255, .15) 36%), #7ec8e6; font: inherit; color: inherit; }
+button.gbp { cursor: pointer; touch-action: manipulation; }
+.gbp.nx { box-shadow: 0 0 0 3px var(--x), 0 4px 0 var(--ink); } .gbp.nx.O { box-shadow: 0 0 0 3px var(--o), 0 4px 0 var(--ink); }
+.gbp.nx:active { transform: translateY(3px); box-shadow: 0 0 0 3px var(--x), 0 1px 0 var(--ink); }
+.gbp.s1 { background: #8fd694; }
+.gbp.s2 { background: rgba(22, 18, 16, .3); border-style: dashed; }
+.gbok { position: absolute; right: 3px; top: 3px; width: 13px; height: 13px; color: #1d6b2a; line-height: 0; } .gbok svg { width: 100%; height: 100%; }
+.gbsh { position: absolute; inset: 12%; width: 76%; height: 76%; fill: rgba(255, 255, 255, .75); stroke: var(--ink); stroke-width: 1; }
+.gbp.s1.fresh { animation: gbsafe .2s var(--hop) both; } .gbp.s1.fresh .gbok { animation: appear .2s var(--hop) both; }
+.gbp.s2.fresh { animation: gbshake var(--crk) linear both, gbbreak .16s var(--crk) both; } .gbp.s2.fresh .gbsh { animation: gbshards var(--dr) var(--crk) ease-in both; }
+@keyframes gbsafe { from { background: #7ec8e6; } }
+@keyframes gbbreak { from { background: #7ec8e6; border-style: solid; } }
+@keyframes gbshake { 0%, 55% { transform: none; background: #7ec8e6; border-style: solid; } 62%, 78%, 94% { transform: translateX(-2px) rotate(-1deg); background: #cfeaf5; border-style: solid; } 70%, 86% { transform: translateX(2px) rotate(1deg); background: #cfeaf5; border-style: solid; } 100% { background: #cfeaf5; border-style: solid; } }
+@keyframes gbshards { 0% { opacity: 0; transform: none; } 5% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+.ntok.hopin { animation: gbhop var(--hop) cubic-bezier(.3, 0, .4, 1) both; }
+.ntok.fallin { position: absolute; left: 50%; top: 50%; margin: calc(var(--tk) / -2) 0 0 calc(var(--tk) / -2); animation: gbhop var(--hop) cubic-bezier(.3, 0, .4, 1) both, gbdrop var(--dr) var(--crk) cubic-bezier(.5, 0, .9, .5) forwards; }
+.ntok.backin { animation: appearin .28s var(--bk) ease-out both; }
+@keyframes gbhop { 0% { transform: translateY(260%) scale(.9); } 55% { transform: translateY(40%) scale(1.3); } 100% { transform: none; } }
+@keyframes gbdrop { to { transform: translateY(40%) scale(.2) rotate(200deg); opacity: 0; } }
+.gbline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.gbline.ok { color: var(--green); } .gbline.no { color: var(--x); }
+@media (prefers-reduced-motion: reduce) { .ntok.fallin { display: none; } }
+.tgbw .tpic { width: 46cqw; } .tgb { width: 100%; display: block; }
+.tgbp { fill: #9fd6ec; stroke: var(--ink); stroke-width: 1; } .tgbp.s1 { fill: #8fd694; } .tgbp.s2 { fill: rgba(22, 18, 16, .28); stroke-dasharray: 2 1.5; }
+.tgbt { stroke: var(--ink); stroke-width: 1; fill: var(--x); } .tgbt.O { fill: var(--o); }
+/* A tally whose figures always take their own line under the name (many pips: the name keeps the whole width). */
+.ctals.two .ctal > .tnm { flex: 0 0 100%; max-width: 100%; } .ctals.two .ctal > .tnm + * { margin-left: 0; }

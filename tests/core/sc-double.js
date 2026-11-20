@@ -50,7 +50,7 @@ function playRound(st, ox, rseed) {
 // Search: a fresh square (seed), rounds played until one where a move of each wins it together. Returns
 // { type, seed, rounds: [{ o, x, r }], last: { o, x, r } } (the seeds of each round), or null.
 function findDouble(type, opts) {
-  opts = Object.assign({ seeds: 12, tries: 16, rounds: 40 }, opts || {});
+  opts = Object.assign({ seeds: 40, tries: 16, rounds: 40 }, opts || {});
   for (let s = 0; s < opts.seeds; s++) {
     const st = setUp(type, s), rounds = [];
     for (let r = 0; r < opts.rounds; r++) {

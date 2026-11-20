@@ -84,6 +84,7 @@ import * as skyhopR from './skyhop/rules.js'; import * as skyhopA from './skyhop
 import * as scoopR from './scoop/rules.js'; import * as scoopA from './scoop/ai.js'; import * as scoopM from './scoop/meta.js'; add('scoop', scoopR, scoopA, scoopM);
 import * as pinballR from './pinball/rules.js'; import * as pinballA from './pinball/ai.js'; import * as pinballM from './pinball/meta.js'; add('pinball', pinballR, pinballA, pinballM);
 import * as piggyR from './piggy/rules.js'; import * as piggyA from './piggy/ai.js'; import * as piggyM from './piggy/meta.js'; add('piggy', piggyR, piggyA, piggyM);
+import * as bridgeR from './bridge/rules.js'; import * as bridgeA from './bridge/ai.js'; import * as bridgeM from './bridge/meta.js'; add('bridge', bridgeR, bridgeA, bridgeM);
 import * as clashR from './clash/rules.js'; import * as clashA from './clash/ai.js'; import * as clashM from './clash/meta.js'; add('clash', clashR, clashA, clashM);
 import * as diceR from './dice/rules.js'; import * as diceA from './dice/ai.js'; import * as diceM from './dice/meta.js'; add('dice', diceR, diceA, diceM);
 import * as hexapawnR from './hexapawn/rules.js'; import * as hexapawnA from './hexapawn/ai.js'; import * as hexapawnM from './hexapawn/meta.js'; add('hexapawn', hexapawnR, hexapawnA, hexapawnM);

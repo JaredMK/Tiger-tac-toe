@@ -192,6 +192,11 @@ Category: More brain
 Play: Drop a piece into a column.
 Win: {k} in a row, any direction.
 
+## Glass Bridge [bridge]
+Category: More luck
+Play: Hop to a platform in the next row. Safe glass holds and you hop again. Weak glass breaks for good: your turn ends and you stay where you were.
+Win: First across wins.
+
 ## Hangman [hangman]
 Category: More luck
 Play: Guess a letter.{goAgain}
