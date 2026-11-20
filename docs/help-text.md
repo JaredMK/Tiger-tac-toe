@@ -130,6 +130,11 @@ Category: More skill
 Play: Flick up to throw. A faster flick goes further.{goAgain}
 Win: Sink all 3 of your cups.
 
+## Darts Cricket [cricket]
+Category: More skill
+Play: Stop the sideways line, then the up-down line. The dart lands where they cross. A dart in a numbered wedge marks that number{dblText}. The bullseye marks too{heartText}. {hits} marks close a number.{scoreText}
+Win: First to close every number and the bullseye.{scoreWin}
+
 ## Dash [dash]
 Category: More skill
 Play: Tap to jump, hold to jump higher.

@@ -6390,3 +6390,16 @@ button.wlc { cursor: pointer; touch-action: manipulation; }
 .tsline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .tsline.ok { color: var(--green); } .tsline.no { color: var(--muted); }
 .ttsw2 .tpic { width: 40cqw; } .tts { width: 100%; display: block; } .ttsw { fill: none; stroke: #7fa6c9; stroke-width: 3; stroke-linecap: round; } .ttsr { fill: #7d8a96; stroke: var(--ink); stroke-width: 2.4; } .ttsb { fill: #2a323a; stroke: var(--ink); stroke-width: 2; } .ttsp { fill: #fbfbf6; stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; }
+
+/* Darts Cricket: tallies (marks as pips; points beside them while scoring is on), the board (a square canvas), the result line, Stop. */
+.g-ck { width: min(var(--gw), 440px); height: min(var(--gh), 580px); display: flex; flex-direction: column; gap: 8px; }
+.g-ck > * { flex: none; }
+.g-ck .ckbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.ckfield { position: relative; width: min(100cqw, 100cqh); aspect-ratio: 1; border: 3.5px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); touch-action: none; }
+.ckcv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.ckline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.ckline.ok { color: var(--green); } .ckline.no { color: var(--muted); }
+.g-ck .ckbtn { height: 54px; }
+.g-ck .ctal .pips { flex-wrap: wrap; row-gap: 3px; } .g-ck .ctal .pips i { width: 11px; height: 11px; }
+.ckpts { margin-left: 6px; min-width: 22px; padding: 1px 5px 0; border: 2px solid var(--ink); border-radius: 8px; background: var(--paper); font: 400 16px/18px 'Bangers', 'Arial Black', sans-serif; text-align: center; }
+.tckw2 .tpic { width: 38cqw; } .tck { width: 100%; display: block; } .tckr { fill: #2b2b33; stroke: var(--ink); stroke-width: 2; } .tckw path { stroke: var(--ink); stroke-width: 1; stroke-linejoin: round; } .tckb { fill: #fff; stroke: var(--ink); stroke-width: 1.6; } .tckh { fill: #e5432a; stroke: var(--ink); stroke-width: 1.2; }
