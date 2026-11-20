@@ -501,6 +501,11 @@ Category: More brain
 Play: Place one of your pieces on an empty spot, then twist one of the four quarters of the board a quarter turn, either way.
 Win: First to line up {line} in a row wins, straight or diagonal. If a twist makes a line for both, the player who twisted wins.
 
+## Wall Race [walls]
+Category: More brain
+Play: On your turn step your pawn one square (not diagonally; pawns may share a square), or place one of your {walls} walls on a line between squares to slow the other pawn. A wall is two squares long and may never shut a pawn off from its far side.
+Win: First pawn to reach the far side wins.
+
 ## War [war]
 Category: More luck
 Play: Flip your card against the dealer's; the higher card wins the round. A tie goes to war: three cards down each, then flip again. A war won counts {warWorth}.{goAgain}

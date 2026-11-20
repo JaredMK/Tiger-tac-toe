@@ -6282,3 +6282,28 @@ button.mcp { cursor: pointer; touch-action: manipulation; }
 .mcline { margin: 0; height: 44px; display: grid; place-items: center; text-align: center; white-space: nowrap; font: 400 20px/26px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .mcline.ok { color: var(--green); } .mcline .mcend { min-height: 44px; padding: 4px 16px 0; font-size: 16px; }
 .tmcw .tpic { width: 26cqw; } .tmc { width: 100%; display: block; } .tmcb { fill: #b98352; stroke: var(--ink); stroke-width: 2; } .tmck { fill: #5d3a1c; stroke: var(--x); stroke-width: 1.4; } .tmck.O { stroke: var(--o); } .tmcp { fill: #7a4f2a; stroke: var(--ink); stroke-width: 1; } .tmcp.on { fill: #cfe8f5; }
+
+/* Wall Race: tallies (the walls each has left), the board (squares with a gap between them for the walls), the line.
+   Times: --ts a step, --tw a wall dropping in: the rules' WALLS, set on .g-wl. */
+.g-wl { width: min(var(--gw), 440px); height: min(var(--gh), 540px); display: flex; flex-direction: column; gap: 8px; }
+.g-wl > * { flex: none; }
+.wlpips { display: flex; gap: 3px; flex: none; } .wlpips i { width: 7px; height: 17px; border-radius: 3px; border: 2px solid var(--ink); background: var(--paper); } .wlpips i.on { background: #8d5a2b; }
+.g-wl .wlbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.wlgrid { --gap: 16px; --side: min(100cqw, 100cqh); --cell: calc((var(--side) - 14px - (var(--n) - 1) * var(--gap)) / var(--n)); width: var(--side); height: var(--side); padding: 7px; display: grid; grid-template-columns: repeat(calc(var(--n) - 1), var(--cell) var(--gap)) var(--cell); grid-template-rows: repeat(calc(var(--n) - 1), var(--cell) var(--gap)) var(--cell); border: 3.5px solid var(--ink); border-radius: 16px; background: #cfe3c0; box-shadow: 0 4px 0 var(--ink); --tk: calc(var(--cell) * .62); }
+.wlc { position: relative; min-width: 0; min-height: 0; margin: 0; padding: 0; border: 2px solid rgba(22, 18, 16, .55); border-radius: 8px; background: #f3f8ea; display: flex; align-items: center; justify-content: center; font: inherit; }
+.wlc.gx { background: #ffd9d2; } .wlc.go { background: #fff0b8; }
+button.wlc { cursor: pointer; touch-action: manipulation; }
+.wlc.two { --tk: calc(var(--cell) * .44); gap: 2px; }
+.wlmv { display: grid; place-items: center; font-style: normal; position: relative; z-index: 2; }
+.wlmv.slide { animation: wlslide var(--ts) cubic-bezier(.4, 0, .2, 1) both; z-index: 3; }
+@keyframes wlslide { from { transform: translate(calc(var(--dx) * (var(--cell) + var(--gap))), calc(var(--dy) * (var(--cell) + var(--gap)))); } }
+.wldot { width: 34%; aspect-ratio: 1; border-radius: 50%; background: var(--x); border: 2.5px solid var(--ink); opacity: .9; } .wlc.way.O .wldot { background: var(--o); }
+.wlc.way .wlmv + .wldot { position: absolute; }
+.wlg { min-width: 0; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: 6px; background: rgba(22, 18, 16, .1); cursor: pointer; touch-action: manipulation; position: relative; }
+.wlg::after { content: ''; position: absolute; inset: -6px 0; } .wlg.v::after { inset: 0 -6px; }
+.wlg:active { background: #8d5a2b; }
+.wlw { z-index: 4; border-radius: 7px; background: #8d5a2b; border: 2.5px solid var(--ink); box-shadow: 0 2px 0 var(--ink); pointer-events: none; font-style: normal; }
+.wlw.h { margin: 1px 0; } .wlw.v { margin: 0 1px; }
+.wlw.new { animation: wlwall var(--tw) cubic-bezier(.3, 1.5, .5, 1) both; } @keyframes wlwall { from { transform: scale(.2); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } }
+.wlline { margin: 0; height: 12px; }
+.twl { width: 62cqw; } .twl svg { width: 100%; display: block; } .twlb { fill: #cfe3c0; stroke: var(--ink); stroke-width: 2.4; } .twlx { fill: #ffb9ad; } .twlo { fill: #ffe38a; } .twll { stroke: rgba(22, 18, 16, .25); stroke-width: 1; fill: none; } .twlw { stroke: #8d5a2b; stroke-width: 4.5; stroke-linecap: round; fill: none; } .twlp { fill: var(--x); stroke: var(--ink); stroke-width: 1.6; } .twlp.O { fill: var(--o); }

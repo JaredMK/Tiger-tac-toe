@@ -314,6 +314,9 @@ def('twTurn', 0.46, (c, d, t) => { for (let k = 0; k < 7; k++) sfxNoise(c, d, t 
 def('mcScoop', 0.18, (c, d, t) => { for (let k = 0; k < 4; k++) sfxNoise(c, d, t + k * .035, .02, { f: 2000 + k * 300, q: 2, vol: .24, att: .001 }); }, { level: .34 });
 def('mcDrop', 0.08, (c, d, t) => { sfxTone(c, d, t, 620, .05, { to: 380, type: 'triangle', vol: .42 }); }, { level: .36 });
 def('mcBank', 0.12, (c, d, t) => { sfxTone(c, d, t, 980, .09, { to: 760, type: 'triangle', vol: .44 }); sfxTone(c, d, t, 1960, .05, { vol: .12 }); }, { level: .4 });
+// Wall Race: a pawn's step (a soft tap) and a wall dropping in (a wooden block).
+def('wlStep', 0.09, (c, d, t) => { sfxTone(c, d, t, 480, .06, { to: 320, type: 'triangle', vol: .44 }); sfxNoise(c, d, t, .014, { f: 2000, q: 1.5, vol: .2, att: .001 }); }, { level: .38, vary: true });
+def('wlWall', 0.2, (c, d, t) => { sfxTone(c, d, t, 210, .15, { to: 120, type: 'triangle', vol: .55 }); sfxNoise(c, d, t, .05, { f: 900, filter: 'lowpass', vol: .4 }); sfxTone(c, d, t, 640, .04, { to: 420, type: 'triangle', vol: .2 }); }, { level: .46 });
 // Shell Game (December 2026): the cup lifting off the ball (a soft rising pop), coming down over it (a hollow knock),
 // each swap's whoosh (played faster as the shuffle's tempo rises: the view gives the rate), the cups settling (two soft
 // knocks), and the roll under a picked cup before it lifts.
