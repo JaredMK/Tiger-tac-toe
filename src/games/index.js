@@ -107,6 +107,7 @@ import * as rhythmR from './rhythm/rules.js'; import * as rhythmA from './rhythm
 import * as rallyR from './rally/rules.js'; import * as rallyA from './rally/ai.js'; import * as rallyM from './rally/meta.js'; add('rally', rallyR, rallyA, rallyM);
 import * as blocksR from './blocks/rules.js'; import * as blocksA from './blocks/ai.js'; import * as blocksM from './blocks/meta.js'; add('blocks', blocksR, blocksA, blocksM);
 import * as numbersR from './numbers/rules.js'; import * as numbersA from './numbers/ai.js'; import * as numbersM from './numbers/meta.js'; add('numbers', numbersR, numbersA, numbersM);
+import * as trailR from './trail/rules.js'; import * as trailA from './trail/ai.js'; import * as trailM from './trail/meta.js'; add('trail', trailR, trailA, trailM);
 import * as clashR from './clash/rules.js'; import * as clashA from './clash/ai.js'; import * as clashM from './clash/meta.js'; add('clash', clashR, clashA, clashM);
 import * as diceR from './dice/rules.js'; import * as diceA from './dice/ai.js'; import * as diceM from './dice/meta.js'; add('dice', diceR, diceA, diceM);
 import * as hexapawnR from './hexapawn/rules.js'; import * as hexapawnA from './hexapawn/ai.js'; import * as hexapawnM from './hexapawn/meta.js'; add('hexapawn', hexapawnR, hexapawnA, hexapawnM);

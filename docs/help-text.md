@@ -538,6 +538,11 @@ Category: More brain
 Play: Place your mark.
 Win: Three in a row. No line left? The square resets.
 
+## Trail Race [trail]
+Category: More brain
+Play: Grow your trail by up to {cells} squares a turn: forward or sideways, never back. Both trails are walls: nobody crosses one. If you have no way to go when your turn comes, your trail is rubbed out and you start again from your own edge.
+Win: First to reach the far edge.{evenText}
+
 ## Treasure Hunt [hunt]
 Category: More luck
 Play: Dig a square. It tells you if the treasure is hot, warm, cool or cold. Steps count up, down, left and right only, not diagonally.

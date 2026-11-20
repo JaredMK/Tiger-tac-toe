@@ -6489,3 +6489,26 @@ button.nttile { cursor: pointer; touch-action: manipulation; } button.nttile:act
 .ntline.ok { color: var(--green); } .ntline.no { color: var(--muted); }
 .g-nt .ntbtn { height: 52px; }
 .tntw .tpic { width: 38cqw; } .tnt { width: 100%; display: block; } .tntb { fill: #ffd23f; stroke: var(--ink); stroke-width: 2.4; } .tntk { fill: #fff; stroke: var(--ink); stroke-width: 1.8; } .tnts { fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; }
+
+/* Trail Race: tallies (rows crossed), the board (an SVG grid with a button over each square the trail may grow
+   into), the result line, Undo and Done. */
+.g-tl { width: min(var(--gw), 440px); height: min(var(--gh), 580px); display: flex; flex-direction: column; gap: 8px; }
+.g-tl > * { flex: none; }
+.g-tl .tlbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.tlboard { position: relative; width: min(100cqw, 100cqh); aspect-ratio: 1; touch-action: none; }
+.tlsvg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+.tlbg { fill: #fdf6e3; stroke: var(--ink); stroke-width: 1; } .tlgrid { stroke: rgba(22, 18, 16, .16); stroke-width: .35; fill: none; }
+.tlfar.X { fill: color-mix(in srgb, var(--x) 26%, transparent); } .tlfar.O { fill: color-mix(in srgb, var(--o) 34%, transparent); }
+.tltrail { fill: none; stroke-width: 4.6; stroke-linecap: round; stroke-linejoin: round; } .tltrail.X { stroke: var(--x); } .tltrail.O { stroke: var(--o); }
+.tltrail.lined { stroke-width: 3; stroke-dasharray: .1 4.2; opacity: .95; } .tlghost { stroke: var(--ink); stroke-width: .9; stroke-dasharray: 1.6 1.2; } .tlghost.X { fill: color-mix(in srgb, var(--x) 55%, #fff); } .tlghost.O { fill: color-mix(in srgb, var(--o) 55%, #fff); } .tltrail.gone { opacity: .5; }
+.tltrail.tlfade { animation: tlfade 420ms var(--t, 0ms) ease-in forwards; } @keyframes tlfade { to { opacity: 0; stroke-width: 0; } }
+.tlhead circle { fill: #fff; stroke: var(--ink); stroke-width: 1; } .tlhead.X circle { fill: var(--x); } .tlhead.O circle { fill: var(--o); } .tlhead svg, .tlhead path { stroke: #fff; } .tlhead.O path { stroke: var(--ink); }
+.tlhead.tlhide { animation: tlhide 1ms var(--t, 0ms) linear forwards; } @keyframes tlhide { to { visibility: hidden; } }
+.tldot { position: absolute; left: calc(100% / var(--n) * var(--cx)); top: calc(100% / var(--n) * var(--cy)); width: calc(100% / var(--n)); height: calc(100% / var(--n)); padding: 0; margin: 0; border: 0; background: none; display: grid; place-items: center; cursor: pointer; touch-action: manipulation; }
+.tldot i { width: 46%; height: 46%; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--x); box-shadow: 0 2px 0 var(--ink); animation: tlpulse 1.1s ease-in-out infinite alternate; } .tldot.O i { background: var(--o); }
+.tldot:active i { transform: scale(.85); } @keyframes tlpulse { from { opacity: .55; } to { opacity: 1; } }
+.tlrow { font: 400 22px/1 'Bangers', 'Arial Black', sans-serif; letter-spacing: .03em; white-space: nowrap; } .tlrow small { font: 700 13px/1 'Comic Neue', 'Comic Sans MS', sans-serif; }
+.tlline { margin: 0; height: 24px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 700 16px/24px 'Comic Neue', 'Comic Sans MS', sans-serif; color: var(--ink); }
+.tlctl { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; } .g-tl .tlundo { min-width: 0; height: 52px; } .g-tl .tldone { height: 52px; min-width: 0; }
+@media (prefers-reduced-motion: reduce) { .tldot i { animation: none; } .tltrail.tlfade { animation: none; opacity: 0; } }
+.ttlw .tpic { width: 40cqw; } .ttl { width: 100%; display: block; } .ttl .tltrail { stroke-width: 5.5; } .ttlh { stroke: var(--ink); stroke-width: 1.6; } .ttlh.X { fill: var(--x); } .ttlh.O { fill: var(--o); }

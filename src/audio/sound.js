@@ -340,6 +340,8 @@ def('rrLap', 0.6, (c, d, t) => [523, 659, 784, 1047].forEach((f, i) => sfxTone(c
 def('bdDrop', 0.14, (c, d, t) => { sfxTone(c, d, t, 170, .11, { to: 90, vol: .6 }); sfxNoise(c, d, t, .03, { f: 1100, q: 1, vol: .3, att: .001 }); }, { level: .46 });
 def('bdClear', 0.3, (c, d, t) => { sfxTone(c, d, t, 440, .26, { to: 1180, type: 'triangle', vol: .38, att: .005 }); sfxNoise(c, d, t, .2, { f: 2400, to: 6000, q: 1, vol: .14, att: .02 }); }, { level: .42 });
 def('bdTurn', 0.08, (c, d, t) => sfxTone(c, d, t, 520, .06, { to: 700, type: 'square', vol: .2 }), { level: .3 });
+def('tlStep', 0.09, (c, d, t) => { sfxTone(c, d, t, 360, .07, { to: 470, type: 'triangle', vol: .42 }); sfxNoise(c, d, t, .015, { f: 2600, q: 1.5, vol: .16, att: .001 }); }, { level: .4 });
+def('tlWipe', 0.45, (c, d, t) => { sfxNoise(c, d, t, .4, { f: 3200, to: 500, q: .8, vol: .3, att: .01 }); sfxTone(c, d, t, 520, .36, { to: 170, type: 'triangle', vol: .24 }); }, { level: .4 });
 def('htLand', 0.3, (c, d, t) => { sfxNoise(c, d, t, .02, { f: 3600, q: 2, vol: .4, att: .001 }); sfxTone(c, d, t, 2350, .26, { vol: .22 }); sfxTone(c, d, t + .09, 2350, .16, { vol: .1 }); sfxTone(c, d, t, 3520, .18, { vol: .1 }); }, { level: .4 });
 def('tpTick', 0.06, (c, d, t) => { sfxTone(c, d, t, 1150, .035, { to: 900, type: 'square', vol: .22 }); sfxNoise(c, d, t, .01, { f: 4200, q: 2, vol: .2 }); }, { level: .34 });
 def('tpThrow', 0.22, (c, d, t) => sfxNoise(c, d, t, .19, { f: 700, to: 2600, q: 1, vol: .3, att: .02 }), { level: .34 });
@@ -555,7 +557,7 @@ let ownDown = false, ownUp = -1e9;
 export function ownPress() { ownDown = true; }
 // Every control plays its tap sound when pressed (whether or not the game takes the press). The moves
 // and card turns play their own sounds, from their events. A press on a disabled control is an error.
-const TAP_SOUND = { 'mj-pick': null, 'pj-pick': null, 'tw-place': null, 'tp-stop': null, 'nt-go': null, 'nt-num': null, 'nt-op': null, 'nt-undo': null, 'bd-col': null, 'bd-turn': null, 'bd-drop': null, 'rr-go': null, 'rt-go': null, 'fs-go': null, 'ck-stop': null, 'hr-go': null, explain: 'open', 'explain-close': 'close', pause: 'open', 'pause-resume': 'close', zoom: null, move: null, pick: null,
+const TAP_SOUND = { 'mj-pick': null, 'pj-pick': null, 'tw-place': null, 'tp-stop': null, 'tl-go': null, 'tl-undo': null, 'tl-done': null, 'nt-go': null, 'nt-num': null, 'nt-op': null, 'nt-undo': null, 'bd-col': null, 'bd-turn': null, 'bd-drop': null, 'rr-go': null, 'rt-go': null, 'fs-go': null, 'ck-stop': null, 'hr-go': null, explain: 'open', 'explain-close': 'close', pause: 'open', 'pause-resume': 'close', zoom: null, move: null, pick: null,
   'echo-tap': null, 'echo-play': null, bulls: null, bowl: null, 'run-go': null, 'fing-start': null, 'odd-reveal': null, 'trivia-reveal': null, 'att-start': null, 'hc-key': null, 'snap-cell': null, 'snap-submit': null, pokmark: null, domtile: null, hpsel: 'select',   // a game's own inputs: each plays its own sound (from its handler or its move), never the click as well
   mmcol: 'peg', mmslot: 'peg', rlnum: 'peg', rlgrp: 'peg', rlzero: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', 'anim-set': 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
   'set-sound': 'toggle', 'set-vib': 'toggle', settings: 'open', 'settings-back': 'close', 'pause-settings': 'open', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'tap' };   // (back: the Board button in a square, a plain tap)
