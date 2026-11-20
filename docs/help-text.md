@@ -434,6 +434,11 @@ Category: More luck
 Play: Roll up to {rolls} times. Set aside a 6, then a 5, then a 4. With all three, the other two dice are your cargo: reroll them or keep.{goAgain}
 Win: First to {target} cargo.
 
+## Shuffleboard [shuffle]
+Category: More skill
+Play: Flick up the lane to slide your puck: a faster flick slides further. It scores the zone it stops in: {z1}, {z2} or {z3}. Too short, off the end or off a side scores nothing.{sharedText}
+Win: First to {target} points.
+
 ## Shut the Box [shut]
 Category: More luck
 Play: Roll, then flip down open tiles that add up to the roll. Roll one die once your tiles add up to {oneDie} or less. No way to make it? Your turn ends.{goAgain}
