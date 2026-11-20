@@ -6258,3 +6258,27 @@ button.twc { cursor: pointer; touch-action: manipulation; }
 .twline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 700 17px/26px 'Comic Neue', 'Comic Sans MS', sans-serif; color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .twq.turn { animation: none; } }
 .ttw { width: 62cqw; } .ttw svg { width: 100%; display: block; } .ttwb { fill: #e9c99a; stroke: var(--ink); stroke-width: 2.4; } .ttwq { stroke: var(--ink); stroke-width: 1.6; fill: none; } .ttwh { fill: rgba(22, 18, 16, .28); } .ttwp { fill: var(--x); stroke: var(--ink); stroke-width: 1.4; } .ttwp.O { fill: var(--o); }
+
+/* Mancala Race: tallies, the board upright (X's bank on top, the two columns of pits, O's bank below), the line. */
+.g-mc { width: min(var(--gw), 440px); height: min(var(--gh), 580px); display: flex; flex-direction: column; gap: 6px; }
+.g-mc > * { flex: none; }
+.g-mc .mcbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.mcboard { width: min(100cqw, 300px); height: 100cqh; display: flex; flex-direction: column; gap: 5px; padding: 7px; border: 3.5px solid var(--ink); border-radius: 26px; background: #b98352; box-shadow: 0 4px 0 var(--ink), inset 0 0 0 4px rgba(255, 255, 255, .16); }
+.mcpits { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(var(--n), minmax(0, 1fr)); gap: 5px 8px; }
+.mcp, .mcbank { position: relative; min-width: 0; min-height: 0; margin: 0; padding: 0 30px 0 0; border: 2.5px solid var(--ink); border-radius: 999px; background: #7a4f2a; box-shadow: inset 0 3px 0 rgba(22, 18, 16, .35); font: inherit; color: #fff; }
+.mcp.O { padding: 0 0 0 30px; }
+button.mcp { cursor: pointer; touch-action: manipulation; }
+.mcp.can { box-shadow: inset 0 3px 0 rgba(22, 18, 16, .35), 0 0 0 3px var(--x); } .mcp.can.O { box-shadow: inset 0 3px 0 rgba(22, 18, 16, .35), 0 0 0 3px var(--o); }
+.mcp.can:active { transform: scale(.96); }
+.mcp.src { animation: mcsrc .2s both; } @keyframes mcsrc { 50% { transform: scale(.94); } }
+.mcbank { flex: 0 0 40px; padding: 0 44px 0 0; background: #5d3a1c; } .mcbank.X { box-shadow: inset 0 3px 0 rgba(22, 18, 16, .35), inset 0 0 0 3px var(--x); } .mcbank.O { box-shadow: inset 0 3px 0 rgba(22, 18, 16, .35), inset 0 0 0 3px var(--o); }
+.mcbank.gain { animation: mcgain .3s var(--t) both; } @keyframes mcgain { 50% { transform: scale(1.04); } }
+.mcpeb { position: absolute; left: 4px; right: 32px; top: 2px; bottom: 2px; } .mcp.O .mcpeb { left: 32px; right: 4px; } .mcbank .mcpeb { right: 46px; left: 8px; }
+.mcs { position: absolute; width: 11px; height: 11px; margin: -5.500px 0 0 -5.500px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #cfe8f5 55%, #8fbad6); border: 1.5px solid var(--ink); font-style: normal; }
+.mcs:nth-child(3n) { background: radial-gradient(circle at 35% 30%, #fff, #ffe3a6 55%, #e3b55b); } .mcs:nth-child(3n+1) { background: radial-gradient(circle at 35% 30%, #fff, #d7f0c4 55%, #9fcc7c); }
+.mcs.gone { animation: tuntil 1ms var(--u) both; }
+.mcn { position: absolute; right: 7px; top: 50%; translate: 0 -50%; min-width: 20px; text-align: center; font: 400 18px/1 'Luckiest Guy', 'Arial Black', sans-serif; color: #fff; text-shadow: 0 1.500px 0 var(--ink); }
+.mcp.O .mcn { right: auto; left: 7px; } .mcbank .mcn { right: 12px; font-size: 22px; }
+.mcline { margin: 0; height: 44px; display: grid; place-items: center; text-align: center; white-space: nowrap; font: 400 20px/26px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.mcline.ok { color: var(--green); } .mcline .mcend { min-height: 44px; padding: 4px 16px 0; font-size: 16px; }
+.tmcw .tpic { width: 26cqw; } .tmc { width: 100%; display: block; } .tmcb { fill: #b98352; stroke: var(--ink); stroke-width: 2; } .tmck { fill: #5d3a1c; stroke: var(--x); stroke-width: 1.4; } .tmck.O { stroke: var(--o); } .tmcp { fill: #7a4f2a; stroke: var(--ink); stroke-width: 1; } .tmcp.on { fill: #cfe8f5; }

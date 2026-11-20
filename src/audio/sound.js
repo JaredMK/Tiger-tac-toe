@@ -309,6 +309,11 @@ def('pjLand', 0.12, (c, d, t) => { sfxTone(c, d, t, 420, .08, { to: 250, type: '
 // Twist Five: a piece clacking into its hole, and a quarter of the board turning (a short ratchet).
 def('twPlace', 0.1, (c, d, t) => { sfxTone(c, d, t, 520, .07, { to: 300, type: 'triangle', vol: .5 }); sfxNoise(c, d, t, .016, { f: 2400, q: 1.4, vol: .28, att: .001 }); }, { level: .42, vary: true });
 def('twTurn', 0.46, (c, d, t) => { for (let k = 0; k < 7; k++) sfxNoise(c, d, t + k * .055, .022, { f: 1300 + k * 110, q: 2.5, vol: .3, att: .001 }); sfxTone(c, d, t, 150, .4, { to: 210, type: 'triangle', vol: .16, att: .05 }); }, { level: .4 });
+// Mancala Race: seeds scooped out of a pit (a soft rattle), a seed dropped into a pit (a small wooden tock) and into a
+// bank (a brighter one).
+def('mcScoop', 0.18, (c, d, t) => { for (let k = 0; k < 4; k++) sfxNoise(c, d, t + k * .035, .02, { f: 2000 + k * 300, q: 2, vol: .24, att: .001 }); }, { level: .34 });
+def('mcDrop', 0.08, (c, d, t) => { sfxTone(c, d, t, 620, .05, { to: 380, type: 'triangle', vol: .42 }); }, { level: .36 });
+def('mcBank', 0.12, (c, d, t) => { sfxTone(c, d, t, 980, .09, { to: 760, type: 'triangle', vol: .44 }); sfxTone(c, d, t, 1960, .05, { vol: .12 }); }, { level: .4 });
 // Shell Game (December 2026): the cup lifting off the ball (a soft rising pop), coming down over it (a hollow knock),
 // each swap's whoosh (played faster as the shuffle's tempo rises: the view gives the rate), the cups settling (two soft
 // knocks), and the roll under a picked cup before it lifts.

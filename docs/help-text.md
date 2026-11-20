@@ -264,6 +264,11 @@ Category: More luck
 Play: Tap two matching tiles to take them off. A tile is free when nothing lies on it and its left or right side is open.{chainText}
 Win: First to clear {goal} pairs.
 
+## Mancala Race [mancala]
+Category: More brain
+Play: Pick one of your pits. Its seeds are sown one by one round the board: along your side, into your bank, then along the other side.{extraText}{captureText}
+Win: First to bank {target} seeds wins. Nothing left to sow on your turn: whoever has banked more takes the square.
+
 ## Maze Runner [maze]
 Category: More luck
 Play: Pick a way and your runner dashes until the path forks or ends. The maze shows only where a runner has been. Keep going until a dead end stops you: that ends your turn.{boardText}

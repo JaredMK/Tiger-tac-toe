@@ -93,6 +93,7 @@ import * as facesR from './faces/rules.js'; import * as facesA from './faces/ai.
 import * as mahjongR from './mahjong/rules.js'; import * as mahjongA from './mahjong/ai.js'; import * as mahjongM from './mahjong/meta.js'; add('mahjong', mahjongR, mahjongA, mahjongM);
 import * as pegsR from './pegs/rules.js'; import * as pegsA from './pegs/ai.js'; import * as pegsM from './pegs/meta.js'; add('pegs', pegsR, pegsA, pegsM);
 import * as twistR from './twist/rules.js'; import * as twistA from './twist/ai.js'; import * as twistM from './twist/meta.js'; add('twist', twistR, twistA, twistM);
+import * as mancalaR from './mancala/rules.js'; import * as mancalaA from './mancala/ai.js'; import * as mancalaM from './mancala/meta.js'; add('mancala', mancalaR, mancalaA, mancalaM);
 import * as clashR from './clash/rules.js'; import * as clashA from './clash/ai.js'; import * as clashM from './clash/meta.js'; add('clash', clashR, clashA, clashM);
 import * as diceR from './dice/rules.js'; import * as diceA from './dice/ai.js'; import * as diceM from './dice/meta.js'; add('dice', diceR, diceA, diceM);
 import * as hexapawnR from './hexapawn/rules.js'; import * as hexapawnA from './hexapawn/ai.js'; import * as hexapawnM from './hexapawn/meta.js'; add('hexapawn', hexapawnR, hexapawnA, hexapawnM);
