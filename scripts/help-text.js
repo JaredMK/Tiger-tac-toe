@@ -11,7 +11,7 @@ const { pathToFileURL } = require('url');
 
 const ROOT = path.join(__dirname, '..');
 const DOC = 'docs/help-text.md';
-const ONBOARD = 'src/ui/onboard.js', EXPLAINER = 'src/ui/explainer.js', ACCOUNT = 'src/ui/screens/account.js', ENVJS = 'src/env.js', SHELL = 'index.html';
+const ONBOARD = 'src/ui/onboard.js', LINEUP = 'src/ui/lineup.js', ASK = 'src/ui/acctask.js', EXPLAINER = 'src/ui/explainer.js', ACCOUNT = 'src/ui/screens/account.js', ENVJS = 'src/env.js', SHELL = 'index.html';
 
 /* ----- reading and writing JS string literals ----- */
 const isQuote = c => c === "'" || c === '"' || c === '`';
@@ -181,6 +181,19 @@ function loadModel(read, oldTypes) {
     fld('Your claim', region(ONBOARD, /mine \? '<b>[^<']*<\/b> ([^<']*)' :/, 'sq')),
     fld('Their claim (bold)', region(ONBOARD, /' : '<b>([^<']*)<\/b>/, 'sq')),
     fld('Their claim', region(ONBOARD, /' : '<b>[^<']*<\/b> ([^<']*)';/, 'sq')),
+  ]);
+  // The main menu's Game lineup (ui/lineup.js) and a guest's "Create an account" on the results (ui/acctask.js).
+  sec('other', 'lineup', 'Game lineup', [
+    fld('Menu button', region(LINEUP, /data-act="lineup" aria-haspopup="dialog" aria-label="Game lineup\$\{isNew \? ': new games' : ''\}"><span>([^<]*)<\/span>/, 'tpl')),
+    fld('Sheet title', region(LINEUP, /<div class="gsh-bar"><b>([^<]*)<\/b>/, 'tpl')),
+    fld('In rotation', region(LINEUP, /<h2 class="cap luh">([^<]*)<\/h2><ul class="lulist">\$\{L\.now/, 'tpl')),
+    fld('Coming soon', region(LINEUP, /\? `<h2 class="cap luh">([^<]*)<\/h2>/, 'tpl')),
+    fld('Sticker', region(LINEUP, /<i class="lusoon">([^<]*)<\/i>/, 'tpl')),
+  ]);
+  sec('other', 'acctask', 'Create an account prompt', [
+    fld('Line', region(ASK, /<\/b> ([^<]*)<\/p>/, 'tpl')),
+    fld('Button', region(ASK, /panel\('acct-ask', '([^']*)'/, 'sq')),
+    fld('Not now', region(ASK, /data-act="acct-not">([^<]*)<\/button>/, 'tpl')),
   ]);
   sec('other', 'credits', 'Credits', [
     fld('Trivia', after(EXPLAINER, /visibleTypes\(\)\.includes\('trivia'\) \? (?=')/)),

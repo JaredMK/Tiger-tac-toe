@@ -13,6 +13,7 @@ import { netBar } from '../turnbar.js';
 import { shareBtn, shareLine } from '../sharecard.js';
 import { CICON, bubble, burstBadge, panel, rays, smallPanel } from '../comic.js';
 import { matchesDone } from '../onboard.js';
+import { askHtml, endKey } from '../acctask.js';
 import { h2hLine, seriesView } from '../series.js';
 import { headToHead } from '../../net/statscache.js';
 import { acct } from '../../net/accounts.js';
@@ -168,7 +169,7 @@ function endScreen(w, title, why, acts) {
     <div class="endhero"><div class="winburst ccpunch">${endBurst(m)}</div>${hero}</div>
     <h1 class="endttl${shut ? ' cheer' : ''}">${bubble(title, '', 'ccpunch')}</h1>
     <div class="endmid">${boardCard(w === 'draw' ? null : state.winLine)}<div class="facts">${facts}</div></div>
-    ${acts == null ? `<div class="endgo">${againBtns()}</div>${rematchNote()}${smallRow()}` : acts}</div></main>`;
+    ${acts == null ? `<div class="endgo">${againBtns()}</div>${rematchNote()}${askHtml(endKey(state))}${smallRow()}` : acts}</div></main>`;   // (a guest's "Create an account", under Rematch: ui/acctask.js)
 }
 export function renderWin(acts) {
   const w = state.winner;

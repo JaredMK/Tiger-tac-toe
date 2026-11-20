@@ -65,6 +65,12 @@ export const DEFS = {
   inviteDone: ['Invite matches finished', 'First matches finished in a room joined as the guest.'],
   rematches: ['Rematches', 'Times a player tapped Rematch.'],
   shares: ['Results shared', 'Times a player shared a result card.'],
+  askShown: ['Prompt shown', 'Times a guest saw "Create an account" on a result screen (after their 2nd finished match, then every 3rd; once a session at most).'],
+  askNo: ['Not now', 'Times a guest dismissed the prompt.'],
+  askTap: ['Tapped', 'Times a guest tapped Create account on the prompt.'],
+  askMade: ['Account created', 'Accounts made (a username picked) on a device after a tap on the prompt.'],
+  askConv: ['Prompt conversion', 'Accounts created after a tap on the prompt, for every prompt shown.'],
+  madeOther: ['Accounts made otherwise', 'Accounts made (a username picked) with no tap on the prompt before it.'],
 };
 export const label = k => (DEFS[k] || [k])[0];
 export const tip = k => (DEFS[k] || ['', ''])[1];
@@ -312,6 +318,12 @@ const METRICS = {
   inviteDone: S => eventsM(acts(S, 'invite-done')),
   rematches: S => eventsM(acts(S, 'rematch')),
   shares: S => eventsM(acts(S, 'share')),
+  askShown: S => eventsM(acts(S, 'acct-shown')),
+  askNo: S => eventsM(acts(S, 'acct-no')),
+  askTap: S => eventsM(acts(S, 'acct-tap')),
+  askMade: S => eventsM(acts(S, 'acct-made', 'prompt')),
+  askConv: S => { const made = acts(S, 'acct-made', 'prompt'), shown = acts(S, 'acct-shown'); return { v: ratio(made.length, shown.length), rows: made, kind: 'events', n: made.length, of: shown.length }; },
+  madeOther: S => eventsM(acts(S, 'acct-made', 'other')),
 };
 export function metric(S, id) {
   if (!METRICS[id]) throw new Error('No such metric: ' + id);

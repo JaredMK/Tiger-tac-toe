@@ -69,6 +69,12 @@
     },
     "releases": {
       ".read": true,
+      "soon": {
+        "$type": {
+          ".write": "auth != null && auth.token.admin === true",
+          ".validate": "$type.matches(/^[a-z0-9]{2,16}$/) && newData.isBoolean()"
+        }
+      },
       "platform": {
         "$p": {
           ".validate": "$p.matches(/^(web|ios)$/)",

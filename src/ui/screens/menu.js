@@ -8,6 +8,7 @@ import { RATINGS_ENABLED } from '../config.js';
 import { burstSvg } from '../fx.js';
 import { CICON, bubble, panel, rays, smallPanel } from '../comic.js';
 import { firstVisit } from '../onboard.js';
+import { lineupButton } from '../lineup.js';
 
 /* ----- main menu ----- */
 // The studio credit at the foot of the main menu: the JarHead Labs jar (assets/brand/jarhad-labs-logo.svg, the studio's logo, without its background) and a link to its X account.
@@ -19,7 +20,7 @@ export function renderMenu() {
   // Find Match a small "soon" tag while the admin has it off, How to Play and Settings as small panels. The order of
   // the controls (and their data-act) is the menu's as ever.
   const first = !resumable && !activeElsewhere() && !acctLoading && !(acct.user && !acct.ready) && firstVisit(loggedIn() ? acct.profile : null);   // a first visit: one big Play, straight into the starter board (ui/onboard.js)
-  return `<main class="scr menu cc loud${first ? ' first' : ''}">${rays()}${menuTop()}<div class="menu-card">
+  return `<main class="scr menu cc loud${first ? ' first' : ''}">${rays()}${menuTop(first)}<div class="menu-card">
     <h1 class="title ccpunch"><span class="sr">Tic Tac Chaos</span><span class="ttop wob" aria-hidden="true">${'TIC TAC'.split('').map((c, k) => c === ' ' ? '<span>&nbsp;</span>' : `<span style="animation-delay:${(k * .09).toFixed(2)}s">${c}</span>`).join('')}</span><span class="chaos wob">${burstSvg('CHAOS!', 'w', 300, 150, 54)}</span></h1>
     <div class="ccpals" aria-hidden="true"><span class="pal X">${toon('X')}</span>${bubble(first ? 'First time?' : "Who's playing?", '', 'ccpunch')}<span class="pal O">${toon('O')}</span></div>${menuNote ? `<div class="notice" role="status">${esc(menuNote)}</div>` : ''}
     ${first ? `${panel('first-go', 'Play!', { tag: 'start here', cls: 'k firstgo', k: 2, aria: 'Play: you against the computer' })}
@@ -40,7 +41,7 @@ function findBtn() {
 }
 // The main menu's top row: My Stats (or the leaderboard, with ratings on), and the account (Log in, or your username).
 export let acctLoading = false;                     // a returning player's account is being fetched at start
-function menuTop() {
+function menuTop(first) {
   const p = acct.profile;
   const chip = loggedIn() ? (RATINGS_ENABLED ? `<button class="btn chip in" data-act="profile" aria-label="Your profile: ${esc(p.username)}, rating ${p.rating}"><span>${esc(p.username)}</span><b>${p.rating}</b></button>`
       : `<button class="btn chip in" data-act="profile" aria-label="Your profile: ${esc(p.username)}"><span>${esc(p.username)}</span></button>`)
@@ -49,7 +50,7 @@ function menuTop() {
     : acct.user || acctLoading ? '<button class="btn chip" disabled aria-label="Loading your account">…</button>'
     : '<button class="btn chip" data-act="login">Log in</button>';
   const left = RATINGS_ENABLED ? '<button class="btn" data-act="leaderboard">Leaderboard</button>' : '';   // your stats: tap your username
-  return `<div class="menu-top"><div class="menu-left">${left}</div>${chip}</div>`;   // (sound and the rest: Settings)
+  return `<div class="menu-top"><div class="menu-left">${left}${first ? '' : lineupButton()}</div>${chip}</div>`;   // (the Game lineup: once a match is finished here, ui/lineup.js)   // (sound and the rest: Settings)
 }
 
 // Setters for the names other modules reassign (an imported name is read-only there).

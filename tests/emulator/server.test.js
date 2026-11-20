@@ -915,6 +915,19 @@ function localReport(id, side, how) {
   else { [0, 1, 2].forEach(i => { st.squares[i].owner = 'X'; }); st.squares[4].owner = 'O'; st.winner = 'X'; st.winLine = [0, 1, 2]; st.winReason = 'line'; }
   return { id, side, opponent: { name: 'Computer', cpu: true }, final: { squares: st.squares, winner: st.winner, winLine: st.winLine, winReason: st.winReason, resigned: st.resigned || null, counts: null, moves: 7, games: st.games, names: { X: side === 'X' ? 'LocalLou' : 'Computer', O: side === 'O' ? 'LocalLou' : 'Computer' } } };
 }
+test('a guest\'s matches carried over to the account made on the device: each recorded once, with when it ended', async () => {
+  const p = await player('NewbieNat');
+  const at = Date.now() - 3 * 86400000, a = Object.assign(localReport('carry0001', 'X', 'line'), { at, carried: true }), b = Object.assign(localReport('carry0002', 'O', 'resign'), { at: at + 1000, carried: true });
+  assert.deepEqual(await p.call('recordLocal', a), { ok: true, result: 'win' });
+  assert.deepEqual(await p.call('recordLocal', b), { ok: true, result: 'loss' });
+  assert.deepEqual(await p.call('recordLocal', a), { ok: true, seen: true }, 'sent again (a retry): once');
+  const ls = await get(`localStats/${p.uid}`), h = await get(`localHistory/${p.uid}`);
+  assert.deepEqual([ls.wins, ls.losses, ls.games], [1, 1, 2]);
+  assert.equal(h.l_carry0001.date, at, 'its own date'); assert.equal(h.l_carry0001.carried, true); assert.equal(h.l_carry0001.opponent.cpu, true);
+  const future = Object.assign(localReport('carry0003', 'X', 'line'), { at: Date.now() + 86400000 * 30, carried: true });
+  await p.call('recordLocal', future);
+  assert.ok((await get(`localHistory/${p.uid}/l_carry0003`)).date <= Date.now(), 'a date in the future is taken as now');
+});
 test('local matches: a logged-in player\'s are recorded once, privately (record, mini-games, history); bad reports refused', async () => {
   const p = await player('LocalLou'), q = await player('Snoopy');
   const won = localReport('locwin01', 'X', 'line');

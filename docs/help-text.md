@@ -496,6 +496,18 @@ Your claim: Claim three in a row to win the match.
 Their claim (bold): Square claimed!
 Their claim: Three in a row wins the match.
 
+## Game lineup [lineup]
+Menu button: Lineup
+Sheet title: Lineup
+In rotation: In rotation now
+Coming soon: Coming soon
+Sticker: Coming soon
+
+## Create an account prompt [acctask]
+Line: Create an account to keep your stats.
+Button: Create account
+Not now: Not now
+
 ## Credits [credits]
 Trivia: <p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>
 Physics games: <p>Mini Golf, Pool, Bowling and Pinball run on <a href="https://brm.io/matter-js" target="_blank" rel="noopener noreferrer">Matter.js</a> (MIT licence).</p>

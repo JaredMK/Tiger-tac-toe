@@ -24,6 +24,8 @@ import {
   setNet, shareRoom, copyInvite, startOnline, validCode
 } from '../net/room.js';
 import { liveSquare, liveUnwatch, liveWatch, setWatch } from '../net/live.js';
+import { lineupOpen, setLineupOpen } from './lineup.js';
+import { askAct } from './acctask.js';
 import { devAct, devStep, noteHelp, noteLeave, noteRematch, reportLocal, trackEnd, trackLeft, trackStart } from '../net/tracking.js';
 import { markMine } from '../net/owner.js';
 import {
@@ -357,6 +359,10 @@ export function init() {
       copyInvite();
     } else if (act === 'leave') {
       leaveRoom();
+    } else if (act === 'acct-not' || act === 'acct-ask') {   // a guest's "Create an account" on the results (ui/acctask.js): Not now, or on to the sign-up
+      if (askAct(act) === 'login') { setAfterLogin(null); setLoginMsg(null); state.screen = 'login'; commit(); connectQuiet(); } else render();
+    } else if (act === 'lineup') {               // the main menu's Game lineup: open or shut its sheet (ui/lineup.js)
+      setLineupOpen(!lineupOpen); render();
     } else if (act === 'adv') {
       setAdvOpen(!advOpen); render();
     } else if (act === 'games-none') {            // Deselect all: every mini-game off, in place (Start waits for one)

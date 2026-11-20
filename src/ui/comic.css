@@ -738,3 +738,32 @@ main.scr.cc:not(.mini) > .bar .ttl small { margin-top: 2px; padding-left: 12px; 
 .board .sq.spot::before { inset: 0; border-radius: 10px; box-shadow: 0 0 0 2.5px var(--ink), 0 0 0 6px var(--spot), 0 0 0 8.5px var(--ink); animation-name: ccspot2; }
 @keyframes ccspot2 { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
 .board .sq.spot .lab > .lnm { text-shadow: 0 0 2px var(--bg), 0 0 3px var(--bg), 1.5px 0 0 var(--bg), -1.5px 0 0 var(--bg), 0 1.5px 0 var(--bg), 0 -1.5px 0 var(--bg); }
+
+/* The Game lineup (December 2026, ui/lineup.js): a small panel on the menu's top row (the account chip's twin, so Play
+   never moves), a NEW burst on its corner (information: flat, no shadow, takes no tap of its own), and the sheet it opens
+   (the Mini-games sheet's frame): the games as flat tiles, icon and name, a yellow "Coming soon" sticker on the second list. */
+.cc .menu-top .lubtn { position: relative; overflow: visible; }
+.cc .menu-top .lubtn .lunew { position: absolute; right: -16px; top: -14px; pointer-events: none; font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; font-style: normal; letter-spacing: .05em;
+  color: #fff; background: var(--x); border: 2.5px solid var(--ink); padding: 4px 6px 2px; transform: skew(7deg) rotate(8deg); clip-path: polygon(0 18%, 14% 0, 34% 12%, 55% 0, 74% 10%, 100% 0, 92% 40%, 100% 72%, 84% 100%, 60% 88%, 38% 100%, 18% 88%, 0 100%, 8% 58%); }
+.lineup .gsh-body > .luh { display: inline-block; margin: 6px 0 12px; font: 400 22px/1.18 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; }
+.lineup .gsh-body > .luh ~ .luh { margin-top: 22px; }
+.lulist { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.lut { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 54px; padding: 6px 8px; background: #fff; border: 2.5px solid var(--ink); }
+.lut > b { min-width: 0; font: 400 17px/1.15 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; padding-right: .2em; hyphens: manual; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.lut.soon { background: color-mix(in srgb, var(--o-soft) 45%, #fff); }
+.lut .lusoon { position: absolute; right: -6px; top: -12px; font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; font-style: normal; letter-spacing: .05em; background: var(--o); color: var(--ink); border: 2px solid var(--ink); padding: 3px 5px 1px; transform: rotate(4deg); pointer-events: none; }
+@media (max-width: 340px) { .lulist { grid-template-columns: minmax(0, 1fr); } }
+/* A guest's "Create an account" under Rematch (ui/acctask.js): information on a flat white card (their numbers), one
+   green panel into the sign-up and a plain Not now. */
+.cc .acctask { width: calc(100% - 18px); max-width: 460px; margin: 8px auto 4px; box-sizing: border-box; padding: 8px 10px 8px; background: #fff; border: 2.5px solid var(--ink); text-align: center; }
+.cc .acctask > p { margin: 0 0 6px; font: 400 16px/1.2 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); }
+.cc .acctask > p > b { font-weight: 700; }
+.cc .acctask .askrow { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.cc .acctask .pn { width: auto; flex: 0 1 auto; margin: 0; height: 46px; padding: 2px 14px 0; }
+.cc .acctask .pn > b { font-size: 22px; }
+.cc .acctask .asknot { min-height: 44px; min-width: 44px; padding: 0 8px; background: none; border: 0; font: 700 16px/1 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); text-decoration: underline; }
+@media (max-height: 700px) {                  /* the prompt on a short phone: the board, the burst and the prompt itself a little tighter, so the screen still fits (360x640, 390x660) */
+  .cc .win-card:has(.acctask) .endboard .final { width: clamp(84px, calc(15 * var(--u)), 120px); }
+  .cc .win-card:has(.acctask) .endhero .winburst svg { max-height: calc(14 * var(--u)); }
+  .cc .acctask { margin-top: 4px; padding: 6px 8px; } .cc .acctask > p { font-size: 15px; margin-bottom: 4px; } .cc .acctask .pn { height: 44px; }
+}

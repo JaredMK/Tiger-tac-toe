@@ -244,7 +244,8 @@ function checkLocal(d, types, mainResult, majorityResult) {
   const names = { [side]: clean(f.names && f.names[side]) || side, [o]: clean(opp.name) || clean(f.names && f.names[o]) || o };
   const final = { squares: f.squares, winner, winLine: Array.isArray(f.winLine) ? f.winLine : null, winReason: reason, resigned: reason === 'resign' ? side : null,
     counts: f.counts || null, moves: Number.isInteger(f.moves) ? f.moves : 0, games: Array.isArray(f.games) ? f.games.filter(t => types.includes(t)) : null, names };
-  return { id, side, cpu: opp.cpu === true, opponent: names[o], final };
+  const at = Number.isFinite(d.at) && d.at > 0 ? Math.floor(d.at) : null;   // (a guest's match carried over to a new account: when it ended, held to the past year by the caller)
+  return { id, side, cpu: opp.cpu === true, opponent: names[o], final, at, carried: d.carried === true };
 }
 
 // A player's public profile (profiles/{uid}: what any logged-in player may read of another, security review F9/F11/F15),

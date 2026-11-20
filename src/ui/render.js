@@ -25,12 +25,14 @@ import { renderFriend, renderJoin, renderJoinAsk } from './screens/online.js';
 import { renderHistory, renderLeaderboard, renderProfHist, renderProfile } from './screens/profile.js';
 import { renderSandbox } from './sandbox.js';
 import { renderGameSheet, renderSetup } from './screens/setup.js';
+import { renderLineup } from './lineup.js';
 import { matchStale, renderStale } from './screens/stale.js';
 import { renderWin } from './screens/win.js';
 import { renderHeader, renderReactDock } from './turnbar.js';
 import { reactOn } from '../net/reactions.js';
 import { matchEnded, menuShown } from '../net/statscache.js';
 import { matchDone } from './onboard.js';
+import { askMatchDone, endKey } from './acctask.js';
 import { devAct } from '../net/tracking.js';
 import { VIEWS } from '../games/index.js';
 import { seriesRecord } from './series.js';
@@ -77,7 +79,7 @@ function renderNow() {
   const boards = entering ? [] : KEEP_BOARDS.map(sel => [sel, app.querySelector(sel)]).filter(([, e]) => e);
   const stale = matchStale();                                   // (a match with a mini-game this version lacks: its screen alone, no turn bar, menu or reactions around it)
   app.classList.toggle('rxon', reactOn() && !stale);             // (an online match: the reactions' strip at the bottom, kept the whole match)
-  const html = (stale ? '' : renderHeader()) + renderMain() + (stale ? '' : renderReactDock()) + renderGameSheet() + renderExplain() + renderIntro() + renderJoinAsk() + (refusedNote && state.online ? `<div class="refused" role="status">${esc(refusedNote)}</div>` : '');
+  const html = (stale ? '' : renderHeader()) + renderMain() + (stale ? '' : renderReactDock()) + renderGameSheet() + renderLineup(state.screen) + renderExplain() + renderIntro() + renderJoinAsk() + (refusedNote && state.online ? `<div class="refused" role="status">${esc(refusedNote)}</div>` : '');
   if (!boards.length) app.innerHTML = html;
   else {
     const fresh = document.createElement('div');
@@ -171,7 +173,7 @@ export function renderMain() {
   if (state.screen === 'profhist') return renderProfHist();
   if (state.screen === 'hreview' || state.screen === 'hreview-mini') return renderHistory();
   if (state.screen === 'win' && state.winner && state.practice) return renderPracticeEnd();   // a practice match's end (How to Play's Practice): Practice again or Back to How to Play
-  if (state.screen === 'win' && state.winner) { if (!state.practice) { seriesRecord(state); } if (!state.practice) matchDone((state.id || 'm') + ':' + state.moves + ':' + state.winner); if (state.online && state.online.room && state.online.role === 'guest') devAct('invite-done', state.online.code); matchEnded((state.id || 'm') + ':' + state.moves + ':' + state.winner); return renderWin(); }   // (the player's stats are refreshed in the background once a match is over)
+  if (state.screen === 'win' && state.winner) { if (!state.practice) { seriesRecord(state); } if (!state.practice) { matchDone(endKey(state)); askMatchDone(endKey(state)); } if (state.online && state.online.room && state.online.role === 'guest') devAct('invite-done', state.online.code); matchEnded((state.id || 'm') + ':' + state.moves + ':' + state.winner); return renderWin(); }   // (the player's stats are refreshed in the background once a match is over)
   if (state.screen === 'review' && state.winner) return renderBoard(true);
   if (state.screen === 'review-mini' && state.winner && state.zoom != null) {
     const sq = reviewSquares()[state.zoom];

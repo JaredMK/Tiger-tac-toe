@@ -1,5 +1,5 @@
 // Release control: which games a player may be dealt (released, or admin only until released).
-import { TEST_TYPES, TYPES } from '../games/index.js';
+import { INFO, SC_ONLY, TEST_TYPES, TYPES } from '../games/index.js';
 
 export function isReleased(t, releases) { return releases && typeof releases[t] === 'boolean' ? releases[t] : !TEST_TYPES.includes(t); }
 export function releasedTypes(releases) { return TYPES.filter(t => isReleased(t, releases)); }
@@ -25,4 +25,20 @@ export function restrictGames(games, allowed) {
   if (!games || typeof games !== 'object') return games;
   for (const t of Object.keys(games)) if (games[t] && !allowed.includes(t)) games[t] = false;
   return games;
+}
+// The Game lineup (the main menu's card, ui/lineup.js): what is in rotation on a platform and what is coming soon.
+// Released on a platform: released at all (releases/{type}) and not switched off there (releases/platform/{p}/{type}).
+// Coming soon: the admin's flag (releases/soon/{type} true), shown only where the game is not released on that platform,
+// so a game is never both on one platform (released on the web but off on iOS: coming soon on iOS alone).
+export function releasedOn(t, releases, p) {
+  const pl = releases && releases.platform && typeof releases.platform === 'object' ? releases.platform[p] : null;
+  return isReleased(t, releases) && !(pl && typeof pl === 'object' && pl[t] === false);
+}
+export function soonFlag(t, releases) { const s = releases && releases.soon; return !!(s && typeof s === 'object' && s[t] === true); }
+export function soonOn(t, releases, p) { return soonFlag(t, releases) && !releasedOn(t, releases, p); }
+// { now, soon }: the games in rotation and coming soon on platform p, by shown name (has(t): this client has the game).
+export function lineup(releases, p, has = () => true) {
+  const by = (a, b) => String((INFO[a] || {}).name || a).localeCompare(String((INFO[b] || {}).name || b), undefined, { numeric: true, sensitivity: 'base' });
+  const ok = TYPES.filter(t => !SC_ONLY.includes(t));
+  return { now: ok.filter(t => releasedOn(t, releases, p) && has(t)).sort(by), soon: ok.filter(t => soonOn(t, releases, p)).sort(by) };
 }

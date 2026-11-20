@@ -218,15 +218,23 @@ const isReleased = t => (ctl.releases && typeof ctl.releases[t] === 'boolean' ? 
 // Per platform (src/core/client.js): a released game can be switched off on iOS alone (releases/platform/ios/{type} false);
 // on means as released. The web has no switch of its own: a game is off there by un-releasing it.
 const iosOff = t => !!(ctl.releases && ctl.releases.platform && ctl.releases.platform.ios && ctl.releases.platform.ios[t] === false);
+// Coming soon (releases/soon/{type} true: the main menu's Game lineup, src/core/games.js soonOn): shown on a platform only
+// where the game is not released there, so a game is never Released and Coming soon on one platform. Released everywhere
+// (web, and iOS on): the switch is off and can't be set; released on the web with iOS off: coming soon on iOS alone.
+const soonSet = t => !!(ctl.releases && ctl.releases.soon && ctl.releases.soon[t] === true);
+const soonWhere = t => (!isReleased(t) ? 'web, iOS' : iosOff(t) ? 'iOS' : '');   // the platforms it may be coming soon on
+const soonShown = t => soonSet(t) && !!soonWhere(t);
 // A game's release switches, at the top of its page (#games/<type>): the web's (Released or Admin only) and iOS's (on, or off for a released game).
 function releaseCard(t) {
   const on = isReleased(t), ios = !iosOff(t), m = META[t] || {};
   const from = m.minVersion && m.minVersion !== '1.0.0' ? ` · <span class="mv">from client ${esc(m.minVersion)}</span>` : '';
   return `<div class="card ctl" id="relCard"><div class="row"><h2>Release</h2>
       <label class="sw"><input type="checkbox" data-rel="${t}"${on ? ' checked' : ''}><span class="${on ? 'good' : ''}">${on ? 'Released' : 'Admin only'}</span></label>
-      <label class="sw ios"><input type="checkbox" data-relios="${t}"${ios ? ' checked' : ''}><span class="${ios ? 'good' : ''}">${ios ? 'iOS on' : 'iOS off'}</span></label></div>
+      <label class="sw ios"><input type="checkbox" data-relios="${t}"${ios ? ' checked' : ''}><span class="${ios ? 'good' : ''}">${ios ? 'iOS on' : 'iOS off'}</span></label>
+      <label class="sw soon"><input type="checkbox" data-soon="${t}"${soonShown(t) ? ' checked' : ''}${soonWhere(t) ? '' : ' disabled'}><span class="${soonShown(t) ? 'good' : ''}">${soonShown(t) ? 'Coming soon' + (soonWhere(t) === 'iOS' ? ' on iOS' : '') : soonWhere(t) ? 'Not coming soon' : 'Coming soon: released'}</span></label></div>
     <p class="note">${esc(catName(t))} · ${esc((m.info && m.info.hint) || '')}${from}</p>
-    <p class="note">A tap releases or un-releases at once, for new matches; matches under way are not affected. Admin only: the game exists for nobody but you (not in the Advanced checklist, How to Play, random draws, Find Match or anyone else's rooms); you play it in local matches and friend games you host, and your guest plays it in that match only. Find Match deals released games only, even for you; squares of admin-only games are counted under "Admin-only games (testing)" in the stats. iOS off keeps a released game out of the iOS app (its local matches, and any online match with an iOS player in it) while the web still has it: it only ever takes a released game away from iOS, never gives iOS one the web lacks.</p></div>`;
+    <p class="note">A tap releases or un-releases at once, for new matches; matches under way are not affected. Admin only: the game exists for nobody but you (not in the Advanced checklist, How to Play, random draws, Find Match or anyone else's rooms); you play it in local matches and friend games you host, and your guest plays it in that match only. Find Match deals released games only, even for you; squares of admin-only games are counted under "Admin-only games (testing)" in the stats. iOS off keeps a released game out of the iOS app (its local matches, and any online match with an iOS player in it) while the web still has it: it only ever takes a released game away from iOS, never gives iOS one the web lacks.</p>
+    <p class="note">Coming soon lists the game under "Coming soon" in the main menu's Game lineup (its icon and name, no date) on each platform where it is not released: never Released and Coming soon on one platform. Releasing it everywhere takes it off Coming soon.</p></div>`;
 }
 // ---------- Platforms (the top of the Games page): the clients' minimum versions and the Super Chaos switch, neither a game's own ----------
 function platformsCard() {
@@ -242,6 +250,7 @@ async function saveRelIos(el) {
     const pl = Object.assign({}, ctl.releases.platform), io = Object.assign({}, pl.ios);
     if (on) delete io[t]; else io[t] = false;
     pl.ios = io; ctl.releases = Object.assign({}, ctl.releases, { platform: pl });
+    await clearSoonIfEverywhere(t);
   } catch (e) { render(); said(el, false, failed(e)); return; }
   render(); said(app.querySelector(`[data-relios="${t}"]`) || el, true, 'Saved');
 }
@@ -270,12 +279,30 @@ async function saveClients(btn) {
   try { await fb.dbM.set(fb.dbM.ref(fb.db, 'config/clients'), Object.keys(out).length ? out : null); ctl.clients = out; } catch (e) { btn.disabled = false; said(btn, false, failed(e)); return; }
   render(); said(app.querySelector('[data-clientsave]') || btn, true, 'Saved');
 }
+// Released on every platform now: the Coming soon flag goes (a game is never both on one platform).
+async function clearSoonIfEverywhere(t) {
+  if (!soonSet(t) || soonWhere(t)) return;
+  await fb.dbM.set(fb.dbM.ref(fb.db, `releases/soon/${t}`), null);
+  const so = Object.assign({}, ctl.releases.soon); delete so[t];
+  ctl.releases = Object.assign({}, ctl.releases, { soon: so });
+}
+async function saveSoon(el) {
+  const t = el.dataset.soon, on = el.checked && !!soonWhere(t);
+  try {
+    await fb.dbM.set(fb.dbM.ref(fb.db, `releases/soon/${t}`), on ? true : null);
+    const so = Object.assign({}, ctl.releases && ctl.releases.soon);
+    if (on) so[t] = true; else delete so[t];
+    ctl.releases = Object.assign({}, ctl.releases, { soon: so });
+  } catch (e) { render(); said(el, false, failed(e)); return; }
+  render(); said(app.querySelector(`[data-soon="${t}"]`) || el, true, 'Saved');
+}
 async function saveRelease(el) {
   const t = el.dataset.rel, on = el.checked, lab = el.nextElementSibling;   // (no confirmation: a tap releases or un-releases at once)
   if (lab) { lab.textContent = on ? 'Released' : 'Admin only'; lab.className = on ? 'good' : ''; }
   try {
     await fb.dbM.set(fb.dbM.ref(fb.db, `releases/${t}`), on);
     ctl.releases = Object.assign({}, ctl.releases, { [t]: on });
+    await clearSoonIfEverywhere(t);
   } catch (e) { render(); said(el, false, failed(e)); return; }
   render(); said(el, true, 'Saved');
 }
@@ -609,7 +636,7 @@ function gamesIndex() {
   const ts = Object.keys(GAMES).sort((a, b) => GAMES[a].localeCompare(GAMES[b]));   // alphabetical by the shown name
   const rows = ts.map(t => {
     const k = tuneList(t).length + legacyCount(t);
-    return `<li><a class="grow" href="#games/${t}">${gameIcon(t)}<span class="gnm"><b>${esc(GAMES[t])}</b><small>${esc(catName(t))} · ${k} setting${k === 1 ? '' : 's'}</small></span><span class="gbadges">${isReleased(t) ? badge('rel', 'Released') : badge('adm', 'Admin only')}${iosOff(t) ? badge('ios', 'iOS off') : ''}${raceOn(t) ? badge('race', 'Race') : ''}${gameChanged(t) ? badge('chg', 'changed') : ''}</span></a></li>`;
+    return `<li><a class="grow" href="#games/${t}">${gameIcon(t)}<span class="gnm"><b>${esc(GAMES[t])}</b><small>${esc(catName(t))} · ${k} setting${k === 1 ? '' : 's'}</small></span><span class="gbadges">${isReleased(t) ? badge('rel', 'Released') : badge('adm', 'Admin only')}${iosOff(t) ? badge('ios', 'iOS off') : ''}${soonShown(t) ? badge('soon', 'Coming soon') : ''}${raceOn(t) ? badge('race', 'Race') : ''}${gameChanged(t) ? badge('chg', 'changed') : ''}</span></a></li>`;
   }).join('');
   return `<div class="card" id="gamesCard"><div class="row"><h2>Mini-games</h2><span class="note" style="margin:0">${ts.length} games · ${ts.filter(isReleased).length} released</span></div>
     <ul class="glist">${rows}</ul>
@@ -1134,6 +1161,7 @@ app.addEventListener('change', e => {
   else if (d.feat) saveFeat(e.target);
   else if (d.rel) saveRelease(e.target);
   else if (d.relios) saveRelIos(e.target);
+  else if (d.soon) saveSoon(e.target);
   else dirtyMark(e.target);   // (a select or the Mode switch on a game's page)
 });
 if (window.TTT_FIREBASE && window.TTT_FIREBASE.offline) {   // the tests (tests/ui/admin-games.test.mjs): the page's parts without Firebase, the database stood in for

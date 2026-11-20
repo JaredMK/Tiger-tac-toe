@@ -246,7 +246,8 @@ export function growth(ctx) {
     C('signups', 'New accounts', r => r.signups.length, { num: true, html: r => drillLink(ctx, 'srcA:' + r.tag, `Source ${r.tag}: new accounts`, 'people', r.signups) })];
   return `${filterBar(ctx)}${kpis(ctx, ['newPlayers', 'newAccounts', 'd1', 'd7', 'd30', 'w1'])}
     <div class="grid2"><div class="card"><h2>First run</h2>${funnel(ctx, ['fOpened', 'fTap', 'fMove', 'fClaim', 'fFinished', 'fSecond'])}<p class="note">The people first seen in the range, and how many of them reached each step at least once.</p></div>
-      <div class="card"><h2>Invites</h2>${funnel(ctx, ['invitesSent', 'inviteOpens', 'inviteJoins', 'inviteDone'])}${kpis(ctx, ['rematches', 'shares'])}</div></div>
+      <div class="card"><h2>Invites</h2>${funnel(ctx, ['invitesSent', 'inviteOpens', 'inviteJoins', 'inviteDone'])}${kpis(ctx, ['rematches', 'shares'])}</div>
+      <div class="card" id="askCard"><h2>Create an account</h2>${funnel(ctx, ['askShown', 'askTap', 'askMade'])}${kpis(ctx, ['askConv', 'askNo', 'madeOther'])}<p class="note">The prompt guests see on a result screen, and the accounts made after a tap on it.</p></div></div>
     <div class="card"><h2>Sources</h2>${T.html('sources', srcCols, X.sourceRows(S), ctx.ts('sources', { sort: { k: 'people', dir: -1 } }), { note: 'A link with ?t=name (tictacchaos.com/?t=reddit) tags whoever first opens the game with it. (none): no tag.' })}</div>
     <div class="card"><h2>By the day they were first seen</h2>${T.html('cohorts', coCols, X.cohortRows(S), ctx.ts('cohorts', { sort: { k: 'day', dir: -1 } }), { note: 'First-run steps and retention for each day\'s new players. D1, D7, D30: used the game again exactly that many days later; "not yet" until the day has come.' })}</div>`;
 }

@@ -3,7 +3,7 @@ import { dropParam, reloadOnce, startLink } from './platform.js';
 import { playerName } from '../core/match.js';
 import { matchStats } from '../core/stats.js';
 import { other } from '../core/util.js';
-import { connectQuiet, loggedIn, unverified } from './accounts.js';
+import { acct, connectQuiet, hadAccount, loggedIn, unverified } from './accounts.js';
 import { call, configured, fb } from './connect.js';
 import { isMM } from './matchmaking.js';
 import { setupTypes } from '../ui/screens/setup.js';
@@ -300,14 +300,64 @@ export function pendingLocal(list) {
   } catch (e) { /* no storage */ }
   return [];
 }
-export function reportLocal() {
-  if (state.online || state.practice || !state.winner || !loggedIn() || window.TTT_FIREBASE && window.TTT_FIREBASE.uid) return;
-  if (!state.stats || state.stats.rec || state.stats.mode === 'cvc' || state.stats.mode === 'chaos') return;      // local matches only (started here), once each (Super Chaos: counted in the game stats only, for now)
-  state.stats.rec = true;
+// The report of the local match just over, from player 1's side (what recordLocal takes).
+function localReport() {
   const side = state.setup.human === 'O' ? 'O' : 'X', opp = other(side);
   const final = { squares: state.squares, winner: state.winner, winLine: state.winLine, winReason: state.winReason, resigned: state.resigned || null, counts: state.counts, moves: state.moves, games: state.games, names: { X: playerName(state, 'X'), O: playerName(state, 'O') } };
-  pendingLocal(pendingLocal().concat([JSON.parse(JSON.stringify({ id: state.stats.id, side, opponent: { name: playerName(state, opp), cpu: !!(state.cpu && state.cpu.includes(opp)) }, final }))]));
+  return JSON.parse(JSON.stringify({ id: state.stats.id, side, opponent: { name: playerName(state, opp), cpu: !!(state.cpu && state.cpu.includes(opp)) }, final }));
+}
+const localDone = () => !state.online && !state.practice && state.winner && state.stats && state.stats.mode !== 'cvc' && state.stats.mode !== 'chaos' && !(window.TTT_FIREBASE && window.TTT_FIREBASE.uid);   // local matches only (started here; Super Chaos: counted in the game stats only, for now)
+export function reportLocal() {
+  if (!localDone()) return;
+  if (isGuest()) { if (!state.stats.grec) { state.stats.grec = true; guestKeep(Object.assign(localReport(), { at: Date.now() })); } return; }   // a guest: kept on this device (below)
+  if (!loggedIn() || state.stats.rec) return;      // once each
+  state.stats.rec = true;
+  pendingLocal(pendingLocal().concat([localReport()]));
   flushLocal();
+}
+
+// ----- a guest's matches on this device (December 2026: the "Create an account" prompt, ui/acctask.js) -----
+// A guest: no account signed in here and none being signed back in (an anonymous sign-in is a guest). Each local match a
+// guest finishes (vs the computer, or Same phone) is kept on the device as the report recordLocal takes, with when it
+// ended (`at`), at most GUEST_MAX; `n` counts every match a guest finished here (online ones too, once each: guestCount).
+// A guest who then makes an account (a username claimed on this device: accounts.js saveUsername) carries them over:
+// carry is set, and once logged in flushGuest sends each to recordLocal (its date kept), dropping it once the server has
+// it (or refuses it), so the new account's vs Computer record and history start with this device's.
+const GUEST_KEY = KEY + '.guest', GUEST_MAX = 300;
+export const isGuest = () => !acct.user && !hadAccount();
+const gs = (() => { try { const v = JSON.parse(localStorage.getItem(GUEST_KEY) || 'null'); if (v && typeof v === 'object') return { list: Array.isArray(v.list) ? v.list : [], n: Number(v.n) || 0, last: v.last || null, carry: !!v.carry, tapped: !!v.tapped }; } catch (e) { /* none kept */ } return { list: [], n: 0, last: null, carry: false, tapped: false }; })();
+export const guestState = gs;
+const gsave = () => { try { localStorage.setItem(GUEST_KEY, JSON.stringify(gs)); } catch (e) { /* no storage: this visit only */ } };
+export function guestKeep(rep) { if (!rep || !rep.id || gs.list.some(r => r.id === rep.id)) return; gs.list = gs.list.concat([rep]).slice(-GUEST_MAX); gsave(); }
+// A finished match counted once (key: the match and how it ended); returns the guest's count after it, or 0 when not counted.
+export function guestCount(key) { if (!isGuest() || gs.last === key) return 0; gs.last = key; gs.n += 1; gsave(); return gs.n; }
+// The guest's record here: vs the computer (w, l, d) and every local match (all).
+export function guestRecord() {
+  const r = { w: 0, l: 0, d: 0, all: gs.list.length, n: gs.n };
+  for (const m of gs.list) {
+    if (!m.opponent || !m.opponent.cpu || !m.final) continue;
+    const w = m.final.winner;
+    if (w === 'draw') r.d++; else if (w === m.side) r.w++; else r.l++;
+  }
+  return r;
+}
+export function guestTapped() { gs.tapped = true; gsave(); }
+// A username claimed on this device (a new account): carry the guest's matches over; true when the sign-up came from the prompt.
+export function guestSignedUp() { const via = gs.tapped; gs.carry = gs.list.length > 0; gs.tapped = false; gsave(); return via; }
+let flushingGuest = false;
+export async function flushGuest() {
+  if (!gs.carry || flushingGuest || !loggedIn() || !fb || !fb.fns || unverified()) return false;
+  flushingGuest = true;
+  try {
+    while (gs.list.length) {
+      const r = gs.list[0];
+      try { await call('recordLocal', Object.assign({ carried: true }, r)); }
+      catch (e) { if (!/invalid-argument|failed-precondition/.test(String(e && e.code))) break; }   // offline: kept for later; refused: dropped
+      gs.list = gs.list.filter(x => x.id !== r.id); gsave();
+    }
+    if (!gs.list.length) { gs.carry = false; gsave(); }
+  } finally { flushingGuest = false; }
+  return true;
 }
 export async function flushLocal() {
   if (flushingLocal || !loggedIn() || !fb || !fb.fns || unverified()) return;   // (an email not yet proved: the server would refuse; kept for later)

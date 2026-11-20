@@ -250,8 +250,8 @@ function reportText(r, who, env) {
 // The first-run steps and the events a phone reports (devlog 'step' and 'act'): the funnel, retention, invites and shares
 // are worked out from the devices' events by the dashboard (src/admin/metrics.js).
 const STEPS = ['tap', 'move', 'claim'];
-const ACTS = ['rematch', 'share', 'invite', 'invite-open', 'invite-join', 'invite-done'];
-const CHANNELS = ['share', 'copy'];
+const ACTS = ['rematch', 'share', 'invite', 'invite-open', 'invite-join', 'invite-done', 'acct-shown', 'acct-no', 'acct-tap', 'acct-made'];   // (acct-*: a guest's "Create an account" prompt on the results, shown, Not now, tapped; and an account made, ch 'prompt' after a tap on it, else 'other')
+const CHANNELS = ['share', 'copy', 'prompt', 'other'];
 const dayNum = d => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)) / 86400000;
 
 module.exports = {

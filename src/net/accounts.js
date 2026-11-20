@@ -6,7 +6,7 @@ import { enterMatched, holdResume, search, startSearch, stopSearch } from './mat
 import { hostRoom } from './room.js';
 import { fetchReleases, fetchStagingMode } from './releases.js';
 import { clearStats, refreshStats } from './statscache.js';
-import { devError, flushLocal, pendingLocal, testerTag, track } from './tracking.js';
+import { devAct, devError, flushGuest, flushLocal, guestSignedUp, pendingLocal, testerTag, track } from './tracking.js';
 import { commit, save, setMenuNote, state } from '../ui/app.js';
 import { KEY } from '../ui/config.js';
 import { applyAccountPrefs } from '../ui/settings.js';
@@ -228,7 +228,7 @@ export function deleteTemplate(id) {
 export function afterAccount() {
   if (!acct.user || !acct.ready) return;
   if (unverified()) { if (['login', 'username'].includes(state.screen)) { state.screen = 'verify'; loginMsg = null; loginFinishing = false; save(); } return; }
-  if (loggedIn()) flushLocal();                                 // local matches still waiting to be recorded
+  if (loggedIn()) { flushLocal(); flushGuest().then(c => { if (c) refreshStats(true); }).catch(() => {}); }   // local matches still waiting to be recorded; a new account's guest matches from this device (tracking.js)
   if (!acct.profile || !acct.profile.username) { if (state.screen === 'login') { state.screen = 'username'; unameMsg = null; loginFinishing = false; save(); } return; }
   if (state.screen !== 'login' && state.screen !== 'username') return;
   loginFinishing = false;
@@ -340,6 +340,7 @@ export async function saveUsername() {
   try {
     const r = await call('claimUsername', Object.assign({ username: unameDraft }, testerTag() ? { tag: testerTag() } : {}));   // (the ?t= tag this phone first opened with: the sign-up's source)
     if (!r.ok) unameMsg = r.reason;
+    else { devAct('acct-made', guestSignedUp() ? 'prompt' : 'other'); flushGuest().then(c => { if (c) refreshStats(true); }).catch(() => {}); }   // (the profile may already be in: then here, else afterAccount)   // a new account: this device's guest matches go over to it (flushGuest, once logged in); from the prompt or not
   } catch (e) { unameMsg = "Couldn't save it. Check your connection and try again."; }
   loginBusy = false; render();                   // once saved, the profile arrives and the screen moves on
 }

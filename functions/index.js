@@ -1347,14 +1347,17 @@ function historyRecord(mode, side, them, st, final, at, rating) {
 /* ===================== local matches: a logged-in player's own record ===================== */
 // Reported by the phone once a local match is over (won, lost, or left): kept once per match, private
 // to the player. localStats/{uid}: the record (and by side: sides/X, sides/O) and squares won and lost per mini-game; localHistory/{uid}:
-// the match, its final board included, as in the game history.
+// the match, its final board included, as in the game history. A guest's matches on this device are sent here once they
+// make an account (`carried`, with when each ended: src/net/tracking.js flushGuest), each once like any other.
 exports.recordLocal = onCall(CALL, async req => {
   const uid = await needAccount(req);
   const rep = R.checkLocal(req.data, E.TYPES.concat(E.OLD_TYPES), E.mainResult, E.majorityResult);
   if (!rep) throw new HttpsError('invalid-argument', 'Not a match.');
   if (!(await db.ref(`users/${uid}/username`).get()).val()) throw new HttpsError('failed-precondition', 'Pick a username first.');
-  const h = historyRecord('local', rep.side, { uid: null, name: rep.opponent }, rep.final, rep.final, now(), null);
+  const t = now(), at = rep.at && rep.at <= t && rep.at > t - 365 * 86400000 ? rep.at : t;   // (a carried guest match keeps its own date: tracking.js flushGuest)
+  const h = historyRecord('local', rep.side, { uid: null, name: rep.opponent }, rep.final, rep.final, at, null);
   h.opponent.cpu = rep.cpu;
+  if (rep.carried) h.carried = true;
   const tx = await db.ref(`localHistory/${uid}/l_${rep.id}`).transaction(cur => (cur ? undefined : h));
   if (!tx.committed) return { ok: true, seen: true };          // reported already
   const up = {};

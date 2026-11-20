@@ -144,3 +144,14 @@ test('game quality: exclusion, play and never-played, unfinished, length, draws,
   assert.deepEqual([corners.ttt.boardOf, corners.pig.boardOf], [3, 0], 'dealt into a corner: ttt in all three, pig never');
   assert.deepEqual(X.normFilters({ opp: 'x', pos: 'y' }).opp + X.normFilters({ pos: 'y' }).pos, 'allall');
 });
+
+test('the "Create an account" prompt: shown, Not now, tapped, accounts made after a tap, and its conversion', () => {
+  const w = world(), a = H('a'), c = H('c');
+  Object.assign(w.logs[a], { s1: { t: day(2), ev: 'act', act: 'acct-shown' }, s2: { t: day(2), ev: 'act', act: 'acct-no' }, s3: { t: day(1), ev: 'act', act: 'acct-shown' }, s4: { t: day(1), ev: 'act', act: 'acct-tap' }, s5: { t: day(1), ev: 'act', act: 'acct-made', ch: 'prompt' } });
+  Object.assign(w.logs[c], { s6: { t: day(1), ev: 'act', act: 'acct-shown' }, s7: { t: day(1), ev: 'act', act: 'acct-made', ch: 'other' } });
+  const S = X.scope(X.build(w, NOW), { range: '30' });
+  assert.deepEqual(['askShown', 'askNo', 'askTap', 'askMade', 'madeOther'].map(id => val(S, id)), [3, 1, 1, 1, 1]);
+  const conv = X.metric(S, 'askConv');
+  assert.deepEqual([conv.n, conv.of], [1, 3]); assert.equal(conv.v, 1 / 3);
+  for (const id of ['askShown', 'askNo', 'askTap', 'askMade', 'askConv', 'madeOther']) assert.ok(X.label(id) && X.tip(id), id + ': labelled and defined');
+});
