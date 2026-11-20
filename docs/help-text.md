@@ -276,6 +276,11 @@ Category: More skill
 Play: Swipe to steer and eat the dots. Side tunnels wrap round. A power pellet turns the spooks blue: eat one for {ghostDots} dots. A spook ends your run; what you ate stays eaten.
 Win: Eat {target} dots first.
 
+## Mystery Face [faces]
+Category: More brain
+Play: Tap a face to guess it. {clueText} Use the clues to narrow it down.{boardText}
+Win: First to guess their mystery face wins.
+
 ## Odd One Out [oddone]
 Category: More skill
 Play: Reveal, then tap the odd shade within {secs} seconds.{goAgain}

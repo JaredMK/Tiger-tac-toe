@@ -295,6 +295,9 @@ def('mzStep', 0.06, (c, d, t) => { sfxTone(c, d, t, 520, .04, { to: 380, type: '
 def('mzBonk', 0.34, (c, d, t) => { sfxTone(c, d, t, 200, .12, { to: 110, type: 'triangle', vol: .55 }); sfxNoise(c, d, t, .04, { f: 700, filter: 'lowpass', vol: .4 }); sfxTone(c, d, t + .1, 330, .2, { to: 180, type: 'sine', vol: .25 }); }, { level: .44 });
 // Shape Split: the blade across the shape (a quick bright slice).
 def('spSlice', 0.22, (c, d, t) => { sfxNoise(c, d, t, .18, { f: 2200, to: 6200, q: 1.6, vol: .36, att: .01 }); sfxTone(c, d, t + .02, 1500, .12, { to: 2600, vol: .12 }); }, { level: .38 });
+// Mystery Face: a feature that matches (a bright blip) and one that does not (a dull one).
+def('fcYes', 0.12, (c, d, t) => { sfxTone(c, d, t, 880, .09, { to: 1180, type: 'triangle', vol: .4 }); }, { level: .36 });
+def('fcNo', 0.1, (c, d, t) => { sfxTone(c, d, t, 240, .08, { to: 190, type: 'triangle', vol: .36 }); }, { level: .3 });
 // Shell Game (December 2026): the cup lifting off the ball (a soft rising pop), coming down over it (a hollow knock),
 // each swap's whoosh (played faster as the shuffle's tempo rises: the view gives the rate), the cups settling (two soft
 // knocks), and the roll under a picked cup before it lifts.

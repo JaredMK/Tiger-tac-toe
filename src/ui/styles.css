@@ -6150,3 +6150,30 @@ button.gbp { cursor: pointer; touch-action: manipulation; }
 .spline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .spline.ok { color: var(--green); } .spline.no { color: var(--muted); }
 .tspw.col .tpic { width: 46cqw; } .tsp { width: 100%; display: block; } .tspshape { fill: #ffb199; stroke: var(--ink); stroke-width: 4; stroke-linejoin: round; } .tspcut { stroke: var(--ink); stroke-width: 4; stroke-dasharray: 9 6; stroke-linecap: round; fill: none; }
+
+/* Mystery Face: tallies, what is known so far (a slot a feature), the grid of faces (each a button, its clue under it),
+   the result line. */
+.g-fc { width: min(var(--gw), 440px); height: min(var(--gh), 560px); display: flex; flex-direction: column; gap: 6px; }
+.g-fc > * { flex: none; }
+.fccount { font: 700 14px/1 'Comic Neue', 'Comic Sans MS', sans-serif; white-space: nowrap; }
+.fcknown { height: 40px; display: flex; justify-content: center; gap: 6px; } .fcknown.none { height: 0; }
+.fcknown span { position: relative; width: 40px; height: 40px; display: grid; place-items: center; border: 2.5px dashed var(--ink); border-radius: 10px; background: var(--paper); color: var(--muted); }
+.fcknown span.k { border-style: solid; background: #e7f6e3; } .fcknown span i { width: 20px; line-height: 0; } .fcknown span i svg { width: 100%; } .fcknown span b { position: absolute; right: 3px; bottom: 1px; font: 400 13px/1 'Luckiest Guy', 'Arial Black', sans-serif; }
+.fcknown .fcface { width: 34px; height: 35px; }
+.fcgrid { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); grid-template-rows: repeat(var(--rows), minmax(0, 1fr)); gap: 5px; }
+.fccard { position: relative; min-width: 0; min-height: 0; margin: 0; padding: 2px 2px 1px; display: flex; flex-direction: column; align-items: center; gap: 1px; border: 2.5px solid var(--ink); border-radius: 10px 8px 11px 8px; background: #fff; font: inherit; color: inherit; container-type: size; }
+button.fccard { cursor: pointer; touch-action: manipulation; box-shadow: 0 3px 0 var(--ink); } button.fccard:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.fccard .fcface { flex: 1 1 0; min-height: 0; width: auto; max-width: 100%; height: calc(100cqh - 16px); display: block; }
+.fccard.done { background: var(--panel-2); } .fccard.done .fcface { opacity: .55; }
+.fccard.byX { box-shadow: inset 0 0 0 2.5px var(--x); } .fccard.byO { box-shadow: inset 0 0 0 2.5px var(--o); }
+.fccard.hit, .fccard.tg { background: #ffe58a; } .fccard.hit .fcface, .fccard.tg .fcface { opacity: 1; }
+.fccard.pop { animation: fcpop .24s cubic-bezier(.3, 1.5, .5, 1) both; } .fccard.pop.hit { animation: fcpop .24s cubic-bezier(.3, 1.5, .5, 1) both, fcgold .3s .24s both; }
+@keyframes fcpop { 0% { transform: scale(.82); } 60% { transform: scale(1.1); } } @keyframes fcgold { from { background: #fff; } }
+.fcm { height: 13px; display: flex; justify-content: center; align-items: center; gap: 2px; flex: none; }
+.fcm i { width: 12px; height: 12px; display: grid; place-items: center; border-radius: 4px; line-height: 0; font-style: normal; } .fcm i svg { width: 10px; height: 9px; }
+.fcm i.ok { background: var(--green); color: #fff; } .fcm i.no { background: #d8d0bd; color: #8b8170; } .fcm.hit i { width: 16px; }
+.fcn { min-width: 18px; padding: 0 4px; border-radius: 99px; background: var(--ink); color: #ffe45c; font: 400 12px/13px 'Luckiest Guy', 'Arial Black', sans-serif; text-align: center; }
+.fcline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.fcline.ok { color: var(--green); } .fcline.cl { color: var(--ink); }
+.tfc { display: flex; flex-direction: column; align-items: center; gap: 3cqw; width: 88cqw; } .tfcf { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5cqw; width: 100%; } .tfcf .fcface { width: 100%; height: auto; }
+.tfcr { display: flex; align-items: center; gap: 2cqw; width: 100%; height: 9cqw; font-size: 9cqw; line-height: 1; } .tfcr b { width: 9cqw; } .tfcr i { width: 7cqw; height: 7cqw; border-radius: 50%; border: 1.2cqw solid var(--ink); background: var(--x); } .tfcr.O i { background: var(--o); }

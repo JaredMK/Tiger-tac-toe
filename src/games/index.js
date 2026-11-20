@@ -89,6 +89,7 @@ import * as reelsR from './reels/rules.js'; import * as reelsA from './reels/ai.
 import * as homerR from './homer/rules.js'; import * as homerA from './homer/ai.js'; import * as homerM from './homer/meta.js'; add('homer', homerR, homerA, homerM);
 import * as mazeR from './maze/rules.js'; import * as mazeA from './maze/ai.js'; import * as mazeM from './maze/meta.js'; add('maze', mazeR, mazeA, mazeM);
 import * as splitR from './split/rules.js'; import * as splitA from './split/ai.js'; import * as splitM from './split/meta.js'; add('split', splitR, splitA, splitM);
+import * as facesR from './faces/rules.js'; import * as facesA from './faces/ai.js'; import * as facesM from './faces/meta.js'; add('faces', facesR, facesA, facesM);
 import * as clashR from './clash/rules.js'; import * as clashA from './clash/ai.js'; import * as clashM from './clash/meta.js'; add('clash', clashR, clashA, clashM);
 import * as diceR from './dice/rules.js'; import * as diceA from './dice/ai.js'; import * as diceM from './dice/meta.js'; add('dice', diceR, diceA, diceM);
 import * as hexapawnR from './hexapawn/rules.js'; import * as hexapawnA from './hexapawn/ai.js'; import * as hexapawnM from './hexapawn/meta.js'; add('hexapawn', hexapawnR, hexapawnA, hexapawnM);
