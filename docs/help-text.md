@@ -307,6 +307,11 @@ Win: Reach the target score first.
 Super Chaos Play: Drop the chip from an open slot. The gold bonus peg adds points.
 Super Chaos Win: First to the target score.
 
+## Peg Jump Race [pegs]
+Category: More brain
+Play: Move one peg towards the far side: one step forward (straight or diagonal), or a jump over any peg next to it, yours or theirs. After a jump you may jump again with the same peg. A peg that reaches the far side is home.
+Win: First to get all {pegs} pegs home.
+
 ## Pig [piggy]
 Category: More luck
 Play: Roll the die as often as you like, then bank your points. Roll a {bust} and this turn's points are gone.{maxText}

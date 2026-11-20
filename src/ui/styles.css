@@ -6198,3 +6198,34 @@ button.mjt { cursor: pointer; touch-action: manipulation; }
 .tmjw.col .tpic { width: 60cqw; } .tmj { position: relative; width: 100%; height: 34cqw; }
 .tmj i { position: absolute; width: 26cqw; height: 31cqw; display: grid; place-items: center; border: 1.3cqw solid var(--ink); border-radius: 3.5cqw; background: #fffaf0; box-shadow: 1.6cqw 1.8cqw 0 #c9b98f, 1.6cqw 1.8cqw 0 1.3cqw var(--ink); }
 .tmj i.a { left: 2cqw; top: 2cqw; } .tmj i.b { left: 30cqw; top: 2cqw; } .tmj i.c { left: 14cqw; top: -2cqw; } .tmj .mjpic { width: 64%; }
+
+/* Peg Jump Race: tallies, the board (a home bar at each end, the grid of holes between), the result line. A peg sits in
+   a full-cell wrapper (.pjmv) so its slide or hop is in cells: --dx, --dy the cells it came from, --t its time. */
+.g-pj { width: min(var(--gw), 440px); height: min(var(--gh), 560px); display: flex; flex-direction: column; gap: 8px; }
+.g-pj > * { flex: none; }
+.g-pj .pjbox { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; container-type: size; }
+.pjgrid { --cell: min(calc(100cqw / var(--cols)), calc((100cqh - 100px) / var(--rows))); width: calc(var(--cell) * var(--cols)); height: calc(var(--cell) * var(--rows)); display: grid; grid-template-columns: repeat(var(--cols), 1fr); grid-template-rows: repeat(var(--rows), 1fr); border: 3.5px solid var(--ink); border-radius: 16px; background: #d9b382; box-shadow: 0 4px 0 var(--ink), inset 0 0 0 4px rgba(255, 255, 255, .22); --tk: calc(var(--cell) * .62); }
+.pjc { position: relative; min-width: 0; min-height: 0; margin: 0; padding: 0; border: 0; background: none; display: grid; place-items: center; font: inherit; }
+.pjc::before { content: ''; position: absolute; width: 34%; aspect-ratio: 1; border-radius: 50%; background: rgba(22, 18, 16, .28); box-shadow: inset 0 2px 0 rgba(22, 18, 16, .35); }
+button.pjc { cursor: pointer; touch-action: manipulation; }
+.pjmv { position: absolute; inset: 0; display: grid; place-items: center; font-style: normal; z-index: 1; }
+.pjc.peg.can .ntok { box-shadow: 0 2px 0 var(--ink), 0 0 0 3px rgba(255, 255, 255, .8); }
+.pjc .ntok.sel { box-shadow: 0 2px 0 var(--ink), 0 0 0 4px var(--ink), 0 0 0 7px #fff; scale: 1.1; }
+.pjdot { position: relative; z-index: 1; width: 38%; aspect-ratio: 1; border-radius: 50%; background: var(--x); border: 2.5px solid var(--ink); opacity: .9; } .pjc.way.O .pjdot { background: var(--o); }
+.pjc.way.jump .pjdot { width: 46%; box-shadow: 0 0 0 4px rgba(255, 255, 255, .85); }
+.pjmv.slide { animation: pjslide var(--t) cubic-bezier(.4, 0, .2, 1) both; z-index: 3; }
+.pjmv.hop { animation: pjslide var(--t) cubic-bezier(.4, 0, .2, 1) both; z-index: 3; } .pjmv.hop .ntok { animation: pjhop var(--t) ease-in-out both; }
+.pjmv.wob .ntok { animation: pjwob .3s calc(var(--t) * .35) both; }
+.pjmv.gone { animation: pjgone var(--t) cubic-bezier(.4, 0, .6, 1) both; z-index: 3; pointer-events: none; }
+@keyframes pjslide { from { transform: translate(calc(var(--dx) * 100%), calc(var(--dy) * 100%)); } }
+@keyframes pjhop { 50% { scale: 1.4; translate: 0 -14%; } }
+@keyframes pjwob { 30% { transform: scale(.82, 1.1) rotate(-8deg); } 65% { transform: scale(1.08, .94) rotate(6deg); } }
+@keyframes pjgone { from { transform: none; opacity: 1; } 80% { opacity: 1; } to { transform: translateY(calc(var(--dy) * 100%)); opacity: 0; } }
+.pjbar { width: calc(var(--cell, 60px) * 3.4); max-width: 100cqw; height: 40px; margin: 0; padding: 0 10px; display: flex; align-items: center; justify-content: center; gap: 10px; border: 3px solid var(--ink); border-radius: 12px; background: #ffd9d2; --tk: 24px; font: inherit; }
+.pjbar.O { background: #fff0b8; } button.pjbar { cursor: pointer; touch-action: manipulation; }
+.pjbar.way { box-shadow: 0 0 0 4px var(--x), 0 4px 0 var(--ink); } .pjbar.O.way { box-shadow: 0 0 0 4px var(--o), 0 4px 0 var(--ink); }
+.pjh { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; border: 2.5px dashed rgba(22, 18, 16, .45); } .pjh.on { border: 0; }
+.pjline { margin: 0; height: 44px; display: grid; place-items: center; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.pjline.ok { color: var(--green); } .pjline .pjstop { min-height: 44px; padding: 4px 22px 0; font-size: 18px; }
+@media (prefers-reduced-motion: reduce) { .pjmv.gone { display: none; } }
+.tpjw .tpic { width: 42cqw; } .tpj { width: 100%; display: block; } .tpjb { fill: #d9b382; stroke: var(--ink); stroke-width: 2; } .tpjh { fill: rgba(22, 18, 16, .3); } .tpjp { fill: var(--x); stroke: var(--ink); stroke-width: 1.6; } .tpjp.O { fill: var(--o); }
