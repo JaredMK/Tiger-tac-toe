@@ -6400,7 +6400,8 @@ button.wlc { cursor: pointer; touch-action: manipulation; }
 .ckline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .ckline.ok { color: var(--green); } .ckline.no { color: var(--muted); }
 .g-ck .ckbtn { height: 54px; }
-.g-ck .ctal .pips { flex-wrap: wrap; row-gap: 3px; } .g-ck .ctal .pips i { width: 11px; height: 11px; }
+.g-ck .ckmarks { display: flex; align-items: center; min-width: 0; } .g-ck .ctal .ckmarks .pips { gap: 3px; } .g-ck .ctal .ckmarks .pips i { width: 11px; height: 11px; }   /* (.ckmarks in the selectors: over the general rule for seven pips or more) */
+@media (max-width: 340px) { .g-ck .ctal .ckmarks .pips { gap: 2px; } .g-ck .ctal .ckmarks .pips i { width: 9px; height: 9px; border-width: 2px; } }   /* (a very narrow phone: up to ten marks smaller, inside the tally) */
 .ckpts { margin-left: 6px; min-width: 22px; padding: 1px 5px 0; border: 2px solid var(--ink); border-radius: 8px; background: var(--paper); font: 400 16px/18px 'Bangers', 'Arial Black', sans-serif; text-align: center; }
 .tckw2 .tpic { width: 38cqw; } .tck { width: 100%; display: block; } .tckr { fill: #2b2b33; stroke: var(--ink); stroke-width: 2; } .tckw path { stroke: var(--ink); stroke-width: 1; stroke-linejoin: round; } .tckb { fill: #fff; stroke: var(--ink); stroke-width: 1.6; } .tckh { fill: #e5432a; stroke: var(--ink); stroke-width: 1.2; }
 

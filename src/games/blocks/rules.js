@@ -90,6 +90,12 @@ export function apply(mini, p, m, rng, idx) {
 }
 export function timeoutClose(mini, p) { return mini.run && mini.run.by === p ? 'end' : null; }
 export function publicView(mini) { return JSON.parse(JSON.stringify(mini)); }
-export function randomMove(mini, p, rng, from, empties) { return from(blockPlaces(mini.grid[p], blockKind(mini, p, mini.k[p]))); }
+// A move without thought, but not without sense (the tests' stand-in, the flows'): a place that clears a row where
+// there is one, else one of the lowest places the piece can rest (any of them at random).
+export function randomMove(mini, p, rng, from, empties) {
+  const g = mini.grid[p], kind = blockKind(mini, p, mini.k[p]), all = blockPlaces(g, kind).map(m => { const t = blockTry(g, kind, m.r, m.c); return { m, n: t.cleared.length, top: t.over ? 99 : t.at.reduce((x, q) => Math.max(x, q[1]), 0) }; });
+  const clear = all.filter(e => e.n > 0); if (clear.length) return from(clear).m;
+  const low = Math.min(...all.map(e => e.top)); return from(all.filter(e => e.top === low)).m;
+}
 export function moveFlash(m, p, range, bjFrom, mini, flash) { if (m !== 'end' && mini.last) flash.bd = JSON.parse(JSON.stringify(mini.last)); }
 export function flashMs(f, winLen, won) { return f.bd ? BLOCKS.fall + (f.bd.cleared.length || f.bd.over ? BLOCKS.clear : 0) + BLOCKS.hold + (won ? 500 : 0) : 0; }

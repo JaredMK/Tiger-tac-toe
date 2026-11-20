@@ -18,7 +18,7 @@ import { arcTally, lateAt, pips } from '../../ui/progress.js';
 import { runColours, runInputAt } from '../../ui/runner.js';
 import { stage } from '../../ui/stage.js';
 import { thumbArt } from '../../ui/thumbs.js';
-import { barRows } from '../../ui/tok.js';
+import { barRows, ptsTally } from '../../ui/tok.js';
 import { flashAnimating, skipFlash } from '../../ui/turns.js';
 
 export const ownLine = true;
@@ -112,7 +112,8 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   if (!mine && aim && s) aim = null;
   if (s && own && skipped !== a && flashAnimating()) { skipped = a; setTimeout(() => { if (state.flash === a) skipFlash(); }, CRK.fly + CRK.stick + CRK.hold); }
   const land = (own ? 0 : CRK.ax + CRK.ay) + CRK.fly, ok = l => !!(l.add || l.sc);
-  const tal = p => arcTally(p, o, pips(p, sum(mini, c, p), total, !!(s && s.add && a.by === p), land) + (c.scoring ? `<b class="ckpts" aria-label="${mini.pts[p]} points">${mini.pts[p]}</b>` : ''));
+  const tal = p => (total > 10 && !c.scoring ? ptsTally(p, o, total, sum(mini, c, p), s && s.add && a.by === p ? sum(mini, c, p) - s.add : null, land)   // (more marks than pips have room for: a gauge)
+    : arcTally(p, o, `<span class="wtal ckmarks">${total > 10 ? `<b class="ckpts">${sum(mini, c, p)}/${total}</b>` : pips(p, sum(mini, c, p), total, !!(s && s.add && a.by === p), land)}${c.scoring ? `<b class="ckpts" aria-label="${mini.pts[p]} points">${mini.pts[p]}</b>` : ''}</span>`));
   const l = s || ((view || d) && mini.last ? mini.last : null);
   const line = l ? `<p ${s ? lateAt('ckline ' + (ok(l) ? 'ok' : 'no'), land) : `class="ckline ${ok(l) ? 'ok' : 'no'}"`} role="status">${words(mini, l)}</p>` : '<p class="ckline"></p>';
   const before = s ? s.marks.map((v, t) => (t === s.t ? v - s.add : v)) : null;

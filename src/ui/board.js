@@ -27,7 +27,7 @@ import { cpuTurn } from './turns.js';
 // A square's title (December 2026): long words carry a soft hyphen where they may break, so a word wider than the narrowest
 // square (the middle column at 360 px: Codebreaker, Backgammon) breaks there, hyphenated, rather than being clipped; a
 // square wide enough never breaks it. "/" may break after it. The title is then held to two lines (comic.css).
-const SOFT = { Treasure: 'Trea\u00adsure', Codebreaker: 'Code\u00adbreaker', Bullseye: 'Bulls\u00adeye', Takeover: 'Take\u00adover', Districts: 'Dis\u00adtricts',
+const SOFT = { Shuffleboard: 'Shuffle\u00adboard', Treasure: 'Trea\u00adsure', Codebreaker: 'Code\u00adbreaker', Bullseye: 'Bulls\u00adeye', Takeover: 'Take\u00adover', Districts: 'Dis\u00adtricts',
   Patterns: 'Pat\u00adterns', Dominoes: 'Dom\u00adinoes', Backgammon: 'Backgam\u00admon', Scissors: 'Scis\u00adsors', Headcount: 'Head\u00adcount',
   Snapshot: 'Snap\u00adshot', Standoff: 'Stand\u00adoff', Hexapawn: 'Hexa\u00adpawn', Captain: 'Cap\u00adtain' };
 export const softName = name => name.split(/(\s+)/).map(w => SOFT[w.replace(/\W+$/, '')] ? SOFT[w.replace(/\W+$/, '')] + w.match(/\W*$/)[0] : w).join('').replace('/', '/<wbr>');
