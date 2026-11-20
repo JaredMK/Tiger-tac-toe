@@ -25,7 +25,7 @@ import { renderFriend, renderJoin, renderJoinAsk } from './screens/online.js';
 import { renderHistory, renderLeaderboard, renderProfHist, renderProfile } from './screens/profile.js';
 import { renderSandbox } from './sandbox.js';
 import { renderGameSheet, renderSetup } from './screens/setup.js';
-import { renderLineup } from './lineup.js';
+import { fitLineupArt, renderLineup } from './lineup.js';
 import { matchStale, renderStale } from './screens/stale.js';
 import { renderWin } from './screens/win.js';
 import { renderHeader, renderReactDock } from './turnbar.js';
@@ -94,6 +94,7 @@ function renderNow() {
   if (wl) wl.scrollTop = wl.scrollHeight;
   animate();
   busFly();
+  fitLineupArt(app);                                          // the Game lineup's art: each board miniature scaled to its card (ui/lineup.js)
   cardFly();                                                  // cards and tiles a move moves: each from where it was (ui/cardfly.js), before anchorFx sets their time
   anchorFx();
   repMark();                                                  // a replay: the control just pressed

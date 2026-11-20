@@ -497,11 +497,15 @@ Their claim (bold): Square claimed!
 Their claim: Three in a row wins the match.
 
 ## Game lineup [lineup]
-Menu button: Lineup
-Sheet title: Lineup
-In rotation: In rotation now
+Card, line 1: Game
+Card, line 2: Lineup
+Title, word 1: Game
+Title, word 2: lineup
 Coming soon: Coming soon
-Sticker: Coming soon
+In rotation: In rotation now
+Sticker no date: Coming soon
+Sticker today: Out today!
+Sticker tomorrow: Coming tomorrow
 
 ## Create an account prompt [acctask]
 Line: Create an account to keep your stats.

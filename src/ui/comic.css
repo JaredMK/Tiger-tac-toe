@@ -739,20 +739,71 @@ main.scr.cc:not(.mini) > .bar .ttl small { margin-top: 2px; padding-left: 12px; 
 @keyframes ccspot2 { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
 .board .sq.spot .lab > .lnm { text-shadow: 0 0 2px var(--bg), 0 0 3px var(--bg), 1.5px 0 0 var(--bg), -1.5px 0 0 var(--bg), 0 1.5px 0 var(--bg), 0 -1.5px 0 var(--bg); }
 
-/* The Game lineup (December 2026, ui/lineup.js): a small panel on the menu's top row (the account chip's twin, so Play
-   never moves), a NEW burst on its corner (information: flat, no shadow, takes no tap of its own), and the sheet it opens
-   (the Mini-games sheet's frame): the games as flat tiles, icon and name, a yellow "Coming soon" sticker on the second list. */
-.cc .menu-top .lubtn { position: relative; overflow: visible; }
-.cc .menu-top .lubtn .lunew { position: absolute; right: -16px; top: -14px; pointer-events: none; font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; font-style: normal; letter-spacing: .05em;
-  color: #fff; background: var(--x); border: 2.5px solid var(--ink); padding: 4px 6px 2px; transform: skew(7deg) rotate(8deg); clip-path: polygon(0 18%, 14% 0, 34% 12%, 55% 0, 74% 10%, 100% 0, 92% 40%, 100% 72%, 84% 100%, 60% 88%, 38% 100%, 18% 88%, 0 100%, 8% 58%); }
-.lineup .gsh-body > .luh { display: inline-block; margin: 6px 0 12px; font: 400 22px/1.18 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; }
-.lineup .gsh-body > .luh ~ .luh { margin-top: 22px; }
-.lulist { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.lut { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 54px; padding: 6px 8px; background: #fff; border: 2.5px solid var(--ink); }
-.lut > b { min-width: 0; font: 400 17px/1.15 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; padding-right: .2em; hyphens: manual; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.lut.soon { background: color-mix(in srgb, var(--o-soft) 45%, #fff); }
-.lut .lusoon { position: absolute; right: -6px; top: -12px; font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; font-style: normal; letter-spacing: .05em; background: var(--o); color: var(--ink); border: 2px solid var(--ink); padding: 3px 5px 1px; transform: rotate(4deg); pointer-events: none; }
-@media (max-width: 340px) { .lulist { grid-template-columns: minmax(0, 1fr); } }
+/* The Game lineup (December 2026, ui/lineup.js). The menu's card: a skewed panel on the top row (so Play never moves), a
+   fan of three previews (each a board square's frame, 128px, scaled down: the board's own drawing, crisp), GAME LINEUP in
+   two Bangers lines, a NEW burst on its corner (information: flat, takes no tap of its own). */
+.cc .menu-top .lucard { position: relative; overflow: visible; height: 64px; padding: 0 12px 0 6px; display: flex; align-items: center; gap: 6px; background: var(--o); }
+.lucard .lufan { position: relative; width: 66px; height: 54px; flex: none; }
+.lucard .lufc { position: absolute; top: 4px; width: 46px; height: 46px; transform-origin: 0 0; border: 2px solid var(--ink); border-radius: 4px; overflow: hidden; background: #fff; }
+.lucard .lufc.f0 { left: 0; rotate: -12deg; top: 10px; } .lucard .lufc.f1 { left: 12px; rotate: -2deg; } .lucard .lufc.f2 { left: 24px; rotate: 9deg; top: 2px; }
+.lucard .lufc > .lumys { width: 100%; height: 100%; }
+.lucard .luword { display: flex; flex-direction: column; align-items: flex-start; line-height: .95; }
+.lucard .luword b { font: 400 21px/.98 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; padding-right: .15em; color: var(--ink); }
+.cc .menu-top .lucard .lunew { position: absolute; right: -16px; top: -14px; pointer-events: none; font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; font-style: normal; letter-spacing: .05em;
+  color: #fff; background: var(--x); border: 2.5px solid var(--ink); padding: 4px 6px 2px; transform: skew(7deg) rotate(8deg); clip-path: polygon(0 18%, 14% 0, 34% 12%, 55% 0, 74% 10%, 100% 0, 92% 40%, 100% 72%, 84% 100%, 60% 88%, 38% 100%, 18% 88%, 0 100%, 8% 58%);
+  animation: ccpunch .5s cubic-bezier(.2, 1.7, .4, 1) .5s backwards; }
+/* A preview: the board square's frame (.sq) at the size its box gives it, so the miniature draws as the board draws it. */
+.sq.luart { width: 128px; height: 128px; padding: 6px; border-radius: 0; background: var(--panel); box-shadow: none; transform: none !important; transition: none; transform-origin: 0 0; box-sizing: border-box; }
+.lumys { display: grid; place-items: center; background: radial-gradient(circle at 50% 38%, #3b3433, #161210 70%); }
+.lumys > b { font: 400 64cqmin/1 'Bangers', 'Luckiest Guy', sans-serif; color: #fff; -webkit-text-stroke: 2px var(--ink); text-shadow: 3px 3px 0 var(--x); }
+.lumys { container-type: size; }
+/* The lineup: full screen over the menu, the menu's own loud page (its red and yellow, turning rays, halftone). */
+#app > .lupage, .lupage { position: fixed; inset: 0; z-index: 35; display: flex; flex-direction: column; overflow: hidden; background: linear-gradient(162deg, var(--x) 0 46%, var(--o) 46%);
+  padding: var(--sat, 0px) var(--sar, 0px) 0 var(--sal, 0px); animation: lupagein .3s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes lupagein { from { transform: translateY(100%); } }
+.lupage::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(rgba(22, 18, 16, .22) 24%, transparent 26%) 0 0 / 11px 11px;
+  -webkit-mask-image: linear-gradient(162deg, #000 0, transparent 36%, transparent 64%, #000 100%); mask-image: linear-gradient(162deg, #000 0, transparent 36%, transparent 64%, #000 100%); }
+.lupage .luback { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.lupage .luback .ccrays { z-index: 0; top: 18%; }
+.lupage .luhead { position: relative; z-index: 1; flex: none; display: flex; align-items: center; gap: 12px; padding: 12px 14px 8px 16px; max-width: 720px; width: 100%; box-sizing: border-box; margin: 0 auto; }
+.lupage .lutitle { flex: 1 1 auto; min-width: 0; margin: 0; font: 400 clamp(34px, 10vw, 46px)/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; color: #fff;
+  -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 4px 4px 0 var(--ink); transform: rotate(-3deg); padding: 4px .15em 2px 0; }
+.lupage .lutitle span:last-child { color: var(--o); }
+.cc.lupage .luhead .pn.gdone { width: auto; height: 48px; min-width: 96px; margin: 0; padding: 0 14px; }
+.cc.lupage .luhead .pn.gdone > b { font-size: 26px; padding: 3px 0 0; }
+.lupage .lubody { position: relative; z-index: 1; flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  padding: 8px 16px calc(28px + var(--sab, 0px)); max-width: 720px; width: 100%; box-sizing: border-box; margin: 0 auto; }
+.lupage .luh { display: inline-block; margin: 8px 0 14px; font: 400 22px/1.18 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; background: #fff; transform: rotate(-1.5deg); }
+.lupage .luh ~ .luh { margin-top: 24px; }
+.lupage ul { list-style: none; margin: 0; padding: 0; }
+/* Coming soon: big cards, the art large, the name, a tilted release sticker; each pops in after the one before. */
+.lusoonl { display: grid; gap: 18px; }
+.lusoonc { position: relative; min-width: 0; display: flex; align-items: center; gap: 14px; padding: 10px; background: #fff; border: 3px solid var(--ink);
+  animation: ccpunch .5s cubic-bezier(.2, 1.7, .4, 1) backwards; animation-delay: calc(var(--k, 0) * 90ms + 200ms); }
+.lusoonc:nth-child(even) { flex-direction: row-reverse; }
+.lusoonc .lubig { flex: none; width: min(40vw, 210px); aspect-ratio: 1; border: 3px solid var(--ink); overflow: hidden; }
+.lusoonc .lubig > .lumys { width: 100%; height: 100%; }
+.lusoonc .lutxt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.lusoonc:nth-child(even) .lutxt { align-items: flex-end; text-align: right; }
+.lusoonc .lutxt > b { font: 400 clamp(24px, 7vw, 34px)/1.05 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; padding-right: .2em; hyphens: manual; overflow-wrap: normal; }
+.lustk { display: inline-block; font: 400 19px/1 'Bangers', 'Luckiest Guy', sans-serif; font-style: normal; letter-spacing: .05em; color: var(--ink); background: var(--o);
+  border: 2.5px solid var(--ink); padding: 6px 9px 3px; transform: rotate(-6deg); white-space: nowrap; }
+.lusoonc:nth-child(even) .lustk { transform: rotate(5deg); background: #7fd3ec; }
+.lusoonc.mys .lustk { background: var(--x); color: #fff; }
+/* In rotation: a grid of cards, art and name. */
+.lunowl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.lunowc { display: flex; flex-direction: column; gap: 6px; padding: 6px 6px 8px; background: #fff; border: 3px solid var(--ink); min-width: 0;
+  animation: ccpunch .45s cubic-bezier(.2, 1.7, .4, 1) backwards; animation-delay: calc(min(var(--k, 0), 12) * 50ms + 260ms); }
+.lunowc .lusm { width: 100%; aspect-ratio: 1; border: 2.5px solid var(--ink); overflow: hidden; }
+.lunowc .lusm > .lumys { width: 100%; height: 100%; }
+.lunowc > b { font: 400 18px/1.12 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; text-align: center; padding: 0 .2em; hyphens: manual; min-height: 2.24em; display: grid; place-items: center; }
+@media (min-width: 560px) { .lunowl { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 400px) { .lustk { font-size: 17px; padding: 5px 7px 2px; } .lusoonc { gap: 10px; } }
+@media (max-height: 680px) {                  /* a short phone: the menu's title sits higher, so the card is smaller */
+  .cc .menu-top .lucard { height: 48px; padding: 0 10px 0 4px; } .lucard .lufan { width: 52px; height: 42px; } .lucard .lufc { width: 36px; height: 36px; top: 3px; }
+  .lucard .lufc.f0 { top: 7px; } .lucard .lufc.f1 { left: 10px; } .lucard .lufc.f2 { left: 20px; top: 1px; } .lucard .luword b { font-size: 17px; }
+}
+@media (prefers-reduced-motion: reduce) { .lupage, .lusoonc, .lunowc, .cc .menu-top .lucard .lunew { animation: none; } }
 /* A guest's "Create an account" under Rematch (ui/acctask.js): information on a flat white card (their numbers), one
    green panel into the sign-up and a plain Not now. */
 .cc .acctask { width: calc(100% - 18px); max-width: 460px; margin: 8px auto 4px; box-sizing: border-box; padding: 8px 10px 8px; background: #fff; border: 2.5px solid var(--ink); text-align: center; }

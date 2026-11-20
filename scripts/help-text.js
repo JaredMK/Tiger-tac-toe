@@ -11,7 +11,7 @@ const { pathToFileURL } = require('url');
 
 const ROOT = path.join(__dirname, '..');
 const DOC = 'docs/help-text.md';
-const ONBOARD = 'src/ui/onboard.js', LINEUP = 'src/ui/lineup.js', ASK = 'src/ui/acctask.js', EXPLAINER = 'src/ui/explainer.js', ACCOUNT = 'src/ui/screens/account.js', ENVJS = 'src/env.js', SHELL = 'index.html';
+const ONBOARD = 'src/ui/onboard.js', LINEUP = 'src/ui/lineup.js', GAMESCORE = 'src/core/games.js', ASK = 'src/ui/acctask.js', EXPLAINER = 'src/ui/explainer.js', ACCOUNT = 'src/ui/screens/account.js', ENVJS = 'src/env.js', SHELL = 'index.html';
 
 /* ----- reading and writing JS string literals ----- */
 const isQuote = c => c === "'" || c === '"' || c === '`';
@@ -184,11 +184,15 @@ function loadModel(read, oldTypes) {
   ]);
   // The main menu's Game lineup (ui/lineup.js) and a guest's "Create an account" on the results (ui/acctask.js).
   sec('other', 'lineup', 'Game lineup', [
-    fld('Menu button', region(LINEUP, /data-act="lineup" aria-haspopup="dialog" aria-label="Game lineup\$\{isNew \? ': new games' : ''\}"><span>([^<]*)<\/span>/, 'tpl')),
-    fld('Sheet title', region(LINEUP, /<div class="gsh-bar"><b>([^<]*)<\/b>/, 'tpl')),
-    fld('In rotation', region(LINEUP, /<h2 class="cap luh">([^<]*)<\/h2><ul class="lulist">\$\{L\.now/, 'tpl')),
-    fld('Coming soon', region(LINEUP, /\? `<h2 class="cap luh">([^<]*)<\/h2>/, 'tpl')),
-    fld('Sticker', region(LINEUP, /<i class="lusoon">([^<]*)<\/i>/, 'tpl')),
+    fld('Card, line 1', region(LINEUP, /<span class="luword"><b>([^<]*)<\/b>/, 'tpl')),
+    fld('Card, line 2', region(LINEUP, /<span class="luword"><b>[^<]*<\/b><b>([^<]*)<\/b>/, 'tpl')),
+    fld('Title, word 1', region(LINEUP, /<h1 class="lutitle ccpunch"><span>([^<]*)<\/span>/, 'tpl')),
+    fld('Title, word 2', region(LINEUP, /<h1 class="lutitle ccpunch"><span>[^<]*<\/span> <span>([^<]*)<\/span>/, 'tpl')),
+    fld('Coming soon', region(LINEUP, /\? `<h2 class="cap luh">([^<]*)<\/h2><ul class="lusoonl">/, 'tpl')),
+    fld('In rotation', region(LINEUP, /<h2 class="cap luh">([^<]*)<\/h2><ul class="lunowl">/, 'tpl')),
+    fld('Sticker no date', region(GAMESCORE, /if \(typeof date !== 'string' \|\| !SOON_DATE\.test\(date\)\) return '([^']*)';/, 'sq')),
+    fld('Sticker today', region(GAMESCORE, /if \(days === 0\) return '([^']*)';/, 'sq')),
+    fld('Sticker tomorrow', region(GAMESCORE, /if \(days === 1\) return '([^']*)';/, 'sq')),
   ]);
   sec('other', 'acctask', 'Create an account prompt', [
     fld('Line', region(ASK, /<\/b> ([^<]*)<\/p>/, 'tpl')),

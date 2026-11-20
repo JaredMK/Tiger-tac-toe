@@ -319,3 +319,19 @@ test('Players: people and their devices together; a person\'s page has their dev
   assert.equal(A.devmeta.dddddddd.ex, true, 'the prefix entry untouched');
   assert.equal(kpiOf(draw('#overview'), 'active'), '4', 'counted again at once');
 });
+
+test('Coming soon: a switch and a release date beside Released and iOS; never for a game released everywhere; a date passed warns', async () => {
+  await A.loadMetas();
+  A.ctl = Object.assign(ctl0(), { releases: { pig: false, ttt: true, war: true, platform: { ios: { war: false } }, soon: { pig: '2020-01-02', war: true, ttt: true } } });
+  let html = draw('#games/pig');
+  assert.match(html, /data-soon="pig" checked><span class="good">Coming soon</);
+  assert.match(html, /type="date" data-soondate="pig" value="2020-01-02">/);
+  assert.match(html, /id="soonLate"[^>]*>The release date \(2020-01-02\) has passed and the game is still not released: players see "Coming soon"/);
+  html = draw('#games/war');
+  assert.match(html, /Coming soon on iOS/, 'released on the web, off on iOS: coming soon on iOS alone');
+  assert.doesNotMatch(html, /id="soonLate"/, 'no date: no warning');
+  html = draw('#games/ttt');
+  assert.match(html, /data-soon="ttt" disabled><span class="">Coming soon: released</, 'released everywhere: never coming soon');
+  assert.match(html, /data-soondate="ttt" value="" disabled>/);
+  assert.match(draw('#games'), /badge soon[^>]*>Coming soon · date passed</, 'the list says so too');
+});

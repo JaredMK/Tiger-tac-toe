@@ -42,29 +42,51 @@ test('released on a platform: released at all and not switched off there; coming
   assert.ok(!G.lineup(rel, 'web', t => t !== 'ttt').now.includes('ttt'), 'a game this client lacks is left out');
 });
 
-test('the lineup card: hidden before a match is finished here, never on a first visit; NEW until opened, and again for a new game', () => {
+test('the lineup card: hidden before a match is finished here, never on a first visit; a fan of three previews; NEW until opened, and again for a new game', () => {
   state.screen = 'menu';
   assert.equal(OB.matchesDone(), 0);
   assert.doesNotMatch(renderMenu(), /data-act="lineup"/, 'no match finished: no card');
   OB.matchDone('k1');
   const html = renderMenu();
-  assert.match(html, /class="btn lubtn" data-act="lineup"/);
+  assert.match(html, /class="btn lucard" data-act="lineup"/);
+  assert.equal((html.match(/class="lufc f\d"/g) || []).length, 3, 'a fan of three previews');
+  assert.match(html, /<span class="luword"><b>Game<\/b><b>Lineup<\/b><\/span>/);
   assert.match(html, /class="lunew"/, 'never opened: NEW');
   assert.ok(html.indexOf('data-act="lineup"') < html.indexOf('data-act="cpu-go"'), 'on the top row, above Play');
   LU.setLineupOpen(true);
-  const sheet = LU.renderLineup('menu');
-  assert.match(sheet, /In rotation now/);
+  const page = LU.renderLineup('menu');
+  assert.match(page, /class="lupage cc loud"/, 'full screen, the loud page');
+  assert.match(page, /class="ccrays"/, 'the sunburst');
+  assert.match(page, /In rotation now/);
   assert.doesNotMatch(renderMenu(), /class="lunew"/, 'opened: no NEW');
   assert.equal(LU.renderLineup('setup'), '', 'shut once the menu is left');
-  R.setReleases({ soon: { dominoes: true } });
+  R.setReleases({ soon: { dominoes: '2099-01-05', shell: true } });
   assert.match(renderMenu(), /class="lunew"/, 'a game new to Coming soon: NEW again');
   LU.setLineupOpen(true);
   const s2 = LU.renderLineup('menu');
-  assert.match(s2, /<h2 class="cap luh">Coming soon<\/h2>/);
-  assert.match(s2, /class="lut soon">.*Dom.?inoes.*<i class="lusoon">Coming soon<\/i>/s);
-  assert.doesNotMatch(s2, /\d{4}|January|December|date/i, 'no dates');
+  assert.ok(s2.indexOf('Coming soon</h2>') < s2.indexOf('In rotation now</h2>'), 'Coming soon first');
+  assert.match(s2, /class="lusoonc mys" style="--k:0"><div class="lubig"><div class="lumys" aria-hidden="true"><b>\?<\/b><\/div><\/div><div class="lutxt"><b>Dom.?inoes<\/b><i class="lustk">Coming Jan 5<\/i>/s, 'no miniature loaded: a mystery card, the name and its sticker');
+  assert.match(s2, /Shell Game<\/b><i class="lustk">Coming soon<\/i>/, 'no date: Coming soon');
   LU.setLineupOpen(false);
   R.setReleases({});
+});
+
+test('the release sticker, from the viewer\'s own local date; a past date never shown', () => {
+  const now = new Date(2026, 11, 2, 21, 30);                    // Wednesday 2 December 2026, 9:30 pm local
+  assert.equal(G.soonSticker('2026-12-02', now), 'Out today!');
+  assert.equal(G.soonSticker('2026-12-03', now), 'Coming tomorrow');
+  assert.equal(G.soonSticker('2026-12-04', now), 'Coming Friday');
+  assert.equal(G.soonSticker('2026-12-08', now), 'Coming Tuesday', '6 days: its weekday');
+  assert.equal(G.soonSticker('2026-12-09', now), 'Coming Dec 9', '7 days: the date');
+  assert.equal(G.soonSticker('2027-01-15', now), 'Coming Jan 15');
+  assert.equal(G.soonSticker('2026-12-01', now), 'Coming soon', 'past: never a past date');
+  assert.equal(G.soonSticker(null, now), 'Coming soon');
+  assert.equal(G.soonSticker('2026-02-30', now), 'Coming soon', 'no such day');
+  assert.equal(G.soonSticker('2027-03-28', new Date(2027, 2, 27, 23, 59)), 'Coming tomorrow', 'across a clock change');
+  const rel = { soon: { dominoes: '2026-12-20', shell: true, poker: '2026-11-01', wtiles: '2026-12-05', bogus: 'soon' } };
+  assert.equal(G.soonDate('dominoes', rel), '2026-12-20'); assert.equal(G.soonDate('shell', rel), null); assert.ok(!G.soonFlag('bogus', rel));
+  assert.deepEqual(G.lineup(rel, 'web', () => true, '2026-12-02').soon, ['wtiles', 'dominoes', 'poker', 'shell'], 'soonest first; past dates and none last, by name');
+  assert.ok(G.soonLate('poker', rel, '2026-12-02') && !G.soonLate('dominoes', rel, '2026-12-02') && !G.soonLate('shell', rel, '2026-12-02'), 'the admin\'s warning: a date passed, still not released');
 });
 
 test('the prompt: due after the 2nd finished match, then every 3rd; once a session; Not now; a guest\'s own numbers', () => {
