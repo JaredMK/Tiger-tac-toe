@@ -47,3 +47,20 @@ export async function providerSignOut() {
   const nat = nativeAuth();
   if (nat) await nat.signOut().catch(() => {});
 }
+// Deleting an account that signs in with Apple (App Store Review Guideline 5.1.1(v)): its Sign in with Apple token is revoked
+// first. In the app the native sheet is asked once more for a fresh authorization code, which Firebase Auth hands to Apple
+// (revokeAccessToken: needs the Apple provider's Services ID and key in the Firebase console, docs/login-setup.md).
+// Returns 'none' (no Apple sign-in on the account, or not in the app: the web shows no Apple button), 'revoked', or
+// 'cancelled' (the player closed the sheet: the account stays). A failed revocation throws, for the caller to log.
+export const usesApple = u => !!(u && (u.providerData || []).some(p => p && p.providerId === 'apple.com'));
+export async function appleRevoke(fb) {
+  const nat = nativeAuth(), u = fb && fb.auth && fb.auth.currentUser;
+  if (!nat || !usesApple(u)) return 'none';
+  let r;
+  try { r = await nat.signInWithApple({ skipNativeAuth: true }); }
+  catch (e) { if (/cancel|1001/i.test(String((e && (e.code || e.message)) || e))) return 'cancelled'; throw e; }
+  const code = r && r.credential && r.credential.authorizationCode;
+  if (!code) throw new Error('Sign in with Apple gave no authorization code');
+  await fb.authM.revokeAccessToken(fb.auth, code);
+  return 'revoked';
+}

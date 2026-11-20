@@ -52,10 +52,9 @@ function infoPlist(reversed) {
   let s = rd(p);
   s = s.replace(new RegExp(`\\s*${BEGIN}[\\s\\S]*?${END}`), '');
   s = s.replace(/<string>armv7<\/string>/, '<string>arm64</string>');
-  // Orientation: portrait only on an iPhone; every orientation on an iPad (App Store: an iPad app turns with the device
-  // unless it asks to be full screen only).
+  // Orientation: portrait only (the app is iPhone only; an iPad runs the iPhone app, portrait too).
   s = s.replace(/(<key>UISupportedInterfaceOrientations<\/key>\s*<array>)[\s\S]*?(<\/array>)/, '$1\n\t\t<string>UIInterfaceOrientationPortrait</string>\n\t$2');
-  s = s.replace(/(<key>UISupportedInterfaceOrientations~ipad<\/key>\s*<array>)[\s\S]*?(<\/array>)/, '$1' + ['Portrait', 'PortraitUpsideDown', 'LandscapeLeft', 'LandscapeRight'].map(o => `\n\t\t<string>UIInterfaceOrientation${o}</string>`).join('') + '\n\t$2');
+  s = s.replace(/(<key>UISupportedInterfaceOrientations~ipad<\/key>\s*<array>)[\s\S]*?(<\/array>)/, '$1\n\t\t<string>UIInterfaceOrientationPortrait</string>\n\t$2');
   s = s.replace(/\s*<key>UIRequiresFullScreen<\/key>\s*<(true|false)\/>/, '');
   const block = `
 	${BEGIN}
@@ -80,7 +79,7 @@ function infoPlist(reversed) {
   s = s.replace(/\n<\/dict>\s*<\/plist>\s*$/, `${block}\n</dict>\n</plist>\n`);
   if (!s.includes(reversed)) die('could not write the URL scheme into Info.plist');
   wr(p, s);
-  log(`Info.plist: URL scheme ${reversed}, arm64, no export-compliance question, portrait on iPhone (every orientation on iPad), the light appearance always (the page is light: dark status-bar text over it in Dark Mode too)`);
+  log(`Info.plist: URL scheme ${reversed}, arm64, no export-compliance question, portrait only (iPhone only), the light appearance always (the page is light: dark status-bar text over it in Dark Mode too)`);
 }
 
 // ---- Entitlements
@@ -105,7 +104,46 @@ function entitlements() {
 }
 
 // ---- the Xcode project (project.pbxproj): the two files it must know, the signing and version settings
-const ID = { plistRef: '5A0F1A00C0DE0000000F0001', plistBuild: '5A0F1A00C0DE0000000F0002', entRef: '5A0F1A00C0DE0000000F0003' };
+const ID = { plistRef: '5A0F1A00C0DE0000000F0001', plistBuild: '5A0F1A00C0DE0000000F0002', entRef: '5A0F1A00C0DE0000000F0003', privRef: '5A0F1A00C0DE0000000F0004', privBuild: '5A0F1A00C0DE0000000F0005' };
+// The app's privacy manifest (App Store: every app declares what it collects and the required-reason APIs its own code
+// calls). What it collects is docs/app-privacy-labels.md's table: every type linked to the account, none for tracking.
+// The app's own native code calls no required-reason API (the game's storage is WebKit's localStorage); Capacitor and the
+// Firebase iOS SDK ship their own manifests for theirs. Kept in step with that doc by tests/server/ios-setup.test.js.
+const COLLECTED = [['EmailAddress', ['AppFunctionality']], ['UserID', ['AppFunctionality', 'Analytics']], ['DeviceID', ['AppFunctionality', 'Analytics']],
+  ['GameplayContent', ['AppFunctionality', 'Analytics']], ['CustomerSupport', ['AppFunctionality']], ['OtherUserContent', ['AppFunctionality']],
+  ['ProductInteraction', ['AppFunctionality', 'Analytics']], ['OtherDiagnosticData', ['AppFunctionality']]];
+function privacyText() {
+  const item = ([type, purposes]) => `		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataType${type}</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+${purposes.map(x => `				<string>NSPrivacyCollectedDataTypePurpose${x}</string>`).join('\n')}
+			</array>
+		</dict>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array>
+${COLLECTED.map(item).join('\n')}
+	</array>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array/>
+</dict>
+</plist>
+`;
+}
+function privacy() { wr(path.join(APP, 'PrivacyInfo.xcprivacy'), privacyText()); log(`PrivacyInfo.xcprivacy: no tracking, ${COLLECTED.length} data types collected (docs/app-privacy-labels.md)`); }
 function clientVersion() {
   const m = rd(path.join(ROOT, 'src', 'core', 'client.js')).match(/CLIENT_VERSION = '(\d+(?:\.\d+){0,2})'/);
   if (!m) die('CLIENT_VERSION not found in src/core/client.js');
@@ -114,7 +152,7 @@ function clientVersion() {
 function project(build) {
   const s = projectText(rd(PBX), build);
   wr(PBX, s);
-  log(`project: team ${cfg.teamId}, ${cfg.bundleId}, automatic signing, version ${clientVersion()} (${build}), entitlements, GoogleService-Info.plist in the resources`);
+  log(`project: team ${cfg.teamId}, ${cfg.bundleId}, automatic signing, version ${clientVersion()} (${build}), entitlements, GoogleService-Info.plist and PrivacyInfo.xcprivacy in the resources, iPhone only`);
 }
 // The project file's text with the two files, signing and versions set (pure: tests/server/ios-setup.test.js).
 function projectText(s, build) {
@@ -125,15 +163,20 @@ function projectText(s, build) {
   add('/* Begin PBXBuildFile section */', 'build', `\t\t${ID.plistBuild} /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = ${ID.plistRef} /* GoogleService-Info.plist */; };`);
   add('/* Begin PBXFileReference section */', 'ref', `\t\t${ID.plistRef} /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };`);
   add('/* Begin PBXFileReference section */', 'ref', `\t\t${ID.entRef} /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };`);
+  add('/* Begin PBXBuildFile section */', 'build', `\t\t${ID.privBuild} /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = ${ID.privRef} /* PrivacyInfo.xcprivacy */; };`);
+  add('/* Begin PBXFileReference section */', 'ref', `\t\t${ID.privRef} /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };`);
   // the App group's children, and the Resources build phase's files
   const grp = s.match(/(504EC3061FED79650016851F \/\* App \*\/ = \{\s*isa = PBXGroup;\s*children = \(\n)/);
   if (!grp) die('project.pbxproj: the App group was not found');
-  for (const [id, name] of [[ID.plistRef, 'GoogleService-Info.plist'], [ID.entRef, 'App.entitlements']]) if (!s.includes(`${id} /* ${name} */,`)) s = s.replace(grp[1], `${grp[1]}\t\t\t\t${id} /* ${name} */,\n`);
+  for (const [id, name] of [[ID.plistRef, 'GoogleService-Info.plist'], [ID.entRef, 'App.entitlements'], [ID.privRef, 'PrivacyInfo.xcprivacy']]) if (!s.includes(`${id} /* ${name} */,`)) s = s.replace(grp[1], `${grp[1]}\t\t\t\t${id} /* ${name} */,\n`);
   const res = s.match(/(\/\* Resources \*\/ = \{\s*isa = PBXResourcesBuildPhase;[\s\S]*?files = \(\n)/);
   if (!res) die('project.pbxproj: the Resources build phase was not found');
   if (!s.includes(`${ID.plistBuild} /* GoogleService-Info.plist in Resources */,`)) s = s.replace(res[1], `${res[1]}\t\t\t\t${ID.plistBuild} /* GoogleService-Info.plist in Resources */,\n`);
+  if (!s.includes(`${ID.privBuild} /* PrivacyInfo.xcprivacy in Resources */,`)) s = s.replace(res[1], `${res[1]}\t\t\t\t${ID.privBuild} /* PrivacyInfo.xcprivacy in Resources */,\n`);
   // signing and versions, in the app target's two configurations (Debug, Release): the ones that name PRODUCT_BUNDLE_IDENTIFIER
-  const settings = { CODE_SIGN_ENTITLEMENTS: 'App/App.entitlements', DEVELOPMENT_TEAM: cfg.teamId, CODE_SIGN_STYLE: 'Automatic', PRODUCT_BUNDLE_IDENTIFIER: cfg.bundleId, MARKETING_VERSION: clientVersion(), CURRENT_PROJECT_VERSION: String(build) };
+  // iPhone only (December 2026, for the first App Store release: no iPad screenshots or iPad review; an iPad runs the
+  // iPhone app as it is): TARGETED_DEVICE_FAMILY 1.
+  const settings = { CODE_SIGN_ENTITLEMENTS: 'App/App.entitlements', DEVELOPMENT_TEAM: cfg.teamId, CODE_SIGN_STYLE: 'Automatic', PRODUCT_BUNDLE_IDENTIFIER: cfg.bundleId, MARKETING_VERSION: clientVersion(), CURRENT_PROJECT_VERSION: String(build), TARGETED_DEVICE_FAMILY: '1' };
   let n = 0;
   s = s.replace(/(buildSettings = \{\n)((?:(?!\n\t\t\t\};)[\s\S])*?PRODUCT_BUNDLE_IDENTIFIER[\s\S]*?\n)(\t\t\t\};)/g, (m, a, body, z) => {
     n++;
@@ -146,7 +189,8 @@ function projectText(s, build) {
   if (n !== 2) die(`project.pbxproj: expected the app target's 2 build configurations, found ${n}`);
   // each file whole: its reference, in the App group, and the plist in the resources (else Xcode leaves it out of the app)
   const need = [[`${ID.plistRef} /* GoogleService-Info.plist */ = {isa = PBXFileReference;`, 'the plist\'s file reference'], [`${ID.entRef} /* App.entitlements */ = {isa = PBXFileReference;`, 'the entitlements\' file reference'],
-    [`${ID.plistBuild} /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile;`, 'the plist\'s build file'], [`${ID.plistBuild} /* GoogleService-Info.plist in Resources */,`, 'the plist in the resources'], [`${ID.plistRef} /* GoogleService-Info.plist */,`, 'the plist in the App group']];
+    [`${ID.plistBuild} /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile;`, 'the plist\'s build file'], [`${ID.plistBuild} /* GoogleService-Info.plist in Resources */,`, 'the plist in the resources'], [`${ID.plistRef} /* GoogleService-Info.plist */,`, 'the plist in the App group'],
+    [`${ID.privRef} /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference;`, 'the privacy manifest\'s file reference'], [`${ID.privBuild} /* PrivacyInfo.xcprivacy in Resources */,`, 'the privacy manifest in the resources'], [`${ID.privRef} /* PrivacyInfo.xcprivacy */,`, 'the privacy manifest in the App group']];
   for (const [t, what] of need) if (!s.includes(t)) die(`project.pbxproj: ${what} is missing`);
   return s;
 }
@@ -190,7 +234,7 @@ function main() {
   const fb = firebasePlist(env, opt('--plists'));
   fs.copyFileSync(fb.file, path.join(APP, 'GoogleService-Info.plist'));
   log(`GoogleService-Info.plist: ${path.basename(fb.file)} (project ${fb.project})`);
-  infoPlist(fb.reversed); entitlements(); project(build); art(); appDelegate();
+  infoPlist(fb.reversed); entitlements(); privacy(); project(build); art(); appDelegate();
 }
 if (require.main === module) main();
-module.exports = { plistValue, findPlist, projectText };
+module.exports = { plistValue, findPlist, projectText, privacyText, COLLECTED };

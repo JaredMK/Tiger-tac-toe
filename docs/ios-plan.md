@@ -308,7 +308,7 @@ emulator smoke and the server suite exercise on the web).
 - **"Please update"** opens the App Store's front page until `APP_STORE_ID` is set (`src/net/platform.js`).
 - **App Check** is off on both.
 
-### Steps on the Mac (Xcode 16.3 or later, Node 22)
+### Steps on the Mac (Xcode 26 or later: App Store Connect requires it; Node 22)
 
 1. `git pull` on the `staging` branch, then `npm ci`.
 2. The two Firebase plists are in `ios-config/` as before (`GoogleService-Info.production.plist`, `.staging.plist`).
@@ -346,3 +346,37 @@ opened and a placement LIGHT, the turn coming back MEDIUM twice (with the YOUR T
 square won SUCCESS then the stamp's MEDIUM, the match won HEAVY then SUCCESS, a square lost and the match lost ERROR.
 For TestFlight, on the Mac, after the next release: `npm run ios:build` (production; staging: `-- staging`), then
 Archive and upload as in section 8. On the phone: Settings → Vibration on, play the computer and feel each of the above.
+
+## 10. App Store review readiness (December 2026, 1.23.0)
+
+Audited on the app's own files (`npm run build:app`, production) in Chromium with a stand-in Capacitor shell and the
+iPhone 17 Pro Max's safe areas (62 top, 34 bottom), every outside request blocked; no Mac, so not on the Simulator.
+
+| Item | Before | Now |
+|---|---|---|
+| Wrapper, bundling | Capacitor 8.6, the game bundled in `_app/` with its own Firebase SDK; no server URL | Unchanged: starts offline, a full match against the computer to the result screen with no page error |
+| Sign in with Apple | Built and wired, hidden everywhere (`src/env.js` `apple: false`) | Shown in the iOS app always (`ui/screens/account.js` `appleOn`); the web keeps its switch. **Needs the Firebase Apple provider on (below)** |
+| Account deletion | In the app (Settings, My Stats); no Apple token revocation | An Apple-ID account's token is revoked first (`net/auth.js` `appleRevoke`: Apple's sheet once more, Firebase `revokeAccessToken`); a closed sheet deletes nothing |
+| Admin / debug | No admin page; Test play and the owner link in the code, unreachable | Both refuse to run in the app (`sandboxParams`, `ownerLink`) |
+| Web-only wording | Two login errors named the browser | The app's words never name a browser (`net/accounts.js` `authError`) |
+| Privacy manifest | None of the app's own | `ios/App/App/PrivacyInfo.xcprivacy`: no tracking, the 8 data types of `docs/app-privacy-labels.md`, written by `ios-setup.js` and in the app's resources |
+| Devices | iPhone and iPad | **iPhone only** (`TARGETED_DEVICE_FAMILY 1`; an iPad runs the iPhone app, portrait) |
+| Xcode | This doc said 16.3 | **Xcode 26 and the iOS 26 SDK** (App Store Connect requires them for uploads since April 28, 2026) |
+| Icon, launch, portrait, export compliance, version | Patchwork 1024 RGB (no alpha), comic launch screen, portrait, `ITSAppUsesNonExemptEncryption` NO, 1.23.0 | Unchanged |
+
+Screenshots for the 6.9" iPhone (1320x2868): `SHOT_APP=1 SHOT_DEVICES=iphone69 SHOT_MINIS=bullseye npm run app-shots` after
+`npm run build:app` (the app's own files in Chromium, not the Simulator: no status bar is drawn).
+
+### By hand, before submitting
+
+1. **Firebase, both projects:** Authentication → Sign-in method → Apple → Enable, with the Services ID, Team ID
+   `2F7M8F9NBG`, Key ID and the `.p8` private key (`docs/login-setup.md` A and B). The key is what token revocation uses:
+   without it `revokeAccessToken` fails (the deletion still goes ahead, the failure logged as `login apple-revoke`).
+2. **Xcode 26 on the Mac**, then `npm run ios:build -- --open` (production, after a web release) and Archive.
+3. **On the Simulator or a phone:** Continue with Apple signs in; Settings → Delete account on that Apple account shows
+   Apple's sheet once, then "Account deleted"; the Login checklist (section 5) and the phone checklist (section 8).
+4. **App Store Connect:** the app record (bundle ID above); iPhone screenshots 6.9" (the five above); the App Privacy
+   answers from `docs/app-privacy-labels.md`; the age rating questionnaire (simulated gambling: Infrequent/Mild);
+   the support URL and privacy policy URL (`https://tictacchaos.com/privacy.html`); a demo account for review; the review
+   note (`docs/app-review-note.md`); after the record exists, `APP_STORE_ID` in `src/net/platform.js` (so "Please update"
+   opens the app's own page).

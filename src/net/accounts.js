@@ -1,6 +1,7 @@
 // Accounts: signing in (Google, Apple, email: net/auth.js for the providers), the username, the account kept on this phone.
 import { ownerAuto } from './owner.js';
-import { PROVIDERS, providerSignIn, providerSignOut } from './auth.js';
+import { PLATFORM } from './platform.js';
+import { PROVIDERS, appleRevoke, providerSignIn, providerSignOut } from './auth.js';
 import { NET_MS, call, configured, connectStep, fb, loadFirebase, setConnectWhy } from './connect.js';
 import { enterMatched, holdResume, search, startSearch, stopSearch } from './matchmaking.js';
 import { hostRoom } from './room.js';
@@ -261,10 +262,10 @@ export async function needAccount(next) {
 const PROVIDER_NAME = { google: 'Google', apple: 'Apple' };
 export function authError(e, how) {
   const c = String((e && e.code) || ''), m = String((e && e.message) || (typeof e === 'string' ? e : '')), both = c + ' ' + m;
-  const apple = !!(typeof window !== 'undefined' && window.TTC_ENV && window.TTC_ENV.apple);   // (Continue with Apple shown: src/env.js apple; never offered when hidden)
+  const apple = PLATFORM === 'ios' || !!(typeof window !== 'undefined' && window.TTC_ENV && window.TTC_ENV.apple);   // (Continue with Apple shown: always in the iOS app, on the web by src/env.js apple; never offered when hidden)
   const who = PROVIDER_NAME[how], other = how === 'apple' ? 'Google or email' : how === 'google' ? (apple ? 'Apple or email' : 'email') : apple ? 'Google or Apple' : 'Google';
   if (/popup-closed|cancelled-popup|user-cancel/.test(c) || (who && /canceled|cancelled|\b1001\b/i.test(both))) return null;   // (closed without signing in: nothing to say)
-  if (/popup-blocked/.test(c)) return { text: 'Your browser blocked the sign-in window. Allow pop-ups for this site and try again.' };
+  if (/popup-blocked/.test(c)) return { text: PLATFORM === 'ios' ? "The sign-in window couldn't open. Try again." : 'Your browser blocked the sign-in window. Allow pop-ups for this site and try again.' };   // (the app's words never name a browser)
   if (/invalid-email/.test(c)) return { text: "That email address doesn't look right." };
   if (!who && /user-not-found|wrong-password|invalid-credential|invalid-login/.test(c)) return { text: 'Wrong email or password.' };
   if (/email-already-in-use/.test(c)) return { text: 'There is already an account with that email: log in instead.' };
@@ -274,7 +275,7 @@ export function authError(e, how) {
   if (/user-disabled/.test(c)) return { text: 'This account has been switched off.' };
   if (/network/.test(c)) return { text: 'No connection. Check your internet and try again.' };
   if (/account-exists-with-different-credential/.test(c)) return { text: 'That email already has an account with another way of logging in.' };
-  if (/web-storage-unsupported/.test(c)) return { text: "This browser won't keep the sign-in (private browsing?). Try another browser, or log in with email." };
+  if (/web-storage-unsupported/.test(c)) return { text: PLATFORM === 'ios' ? "The app couldn't keep the sign-in. Close and reopen it, or log in with email." : "This browser won't keep the sign-in (private browsing?). Try another browser, or log in with email." };
   // Not set up: the provider off in Firebase (operation-not-allowed), the app built without its Firebase file (the
   // plugin's "provider is not enabled": GoogleService-Info.plist missing from the app), or the plugin missing.
   if (who && /provider is not enabled|not configured|No Firebase App/i.test(m)) return { text: `${who} sign-in isn't set up in this version of the app yet. Use ${other} for now.`, code: c || 'not-enabled' };
@@ -404,7 +405,9 @@ export async function verifyAct(act) {
 
 /* ----- deleting the account (the profile's Delete account, after a Yes) -----
  * The server deletes every node of the account and the account itself (functions/index.js deleteAccount), refusing while
- * the player is in an online match. Then this phone forgets the account (signed out, nothing kept) and the main menu says so. */
+ * the player is in an online match. An account that signs in with Apple has its Apple token revoked first, in the app
+ * (net/auth.js appleRevoke: Apple's sheet once more; closed, nothing is deleted). Then this phone forgets the account
+ * (signed out, nothing kept) and the main menu says so. */
 export let delState = null;                         // null | 'ask' (the question is up) | 'busy' | { error }
 export function askDelete() { delState = 'ask'; render(); }
 export function cancelDelete() { if (delState !== 'busy') { delState = null; render(); } }
@@ -413,6 +416,10 @@ export async function deleteAccount() {
   delState = 'busy'; render();
   try {
     if (!(await connectQuiet())) throw { code: 'auth/network-request-failed' };
+    let apple = 'none';                                          // an account that signs in with Apple: its Apple token revoked first (net/auth.js appleRevoke)
+    try { apple = await appleRevoke(fb); }
+    catch (e) { logAuthError(e, 'apple-revoke'); }               // (a revocation that fails is logged; the deletion goes ahead)
+    if (apple === 'cancelled') { delState = { error: 'Confirm with Apple to delete your account.' }; render(); return; }
     await call('deleteAccount', {});
   } catch (e) {
     const d = (e && e.details) || {};

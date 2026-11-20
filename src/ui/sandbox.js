@@ -24,6 +24,7 @@ import { setHopConfig } from '../games/skyhop/rules.js';
 import { setSnapConfig } from '../games/snapshot/rules.js';
 import { setWheelsConfig } from '../games/wheels/rules.js';
 import { acct, connectQuiet } from '../net/accounts.js';
+import { NATIVE } from '../net/platform.js';
 import { RNG, commit, cpuTimer, esc, flashTimer, holdTimer, sbx, setCpuPlan, setCpuTimer, setFlashTimer, setHoldTimer, setSpotTimer, spotTimer, state } from './app.js';
 import { repStop } from './replay.js';
 import { render } from './render.js';
@@ -37,6 +38,7 @@ const b64 = raw => { try { return JSON.parse(decodeURIComponent(escape(atob(raw.
 
 // The address asks for a test play: read it (the type must be a game). Returns whether this is one.
 export function sandboxParams() {
+  if (NATIVE) return false;                                       // (the admin's Test play is the web's alone: the iOS app never opens it, whatever its address says)
   const q = new URLSearchParams(location.search), t = q.get('sandbox');
   if (t == null) return false;
   sbx.on = true;

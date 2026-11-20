@@ -5,10 +5,13 @@
 // names (src/ui/debug.js puts state, render, newMini... on window, as the browser tests do). Writes _shots/<device>/*.png
 // (gitignored). Needs Playwright with Chromium (npm i --no-save playwright && npx playwright install --with-deps chromium).
 //   node scripts/app-screenshots.js            (npm run app-shots; SHOT_DEVICES=iphone69 to pick devices, SHOT_MINIS=hilo,wordle the games)
+//   SHOT_APP=1: the iOS app's own files instead (_app/, npm run build:app first), as the app runs them: a stand-in Capacitor
+//   shell (iOS), the phone's safe areas (the Dynamic Island's 62 points at the top, the home bar's 34 at the bottom), no network.
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
+const APP = !!process.env.SHOT_APP, SERVE = APP ? path.join(ROOT, '_app') : ROOT;
 const OUT = path.join(ROOT, '_shots');
 // The CSS viewport and the scale: 440x956 @3 = 1320x2868 (iPhone 6.9"), 428x926 @3 = 1284x2778 (iPhone 6.5"), 1032x1376 @2 = 2064x2752 (iPad 13").
 const DEVICES = {
@@ -25,9 +28,9 @@ function serve() {
     const srv = http.createServer((req, res) => {
       let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
       if (p === '/') p = '/index.html';
-      let file = path.join(ROOT, p);
+      let file = path.join(SERVE, p);
       if (p === '/matter.min.js') file = path.join(ROOT, 'node_modules', 'matter-js', 'build', 'matter.min.js');
-      if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
+      if (!file.startsWith(SERVE) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
       res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
       fs.createReadStream(file).pipe(res);
     });
@@ -44,7 +47,16 @@ async function main() {
     fs.mkdirSync(dir, { recursive: true });
     const ctx = await b.newContext({ viewport: { width: dev.w, height: dev.h }, deviceScaleFactor: dev.scale, hasTouch: true, isMobile: d !== 'ipad13' });
     await ctx.addInitScript(() => { try { localStorage.setItem('tiger-tac-toe.v4.onboard', JSON.stringify({ done: true, quiet: true, n: 9, speed: true })); } catch (e) { /* (none) */ } });   // (no first-visit menu, tips or offers: src/ui/onboard.js ONBOARD_QUIET)
-    await ctx.route('**/src/env.js', r => r.fulfill({ contentType: 'application/javascript', body: 'window.TTC_ENV={};' }));   // (no Firebase project: nothing online, nothing reported)
+    if (APP) {
+      await ctx.addInitScript(() => {
+        const rec = () => new Proxy({}, { get: (t, k) => (k === 'then' ? undefined : () => Promise.resolve({})) }), plugins = {};
+        for (const n of ['FirebaseAuthentication', 'App', 'Browser', 'Clipboard', 'Filesystem', 'Haptics', 'Share']) plugins[n] = rec();
+        window.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'ios', isPluginAvailable: () => true, Plugins: plugins, registerPlugin: n => plugins[n] || rec() };
+        const add = () => { const st = document.createElement('style'); st.textContent = ':root{--sat:62px!important;--sab:34px!important;--sal:0px!important;--sar:0px!important}'; document.head.appendChild(st); };
+        if (document.head) add(); else document.addEventListener('DOMContentLoaded', add);
+      });
+      await ctx.route(u => !u.href.startsWith(url), r => r.abort());   // (the app's files alone: nothing online)
+    } else await ctx.route('**/src/env.js', r => r.fulfill({ contentType: 'application/javascript', body: 'window.TTC_ENV={};' }));   // (no Firebase project: nothing online, nothing reported)
     await ctx.route(/gstatic|firebase|cdnjs|googleapis|recaptcha/, r => r.abort());
     const p = await ctx.newPage();
     let n = 0;
@@ -87,6 +99,7 @@ async function main() {
       state.winner = 'X'; state.winLine = [0, 1, 2]; state.winReason = 'line'; state.counts = { X: 5, O: 2 }; state.endPick = null; state.screen = 'win'; state.zoom = null; state.stamp = null;
       render();
     });
+    await p.waitForTimeout(2600);                                    // (the results' panels and badges slide in one after another: all of them in)
     await shot('win');
     await ctx.close();
   }

@@ -62,3 +62,21 @@ test('the app: Share invite and Copy invite go through the native Share plugin a
   assert.deepEqual(calls, [['share', { text: want }], ['copy', { string: want }]], 'the text alone to the share sheet (no url field), the same text copied');
   state.online = null;
 });
+
+// App Store Review 5.1.1(v): deleting an account that signs in with Apple revokes its Apple token first. The app asks
+// Apple's sheet once more for a fresh authorization code and hands it to Firebase Auth's revokeAccessToken; an account
+// with no Apple sign-in is left alone; a closed sheet stops the deletion ('cancelled').
+test('the app: deleting an Apple account revokes its Apple token first; other accounts are not asked', async () => {
+  const { appleRevoke, usesApple } = await import('../../src/net/auth.js');
+  const revoked = [];
+  const fb = (providers) => ({ auth: { currentUser: { providerData: providers.map(providerId => ({ providerId })) } }, authM: { revokeAccessToken: async (auth, code) => { revoked.push(code); } } });
+  const nat = window.Capacitor.Plugins.FirebaseAuthentication, was = nat.signInWithApple;
+  nat.signInWithApple = async o => { calls.push(['apple', o]); return { credential: { idToken: 'a-id', nonce: 'n', authorizationCode: 'auth-code-1' } }; };
+  assert.equal(await appleRevoke(fb(['google.com'])), 'none', 'a Google account: no Apple sheet');
+  assert.ok(!usesApple({ providerData: [{ providerId: 'password' }] }));
+  assert.equal(await appleRevoke(fb(['apple.com'])), 'revoked');
+  assert.deepEqual(revoked, ['auth-code-1'], "Apple's fresh authorization code, revoked through Firebase");
+  nat.signInWithApple = async () => { throw { code: 'canceled', message: 'The user canceled the sign-in flow. (1001)' }; };
+  assert.equal(await appleRevoke(fb(['apple.com'])), 'cancelled', 'the sheet closed: nothing deleted');
+  nat.signInWithApple = was;
+});

@@ -4,7 +4,7 @@
 // markMine) and by the owner link (?owner=<token>, the token the admin set on the Devices page: ownerLink, no login needed).
 // Settings shows the device's short ID (devShort: the first 8 hex of the server's own hash of this device's id, the ID the
 // admin's Devices page shows), so a tester can say which device is theirs.
-import { dropParam, startLink } from './platform.js';
+import { NATIVE, dropParam, startLink } from './platform.js';
 import { connectQuiet } from './accounts.js';
 import { call, configured, fb } from './connect.js';
 import { devIdAny } from './tracking.js';
@@ -44,6 +44,7 @@ export function linkToken(url) {
   try { const v = new URL(url, 'https://tictacchaos.com/').searchParams.get('owner'); return v && /^[A-Za-z0-9_-]{16,64}$/.test(v) ? v : null; } catch (e) { return null; }
 }
 export async function ownerLink(done) {
+  if (NATIVE) return false;                                       // (the owner link is the web's alone: the iOS app never reads it)
   const tok = linkToken(startLink());
   dropParam('owner');
   if (!tok) return false;

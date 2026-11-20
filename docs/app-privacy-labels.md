@@ -90,7 +90,7 @@ pages), Product Personalization (no), Third-Party Advertising (no), Developer's 
 3. **Required Reason APIs.** The app's web view uses `localStorage` (the saved match, the device id, settings), which is
    WebKit's, not the app's own UserDefaults call; Capacitor's own Preferences use is declared by Capacitor's manifest.
    Confirm Xcode's privacy report (Product → Generate Privacy Report) lists what the archive needs.
-4. **Account deletion** is required (guideline 5.1.1(v)) and not built yet (`docs/ios-plan.md`). The privacy policy must
+4. **Account deletion** is required (guideline 5.1.1(v)): built (Settings and My Stats → Delete account; an Apple account's token revoked first). The app's privacy manifest (`ios/App/App/PrivacyInfo.xcprivacy`) declares the same data types as the table above (`tests/server/ios-setup.test.js` holds the two together). The privacy policy must
    say how long each item above is kept and how to delete an account; the labels and the policy must agree.
 5. **Match logs** are deleted 30 days after the last event; `devices/` and `devlog/` are not swept today. If the policy
    promises a retention period for device events, add that sweep first.
