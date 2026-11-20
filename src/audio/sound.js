@@ -306,6 +306,9 @@ def('mjOff', 0.2, (c, d, t) => sfxNoise(c, d, t, .17, { f: 900, to: 3000, q: 1, 
 def('pjPick', 0.07, (c, d, t) => { sfxTone(c, d, t, 760, .05, { to: 560, type: 'triangle', vol: .36 }); }, { level: .34, vary: true });
 def('pjHop', 0.2, (c, d, t) => { sfxTone(c, d, t, 280, .17, { to: 620, type: 'triangle', vol: .32, att: .01 }); }, { level: .36 });
 def('pjLand', 0.12, (c, d, t) => { sfxTone(c, d, t, 420, .08, { to: 250, type: 'triangle', vol: .5 }); sfxNoise(c, d, t, .02, { f: 1800, q: 1.4, vol: .25, att: .001 }); }, { level: .42, vary: true });
+// Twist Five: a piece clacking into its hole, and a quarter of the board turning (a short ratchet).
+def('twPlace', 0.1, (c, d, t) => { sfxTone(c, d, t, 520, .07, { to: 300, type: 'triangle', vol: .5 }); sfxNoise(c, d, t, .016, { f: 2400, q: 1.4, vol: .28, att: .001 }); }, { level: .42, vary: true });
+def('twTurn', 0.46, (c, d, t) => { for (let k = 0; k < 7; k++) sfxNoise(c, d, t + k * .055, .022, { f: 1300 + k * 110, q: 2.5, vol: .3, att: .001 }); sfxTone(c, d, t, 150, .4, { to: 210, type: 'triangle', vol: .16, att: .05 }); }, { level: .4 });
 // Shell Game (December 2026): the cup lifting off the ball (a soft rising pop), coming down over it (a hollow knock),
 // each swap's whoosh (played faster as the shuffle's tempo rises: the view gives the rate), the cups settling (two soft
 // knocks), and the roll under a picked cup before it lifts.
@@ -517,7 +520,7 @@ let ownDown = false, ownUp = -1e9;
 export function ownPress() { ownDown = true; }
 // Every control plays its tap sound when pressed (whether or not the game takes the press). The moves
 // and card turns play their own sounds, from their events. A press on a disabled control is an error.
-const TAP_SOUND = { 'mj-pick': null, 'pj-pick': null, explain: 'open', 'explain-close': 'close', pause: 'open', 'pause-resume': 'close', zoom: null, move: null, pick: null,
+const TAP_SOUND = { 'mj-pick': null, 'pj-pick': null, 'tw-place': null, explain: 'open', 'explain-close': 'close', pause: 'open', 'pause-resume': 'close', zoom: null, move: null, pick: null,
   'echo-tap': null, 'echo-play': null, bulls: null, bowl: null, 'run-go': null, 'fing-start': null, 'odd-reveal': null, 'trivia-reveal': null, 'att-start': null, 'hc-key': null, 'snap-cell': null, 'snap-submit': null, pokmark: null, domtile: null, hpsel: 'select',   // a game's own inputs: each plays its own sound (from its handler or its move), never the click as well
   mmcol: 'peg', mmslot: 'peg', rlnum: 'peg', rlgrp: 'peg', rlzero: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', 'anim-set': 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
   'set-sound': 'toggle', 'set-vib': 'toggle', settings: 'open', 'settings-back': 'close', 'pause-settings': 'open', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'tap' };   // (back: the Board button in a square, a plain tap)
