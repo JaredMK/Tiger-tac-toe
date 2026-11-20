@@ -6380,3 +6380,13 @@ button.wlc { cursor: pointer; touch-action: manipulation; }
 .tsbw .tpic { width: 20cqw; } .tsb { width: 100%; display: block; } .tsbl { fill: #ecc07c; } .tsbo { fill: none; stroke: var(--ink); stroke-width: 3; }
 .tsbz.z0 { fill: #8fd3f4; } .tsbz.z1 { fill: #ffd166; } .tsbz.z2 { fill: #ff8a65; } .tsbz { stroke: var(--ink); stroke-width: 1.2; }
 .tsbp { stroke: var(--ink); stroke-width: 2.4; } .tsbp.X { fill: var(--x); } .tsbp.O { fill: var(--o); }
+
+/* Bin Shot: tallies, the room (a canvas, 100 by 122), the result line. */
+.g-ts { width: min(var(--gw), 440px); height: min(var(--gh), 600px); display: flex; flex-direction: column; gap: 8px; }
+.g-ts > * { flex: none; }
+.g-ts .tsbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.tsfield { position: relative; width: min(100cqw, 81.96cqh); aspect-ratio: 100 / 122; border: 3.5px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); touch-action: none; }
+.tscv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.tsline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.tsline.ok { color: var(--green); } .tsline.no { color: var(--muted); }
+.ttsw2 .tpic { width: 40cqw; } .tts { width: 100%; display: block; } .ttsw { fill: none; stroke: #7fa6c9; stroke-width: 3; stroke-linecap: round; } .ttsr { fill: #7d8a96; stroke: var(--ink); stroke-width: 2.4; } .ttsb { fill: #2a323a; stroke: var(--ink); stroke-width: 2; } .ttsp { fill: #fbfbf6; stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; }
