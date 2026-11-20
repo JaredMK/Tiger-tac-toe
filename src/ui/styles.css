@@ -6414,3 +6414,14 @@ button.wlc { cursor: pointer; touch-action: manipulation; }
 .fsline.ok { color: var(--green); } .fsline.no { color: var(--muted); }
 .g-fs .fsbtn { height: 54px; }
 .tfsw.col .tpic { width: 62cqw; } .tfs { width: 100%; display: block; } .tfsa { fill: #3fa34d; stroke: var(--ink); stroke-width: 2.4; stroke-linejoin: round; } .tfsf { stroke: #f25f5c; stroke-width: 5; stroke-linecap: round; } .tfss { stroke: #fff; stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 1px var(--ink)); }
+
+/* Rhythm Tap: tallies, the stage (a canvas, 100 by 120), the result line, Go. */
+.g-rt { width: min(var(--gw), 440px); height: min(var(--gh), 620px); display: flex; flex-direction: column; gap: 8px; }
+.g-rt > * { flex: none; }
+.g-rt .rtbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.rtfield { position: relative; width: min(100cqw, 83.3cqh); aspect-ratio: 100 / 120; border: 3.5px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); touch-action: none; }
+.rtcv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.rtline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.rtline.ok { color: var(--green); } .rtline.no { color: var(--muted); }
+.g-rt .rtbtn { height: 54px; }
+.trtw.col .tpic { width: 62cqw; } .trt { width: 100%; display: block; } .trtb { fill: #231b3a; stroke: var(--ink); stroke-width: 2.4; } .trtn { stroke: var(--ink); stroke-width: 1.6; } .trtl { stroke: #fff; stroke-width: 2.4; stroke-linecap: round; }

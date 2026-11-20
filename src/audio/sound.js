@@ -330,6 +330,11 @@ def('tsRim', 0.16, (c, d, t) => { sfxTone(c, d, t, 880, .1, { to: 700, type: 'tr
 def('fsSlice', 0.16, (c, d, t) => { sfxNoise(c, d, t, .07, { f: 5200, to: 1800, q: .9, vol: .34, att: .002 }); sfxTone(c, d, t + .03, 300, .09, { to: 170, type: 'sine', vol: .32 }); }, { level: .4 });
 def('fsBoom', 0.6, (c, d, t) => { sfxNoise(c, d, t, .5, { f: 900, to: 120, q: .6, vol: .7, att: .002 }); sfxTone(c, d, t, 110, .45, { to: 45, vol: .7 }); }, { level: .55 });
 def('fsGo', 0.2, (c, d, t) => { sfxTone(c, d, t, 520, .08, { type: 'triangle', vol: .35 }); sfxTone(c, d, t + .08, 780, .11, { type: 'triangle', vol: .35 }); }, { level: .38 });
+def('rtKick', 0.2, (c, d, t) => { sfxTone(c, d, t, 150, .16, { to: 48, vol: .75 }); sfxNoise(c, d, t, .012, { f: 1800, q: 1, vol: .2, att: .001 }); }, { level: .5 });
+def('rtHat', 0.06, (c, d, t) => sfxNoise(c, d, t, .035, { f: 7800, q: 1.4, vol: .22, att: .001 }), { level: .26 });
+def('rtNote', 0.32, (c, d, t) => { sfxTone(c, d, t, 392, .28, { type: 'triangle', vol: .5, att: .004 }); sfxTone(c, d, t, 784, .16, { vol: .14 }); }, { level: .46 });
+def('rtMiss', 0.18, (c, d, t) => sfxTone(c, d, t, 140, .15, { to: 95, type: 'sawtooth', vol: .28 }), { level: .34 });
+def('rtTick', 0.05, (c, d, t) => sfxNoise(c, d, t, .025, { f: 2200, q: 2, vol: .2, att: .001 }), { level: .24 });
 def('htLand', 0.3, (c, d, t) => { sfxNoise(c, d, t, .02, { f: 3600, q: 2, vol: .4, att: .001 }); sfxTone(c, d, t, 2350, .26, { vol: .22 }); sfxTone(c, d, t + .09, 2350, .16, { vol: .1 }); sfxTone(c, d, t, 3520, .18, { vol: .1 }); }, { level: .4 });
 def('tpTick', 0.06, (c, d, t) => { sfxTone(c, d, t, 1150, .035, { to: 900, type: 'square', vol: .22 }); sfxNoise(c, d, t, .01, { f: 4200, q: 2, vol: .2 }); }, { level: .34 });
 def('tpThrow', 0.22, (c, d, t) => sfxNoise(c, d, t, .19, { f: 700, to: 2600, q: 1, vol: .3, att: .02 }), { level: .34 });
@@ -545,7 +550,7 @@ let ownDown = false, ownUp = -1e9;
 export function ownPress() { ownDown = true; }
 // Every control plays its tap sound when pressed (whether or not the game takes the press). The moves
 // and card turns play their own sounds, from their events. A press on a disabled control is an error.
-const TAP_SOUND = { 'mj-pick': null, 'pj-pick': null, 'tw-place': null, 'tp-stop': null, 'fs-go': null, 'ck-stop': null, 'hr-go': null, explain: 'open', 'explain-close': 'close', pause: 'open', 'pause-resume': 'close', zoom: null, move: null, pick: null,
+const TAP_SOUND = { 'mj-pick': null, 'pj-pick': null, 'tw-place': null, 'tp-stop': null, 'rt-go': null, 'fs-go': null, 'ck-stop': null, 'hr-go': null, explain: 'open', 'explain-close': 'close', pause: 'open', 'pause-resume': 'close', zoom: null, move: null, pick: null,
   'echo-tap': null, 'echo-play': null, bulls: null, bowl: null, 'run-go': null, 'fing-start': null, 'odd-reveal': null, 'trivia-reveal': null, 'att-start': null, 'hc-key': null, 'snap-cell': null, 'snap-submit': null, pokmark: null, domtile: null, hpsel: 'select',   // a game's own inputs: each plays its own sound (from its handler or its move), never the click as well
   mmcol: 'peg', mmslot: 'peg', rlnum: 'peg', rlgrp: 'peg', rlzero: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', 'anim-set': 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
   'set-sound': 'toggle', 'set-vib': 'toggle', settings: 'open', 'settings-back': 'close', 'pause-settings': 'open', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'tap' };   // (back: the Board button in a square, a plain tap)

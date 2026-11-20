@@ -375,6 +375,11 @@ Category: More skill
 Play: Drag to aim and shoot.{goAgain} Sink the white and a ball comes back for you: one of your sunk balls, or a new one if none is sunk.
 Win: Sink all your balls on the table first. Sink the black ball and you lose. Both last balls down on one shot: a draw.
 
+## Rhythm Tap [rhythm]
+Category: More skill
+Play: A turn is one round of {secs} seconds. Notes come down three lanes to the beat. Tap a lane as its note reaches the line: right on the beat is Perfect, 2 points; close is Good, 1 point.{livesText}
+Win: First to {target} points.
+
 ## Ride the Bus [bus]
 Category: More luck
 Play: Guess red or black, then higher or lower, then inside or outside, then the suit.{goAgain}
