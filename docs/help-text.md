@@ -321,6 +321,11 @@ Category: More brain
 Play: Tap a face to guess it. {clueText} Use the clues to narrow it down.{boardText}
 Win: First to guess their mystery face wins.
 
+## Number Target [numbers]
+Category: More brain
+Play: Both players get the same numbers and the same target. A turn is one attempt of {secs} seconds: tap a number, a sign and another number to work a result out, and go on from there. Use each number once at most. After {attempts} misses each, a new puzzle is dealt.
+Win: The first to make the target exactly.
+
 ## Odd One Out [oddone]
 Category: More skill
 Play: Reveal, then tap the odd shade within {secs} seconds.{goAgain}

@@ -6466,3 +6466,26 @@ button.wlc { cursor: pointer; touch-action: manipulation; }
 .g-bd .bddrop { height: 54px; min-width: 0; }
 @media (prefers-reduced-motion: reduce) { .bdc.drop { animation: none; } .bdc.clr, .bdc.bust, .bdc.drop.clr, .bdc.drop.bust { animation: none; opacity: 0; } }
 .tbdw .tpic { width: 62cqw; } .tbd { width: 100%; display: block; } .tbdb { fill: #26324a; stroke: var(--ink); stroke-width: 1.2; } .tbdc { stroke: var(--ink); stroke-width: .5; fill: var(--bk); }
+
+/* Number Target: tallies (attempts at this puzzle), the card (the target on a burst, the attempt's time bar, the
+   number tiles, the sums), the four signs and Undo, the result line, Start. */
+.g-nt { width: min(var(--gw), 440px); height: min(var(--gh), 560px); display: flex; flex-direction: column; gap: 7px; }
+.g-nt > * { flex: none; }
+.ntcard { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; gap: 6px; padding: 8px; border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 18px; background: var(--paper); box-shadow: 0 4px 0 var(--ink); overflow: hidden; }
+.nttarget { display: flex; align-items: baseline; gap: 10px; padding: 2px 18px 0; border: 3px solid var(--ink); border-radius: 14px; background: #ffd23f; transform: rotate(-2deg); box-shadow: 0 3px 0 var(--ink); }
+.nttarget small { font: 700 15px/1 'Comic Neue', 'Comic Sans MS', sans-serif; } .nttarget b { font: 400 40px/46px 'Bangers', 'Arial Black', sans-serif; letter-spacing: .04em; }
+.ntbar { display: block; width: min(86%, 300px); height: 10px; flex: none; } .ntbar.obar i { background: var(--green); }
+.nttiles { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; width: 100%; min-height: 96px; align-content: flex-start; }
+.nttile { min-width: 46px; height: 44px; padding: 3px 8px 0; box-sizing: border-box; border: 3px solid var(--ink); border-radius: 12px; background: #fff; color: var(--ink); box-shadow: 0 3px 0 var(--ink); display: inline-grid; place-items: center; font: 400 23px/1 'Bangers', 'Arial Black', sans-serif; letter-spacing: .03em; }
+button.nttile { cursor: pointer; touch-action: manipulation; } button.nttile:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.nttile.made { background: #d8f3dc; } .nttile.sel { background: var(--ink); color: #ffe45c; } .nttile.used { opacity: .28; box-shadow: none; } button.nttile:disabled:not(.used) { opacity: .75; }
+.ntsteps { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 100%; min-height: 62px; }
+.ntrow { display: block; height: 20px; font: 700 16px/20px 'Comic Neue', 'Comic Sans MS', sans-serif; white-space: nowrap; } .ntrow.none { color: var(--muted); } .ntrow.cur { height: 22px; }
+.ntsum { display: inline-flex; gap: 6px; align-items: baseline; } .ntsum i { font-style: normal; } .ntsum b.r { color: var(--green); } .ntsum b.q { color: var(--muted); }
+.ntmark { position: absolute; right: 10px; top: 50%; width: 34px; height: 34px; margin-top: -17px; display: grid; place-items: center; } .ntmark svg { width: 100%; height: 100%; } .ntmark.ok { color: var(--green); } .ntmark.no { color: var(--x); }
+.ntops { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.g-nt .ntop { min-width: 0; height: 46px; padding: 0; font: 700 30px/1 'Comic Neue', 'Comic Sans MS', sans-serif; display: grid; place-items: center; } .g-nt .ntop svg { width: 24px; height: 24px; } .g-nt .ntop.sel { background: var(--ink); color: #ffe45c; }
+.ntline { margin: 0; height: 24px; text-align: center; white-space: nowrap; font: 400 20px/26px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; color: var(--muted); }
+.ntline.ok { color: var(--green); } .ntline.no { color: var(--muted); }
+.g-nt .ntbtn { height: 52px; }
+.tntw .tpic { width: 38cqw; } .tnt { width: 100%; display: block; } .tntb { fill: #ffd23f; stroke: var(--ink); stroke-width: 2.4; } .tntk { fill: #fff; stroke: var(--ink); stroke-width: 1.8; } .tnts { fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; }
