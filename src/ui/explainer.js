@@ -61,6 +61,8 @@ function fillTune(t, x) {
   if (ga) v.goAgain = v.again === 'on' ? ga.on : ga.off;
   const ev = GAMES[t] && GAMES[t].meta.evenText;      // {evenText}: Bowling's words for "Equal rolls" on or off (its TUNE `even`)
   if (ev) v.evenText = v.even === 'on' ? ev.on : ev.off;
+  const xv = GAMES[t] && GAMES[t].meta.explainVars;   // a game's own words from its settings (meta.js explainVars(values) -> { key: text })
+  if (xv) Object.assign(v, xv(v));
   const f = s => s.replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? String(v[k]) : m));
   return { name: x.name, play: f(x.play), win: f(x.win) };
 }

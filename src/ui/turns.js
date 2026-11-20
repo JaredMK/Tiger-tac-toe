@@ -1,5 +1,5 @@
 // The turn flow on screen: the computer's turn (think, zoom, play), the result shown and dismissed.
-import { VIEWS } from '../games/index.js';
+import { VIEWS, viewOf } from '../games/index.js';
 import { endFlash, leaveSquare, playMove } from '../core/board.js';
 import { playerName } from '../core/match.js';
 import { SND, backSounds, matchEndSound, moveSounds } from '../audio/sound.js';
@@ -192,6 +192,8 @@ export function holdOf(f) {
   if (f.type === 'bj' && f.kind === 'again' && !(f.bj && f.bj.res && !f.bj.next)) hold = 0;   // Blackjack, a hand still on: Hit and Stand the moment its cards are down (about 0.3 s after the last lands); a hand won (a hot streak) holds its result the usual moment before Deal
   if (f.type === 'hangman' && f.kind === 'again') hold = 0;                  // Hangman, a right letter: the next guess the moment it is in
   if (f.type === 'bingo' && f.kind === 'again') hold = 0;                    // Bingo, the draw: the balls can be called the moment the last is in its place
+  const own = viewOf(f.type).hold;                                        // a game's own (its view's `hold(f)`: ms the result stays once its animation has played; null: the usual)
+  if (own) { const h = own(f); if (h != null) hold = h; }
   return hold;
 }
 // A tap on a move still playing (an opponent's replay's Skip, or any tap on the square while a move animates, your

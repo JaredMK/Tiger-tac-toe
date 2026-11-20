@@ -6017,3 +6017,11 @@ button.dukd:active .dukf, .dukd.rpress .dukf { scale: .88; }
 .wtboard.big .wtwb { left: calc(2.5px + var(--c) * (var(--cs) + 1.5px)); top: calc(2.5px + var(--r) * (var(--cs) + 1.5px)); width: calc(var(--w, 1) * var(--cs) + (var(--w, 1) - 1) * 1.5px); height: calc(var(--h, 1) * var(--cs) + (var(--h, 1) - 1) * 1.5px); }
 .wtboard.big .wtchip { left: calc(2.5px + (var(--c) + 1) * (var(--cs) + 1.5px) - 20px); top: calc(2.5px + var(--r) * (var(--cs) + 1.5px) - 11px); }
 .wtboard.big .wtchip.er { left: auto; right: -5px; } .wtboard.big .wtchip.et { top: -5px; }
+
+/* ===== The December 2026 batch of games (each its own block) ===== */
+/* Pig: Risky Rolls' table on a pink felt; the bust number marked in the row of the die's numbers. */
+.g-risky.pgd .rrfelt { background: radial-gradient(circle at 34% 46%, #ffb3c7, #f2789b 72%); }
+.g-risky.pgd .rrnums i.pgbad { background: var(--x); color: #fff; }
+.g-risky.pgd .rrnums i.pgnew { animation: pgnew .32s var(--land) cubic-bezier(.3, 1.5, .5, 1) both; }
+@keyframes pgnew { 0% { transform: none; } 1% { transform: scale(.6); background: var(--ink); color: #fff; } 60% { transform: scale(1.2); background: var(--ink); color: #fff; } }
+.tdice .tmtray.tpgtray { background: radial-gradient(circle at 36% 40%, #ffb3c7, #f2789b); }

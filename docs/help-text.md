@@ -277,6 +277,11 @@ Win: Reach the target score first.
 Super Chaos Play: Drop the chip from an open slot. The gold bonus peg adds points.
 Super Chaos Win: First to the target score.
 
+## Pig [piggy]
+Category: More luck
+Play: Roll the die as often as you like, then bank your points. Roll a {bust} and this turn's points are gone.{maxText}
+Win: First to bank {target} points.
+
 ## Pinball [pinball]
 Category: More skill
 Play: Tap left or right to flip. One ball per turn.

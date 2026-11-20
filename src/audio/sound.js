@@ -272,6 +272,8 @@ def('clawChute', 0.44, (c, d, t) => { for (let k = 0; k < 4; k++) { sfxTone(c, d
 def('clawSlip', 0.34, (c, d, t) => { sfxTone(c, d, t, 880, .32, { to: 300, vol: .4, att: .01 }); sfxTone(c, d, t, 1320, .2, { to: 600, vol: .08, att: .01 }); }, { level: .4 });
 // Hook-a-Duck (November 2026, the polish sweep): a rubber duck's squeak as it is hooked out of the water (two quick chirps, the second higher), the line's reel (a short run of ticks), a boot's hollow rubber flop
 def('dukSqueak', 0.22, (c, d, t) => { sfxTone(c, d, t, 1250, .08, { to: 1700, vol: .4, type: 'square', att: .006 }); sfxTone(c, d, t + .09, 1500, .11, { to: 2100, vol: .4, type: 'square', att: .006 }); }, { level: .3, vary: true });
+// Pig: the oink on a bust (two short nasal grunts, the second lower).
+def('pgOink', 0.34, (c, d, t) => { sfxTone(c, d, t, 310, .13, { to: 230, type: 'sawtooth', vol: .3, att: .015 }); sfxNoise(c, d, t, .12, { f: 900, to: 600, q: 3, vol: .22, att: .01 }); sfxTone(c, d, t + .16, 250, .16, { to: 170, type: 'sawtooth', vol: .32, att: .015 }); sfxNoise(c, d, t + .16, .15, { f: 760, to: 480, q: 3, vol: .22, att: .01 }); }, { level: .42 });
 // Shell Game (December 2026): the cup lifting off the ball (a soft rising pop), coming down over it (a hollow knock),
 // each swap's whoosh (played faster as the shuffle's tempo rises: the view gives the rate), the cups settling (two soft
 // knocks), and the roll under a picked cup before it lifts.
@@ -509,7 +511,7 @@ export function moveSounds(f) {
   const game = viewOf(f.type);
   if (game.sounds) game.sounds(f, add, won, mini, last);
   const CASINO = ['shell', 'wtiles', 'claw', 'duck', 'pusher', 'poker', 't31', 'rummy', 'rps', 'shut', 'combo', 'bglite', 'scc', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'apple', 'muncher', 'swarm', 'bricks', 'snake', 'dominoes', 'war', 'scratch', 'bingo', 'snakes', 'candy', 'bump'];   // (the race tracks: as the piece jumps on its last space)
-  if (won && CASINO.includes(f.type)) add('won', game.wonAt ? game.wonAt(f, total) : total - 600);   // the card games and the wheel: the chime once the result shows (a view's own `wonAt`: Trivia and Odd One Out, whose mover's phone skips the reveal and the pause the others see)
+  if (won && (CASINO.includes(f.type) || game.ownLine)) add('won', game.wonAt ? game.wonAt(f, total) : total - 600);   // the card games and the wheel: the chime once the result shows (a view's own `wonAt`: Trivia and Odd One Out, whose mover's phone skips the reveal and the pause the others see)
   else if (won && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the game is won: a chime (the square's stamp, and a match's end, follow on the board)
   if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game
   return out;
