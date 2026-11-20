@@ -6513,3 +6513,16 @@ button.nttile { cursor: pointer; touch-action: manipulation; } button.nttile:act
 .tlctl { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; } .g-tl .tlundo { min-width: 0; height: 52px; } .g-tl .tldone { height: 52px; min-width: 0; }
 @media (prefers-reduced-motion: reduce) { .tldot i { animation: none; } .tltrail.tlfade { animation: none; opacity: 0; } }
 .ttlw .tpic { width: 40cqw; } .ttl { width: 100%; display: block; } .ttl .tltrail { stroke-width: 5.5; } .ttlh { stroke: var(--ink); stroke-width: 1.6; } .ttlh.X { fill: var(--x); } .ttlh.O { fill: var(--o); }
+/* ---------- Key Drop (December 2026): the machine on a canvas (100 by 116), the result's own line, the Hold button ---------- */
+.g-kyd { width: min(var(--gw), 440px); height: min(var(--gh), 600px); display: flex; flex-direction: column; gap: 8px; }
+.g-kyd > * { flex: none; }
+.g-kyd .kydbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.kydfield { position: relative; width: min(100cqw, calc(100cqh * 100 / 116)); aspect-ratio: 100 / 116; border: 3.5px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); touch-action: none; }
+.kydcv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.kydline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.kydline.ok { color: var(--green); } .kydline.no { color: var(--muted); } .kydline.near { color: #d9730d; }
+.g-kyd .kydbtn { height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.g-kyd .kydbtn svg { width: 26px; height: 26px; flex: none; transition: rotate .12s; } .g-kyd .kydbtn.up svg { rotate: -90deg; }
+.g-kyd .kydbtn.held:not(:disabled) { transform: translateY(4px); box-shadow: none; filter: brightness(.94); }
+.tkydw .tpic { width: 40cqw; } .tkyd { width: 100%; display: block; } .tkya { fill: #4f79c7; stroke: var(--ink); stroke-width: 2.4; } .tkys { stroke: #c58a4a; stroke-width: 4; stroke-linecap: round; } .tkyp { fill: #b06cf0; stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; }
+.tkyh { fill: #e3e7ef; stroke: var(--ink); stroke-width: 1.8; } .tkyk { fill: #14161f; } .tkyd { stroke: var(--ink); stroke-width: 3.4; stroke-linecap: round; } .tkyb { fill: #e9edf5; stroke: var(--ink); stroke-width: 2; }

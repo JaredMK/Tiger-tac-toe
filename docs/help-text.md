@@ -265,6 +265,11 @@ Category: More luck
 Play: Hook a duck from the shared pond. It scores 1 to 5, or a boot scores nothing.{goAgain}
 Win: First to {target} points.
 
+## Key Drop [keydrop]
+Category: More skill
+Play: Each player has their own machine. Hold the button: the key slides right. Let go and it stops. Hold again: it slides up. Let go, and the key pushes forward. In a keyhole, it knocks that prize into your prize box. You get one hold each way.{rampText}
+Win: First to {goal} prizes.
+
 ## Krabs [craps]
 Category: More luck
 Play: Roll until your round is won or lost. On the first roll, 7 or 11 wins and 2, 3 or 12 loses. Any other number is your point: rolling it again wins, rolling a 7 loses.{goAgain}
