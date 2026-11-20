@@ -274,6 +274,11 @@ Category: More brain
 Play: Pick one of your pits. Its seeds are sown one by one round the board: along your side, into your bank, then along the other side.{extraText}{captureText}
 Win: First to bank {target} seeds wins. Nothing left to sow on your turn: whoever has banked more takes the square.
 
+## Marble Toss [marble]
+Category: More skill
+Play: Flick up the table to roll a marble: a faster flick rolls further. You get {marbles} marbles a turn. A marble that drops in a hole scores the number on it. A miss scores nothing.
+Win: First to {target} points.
+
 ## Maze Runner [maze]
 Category: More luck
 Play: Pick a way and your runner dashes until the path forks or ends. The maze shows only where a runner has been. Keep going until a dead end stops you: that ends your turn.{boardText}

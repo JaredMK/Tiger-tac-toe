@@ -6357,3 +6357,13 @@ button.wlc { cursor: pointer; touch-action: manipulation; }
 .g-pr .prnum b { font: 400 22px/22px 'Bangers', 'Arial Black', sans-serif; letter-spacing: .03em; } .g-pr .prnum i { font: 700 13px/14px 'Comic Neue', 'Comic Sans MS', sans-serif; font-style: normal; color: var(--green); }
 .g-pr .prnum.on { box-shadow: inset 0 0 0 3px var(--ink); }
 .tprw.col .tpic { width: 66cqw; } .tpr { width: 100%; display: block; } .tprf { fill: #2f66a6; stroke: var(--ink); stroke-width: 2.4; } .tprd { fill: #fff; stroke: var(--ink); stroke-width: 2; } .tprp { fill: var(--ink); }
+
+/* Marble Toss: tallies, the table (a canvas, 100 by 120), the result line. */
+.g-mb { width: min(var(--gw), 440px); height: min(var(--gh), 600px); display: flex; flex-direction: column; gap: 8px; }
+.g-mb > * { flex: none; }
+.g-mb .mbbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.mbfield { position: relative; width: min(100cqw, 83.3cqh); aspect-ratio: 100 / 120; border: 3.5px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); touch-action: none; }
+.mbcv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.mbline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.mbline.ok { color: var(--green); } .mbline.no { color: var(--muted); }
+.tmbw .tpic { width: 34cqw; } .tmb { width: 100%; display: block; } .tmbt { fill: #e0ae69; stroke: var(--ink); stroke-width: 4; } .tmbh { fill: #2a180c; stroke: var(--ink); stroke-width: 2.5; } .tmbm { stroke: var(--ink); stroke-width: 3; } .tmbm.X { fill: var(--x); } .tmbm.O { fill: var(--o); }

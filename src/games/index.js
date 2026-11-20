@@ -98,6 +98,7 @@ import * as wallsR from './walls/rules.js'; import * as wallsA from './walls/ai.
 import * as targetR from './target/rules.js'; import * as targetA from './target/ai.js'; import * as targetM from './target/meta.js'; add('target', targetR, targetA, targetM);
 import * as headsR from './heads/rules.js'; import * as headsA from './heads/ai.js'; import * as headsM from './heads/meta.js'; add('heads', headsR, headsA, headsM);
 import * as prollR from './proll/rules.js'; import * as prollA from './proll/ai.js'; import * as prollM from './proll/meta.js'; add('proll', prollR, prollA, prollM);
+import * as marbleR from './marble/rules.js'; import * as marbleA from './marble/ai.js'; import * as marbleM from './marble/meta.js'; add('marble', marbleR, marbleA, marbleM);
 import * as clashR from './clash/rules.js'; import * as clashA from './clash/ai.js'; import * as clashM from './clash/meta.js'; add('clash', clashR, clashA, clashM);
 import * as diceR from './dice/rules.js'; import * as diceA from './dice/ai.js'; import * as diceM from './dice/meta.js'; add('dice', diceR, diceA, diceM);
 import * as hexapawnR from './hexapawn/rules.js'; import * as hexapawnA from './hexapawn/ai.js'; import * as hexapawnM from './hexapawn/meta.js'; add('hexapawn', hexapawnR, hexapawnA, hexapawnM);
