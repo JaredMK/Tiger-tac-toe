@@ -6403,3 +6403,14 @@ button.wlc { cursor: pointer; touch-action: manipulation; }
 .g-ck .ctal .pips { flex-wrap: wrap; row-gap: 3px; } .g-ck .ctal .pips i { width: 11px; height: 11px; }
 .ckpts { margin-left: 6px; min-width: 22px; padding: 1px 5px 0; border: 2px solid var(--ink); border-radius: 8px; background: var(--paper); font: 400 16px/18px 'Bangers', 'Arial Black', sans-serif; text-align: center; }
 .tckw2 .tpic { width: 38cqw; } .tck { width: 100%; display: block; } .tckr { fill: #2b2b33; stroke: var(--ink); stroke-width: 2; } .tckw path { stroke: var(--ink); stroke-width: 1; stroke-linejoin: round; } .tckb { fill: #fff; stroke: var(--ink); stroke-width: 1.6; } .tckh { fill: #e5432a; stroke: var(--ink); stroke-width: 1.2; }
+
+/* Fruit Slice: tallies, the field (a canvas, 100 by 120), the result line, Go. */
+.g-fs { width: min(var(--gw), 440px); height: min(var(--gh), 620px); display: flex; flex-direction: column; gap: 8px; }
+.g-fs > * { flex: none; }
+.g-fs .fsbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.fsfield { position: relative; width: min(100cqw, 83.3cqh); aspect-ratio: 100 / 120; border: 3.5px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); touch-action: none; }
+.fscv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.fsline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.fsline.ok { color: var(--green); } .fsline.no { color: var(--muted); }
+.g-fs .fsbtn { height: 54px; }
+.tfsw.col .tpic { width: 62cqw; } .tfs { width: 100%; display: block; } .tfsa { fill: #3fa34d; stroke: var(--ink); stroke-width: 2.4; stroke-linejoin: round; } .tfsf { stroke: #f25f5c; stroke-width: 5; stroke-linecap: round; } .tfss { stroke: #fff; stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 1px var(--ink)); }

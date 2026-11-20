@@ -207,6 +207,11 @@ Category: More luck
 Play: Spin the three reels, or hold one reel from your last spin and spin the other two. Two alike score {pair}. Three cherries {tri1}, lemons {tri2}, bells {tri3}.{starText}
 Win: First to {target} points.
 
+## Fruit Slice [slice]
+Category: More skill
+Play: A turn is one round of {secs} seconds. Swipe through the fruit as it flies: each one is a point. Slice a bomb and the round ends there and costs you {bombCost} points of it.
+Win: First to {target} points.
+
 ## Glass Bridge [bridge]
 Category: More luck
 Play: Hop to a platform in the next row. Safe glass holds and you hop again. Weak glass breaks for good: your turn ends and you stay where you were.

@@ -102,6 +102,7 @@ import * as marbleR from './marble/rules.js'; import * as marbleA from './marble
 import * as shuffleR from './shuffle/rules.js'; import * as shuffleA from './shuffle/ai.js'; import * as shuffleM from './shuffle/meta.js'; add('shuffle', shuffleR, shuffleA, shuffleM);
 import * as tossR from './toss/rules.js'; import * as tossA from './toss/ai.js'; import * as tossM from './toss/meta.js'; add('toss', tossR, tossA, tossM);
 import * as cricketR from './cricket/rules.js'; import * as cricketA from './cricket/ai.js'; import * as cricketM from './cricket/meta.js'; add('cricket', cricketR, cricketA, cricketM);
+import * as sliceR from './slice/rules.js'; import * as sliceA from './slice/ai.js'; import * as sliceM from './slice/meta.js'; add('slice', sliceR, sliceA, sliceM);
 import * as clashR from './clash/rules.js'; import * as clashA from './clash/ai.js'; import * as clashM from './clash/meta.js'; add('clash', clashR, clashA, clashM);
 import * as diceR from './dice/rules.js'; import * as diceA from './dice/ai.js'; import * as diceM from './dice/meta.js'; add('dice', diceR, diceA, diceM);
 import * as hexapawnR from './hexapawn/rules.js'; import * as hexapawnA from './hexapawn/ai.js'; import * as hexapawnM from './hexapawn/meta.js'; add('hexapawn', hexapawnR, hexapawnA, hexapawnM);
