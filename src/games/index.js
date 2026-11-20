@@ -85,6 +85,7 @@ import * as scoopR from './scoop/rules.js'; import * as scoopA from './scoop/ai.
 import * as pinballR from './pinball/rules.js'; import * as pinballA from './pinball/ai.js'; import * as pinballM from './pinball/meta.js'; add('pinball', pinballR, pinballA, pinballM);
 import * as piggyR from './piggy/rules.js'; import * as piggyA from './piggy/ai.js'; import * as piggyM from './piggy/meta.js'; add('piggy', piggyR, piggyA, piggyM);
 import * as bridgeR from './bridge/rules.js'; import * as bridgeA from './bridge/ai.js'; import * as bridgeM from './bridge/meta.js'; add('bridge', bridgeR, bridgeA, bridgeM);
+import * as reelsR from './reels/rules.js'; import * as reelsA from './reels/ai.js'; import * as reelsM from './reels/meta.js'; add('reels', reelsR, reelsA, reelsM);
 import * as clashR from './clash/rules.js'; import * as clashA from './clash/ai.js'; import * as clashM from './clash/meta.js'; add('clash', clashR, clashA, clashM);
 import * as diceR from './dice/rules.js'; import * as diceA from './dice/ai.js'; import * as diceM from './dice/meta.js'; add('dice', diceR, diceA, diceM);
 import * as hexapawnR from './hexapawn/rules.js'; import * as hexapawnA from './hexapawn/ai.js'; import * as hexapawnM from './hexapawn/meta.js'; add('hexapawn', hexapawnR, hexapawnA, hexapawnM);
@@ -99,6 +100,10 @@ export const TYPES = Object.keys(GAMES).filter(t => !GAMES[t].meta.retired);
 // admin: in their local matches and in friend games they host (their guest plays them in that match
 // only); never in Find Match, nor anywhere for anyone else.
 export const TEST_TYPES = TYPES.filter(t => GAMES[t].meta.release === 'admin');
+// The placeholder board a new state holds before any match is dealt (core/match.js newState; never played or shown): the
+// games from before the December 2026 batch. A game that says `placeholder = false` in its meta.js stays off it, so the
+// seeded deals that follow (every seeded test) are the same whatever games are added after.
+export const PLACE_TYPES = TYPES.filter(t => GAMES[t].meta.placeholder !== false);
 // No longer dealt, still played to the end in older matches and shown in their history: the Dice race
 // (Snakes and Ladders replaced it) and Hexapawn (taken out: with nobody obliged to move in a square,
 // the best play was often not to move at all).

@@ -192,6 +192,11 @@ Category: More brain
 Play: Drop a piece into a column.
 Win: {k} in a row, any direction.
 
+## Fruit Reels [reels]
+Category: More luck
+Play: Spin the three reels, or hold one reel from your last spin and spin the other two. Two alike score {pair}. Three cherries {tri1}, lemons {tri2}, bells {tri3}.{starText}
+Win: First to {target} points.
+
 ## Glass Bridge [bridge]
 Category: More luck
 Play: Hop to a platform in the next row. Safe glass holds and you hop again. Weak glass breaks for good: your turn ends and you stay where you were.

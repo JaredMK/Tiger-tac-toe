@@ -6069,3 +6069,34 @@ button.gbp { cursor: pointer; touch-action: manipulation; }
 .tgbt { stroke: var(--ink); stroke-width: 1; fill: var(--x); } .tgbt.O { fill: var(--o); }
 /* A tally whose figures always take their own line under the name (many pips: the name keeps the whole width). */
 .ctals.two .ctal > .tnm { flex: 0 0 100%; max-width: 100%; } .ctals.two .ctal > .tnm + * { margin-left: 0; }
+
+/* The batch's points figure in a tally (ui/tok.js ptsTally) and a miniature's score bars (barRows). */
+.npts { display: inline-flex; align-items: baseline; gap: 1px; flex: none; font: 400 18px/1 'Luckiest Guy', 'Arial Black', sans-serif; font-variant-numeric: tabular-nums; } .npts b { font-weight: 400; min-width: 2ch; text-align: right; } .npts small { font-size: 13px; color: var(--muted); }
+.tpip .tr.nbar i.nb { flex: 1 1 0; width: auto; height: 8cqw; border-radius: 99px; position: relative; overflow: hidden; } .tpip .tr.nbar i.nb::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--w, 0%); background: var(--x); } .tpip .tr.nbar.O i.nb::after { background: var(--o); }
+/* Fruit Reels: tallies, the cabinet (the three windows, the Hold buttons under them, the pay strip), the result line, Spin. */
+.g-fr { width: min(var(--gw), 440px); height: min(var(--gh), 540px); display: flex; flex-direction: column; gap: 8px; }
+.g-fr > * { flex: none; }
+.frcab { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 18px; background: linear-gradient(180deg, #7e57c2, #5e35b1); box-shadow: 0 4px 0 var(--ink), inset 0 0 0 4px rgba(255, 255, 255, .18); }
+.frwin { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; container-type: size; }
+.frreel { position: relative; overflow: hidden; display: grid; place-items: center; border: 3px solid var(--ink); border-radius: 12px; background: linear-gradient(180deg, #d9d2c0 0, #fff 22%, #fff 78%, #d9d2c0 100%); }
+.frsym { width: min(74%, 78cqh); aspect-ratio: 1; display: block; } .frq { font: 400 26px 'Luckiest Guy', 'Arial Black', sans-serif; fill: rgba(22, 18, 16, .3); }
+.frstrip { position: absolute; left: 0; right: 0; top: 0; height: calc(var(--n) * 100%); display: grid; grid-auto-rows: 1fr; justify-items: center; align-items: center; animation: frroll var(--t) cubic-bezier(.25, .6, .3, 1) both; }
+.frstrip .frsym { width: min(74%, 78cqh); }
+@keyframes frroll { from { transform: translateY(calc(-100% + 100% / var(--n))); } 86% { transform: translateY(1.2%); } to { transform: none; } }
+.frreel.hit { box-shadow: inset 0 0 0 4px var(--gold, #f5b301); background: #fff8dc; } .frreel.hit.late { animation: frhit .3s var(--tj) both; }
+@keyframes frhit { from { box-shadow: none; background: #fff; } 50% { transform: scale(1.06); } }
+.frheld { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); padding: 2px 7px 0; border: 2px solid var(--ink); border-radius: 99px; background: var(--ink); color: #ffe45c; font: 400 13px/16px 'Bangers', 'Arial Black', sans-serif; letter-spacing: .05em; }
+.frholds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.g-fr .frhold { min-height: 44px; padding: 4px 2px 0; font-size: 17px; min-width: 0; }
+.frpay { display: flex; justify-content: space-between; gap: 3px; padding: 4px 6px; border: 2.5px solid var(--ink); border-radius: 10px; background: var(--paper); }
+.frpay span { display: inline-flex; align-items: center; gap: 2px; font: 700 13px/1 'Comic Neue', 'Comic Sans MS', sans-serif; white-space: nowrap; } .frpay .frsym { width: 17px; flex: none; } .frpay i { font-style: normal; color: var(--green); font-weight: 700; } .frpay b { font-weight: 700; }
+.frline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.frline.ok { color: var(--green); } .frline.no { color: var(--muted); }
+.g-fr .frspin { height: 58px; }
+@media (prefers-reduced-motion: reduce) { .frstrip { animation: none; } }
+.tfrw .tpic { width: 70cqw; } .tfr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2cqw; padding: 3cqw; border: 1.4cqw solid var(--ink); border-radius: 5cqw; background: #6a3fb8; }
+.tfr i { display: grid; place-items: center; aspect-ratio: 1; border: 1.2cqw solid var(--ink); border-radius: 3cqw; background: #fff; } .tfr .frsym { width: 78%; }
+/* A miniature with its picture over its two score bars (the batch's score races). */
+.tart.col { flex-direction: column; gap: 4cqw; } .tart.col .tpip { flex: none; width: 80cqw; gap: 3cqw; }
+.tfrw.col .tpic { width: 74cqw; }
+.ctals.two .wtal { flex: 1 1 100%; } .ctals.two .wtal .wbar { flex: 1 1 0; width: auto; }

@@ -4,6 +4,7 @@ export const info = { name: 'Pig', hint: "Roll and bank. A 1 loses this turn's p
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const minVersion = '1.24.0';   // the oldest client version that has this game (core/client.js)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
+export const placeholder = false;   // never on a new state's placeholder board (games/index.js PLACE_TYPES): the seeded deals stay as they were
 export const explainer = { name: 'Pig', play: 'Roll the die as often as you like, then bank your points. Roll a {bust} and this turn\'s points are gone.{maxText}', win: 'First to bank {target} points.' };
 // {maxText}: said only while the admin has a roll limit on.
 export const explainVars = v => ({ maxText: v.maxRolls > 0 ? ` At most ${v.maxRolls} rolls a turn.` : '' });

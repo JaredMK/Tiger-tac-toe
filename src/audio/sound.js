@@ -280,6 +280,9 @@ def('gbJump', 0.2, (c, d, t) => { sfxNoise(c, d, t, .16, { f: 600, to: 2000, q: 
 def('gbTink', 0.3, (c, d, t) => { sfxTone(c, d, t, 2100, .22, { to: 1900, vol: .4 }); sfxTone(c, d, t, 3150, .14, { vol: .16 }); sfxNoise(c, d, t, .015, { f: 5000, q: 2, vol: .25 }); }, { level: .4, vary: true });
 def('gbCrack', 0.26, (c, d, t) => { for (let k = 0; k < 5; k++) sfxNoise(c, d, t + k * .045 + (k % 2) * .012, .02, { f: 3600 + k * 500, q: 3, vol: .34 + k * .05, att: .001 }); }, { level: .42 });
 def('gbSmash', 0.5, (c, d, t) => { sfxNoise(c, d, t, .32, { f: 5200, to: 2400, q: .8, vol: .5, att: .002 }); for (let k = 0; k < 5; k++) sfxTone(c, d, t + .03 + k * .05, 2900 - k * 330, .16, { to: 2300 - k * 300, vol: .16 }); }, { level: .46 });
+// Fruit Reels: the reels' whirr (quick soft ticks, slowing) and a reel stopping (a clack).
+def('frSpin', 1.1, (c, d, t) => { let at = 0; for (let k = 0; k < 22; k++) { sfxNoise(c, d, t + at, .018, { f: 1500 + (k % 3) * 300, q: 2, vol: .22, att: .001 }); at += .03 + k * .0028; } }, { level: .32 });
+def('frStop', 0.14, (c, d, t) => { sfxTone(c, d, t, 190, .1, { to: 120, type: 'triangle', vol: .5 }); sfxNoise(c, d, t, .03, { f: 2400, q: 1.4, vol: .35, att: .001 }); }, { level: .42 });
 // Shell Game (December 2026): the cup lifting off the ball (a soft rising pop), coming down over it (a hollow knock),
 // each swap's whoosh (played faster as the shuffle's tempo rises: the view gives the rate), the cups settling (two soft
 // knocks), and the roll under a picked cup before it lifts.

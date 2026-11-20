@@ -7,7 +7,7 @@ import { levelOf } from './aiw.js';
 import { PHYSICS, PHYS_TYPES, physicsReady } from '../games/shared/physics.js';
 import { markCoins } from '../games/coins/rules.js';
 import { triviaDeal, triviaReady } from '../games/trivia/rules.js';
-import { NO_SAME_PHONE, SC_ONLY, TYPES } from '../games/index.js';
+import { PLACE_TYPES, NO_SAME_PHONE, SC_ONLY, TYPES } from '../games/index.js';
 
 export const NAME_MAX = 12;
 export function pickType(games, rng) { return games[randInt(rng, games.length)]; }
@@ -147,7 +147,7 @@ export function newState(rng) {
     quick: false,             // a Play Computer match (startCpu): its rematch is another (Random drawn again)
     timer: newTimer(0),       // the online turn clock: limit in seconds (0 = none), deadline, timeouts per player
     spot: null,               // { square, by, label }: the square the other player is about to play in, shown before the zoom
-    squares: dealNine(TYPES.filter(t => !SC_ONLY.includes(t)), rng),
+    squares: dealNine(PLACE_TYPES.filter(t => !SC_ONLY.includes(t)), rng),   // (a placeholder until a match is dealt: games/index.js PLACE_TYPES)
     zoom: null,               // index of the mini-game being viewed
     flash: null,              // the move just made: its result, while the animation and toast play
     done: null,               // the move just made, kept on show until the player heads back to the board (that is when the turn passes)
