@@ -6131,3 +6131,22 @@ button.gbp { cursor: pointer; touch-action: manipulation; }
 .mzmf { fill: #3b3550; } .mzms { fill: var(--paper); } .mzmg { fill: #ffd23f; } .mzmt { fill: var(--x); stroke: var(--ink); stroke-width: .1; } .mzmt.O { fill: var(--o); }
 .tmz { display: flex; gap: 5cqw; align-items: flex-end; justify-content: center; width: 90cqw; } .tmz.one .mzmap { width: 58cqw; }
 .tmzc { display: flex; flex-direction: column; align-items: center; gap: 2cqw; width: 40cqw; } .tmzc .mzmap { width: 100%; } .tmzc b { font-size: 10cqw; line-height: 1; }
+
+/* Shape Split: tallies, the cutting mat (an SVG: the shape, the line being drawn, a cut's two parts), the result line.
+   Times: --tl the line, --tp the parts sliding apart, --ts the figures: the rules' SPLIT, set on .g-sp. */
+.g-sp { width: min(var(--gw), 440px); height: min(var(--gh), 540px); display: flex; flex-direction: column; gap: 8px; }
+.g-sp > * { flex: none; }
+.g-sp .spbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.spsvg { width: min(100cqw, 100cqh); aspect-ratio: 1; display: block; border: 3.5px solid var(--ink); border-radius: 14px; background: #dff1e4; box-shadow: 0 4px 0 var(--ink); touch-action: none; overflow: hidden; }
+.spsvg.live { cursor: crosshair; }
+.spshape { fill: #ffb199; stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; } .spshape.O { fill: #ffe38a; }
+.spdraw { stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: 3 2.4; opacity: 0; pointer-events: none; } .spdraw.on { opacity: 1; }
+.spcut { stroke: var(--ink); stroke-width: 1.3; stroke-dasharray: 1; stroke-dashoffset: 0; } .spcut.go { animation: spcut var(--tl) ease-in both; }
+@keyframes spcut { from { stroke-dashoffset: 1; } }
+.sppart { transform: translate(var(--dx), var(--dy)); } .sppart.go { animation: sppart calc(var(--tp) - var(--tl)) var(--tl) cubic-bezier(.3, 1.4, .5, 1) both; }
+@keyframes sppart { from { transform: none; } }
+.sppart.k1 .spshape { filter: brightness(.9); }
+.sppct { font: 400 9px 'Luckiest Guy', 'Arial Black', sans-serif; fill: var(--ink); paint-order: stroke; stroke: #fff; stroke-width: 2.2px; stroke-linejoin: round; } .sppct.late { animation: appear .2s var(--tp) both; }
+.spline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.spline.ok { color: var(--green); } .spline.no { color: var(--muted); }
+.tspw.col .tpic { width: 46cqw; } .tsp { width: 100%; display: block; } .tspshape { fill: #ffb199; stroke: var(--ink); stroke-width: 4; stroke-linejoin: round; } .tspcut { stroke: var(--ink); stroke-width: 4; stroke-dasharray: 9 6; stroke-linecap: round; fill: none; }

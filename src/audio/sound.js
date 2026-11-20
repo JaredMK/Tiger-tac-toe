@@ -293,6 +293,8 @@ def('hrMitt', 0.14, (c, d, t) => { sfxTone(c, d, t, 170, .1, { to: 90, type: 'tr
 // Maze Runner: a running step (a soft tap) and the bump of a dead end (a dull knock and a wobble down).
 def('mzStep', 0.06, (c, d, t) => { sfxTone(c, d, t, 520, .04, { to: 380, type: 'triangle', vol: .28 }); sfxNoise(c, d, t, .012, { f: 2200, q: 1.5, vol: .12 }); }, { level: .3 });
 def('mzBonk', 0.34, (c, d, t) => { sfxTone(c, d, t, 200, .12, { to: 110, type: 'triangle', vol: .55 }); sfxNoise(c, d, t, .04, { f: 700, filter: 'lowpass', vol: .4 }); sfxTone(c, d, t + .1, 330, .2, { to: 180, type: 'sine', vol: .25 }); }, { level: .44 });
+// Shape Split: the blade across the shape (a quick bright slice).
+def('spSlice', 0.22, (c, d, t) => { sfxNoise(c, d, t, .18, { f: 2200, to: 6200, q: 1.6, vol: .36, att: .01 }); sfxTone(c, d, t + .02, 1500, .12, { to: 2600, vol: .12 }); }, { level: .38 });
 // Shell Game (December 2026): the cup lifting off the ball (a soft rising pop), coming down over it (a hollow knock),
 // each swap's whoosh (played faster as the shuffle's tempo rises: the view gives the rate), the cups settling (two soft
 // knocks), and the roll under a picked cup before it lifts.

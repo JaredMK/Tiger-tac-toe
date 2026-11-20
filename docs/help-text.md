@@ -379,6 +379,11 @@ Category: More brain
 Play: Take a seat at an empty table. You can see who's coming in next. If they sit across from you, you score.
 Win: Most customers seated across from you.
 
+## Shape Split [split]
+Category: More skill
+Play: Drag one straight line across your shape to cut it into two equal halves. The nearer to half and half, the more you score: within {band1}% is {pts1}, within {band2}% is {pts2}, within {band3}% is {pts3}.
+Win: First to {target} points.
+
 ## Shell Game [shell]
 Category: More skill
 Play: Watch the ball, then follow its cup as they shuffle. More cups each level.{goAgain}
