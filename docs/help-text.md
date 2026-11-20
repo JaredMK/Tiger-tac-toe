@@ -69,6 +69,11 @@ Category: More luck
 Play: Pick numbers: {offer} balls roll out. Call one; it marks every card it's on.
 Win: Complete a line on your card first.
 
+## Block Drop [blocks]
+Category: More brain
+Play: You get {pieces} pieces a turn. Tap a column to line the piece up, turn it if you like, then drop it. A full row clears and counts. If a piece will not fit, your board is cleared and you lose a row.{junkText}
+Win: First to clear {lines} rows.{evenText}
+
 ## Bowling [bowling]
 Category: More skill
 Play: Three meters sweep in turn: tap to stop the aim, then the curve, then the power. A curve hooks the ball late, into the pins. One roll a turn at a fresh rack.

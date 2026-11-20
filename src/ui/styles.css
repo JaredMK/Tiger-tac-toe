@@ -6436,3 +6436,33 @@ button.wlc { cursor: pointer; touch-action: manipulation; }
 .rrline.ok { color: var(--green); } .rrline.no { color: var(--muted); }
 .g-rr .rrbtn { height: 54px; }
 .trrw .tpic { width: 40cqw; } .trr { width: 100%; display: block; } .trrg { fill: #62b85c; stroke: var(--ink); stroke-width: 2.4; } .trrk { fill: none; stroke: var(--ink); stroke-width: 19; } .trrt { fill: none; stroke: #5a5f6b; stroke-width: 15; } .trrd { fill: none; stroke: #fff; stroke-width: 1.6; stroke-dasharray: 4 5; } .trrc { fill: var(--x); stroke: var(--ink); stroke-width: 2; }
+
+/* Block Drop: tallies, the board (a grid of blocks with two rows of sky over it for the piece in hand), the result
+   line, and the controls (the next piece, Turn, Drop). */
+.g-bd { width: min(var(--gw), 440px); height: min(var(--gh), 620px); display: flex; flex-direction: column; gap: 7px; }
+.g-bd > * { flex: none; }
+.g-bd .bdbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.bdgrid { --u: min(calc(100cqw / var(--c)), calc(100cqh / (var(--r) + 2))); position: relative; width: calc(var(--u) * var(--c)); height: calc(var(--u) * (var(--r) + 2)); touch-action: none; }
+.bdsky { position: absolute; left: 0; right: 0; top: 0; height: calc(var(--u) * 2); }
+.bdwell { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--u) * var(--r)); border: 3.5px solid var(--ink); border-radius: 10px; background-color: #26324a; background-image: linear-gradient(rgba(255, 255, 255, .07) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .07) 1px, transparent 1px); background-size: var(--u) var(--u); background-position: -1px -1px; box-shadow: 0 4px 0 var(--ink); box-sizing: border-box; }
+.bdc { position: absolute; left: calc(var(--u) * var(--x)); bottom: calc(var(--u) * var(--y)); width: var(--u); height: var(--u); box-sizing: border-box; border: 2.5px solid var(--ink); border-radius: 22%; background: var(--bk); box-shadow: inset 0 calc(var(--u) * .14) 0 rgba(255, 255, 255, .45), inset 0 calc(var(--u) * -.12) 0 rgba(22, 18, 16, .18); pointer-events: none; }
+.k1 { --bk: #35c2b4; } .k2 { --bk: #a77be8; } .k3 { --bk: #6ecf58; } .k4 { --bk: #f29a3f; } .k9 { --bk: #8b93a1; }
+.bdc.ghost { background: transparent; border-style: dashed; border-color: rgba(255, 255, 255, .7); box-shadow: none; }
+.bdc.drop { animation: bdfall 300ms cubic-bezier(.5, 0, .9, .6) both; }
+@keyframes bdfall { from { transform: translateY(calc(var(--u) * var(--from) * -1)); } 85% { transform: translateY(0) scaleY(.9); } to { transform: none; } }
+.bdc.clr { animation: bdclr 300ms var(--t) ease-out forwards; } .bdc.drop.clr { animation: bdfall 300ms cubic-bezier(.5, 0, .9, .6) both, bdclr 300ms var(--t) ease-out forwards; }
+@keyframes bdclr { 30% { background: #fff; transform: scale(1.12); opacity: 1; } to { background: #fff; transform: scale(.2); opacity: 0; } }
+.bdc.bust { animation: bdbust 300ms var(--t) ease-in forwards; } .bdc.drop.bust { animation: bdfall 300ms cubic-bezier(.5, 0, .9, .6) both, bdbust 300ms var(--t) ease-in forwards; }
+@keyframes bdbust { 30% { transform: translateX(calc(var(--u) * .12)) rotate(6deg); } 60% { transform: translateX(calc(var(--u) * -.12)) rotate(-6deg); opacity: 1; } to { transform: translateY(calc(var(--u) * 1.5)) rotate(14deg); opacity: 0; } }
+.bdcol { position: absolute; top: 0; bottom: 0; left: calc(var(--u) * var(--x)); width: var(--u); padding: 0; margin: 0; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
+.bdcol:active { background: rgba(255, 255, 255, .12); }
+.bdline { margin: 0; height: 24px; text-align: center; white-space: nowrap; font: 400 20px/26px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.bdline.ok { color: var(--green); } .bdline.no { color: var(--x); }
+.bdctl { display: grid; grid-template-columns: 76px 60px minmax(0, 1fr); gap: 8px; align-items: stretch; }
+.bdnx { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; height: 54px; border: 2.5px dashed var(--ink); border-radius: 12px; background: var(--paper); }
+.bdnx small { font: 700 13px/14px 'Comic Neue', 'Comic Sans MS', sans-serif; white-space: nowrap; }
+.bdnext { height: calc(var(--h) * 11px); width: calc(var(--w) * 11px); display: block; } .bdnext rect { fill: var(--bk); stroke: var(--ink); stroke-width: 1.4; }
+.g-bd .bdturn { min-width: 0; height: 54px; padding: 0; display: grid; place-items: center; } .g-bd .bdturn svg { width: 28px; height: 28px; }
+.g-bd .bddrop { height: 54px; min-width: 0; }
+@media (prefers-reduced-motion: reduce) { .bdc.drop { animation: none; } .bdc.clr, .bdc.bust, .bdc.drop.clr, .bdc.drop.bust { animation: none; opacity: 0; } }
+.tbdw .tpic { width: 62cqw; } .tbd { width: 100%; display: block; } .tbdb { fill: #26324a; stroke: var(--ink); stroke-width: 1.2; } .tbdc { stroke: var(--ink); stroke-width: .5; fill: var(--bk); }

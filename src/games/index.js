@@ -105,6 +105,7 @@ import * as cricketR from './cricket/rules.js'; import * as cricketA from './cri
 import * as sliceR from './slice/rules.js'; import * as sliceA from './slice/ai.js'; import * as sliceM from './slice/meta.js'; add('slice', sliceR, sliceA, sliceM);
 import * as rhythmR from './rhythm/rules.js'; import * as rhythmA from './rhythm/ai.js'; import * as rhythmM from './rhythm/meta.js'; add('rhythm', rhythmR, rhythmA, rhythmM);
 import * as rallyR from './rally/rules.js'; import * as rallyA from './rally/ai.js'; import * as rallyM from './rally/meta.js'; add('rally', rallyR, rallyA, rallyM);
+import * as blocksR from './blocks/rules.js'; import * as blocksA from './blocks/ai.js'; import * as blocksM from './blocks/meta.js'; add('blocks', blocksR, blocksA, blocksM);
 import * as clashR from './clash/rules.js'; import * as clashA from './clash/ai.js'; import * as clashM from './clash/meta.js'; add('clash', clashR, clashA, clashM);
 import * as diceR from './dice/rules.js'; import * as diceA from './dice/ai.js'; import * as diceM from './dice/meta.js'; add('dice', diceR, diceA, diceM);
 import * as hexapawnR from './hexapawn/rules.js'; import * as hexapawnA from './hexapawn/ai.js'; import * as hexapawnM from './hexapawn/meta.js'; add('hexapawn', hexapawnR, hexapawnA, hexapawnM);
