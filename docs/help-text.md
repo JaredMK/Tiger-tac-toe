@@ -332,6 +332,11 @@ Category: More skill
 Play: Tap left or right to flip. One ball per turn.
 Win: Light every target first.
 
+## Point Roll [proll]
+Category: More luck
+Play: Pick a number from 2 to 12, but not 7. The dice roll until they make your number or a 7. Your number first: you score its points. A 7 first: nothing. Rarer numbers are worth more.
+Win: First to {target} points.
+
 ## Poker Hands [poker]
 Category: More luck
 Play: Deal five cards, throw any away, then draw once. Your hand scores by what it makes.{goAgain}

@@ -6341,3 +6341,19 @@ button.wlc { cursor: pointer; touch-action: manipulation; }
 .g-ht .htbtn.called { box-shadow: inset 0 0 0 3px var(--ink); }
 @media (prefers-reduced-motion: reduce) { .htcoin.toss.h { animation: none; transform: none; } .htcoin.toss.t { animation: none; transform: rotateX(180deg); } .htshadow.toss { animation: none; } }
 .thtw .tpic { width: 40cqw; } .tht { width: 100%; display: block; }
+
+/* Point Roll: tallies, the felt (Krabs' dice pairs and total chip), the move's totals in a row, the result line, the ten numbers. */
+.g-pr { width: min(var(--gw), 440px); height: min(var(--gh), 560px); display: flex; flex-direction: column; gap: 7px; }
+.g-pr > * { flex: none; }
+.g-pr .prfelt { flex: 1 1 0; min-height: 0; position: relative; container-type: size; overflow: hidden; border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 18px; background: radial-gradient(circle at 50% 45%, #3d7fc4, #25538c 75%); box-shadow: 0 4px 0 var(--ink), inset 0 0 0 5px rgba(255, 255, 255, .14); }
+.prlog { display: flex; gap: 5px; justify-content: center; align-items: center; height: 28px; overflow: hidden; }
+.prlog span, .prlog i, .prlog b { min-width: 26px; height: 26px; padding: 0 6px; box-sizing: border-box; border-radius: 13px; border: 2px solid var(--ink); display: grid; place-items: center; font: 700 13px/1 'Comic Neue', 'Comic Sans MS', sans-serif; font-style: normal; background: var(--paper); }
+.prlog span.w { background: var(--green); color: #fff; } .prlog span.o { background: var(--ink); color: #fff; } .prlog i { border-style: dashed; color: var(--muted); }
+.prlog b { border-radius: 6px; margin-right: 6px; color: #fff; } .prlog b.X { background: var(--x); } .prlog b.O { background: var(--o); color: var(--ink); }
+.prline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.prline.ok { color: var(--green); } .prline.no { color: var(--muted); }
+.prpad { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.g-pr .prnum { min-width: 0; min-height: 48px; padding: 3px 0 1px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.g-pr .prnum b { font: 400 22px/22px 'Bangers', 'Arial Black', sans-serif; letter-spacing: .03em; } .g-pr .prnum i { font: 700 13px/14px 'Comic Neue', 'Comic Sans MS', sans-serif; font-style: normal; color: var(--green); }
+.g-pr .prnum.on { box-shadow: inset 0 0 0 3px var(--ink); }
+.tprw.col .tpic { width: 66cqw; } .tpr { width: 100%; display: block; } .tprf { fill: #2f66a6; stroke: var(--ink); stroke-width: 2.4; } .tprd { fill: #fff; stroke: var(--ink); stroke-width: 2; } .tprp { fill: var(--ink); }
