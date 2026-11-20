@@ -6100,3 +6100,15 @@ button.gbp { cursor: pointer; touch-action: manipulation; }
 .tart.col { flex-direction: column; gap: 4cqw; } .tart.col .tpip { flex: none; width: 80cqw; gap: 3cqw; }
 .tfrw.col .tpic { width: 74cqw; }
 .ctals.two .wtal { flex: 1 1 100%; } .ctals.two .wtal .wbar { flex: 1 1 0; width: auto; }
+
+/* Home Run Heroes: tallies, the ballpark (a canvas), the result line, Play ball / Swing. */
+.g-hr { width: min(var(--gw), 440px); height: min(var(--gh), 560px); display: flex; flex-direction: column; gap: 8px; }
+.g-hr > * { flex: none; }
+.hrfield { flex: 1 1 0; min-height: 0; position: relative; border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 18px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); touch-action: none; }
+.hrcv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hrline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.hrline.ok { color: var(--green); } .hrline.no { color: var(--muted); }
+.g-hr .hrbtn { height: 58px; }
+.thrw .tpic { width: 40cqw; } .thr { width: 100%; display: block; }
+.thrg { fill: #58b254; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; } .thrw { stroke: #2e6b3a; stroke-width: 4; } .thrd { fill: #d9a86c; stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; } .thrm { fill: #c9925a; stroke: var(--ink); stroke-width: 1; }
+.thrb { fill: #fff; stroke: var(--ink); stroke-width: 1.6; } .thrs { stroke: #d6402b; stroke-width: 1; }

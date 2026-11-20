@@ -230,6 +230,11 @@ Super Chaos Win: Guess it. Use up {limit} guesses and you lose the square.
 Race Play: You each have your own number from 1 to {hi}. Guess yours: you'll be told higher or lower. You can watch the other player close in on theirs.
 Race Win: Guess your number first. No guess limit.
 
+## Home Run Heroes [homer]
+Category: More skill
+Play: Step up for {pitches} pitches. Tap to swing as the ball crosses the plate. Perfect timing is a home run; close is only a hit.
+Win: First to {goal} home runs.
+
 ## Hook-a-Duck [duck]
 Category: More luck
 Play: Hook a duck from the shared pond. It scores 1 to 5, or a boot scores nothing.{goAgain}

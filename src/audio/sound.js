@@ -283,6 +283,13 @@ def('gbSmash', 0.5, (c, d, t) => { sfxNoise(c, d, t, .32, { f: 5200, to: 2400, q
 // Fruit Reels: the reels' whirr (quick soft ticks, slowing) and a reel stopping (a clack).
 def('frSpin', 1.1, (c, d, t) => { let at = 0; for (let k = 0; k < 22; k++) { sfxNoise(c, d, t + at, .018, { f: 1500 + (k % 3) * 300, q: 2, vol: .22, att: .001 }); at += .03 + k * .0028; } }, { level: .32 });
 def('frStop', 0.14, (c, d, t) => { sfxTone(c, d, t, 190, .1, { to: 120, type: 'triangle', vol: .5 }); sfxNoise(c, d, t, .03, { f: 2400, q: 1.4, vol: .35, att: .001 }); }, { level: .42 });
+// Home Run Heroes: the pitch leaving the hand (a soft whip), the swing (a whoosh), bat on ball (a woody crack), the
+// crowd for a home run (a swell of noise with two rising notes) and a ball into the mitt (a dull pop).
+def('hrPitch', 0.16, (c, d, t) => sfxNoise(c, d, t, .13, { f: 900, to: 2600, q: 1.2, vol: .22, att: .03 }), { level: .3 });
+def('hrSwing', 0.18, (c, d, t) => sfxNoise(c, d, t, .15, { f: 500, to: 1900, q: .8, vol: .34, att: .02 }), { level: .36, vary: true });
+def('hrCrack', 0.2, (c, d, t) => { sfxNoise(c, d, t, .03, { f: 2600, q: 1.1, vol: .6, att: .001 }); sfxTone(c, d, t, 880, .09, { to: 520, type: 'triangle', vol: .5, att: .001 }); sfxTone(c, d, t, 300, .12, { to: 190, type: 'triangle', vol: .3 }); }, { level: .5 });
+def('hrCheer', 0.9, (c, d, t) => { sfxNoise(c, d, t, .85, { f: 900, to: 1700, q: .5, vol: .3, att: .25 }); sfxTone(c, d, t + .05, 660, .2, { vol: .22, type: 'triangle' }); sfxTone(c, d, t + .24, 990, .32, { vol: .24, type: 'triangle' }); }, { level: .42 });
+def('hrMitt', 0.14, (c, d, t) => { sfxTone(c, d, t, 170, .1, { to: 90, type: 'triangle', vol: .5 }); sfxNoise(c, d, t, .04, { f: 600, filter: 'lowpass', vol: .4 }); }, { level: .4 });
 // Shell Game (December 2026): the cup lifting off the ball (a soft rising pop), coming down over it (a hollow knock),
 // each swap's whoosh (played faster as the shuffle's tempo rises: the view gives the rate), the cups settling (two soft
 // knocks), and the roll under a picked cup before it lifts.
