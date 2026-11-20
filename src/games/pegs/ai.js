@@ -26,7 +26,7 @@ function turns(m, p, first, out, depth) {
 const done = (m, p) => m.pegs[p].every(q => !q);
 function search(m, p, me, depth, until) {
   if (done(m, me)) return 100 + depth; if (done(m, other(me))) return -100 - depth;
-  if (depth === 0 || (until != null && Date.now() > until)) return value(m, me);
+  if (depth === 0 || (typeof until === 'function' && until() <= 0)) return value(m, me);   // (ctx.until: the ms a Hard search may still spend; none: a fixed depth)
   const base = clone(m); if (base.hop && base.hop.by !== p) base.hop = null;
   const ts = turns(base, p, null, [], 0);
   if (!ts.length) return search(base, other(p), me, depth - 1, until);
