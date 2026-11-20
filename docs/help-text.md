@@ -395,6 +395,11 @@ Category: More luck
 Play: Spin the safe wheel or the risky one. Keep spinning to build points, then bank. A skull loses them. The risky wheel pays more, with more skulls.
 Win: Reach {target} first.
 
+## Road Race [rally]
+Category: More skill
+Play: A turn is one lap attempt. Drag left and right to steer: the car follows your finger. Leave the road and you crash: the attempt is over. Every attempt is a new road.
+Win: First to finish {laps} laps.
+
 ## Roads [roads]
 Category: More brain
 Play: Claim an edge of the honeycomb. Random edges get blocked after each move.

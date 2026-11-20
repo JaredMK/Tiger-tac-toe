@@ -19,7 +19,7 @@ export function allowedTypes(releases, admin) { return admin ? TYPES.slice() : r
 // (a phone can claim a better stop than it made: bullseye/rules.js). Held now: Shell Game (December 2026): its
 // round goes to the phone at Start with the ball's place and the shuffle's seed, so a changed page could work the
 // answer out; the server times the answer (verify.js) but cannot tell a watched pick from a computed one.
-export const FIND_MATCH_HOLD = ['shell', 'homer', 'target', 'cricket', 'slice', 'rhythm'];   // (Home Run Heroes and Target Practice, December 2026: a swing's moment and a throw's three stops are the phone's word alone; Darts Cricket, the second batch: its two stops, as Bullseye's, which the owner chose to allow: Cricket is held until they say the same of it; Fruit Slice and Rhythm Tap: what a round sliced, and when each note was tapped, are the phone's word)
+export const FIND_MATCH_HOLD = ['shell', 'homer', 'target', 'cricket', 'slice', 'rhythm', 'rally'];   // (Home Run Heroes and Target Practice, December 2026: a swing's moment and a throw's three stops are the phone's word alone; Darts Cricket, the second batch: its two stops, as Bullseye's, which the owner chose to allow: Cricket is held until they say the same of it; Fruit Slice and Rhythm Tap: what a round sliced, and when each note was tapped, are the phone's word; Road Race: the server drives the lap again from its steering, but how fast the steps were played is the phone's word)
 export const findMatchTypes = types => types.filter(t => !FIND_MATCH_HOLD.includes(t));
 export function restrictGames(games, allowed) {
   if (!games || typeof games !== 'object') return games;

@@ -6425,3 +6425,14 @@ button.wlc { cursor: pointer; touch-action: manipulation; }
 .rtline.ok { color: var(--green); } .rtline.no { color: var(--muted); }
 .g-rt .rtbtn { height: 54px; }
 .trtw.col .tpic { width: 62cqw; } .trt { width: 100%; display: block; } .trtb { fill: #231b3a; stroke: var(--ink); stroke-width: 2.4; } .trtn { stroke: var(--ink); stroke-width: 1.6; } .trtl { stroke: #fff; stroke-width: 2.4; stroke-linecap: round; }
+
+/* Road Race: tallies, the road (a canvas, 100 by 120), the result line, Go. */
+.g-rr { width: min(var(--gw), 440px); height: min(var(--gh), 620px); display: flex; flex-direction: column; gap: 8px; }
+.g-rr > * { flex: none; }
+.g-rr .rrbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.rrfield { position: relative; width: min(100cqw, 83.3cqh); aspect-ratio: 100 / 120; border: 3.5px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); touch-action: none; }
+.rrcv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.rrline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.rrline.ok { color: var(--green); } .rrline.no { color: var(--muted); }
+.g-rr .rrbtn { height: 54px; }
+.trrw .tpic { width: 40cqw; } .trr { width: 100%; display: block; } .trrg { fill: #62b85c; stroke: var(--ink); stroke-width: 2.4; } .trrk { fill: none; stroke: var(--ink); stroke-width: 19; } .trrt { fill: none; stroke: #5a5f6b; stroke-width: 15; } .trrd { fill: none; stroke: #fff; stroke-width: 1.6; stroke-dasharray: 4 5; } .trrc { fill: var(--x); stroke: var(--ink); stroke-width: 2; }
