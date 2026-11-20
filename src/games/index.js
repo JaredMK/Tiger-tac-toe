@@ -87,6 +87,7 @@ import * as piggyR from './piggy/rules.js'; import * as piggyA from './piggy/ai.
 import * as bridgeR from './bridge/rules.js'; import * as bridgeA from './bridge/ai.js'; import * as bridgeM from './bridge/meta.js'; add('bridge', bridgeR, bridgeA, bridgeM);
 import * as reelsR from './reels/rules.js'; import * as reelsA from './reels/ai.js'; import * as reelsM from './reels/meta.js'; add('reels', reelsR, reelsA, reelsM);
 import * as homerR from './homer/rules.js'; import * as homerA from './homer/ai.js'; import * as homerM from './homer/meta.js'; add('homer', homerR, homerA, homerM);
+import * as mazeR from './maze/rules.js'; import * as mazeA from './maze/ai.js'; import * as mazeM from './maze/meta.js'; add('maze', mazeR, mazeA, mazeM);
 import * as clashR from './clash/rules.js'; import * as clashA from './clash/ai.js'; import * as clashM from './clash/meta.js'; add('clash', clashR, clashA, clashM);
 import * as diceR from './dice/rules.js'; import * as diceA from './dice/ai.js'; import * as diceM from './dice/meta.js'; add('dice', diceR, diceA, diceM);
 import * as hexapawnR from './hexapawn/rules.js'; import * as hexapawnA from './hexapawn/ai.js'; import * as hexapawnM from './hexapawn/meta.js'; add('hexapawn', hexapawnR, hexapawnA, hexapawnM);

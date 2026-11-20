@@ -259,6 +259,11 @@ Win: {goal} hits, or hit green 0 for an instant win.
 Super Chaos Play: Pick 8 numbers, a group of 8, or green 0, then spin.
 Super Chaos Win: {goal} hits, or hit green 0 for an instant win.
 
+## Maze Runner [maze]
+Category: More luck
+Play: Pick a way and your runner dashes until the path forks or ends. The maze shows only where a runner has been. Keep going until a dead end stops you: that ends your turn.{boardText}
+Win: First to the flag wins.
+
 ## Mini Golf [golf]
 Category: More skill
 Play: Drag to aim and set power, then let go. Slopes bend a putt, sand slows it, water costs a stroke and puts you back, and windmills turn. Balls can knock each other.

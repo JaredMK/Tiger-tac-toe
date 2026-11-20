@@ -290,6 +290,9 @@ def('hrSwing', 0.18, (c, d, t) => sfxNoise(c, d, t, .15, { f: 500, to: 1900, q: 
 def('hrCrack', 0.2, (c, d, t) => { sfxNoise(c, d, t, .03, { f: 2600, q: 1.1, vol: .6, att: .001 }); sfxTone(c, d, t, 880, .09, { to: 520, type: 'triangle', vol: .5, att: .001 }); sfxTone(c, d, t, 300, .12, { to: 190, type: 'triangle', vol: .3 }); }, { level: .5 });
 def('hrCheer', 0.9, (c, d, t) => { sfxNoise(c, d, t, .85, { f: 900, to: 1700, q: .5, vol: .3, att: .25 }); sfxTone(c, d, t + .05, 660, .2, { vol: .22, type: 'triangle' }); sfxTone(c, d, t + .24, 990, .32, { vol: .24, type: 'triangle' }); }, { level: .42 });
 def('hrMitt', 0.14, (c, d, t) => { sfxTone(c, d, t, 170, .1, { to: 90, type: 'triangle', vol: .5 }); sfxNoise(c, d, t, .04, { f: 600, filter: 'lowpass', vol: .4 }); }, { level: .4 });
+// Maze Runner: a running step (a soft tap) and the bump of a dead end (a dull knock and a wobble down).
+def('mzStep', 0.06, (c, d, t) => { sfxTone(c, d, t, 520, .04, { to: 380, type: 'triangle', vol: .28 }); sfxNoise(c, d, t, .012, { f: 2200, q: 1.5, vol: .12 }); }, { level: .3 });
+def('mzBonk', 0.34, (c, d, t) => { sfxTone(c, d, t, 200, .12, { to: 110, type: 'triangle', vol: .55 }); sfxNoise(c, d, t, .04, { f: 700, filter: 'lowpass', vol: .4 }); sfxTone(c, d, t + .1, 330, .2, { to: 180, type: 'sine', vol: .25 }); }, { level: .44 });
 // Shell Game (December 2026): the cup lifting off the ball (a soft rising pop), coming down over it (a hollow knock),
 // each swap's whoosh (played faster as the shuffle's tempo rises: the view gives the rate), the cups settling (two soft
 // knocks), and the roll under a picked cup before it lifts.
