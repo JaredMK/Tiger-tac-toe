@@ -37,7 +37,9 @@ test('How to Play: the WIN! burst sits in the panel\'s top band, above the grid,
 
 test('Play Computer says "Computer difficulty" (not "Level"), in both of its setups', () => {
   const setup = readFileSync(new URL('../../src/ui/screens/setup.js', import.meta.url), 'utf8');
-  assert.match(setup, /cap\('computer difficulty'\)/);
+  assert.match(setup, /<span class="cap" style="--k:3\.5">computer difficulty<\/span>/);
+  assert.match(setup, /<span class="cap" style="--k:\.5">you play as<\/span>/, 'the side row is "You play as", not "Your side"');
+  assert.doesNotMatch(setup, /your side<\/span>/);
   assert.match(setup, /<span>Computer difficulty<\/span>/);
   assert.doesNotMatch(setup, /cap\('level'\)/);
 });

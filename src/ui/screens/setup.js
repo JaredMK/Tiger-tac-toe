@@ -98,8 +98,8 @@ export function renderSetup() {
       <div class="ttl"><b>Play Computer</b></div></div>
     <div class="setup-box" data-keep-scroll="setup">
       <div class="vscard ccpunch"><div class="vsme">${who(c1, 0)}<b>${esc(you)}</b></div><span class="vsv" aria-hidden="true">${burstSvg('VS', 'w', 120, 80, 40)}</span><div class="vsme">${who(c2, 1)}<b>${CPU_NAME}</b></div></div>
-      <div class="pickrow" role="group" aria-label="You play as">${cap('your side')}<div class="opts">${['X', 'O', 'random'].map((v, k) => opt('cside', 'data-side', v, v === 'random' ? 'Random' : v, C.pick === v, k + 1)).join('')}</div></div>
-      <div class="pickrow" role="group" aria-label="Computer difficulty">${cap('computer difficulty')}<div class="opts">${LEVELS.map((v, k) => opt('clevel', 'data-v', v, `${meter(k + 1)}${LEVEL_NAME[v]}`, C.level === v, k + 4)).join('')}</div></div>
+      <div class="pickrow" role="group" aria-label="You play as"><span class="cap" style="--k:.5">you play as</span><div class="opts">${['X', 'O', 'random'].map((v, k) => opt('cside', 'data-side', v, v === 'random' ? 'Random' : v, C.pick === v, k + 1)).join('')}</div></div>
+      <div class="pickrow" role="group" aria-label="Computer difficulty"><span class="cap" style="--k:3.5">computer difficulty</span><div class="opts">${LEVELS.map((v, k) => opt('clevel', 'data-v', v, `${meter(k + 1)}${LEVEL_NAME[v]}`, C.level === v, k + 4)).join('')}</div></div>
       ${gamesPanel(VT, on, chk)}
     </div>
     <div class="setup-foot"><button class="pn y big m-start" data-act="start"${ready ? '' : ' disabled'} style="--k:8"><i class="ptag" aria-hidden="true">go!</i><b>Start!</b></button>${(w => `<small class="warn${w ? '' : ' info'}" role="status">${w || modeNote || CPU_HINT}</small>`)(setupWarn(s))}</div></main>`;
