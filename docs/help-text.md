@@ -259,6 +259,11 @@ Win: {goal} hits, or hit green 0 for an instant win.
 Super Chaos Play: Pick 8 numbers, a group of 8, or green 0, then spin.
 Super Chaos Win: {goal} hits, or hit green 0 for an instant win.
 
+## Mahjong [mahjong]
+Category: More luck
+Play: Tap two matching tiles to take them off. A tile is free when nothing lies on it and its left or right side is open.{chainText}
+Win: First to clear {goal} pairs.
+
 ## Maze Runner [maze]
 Category: More luck
 Play: Pick a way and your runner dashes until the path forks or ends. The maze shows only where a runner has been. Keep going until a dead end stops you: that ends your turn.{boardText}

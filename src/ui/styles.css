@@ -6177,3 +6177,24 @@ button.fccard { cursor: pointer; touch-action: manipulation; box-shadow: 0 3px 0
 .fcline.ok { color: var(--green); } .fcline.cl { color: var(--ink); }
 .tfc { display: flex; flex-direction: column; align-items: center; gap: 3cqw; width: 88cqw; } .tfcf { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5cqw; width: 100%; } .tfcf .fcface { width: 100%; height: auto; }
 .tfcr { display: flex; align-items: center; gap: 2cqw; width: 100%; height: 9cqw; font-size: 9cqw; line-height: 1; } .tfcr b { width: 9cqw; } .tfcr i { width: 7cqw; height: 7cqw; border-radius: 50%; border: 1.2cqw solid var(--ink); background: var(--x); } .tfcr.O i { background: var(--o); }
+
+/* Mahjong: tallies, the layout (tiles placed by their spot and layer; a layer up sits a little up and left, its edge
+   and shadow showing), the result line. Times: --tl the pair lifting, --tf flying off: the rules' MAHJ, set on .g-mj. */
+.g-mj { width: min(var(--gw), 440px); height: min(var(--gh), 540px); display: flex; flex-direction: column; gap: 8px; }
+.g-mj > * { flex: none; }
+.g-mj .mjbox { flex: 1 1 0; min-height: 0; position: relative; display: grid; place-items: center; container-type: size; border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 18px; background: radial-gradient(circle at 40% 40%, #3f9a63, #2b7a4b 75%); box-shadow: 0 4px 0 var(--ink), inset 0 0 0 5px rgba(255, 255, 255, .14); }
+.mjlay { position: relative; --tw: min(calc(86cqw / var(--cols)), calc(84cqh / var(--rows) / 1.24)); width: calc(var(--tw) * var(--cols)); height: calc(var(--tw) * var(--rows) * 1.24); translate: calc(var(--zs) * var(--tw) * .12) calc(var(--zs) * var(--tw) * .12); }
+.mjt { position: absolute; width: calc(200% / var(--cols)); height: calc(200% / var(--rows)); padding: 0; margin: 0; display: grid; place-items: center; border: 2.5px solid var(--ink); border-radius: 9px; background: #fffaf0; box-shadow: calc(var(--tw) * .1) calc(var(--tw) * .12) 0 #c9b98f, calc(var(--tw) * .1) calc(var(--tw) * .12) 0 2.5px var(--ink); translate: calc(var(--z) * var(--tw) * -.24) calc(var(--z) * var(--tw) * -.24); font: inherit; }
+button.mjt { cursor: pointer; touch-action: manipulation; }
+.mjt .mjpic { width: 62%; height: auto; display: block; }
+.mjt.blk { background: #d9d0bd; } .mjt.blk .mjpic { opacity: .55; }
+.mjt.sel { background: #fff3b0; translate: calc(var(--z) * var(--tw) * -.24 - 2px) calc(var(--z) * var(--tw) * -.24 - 5px); outline: 3.5px solid var(--x); outline-offset: -1px; } .mjt.sel.O { outline-color: var(--o); }
+.mjt.off { z-index: 999 !important; animation: mjlift var(--tl) cubic-bezier(.3, 1.4, .5, 1) both, mjoff var(--tf) var(--tl) ease-in forwards; background: #fff3b0; }
+@keyframes mjlift { from { scale: 1; } to { scale: 1.14; } } @keyframes mjoff { to { scale: .4; opacity: 0; translate: 0 -40cqh; } }
+.mjtake { position: absolute; left: 10%; right: 10%; top: 50%; translate: 0 -50%; z-index: 1000; height: 58px; }
+.mjline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.mjline.ok { color: var(--green); } .mjline.warn { color: var(--x); }
+@media (prefers-reduced-motion: reduce) { .mjt.off { display: none; } }
+.tmjw.col .tpic { width: 60cqw; } .tmj { position: relative; width: 100%; height: 34cqw; }
+.tmj i { position: absolute; width: 26cqw; height: 31cqw; display: grid; place-items: center; border: 1.3cqw solid var(--ink); border-radius: 3.5cqw; background: #fffaf0; box-shadow: 1.6cqw 1.8cqw 0 #c9b98f, 1.6cqw 1.8cqw 0 1.3cqw var(--ink); }
+.tmj i.a { left: 2cqw; top: 2cqw; } .tmj i.b { left: 30cqw; top: 2cqw; } .tmj i.c { left: 14cqw; top: -2cqw; } .tmj .mjpic { width: 64%; }
