@@ -468,6 +468,11 @@ Category: More brain
 Play: Tap an empty square to take it and the squares around it, even your opponent's.
 Win: Own the most when the board is full.
 
+## Target Practice [target]
+Category: More skill
+Play: One throw is three taps: stop the line sweeping across, stop the line sweeping up and down, then stop the circle as it shrinks and grows. The dart lands somewhere inside the circle: a smaller circle is a surer shot. A hit knocks the target out.
+Win: First to knock out all {targets} of their targets.
+
 ## Thirty-One [t31]
 Category: More luck
 Play: You hold 3 cards. Take the top card of the pile or the deck, then let one go. Only your best suit counts: ace 11, ten and pictures 10, others their number.{goAgain}

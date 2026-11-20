@@ -317,6 +317,11 @@ def('mcBank', 0.12, (c, d, t) => { sfxTone(c, d, t, 980, .09, { to: 760, type: '
 // Wall Race: a pawn's step (a soft tap) and a wall dropping in (a wooden block).
 def('wlStep', 0.09, (c, d, t) => { sfxTone(c, d, t, 480, .06, { to: 320, type: 'triangle', vol: .44 }); sfxNoise(c, d, t, .014, { f: 2000, q: 1.5, vol: .2, att: .001 }); }, { level: .38, vary: true });
 def('wlWall', 0.2, (c, d, t) => { sfxTone(c, d, t, 210, .15, { to: 120, type: 'triangle', vol: .55 }); sfxNoise(c, d, t, .05, { f: 900, filter: 'lowpass', vol: .4 }); sfxTone(c, d, t, 640, .04, { to: 420, type: 'triangle', vol: .2 }); }, { level: .46 });
+// Target Practice: a slider or the circle stopped (a crisp tick), the dart thrown (a short whoosh), and a target hit (a
+// woody crack).
+def('tpTick', 0.06, (c, d, t) => { sfxTone(c, d, t, 1150, .035, { to: 900, type: 'square', vol: .22 }); sfxNoise(c, d, t, .01, { f: 4200, q: 2, vol: .2 }); }, { level: .34 });
+def('tpThrow', 0.22, (c, d, t) => sfxNoise(c, d, t, .19, { f: 700, to: 2600, q: 1, vol: .3, att: .02 }), { level: .34 });
+def('tpHit', 0.2, (c, d, t) => { sfxNoise(c, d, t, .035, { f: 2400, q: 1.2, vol: .55, att: .001 }); sfxTone(c, d, t, 520, .11, { to: 260, type: 'triangle', vol: .5 }); }, { level: .48 });
 // Shell Game (December 2026): the cup lifting off the ball (a soft rising pop), coming down over it (a hollow knock),
 // each swap's whoosh (played faster as the shuffle's tempo rises: the view gives the rate), the cups settling (two soft
 // knocks), and the roll under a picked cup before it lifts.
@@ -528,7 +533,7 @@ let ownDown = false, ownUp = -1e9;
 export function ownPress() { ownDown = true; }
 // Every control plays its tap sound when pressed (whether or not the game takes the press). The moves
 // and card turns play their own sounds, from their events. A press on a disabled control is an error.
-const TAP_SOUND = { 'mj-pick': null, 'pj-pick': null, 'tw-place': null, explain: 'open', 'explain-close': 'close', pause: 'open', 'pause-resume': 'close', zoom: null, move: null, pick: null,
+const TAP_SOUND = { 'mj-pick': null, 'pj-pick': null, 'tw-place': null, 'tp-stop': null, 'hr-go': null, explain: 'open', 'explain-close': 'close', pause: 'open', 'pause-resume': 'close', zoom: null, move: null, pick: null,
   'echo-tap': null, 'echo-play': null, bulls: null, bowl: null, 'run-go': null, 'fing-start': null, 'odd-reveal': null, 'trivia-reveal': null, 'att-start': null, 'hc-key': null, 'snap-cell': null, 'snap-submit': null, pokmark: null, domtile: null, hpsel: 'select',   // a game's own inputs: each plays its own sound (from its handler or its move), never the click as well
   mmcol: 'peg', mmslot: 'peg', rlnum: 'peg', rlgrp: 'peg', rlzero: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', 'anim-set': 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
   'set-sound': 'toggle', 'set-vib': 'toggle', settings: 'open', 'settings-back': 'close', 'pause-settings': 'open', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'tap' };   // (back: the Board button in a square, a plain tap)

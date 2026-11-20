@@ -6307,3 +6307,14 @@ button.wlc { cursor: pointer; touch-action: manipulation; }
 .wlw.new { animation: wlwall var(--tw) cubic-bezier(.3, 1.5, .5, 1) both; } @keyframes wlwall { from { transform: scale(.2); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } }
 .wlline { margin: 0; height: 12px; }
 .twl { width: 62cqw; } .twl svg { width: 100%; display: block; } .twlb { fill: #cfe3c0; stroke: var(--ink); stroke-width: 2.4; } .twlx { fill: #ffb9ad; } .twlo { fill: #ffe38a; } .twll { stroke: rgba(22, 18, 16, .25); stroke-width: 1; fill: none; } .twlw { stroke: #8d5a2b; stroke-width: 4.5; stroke-linecap: round; fill: none; } .twlp { fill: var(--x); stroke: var(--ink); stroke-width: 1.6; } .twlp.O { fill: var(--o); }
+
+/* Target Practice: tallies, the field (a square canvas), the result line, Stop. */
+.g-tp { width: min(var(--gw), 440px); height: min(var(--gh), 560px); display: flex; flex-direction: column; gap: 8px; }
+.g-tp > * { flex: none; }
+.g-tp .tpbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.tpfield { position: relative; width: min(100cqw, 100cqh); aspect-ratio: 1; border: 3.5px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); touch-action: none; }
+.tpcv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.tpline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.tpline.ok { color: var(--green); } .tpline.no { color: var(--muted); }
+.g-tp .tpbtn { height: 56px; }
+.ttpw .tpic { width: 40cqw; } .ttp { width: 100%; display: block; } .ttpa { fill: #fff; stroke: var(--ink); stroke-width: 2; } .ttpb { fill: #3a3a4a; stroke: var(--ink); stroke-width: 2; } .ttpc { fill: var(--x); stroke: var(--ink); stroke-width: 1.4; } .ttpd { stroke: var(--ink); stroke-width: 3; stroke-linecap: round; } .ttpf { fill: var(--o); stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; }
