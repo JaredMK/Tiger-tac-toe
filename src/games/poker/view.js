@@ -52,11 +52,13 @@ function pokTable(mini, a, o) {
     const c = hand ? hand[k] : null, at = pokSlideAt(f, k), m = marks[k] && !(f && f.kind === 'draw');
     const inner = c ? pcard(c, at != null ? (REDUCED ? {} : { slide: at, flip: at + POK.turn, from: 'deck', at }) : {}) : '<span class="pokslot" aria-hidden="true"></span>';   // (a card dealt: from the deck, turning up as it comes)
     const lit = any && made[k], j = lit ? made.slice(0, k).reduce((x, y) => x + y, 0) : 0;
-    const cls = `pokc${m ? ' out ' + turn : ''}${f && f.kind === 'draw' && f.thrown[k] ? ' new' : ''}${lit ? ' win' : any ? ' dull' : ''}${any && scored === f ? ' late' : ''}${canMark ? ' can' : ''}`;
-    const st = any && scored === f ? ` style="--t:${Math.round(tim.say + (lit ? j * 60 : 0))}ms"` : '';
-    const lab = c ? `${c}${m ? ', to throw away' : ''}` : 'No card yet';
-    return canMark ? `<button class="${cls}"${cfAnchor('pk:' + k)} data-act="pokmark" data-k="${k}" aria-pressed="${!!marks[k]}" aria-label="Card ${k + 1}: ${lab}">${inner}</button>`
-      : `<span class="${cls}"${st}${cfAnchor('pk:' + k)} aria-label="Card ${k + 1}: ${lab}">${inner}</span>`;
+    const nw = f && f.kind === 'draw' && f.thrown[k] && at != null;
+    const cls = `pokc${m ? ' out ' + turn : ''}${nw ? ' new' : ''}${lit ? ' win' : any ? ' dull' : ''}${any && scored === f ? ' late' : ''}${canMark ? ' can' : ''}`;
+    const st = any && scored === f ? ` style="--t:${Math.round(tim.say + (lit ? j * 60 : 0))}ms${nw ? `;--n:${Math.round(at + POK.turn)}ms` : ''}"` : nw ? ` style="--n:${Math.round(at + POK.turn)}ms"` : '';
+    const tag = m ? '<em class="poktag" aria-hidden="true">DISCARD</em>' : '';
+    const lab = c ? `${c}${m ? ', to discard' : ''}` : 'No card yet';
+    return canMark ? `<button class="${cls}"${cfAnchor('pk:' + k)} data-act="pokmark" data-k="${k}" aria-pressed="${!!marks[k]}" aria-label="Card ${k + 1}: ${lab}">${inner}${tag}</button>`
+      : `<span class="${cls}"${st}${cfAnchor('pk:' + k)} aria-label="Card ${k + 1}: ${lab}">${inner}${tag}</span>`;
   };
   // the deck the cards come from and the spot the thrown ones go to (card motion): a draw's thrown cards fly there face up and are gone
   const out = f && f.kind === 'draw' && Array.isArray(f.old) ? f.old.map((c, k) => (f.thrown[k] && c ? pcard(c, { from: 'pk:' + k, at: 0, wait: true, go: true, d: POK.out }) : '')).join('') : '';
@@ -70,7 +72,7 @@ function pokTable(mini, a, o) {
     : f ? '<p class="arcnote"></p>'
     : o.view ? '<p class="arcnote"></p>'
     : o.locked ? `<p class="arcnote">${waitLine(turn)}</p>`
-    : `<p class="arcnote">${cur ? '' : `${W(turn)} to play`}</p>`;
+    : `<p class="arcnote${cur ? ' pokask' : ''}">${cur ? `Choose up to ${cur.hand.length} cards to discard` : `${W(turn)} to play`}</p>`;
   const n = marks.reduce((x, y) => x + y, 0), drawM = 'draw:' + marks.join('');
   const btn = o.view ? '' : cur || (f && f.kind === 'deal')
     ? `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv(drawM)}${mover && cur && !f ? '' : ' disabled'}>${n ? `Draw ${n}` : 'Keep all'}</button></div>`
