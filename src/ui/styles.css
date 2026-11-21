@@ -2678,8 +2678,8 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tpat .tr i { width: 12cqw; height: 12cqw; border-radius: 50%; border: 1.6cqw solid var(--ink); background: var(--paper); }
 .tpat .tr.X i.on { background: var(--x); } .tpat .tr.O i.on { background: var(--o); }
 .tseq { display: flex; gap: 1.5cqw; }
-.tseq span { flex: 1; aspect-ratio: 1; background: #fff; border: 1cqw solid var(--ink); border-radius: 2.5cqw; display: grid; place-items: center; min-width: 0; }
-.tseq span svg { width: 100%; height: 100%; }
+.tseq span { --c: calc((86cqw - (var(--n, 5) - 1) * 1.5cqw) / var(--n, 5)); flex: none; width: var(--c); height: var(--c); box-sizing: border-box; background: #fff; border: 1cqw solid var(--ink); border-radius: 2.5cqw; display: grid; place-items: center; min-width: 0; }
+.tseq span svg { display: block; width: 100%; height: 100%; }
 .tseq span.q { border-style: dashed; font-weight: 900; font-size: 9cqw; color: var(--muted); }
 /* Risky Spins: two wheels (a square dealt before November 2026 has three: .n3), each segment the size of its chance; the pointer on top */
 .wheels { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; min-height: 0; container-type: size; }
@@ -4392,7 +4392,8 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .tbus .tbat.X { background: color-mix(in srgb, var(--x) 18%, var(--paper)); } .tbus .tbat.O { background: color-mix(in srgb, var(--o) 30%, var(--paper)); }
 .tbat .bb { stroke: var(--ink); stroke-width: 2.4; } .tbat.X .bb { fill: var(--x); } .tbat.O .bb { fill: var(--o); } .tbat .bw { fill: var(--paper); stroke: var(--ink); stroke-width: 1; } .tbat .bt { fill: var(--ink); }
 .tseq.tnums { justify-content: center; }   /* Patterns: the gap and the two numbers by it */
-.tseq.tnums span { flex: none; aspect-ratio: auto; min-width: 1.6em; height: 1.6em; padding: .14em .18em 0; font: 400 var(--mt)/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); }
+.tseq.tnums span.q { width: 1.6em; } .tseq.tnums span.q svg.tpq { width: 1.1em; height: 1.1em; }
+.tseq.tnums span { flex: none; width: auto; min-width: 1.6em; height: 1.6em; padding: .14em .18em 0; font: 400 var(--mt)/1 'Luckiest Guy', 'Arial Black', sans-serif; color: var(--ink); }
 .tseq span.q { border-style: dashed; background: var(--panel-2); }
 .tart.twarm .tpic { width: auto; }   /* War: the two cards, ranks at the floor */
 .twar .tcd { width: calc(var(--mtn) * 1.4); height: calc(var(--mtn) * 1.95); } .twar .tcd b { font-size: var(--mtn); } .twar .tcd svg { width: calc(var(--mtn) * .8); height: calc(var(--mtn) * .8); }
@@ -5579,7 +5580,7 @@ button.bglg i { animation: bglring 1s ease-in-out infinite alternate; } button.b
 .tbglh.X { fill: var(--x); } .tbglh.O { fill: var(--o); }
 .tpip.tbglp { width: auto; gap: 3cqw; }
 .g-arc.shut .ctal > .tnm { flex-basis: 4.7em; } .g-arc.shut .ctal .pips { gap: 3px; } .g-arc.shut .ctal .pips i { width: 12px; height: 12px; border-width: 2px; }   /* (six tiles: the name keeps its room beside them) */
-.tseq span.q svg.tpq { width: 70%; height: 70%; fill: none; stroke: var(--muted); stroke-width: 1.3; stroke-linecap: round; }   /* Patterns' miniature: the gap's question mark, drawn */
+.tseq span.q svg.tpq { width: calc(var(--c) * .7); height: calc(var(--c) * .7); fill: none; stroke: var(--muted); stroke-width: 1.3; stroke-linecap: round; }   /* Patterns' miniature: the gap's question mark, drawn */
 .exlist { list-style: none; margin: .5em 0 0; padding: 0; display: grid; gap: .25em; font-size: .92em; text-align: left; }   /* a game's list in its "?" (Dice Combo's combos) */
 .exlist b { font-weight: 800; }
 
