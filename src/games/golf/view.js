@@ -3,6 +3,7 @@ import { randInt } from '../../core/random.js';
 import { PHYSICS, physOpt } from '../shared/physics.js';
 import { golfPhase, setGolfPick } from './rules.js';
 import { REDUCED, state } from '../../ui/app.js';
+import { render } from '../../ui/render.js';
 import { physResult, physTable, physThumb } from '../../ui/physics.js';
 export { physReplay as replay } from '../../ui/physics.js';
 import { outlined, rr, runColours } from '../../ui/runner.js';
@@ -475,8 +476,31 @@ export function miniature(mini, final) {
       <circle cx="${cx}" cy="${cy}" r="${S.cupR + 1.2}" class="gcup"/><path d="M${cx} ${cy}V${cy - 17}" class="gpole"/><path d="M${cx} ${cy - 17}l12 4.5l-12 4.5z" class="gflag"/>
       ${['X', 'O'].map(p => (mini.holed[p] ? '' : `<circle cx="${mini.balls[p][0]}" cy="${mini.balls[p][1]}" r="${S.ballR * 2.3}" class="${p}"/>`)).join('')}</svg>`;
 }
+// The trap key (December 2026): a small "?" on the course, reachable at any moment of play (outside the scene that
+// takes the aim, so a tap on it never starts a shot), opening a card of the traps this square can have, each with its
+// icon and what it does; a tap anywhere on the card closes it. Only for a square dealt with its terrain on.
+const TRAPS = [
+  ['slopes', 'Slope', 'Pulls a rolling ball sideways, downhill.', '<circle cx="12" cy="12" r="9.500" fill="#8fd07a" stroke="currentColor" stroke-width="1.800"/><path d="M6 9.500h9l-2.500-2.500M6 14.500h9l-2.500 2.500" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'],
+  ['sand', 'Sand', 'Slows the ball down hard.', '<path d="M3.500 14c0-4 4-7.500 8.500-7.500s8.500 3 8.500 7c0 3.500-3.500 4.500-8.500 4.500S3.500 17.500 3.500 14z" fill="#f0d48a" stroke="currentColor" stroke-width="1.800"/><g fill="currentColor"><circle cx="9" cy="12" r="1"/><circle cx="13.500" cy="10.500" r="1"/><circle cx="15" cy="14.500" r="1"/><circle cx="10.500" cy="15.500" r="1"/></g>'],
+  ['water', 'Water', 'Splash! The ball goes back to where you hit it from{pen}.', '<path d="M3.500 13c0-4 4-7 8.500-7s8.500 3 8.500 7-4 5.500-8.500 5.500-8.500-1.500-8.500-5.500z" fill="#6fb8e8" stroke="currentColor" stroke-width="1.800"/><path d="M7 13.500c1.500-1.500 3-1.500 4.500 0s3 1.500 4.500 0" fill="none" stroke="#fff" stroke-width="1.800" stroke-linecap="round"/>'],
+  ['mills', 'Windmill', 'Its sails turn while a ball rolls and knock it away. Time your shot.', '<g fill="#fff" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round"><path d="M12 12 9.500 3h5z"/><path d="M12 12l2.500 9h-5z"/><path d="M12 12 3 14.500v-5z"/><path d="M12 12l9-2.500v5z"/></g><circle cx="12" cy="12" r="2" fill="#c0392b" stroke="currentColor" stroke-width="1.500"/>'],
+];
+let keyOpen = false, keySq = null;
+export const actions = { 'golf-key': () => { keyOpen = !keyOpen; keySq = state.zoom; render(); } };
+export function golfTraps(mini) {                                    // the traps this square was dealt with: [kind, name, words, icon]
+  const o = mini && mini.type === 'golf' ? physOpt(mini) : null, on = o && o.terrain;
+  if (!on) return [];
+  const pen = Number((mini.tune && mini.tune.waterPenalty) != null ? mini.tune.waterPenalty : 1);
+  return TRAPS.filter(([k]) => on[k]).map(([k, n, w, i]) => [k, n, w.replace('{pen}', pen > 0 ? `, +${pen} stroke${pen === 1 ? '' : 's'}` : ''), i]);
+}
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
-  g = physTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d }); return g;
+  g = physTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d });
+  const traps = golfTraps(mini);
+  if (!traps.length) return g;
+  if (keySq !== state.zoom) keyOpen = false;
+  const btn = `<button class="gkey${keyOpen ? ' on' : ''}" data-act="golf-key" aria-expanded="${keyOpen}" aria-label="What the traps do">?</button>`;
+  const card = keyOpen ? `<div class="gkeycard" data-act="golf-key" role="dialog" aria-label="Traps"><b class="gkeyh">Traps</b>${traps.map(([k, n, w, i]) => `<p class="gkeyr"><svg viewBox="0 0 24 24" aria-hidden="true">${i}</svg><span><b>${n}</b> ${w}</span></p>`).join('')}</div>` : '';
+  return g.replace('<div class="phys">', `<div class="phys">${btn}${card}`).replace('<div class="phys bowllive">', `<div class="phys bowllive">${btn}${card}`);
 }
 export function moveText(f, who) {
   return physResult(f, true).text;

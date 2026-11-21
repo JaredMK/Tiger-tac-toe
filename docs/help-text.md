@@ -637,6 +637,17 @@ Sticker no date: Coming soon
 Sticker today: Out today!
 Sticker tomorrow: Coming tomorrow
 
+## Mini Golf trap key [golfkey]
+Title: Traps
+slopes name: Slope
+slopes does: Pulls a rolling ball sideways, downhill.
+sand name: Sand
+sand does: Slows the ball down hard.
+water name: Water
+water does: Splash! The ball goes back to where you hit it from{pen}.
+mills name: Windmill
+mills does: Its sails turn while a ball rolls and knock it away. Time your shot.
+
 ## Create an account prompt [acctask]
 Line: Create an account to keep your stats.
 Button: Create account

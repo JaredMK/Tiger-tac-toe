@@ -11,7 +11,7 @@ const { pathToFileURL } = require('url');
 
 const ROOT = path.join(__dirname, '..');
 const DOC = 'docs/help-text.md';
-const ONBOARD = 'src/ui/onboard.js', LINEUP = 'src/ui/lineup.js', GAMESCORE = 'src/core/games.js', ASK = 'src/ui/acctask.js', EXPLAINER = 'src/ui/explainer.js', ACCOUNT = 'src/ui/screens/account.js', ENVJS = 'src/env.js', SHELL = 'index.html';
+const GOLFV = 'src/games/golf/view.js', ONBOARD = 'src/ui/onboard.js', LINEUP = 'src/ui/lineup.js', GAMESCORE = 'src/core/games.js', ASK = 'src/ui/acctask.js', EXPLAINER = 'src/ui/explainer.js', ACCOUNT = 'src/ui/screens/account.js', ENVJS = 'src/env.js', SHELL = 'index.html';
 
 /* ----- reading and writing JS string literals ----- */
 const isQuote = c => c === "'" || c === '"' || c === '`';
@@ -193,6 +193,14 @@ function loadModel(read, oldTypes) {
     fld('Sticker no date', region(GAMESCORE, /if \(typeof date !== 'string' \|\| !SOON_DATE\.test\(date\)\) return '([^']*)';/, 'sq')),
     fld('Sticker today', region(GAMESCORE, /if \(days === 0\) return '([^']*)';/, 'sq')),
     fld('Sticker tomorrow', region(GAMESCORE, /if \(days === 1\) return '([^']*)';/, 'sq')),
+  ]);
+  // Mini Golf's trap key (games/golf/view.js TRAPS): each trap's name and what it does.
+  sec('other', 'golfkey', 'Mini Golf trap key', [
+    fld('Title', region(GOLFV, /<b class="gkeyh">([^<]*)<\/b>/, 'tpl')),
+    ...['slopes', 'sand', 'water', 'mills'].flatMap(k => [
+      fld(`${k} name`, region(GOLFV, new RegExp(`\\['${k}', '([^']*)', '`), 'sq')),
+      fld(`${k} does`, region(GOLFV, new RegExp(`\\['${k}', '[^']*', '([^']*)', '`), 'sq')),
+    ]),
   ]);
   sec('other', 'acctask', 'Create an account prompt', [
     fld('Line', region(ASK, /<\/b> ([^<]*)<\/p>/, 'tpl')),

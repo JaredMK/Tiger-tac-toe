@@ -6530,3 +6530,13 @@ button.nttile { cursor: pointer; touch-action: manipulation; } button.nttile:act
 .g-kyd .kydbtn.held:not(:disabled) { transform: translateY(4px); box-shadow: none; filter: brightness(.94); }
 .tkydw .tpic { width: 40cqw; } .tkyd { width: 100%; display: block; } .tkya { fill: #4f79c7; stroke: var(--ink); stroke-width: 2.4; } .tkys { stroke: #c58a4a; stroke-width: 4; stroke-linecap: round; } .tkyp { fill: #b06cf0; stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; }
 .tkyh { fill: #e3e7ef; stroke: var(--ink); stroke-width: 1.8; } .tkyk { fill: #14161f; } .tkyd { stroke: var(--ink); stroke-width: 3.4; stroke-linecap: round; } .tkyb { fill: #e9edf5; stroke: var(--ink); stroke-width: 2; }
+
+/* ---------- Mini Golf's trap key (December 2026): a small "?" on the course and its card of the traps (golf/view.js) ---------- */
+.g-arc .phys { position: relative; }
+.gkey { position: absolute; z-index: 4; right: 6px; top: 6px; width: 32px; height: 32px; padding: 0; border-radius: 50%; border: 2.5px solid var(--ink); background: #fff; color: var(--ink); box-shadow: 0 3px 0 var(--ink); font: 400 19px/1 'Bangers', 'Luckiest Guy', sans-serif; display: grid; place-items: center; touch-action: manipulation; }
+.gkey::before { content: ''; position: absolute; inset: -7px; }   /* a 46px reach round a small key */
+.gkey.on { background: var(--ink); color: var(--o); box-shadow: none; translate: 0 3px; }
+.gkeycard { position: absolute; z-index: 5; left: 8px; right: 8px; top: 46px; padding: 10px 12px 8px; background: #fff; border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 4px 0 var(--ink); display: flex; flex-direction: column; gap: 6px; animation: appearin .18s ease-out both; }
+.gkeyh { font: 400 18px/1.1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; }
+.gkeyr { margin: 0; display: flex; align-items: center; gap: 10px; font: 700 15px/1.25 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); }
+.gkeyr svg { width: 30px; height: 30px; flex: none; color: var(--ink); } .gkeyr b { display: block; font: 400 17px/1.1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; }
