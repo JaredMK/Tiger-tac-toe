@@ -312,6 +312,7 @@ def('twTurn', 0.46, (c, d, t) => { for (let k = 0; k < 7; k++) sfxNoise(c, d, t 
 // Mancala Race: seeds scooped out of a pit (a soft rattle), a seed dropped into a pit (a small wooden tock) and into a
 // bank (a brighter one).
 def('mcScoop', 0.18, (c, d, t) => { for (let k = 0; k < 4; k++) sfxNoise(c, d, t + k * .035, .02, { f: 2000 + k * 300, q: 2, vol: .24, att: .001 }); }, { level: .34 });
+def('mcClick', 0.09, (c, d, t) => { sfxTone(c, d, t, 2350, .025, { to: 2100, type: 'sine', vol: .34, att: .0005 }); sfxTone(c, d, t + .004, 3720, .018, { type: 'sine', vol: .18, att: .0005 }); sfxNoise(c, d, t, .008, { f: 5200, q: 3, vol: .2, att: .0005 }); sfxTone(c, d, t + .045, 2600, .016, { type: 'sine', vol: .12, att: .0005 }); }, { level: .38 });   // Mancala Race (December 2026): a marble clicking on the others, a glass tick with a little rebound
 def('mcDrop', 0.08, (c, d, t) => { sfxTone(c, d, t, 620, .05, { to: 380, type: 'triangle', vol: .42 }); }, { level: .36 });
 def('mcBank', 0.12, (c, d, t) => { sfxTone(c, d, t, 980, .09, { to: 760, type: 'triangle', vol: .44 }); sfxTone(c, d, t, 1960, .05, { vol: .12 }); }, { level: .4 });
 // Wall Race: a pawn's step (a soft tap) and a wall dropping in (a wooden block).

@@ -9,7 +9,7 @@
 import { needRng, randInt } from '../../core/random.js';
 import { tune, tuneLive } from '../../core/tune.js';
 
-export const MANC = { lift: 200, sow: 150, cap: 380, hold: 420 };  // ms: the seeds lifted, each seed dropped, a capture's sweep, the result
+export const MANC = { lift: 260, sow: 170, cap: 720, scoop: 240, hold: 420 };  // ms: the seeds lifted into the hand, each seed carried on and dropped, a capture (the hand scoops its own seed, crosses to the opposite pit, scoops those, carries them to the bank), the opposite pit's scoop within it, the result
 export function mancCfg(mini) { const t = tune(mini); return { target: t.target, extra: t.extra !== 'off', capture: t.capture !== 'off', cross: t.cross !== 'off' }; }
 // The deal: `seeds` in each pit on average, the pits uneven when `mix` is on (each pit one seed either way of the
 // average at random, the two sides the same, pit for pit, and the total as it would be): from a level, even start the
