@@ -6118,9 +6118,9 @@ button.gbp { cursor: pointer; touch-action: manipulation; }
 .g-mz { width: min(var(--gw), 440px); height: min(var(--gh), 540px); display: flex; flex-direction: column; gap: 8px; }
 .g-mz > * { flex: none; }
 .g-mz .mzbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
-.mzsq { position: relative; width: min(100cqw, 100cqh); aspect-ratio: 1; border: 3.5px solid var(--ink); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); touch-action: none; }
+.mzsq { position: relative; width: 100cqw; height: 100cqh; border: 3.5px solid var(--ink); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); touch-action: none; }
 .mzcv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.mzgo { position: absolute; width: calc(100% / var(--w)); aspect-ratio: 1; transform: translate(-50%, -50%); padding: 0; margin: 0; border: 0; background: none; display: grid; place-items: center; cursor: pointer; touch-action: manipulation; color: var(--x); }
+.mzgo { position: absolute; visibility: hidden; width: 34px; aspect-ratio: 1; transform: translate(-50%, -50%); padding: 0; margin: 0; border: 0; background: none; display: grid; place-items: center; cursor: pointer; touch-action: manipulation; color: var(--x); }
 .mzgo.O { color: #b8860b; }
 .mzgo svg { width: 62%; height: 62%; padding: 9%; box-sizing: border-box; border-radius: 50%; background: #fff; border: 2.5px solid var(--ink); box-shadow: 0 3px 0 var(--ink); }
 .mzgo.e svg { transform: rotate(90deg); } .mzgo.s svg { transform: rotate(180deg); } .mzgo.w svg { transform: rotate(-90deg); }
@@ -6128,7 +6128,7 @@ button.gbp { cursor: pointer; touch-action: manipulation; }
 .mzline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .mzline.ok { color: var(--green); } .mzline.no { color: var(--x); }
 .mzmap { display: block; } .mzmap.sm { width: 30px; height: 30px; flex: none; }
-.mzmf { fill: #3b3550; } .mzms { fill: var(--paper); } .mzmg { fill: #ffd23f; } .mzmt { fill: var(--x); stroke: var(--ink); stroke-width: .1; } .mzmt.O { fill: var(--o); }
+.mzmf { fill: #3b3550; } .mzms { fill: var(--paper); } .mzmg { fill: #ffd23f; } .mzmt { fill: var(--x); stroke: var(--ink); stroke-width: .1; } .mzmt.O { fill: var(--o); } .mzmt.one { fill: #fff; }
 .tmz { display: flex; gap: 5cqw; align-items: flex-end; justify-content: center; width: 90cqw; } .tmz.one .mzmap { width: 58cqw; }
 .tmzc { display: flex; flex-direction: column; align-items: center; gap: 2cqw; width: 40cqw; } .tmzc .mzmap { width: 100%; } .tmzc b { font-size: 10cqw; line-height: 1; }
 

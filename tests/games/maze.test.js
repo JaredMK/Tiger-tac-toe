@@ -7,35 +7,35 @@ const R = require('../../src/games/maze/rules.js');
 const M = require('../../src/games/maze/meta.js');
 
 const bits = m => (m & 1) + ((m >> 1) & 1) + ((m >> 2) & 1) + ((m >> 3) & 1);
-function tree(open, w) {                                          // every cell reached from the start, by n - 1 passages, each open from both sides
-  const n = w * w; let edges = 0; const seen = new Set([0]), stack = [0];
+function tree(open, w, h = w) {                                   // every cell reached from the start, by n - 1 passages, each open from both sides
+  const n = w * h; let edges = 0; const seen = new Set([0]), stack = [0];
   for (let c = 0; c < n; c++) for (const d of R.DIRS) if (open[c] & R.BIT[d]) { const t = R.mazeStep(w, c, d); assert.ok(t >= 0 && t < n && (open[t] & R.BIT[R.BACK[d]]), 'a passage is open from both sides'); if (d === 'e') assert.ok(c % w < w - 1); if (d === 'w') assert.ok(c % w > 0); edges++; }
   while (stack.length) { const c = stack.pop(); for (const d of R.DIRS) if (open[c] & R.BIT[d]) { const t = R.mazeStep(w, c, d); if (!seen.has(t)) { seen.add(t); stack.push(t); } } }
   return seen.size === n && edges / 2 === n - 1;
 }
 
 test('maze: Admin only, luck; a maze is a tree over the whole grid (one path between any two cells), its walls hidden', () => {
-  assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'luck', '1.24.0']);
-  assert.deepEqual(E.tuneFields('maze').map(f => f.k), ['size', 'turns', 'boards']);
+  assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'luck', '1.27.0']);
+  assert.deepEqual(E.tuneFields('maze').map(f => f.k), ['cols', 'rows', 'branch', 'minPath', 'turns', 'boards']);
   for (let g = 0; g < 25; g++) {
     const m = E.newMini('maze', E.makeRng('t' + g));
-    assert.deepEqual([m.w, m.sep, m.at.X, m.at.O], [6, true, R.mazeStart(6), R.mazeStart(6)]);
-    for (const p of ['X', 'O']) { assert.ok(tree(m.open[p], m.w)); assert.equal(m.seen[p].filter(v => v >= 0).length, 1, 'only the start is seen'); }
+    assert.deepEqual([m.v, m.w, m.h, m.sep, m.one, m.start, m.flag, m.at.X, m.at.O], [2, 8, 10, true, false, 72, 7, 72, 72], 'a maze 8 wide and 10 tall, the door bottom left, the flag top right');
+    for (const p of ['X', 'O']) { assert.ok(tree(m.open[p], m.w, m.h)); assert.ok(R.mazePathLen(m.open[p], R.mazeGeo(m)) >= 22, 'no path to the flag shorter than the minimum'); assert.equal(m.seen[p].filter(v => v >= 0).length, 1, 'only the start is seen'); }
     assert.notDeepEqual(m.open.X, m.open.O, 'never the same maze: the second runner would read the first one\'s map');
     assert.ok(!('open' in E.publicMini(m))); const c = JSON.parse(JSON.stringify(m)); R.hide(c); assert.ok(!('open' in c)); assert.deepEqual(R.secret(m), { open: m.open });
   }
 });
 
 test('maze: the deal makes each maze the wanted length for a runner alone, so a maze each is as long as the other', () => {
-  const rng = E.makeRng('len'); let off = 0;
-  for (let g = 0; g < 30; g++) { const open = R.mazeDeal(6, 6, rng), t = R.mazeTurns(open, 6, E.makeRng('m' + g)); if (Math.abs(t - 6) > 1.6) off++; }
-  assert.ok(off <= 3, `mazes far from 6 turns: ${off} of 30`);
-  for (let g = 0; g < 60; g++) { const r = E.makeRng('solo' + g), open = R.mazeMake(5, r); assert.ok(R.mazeSolo(open, 5, r, g % 2 ? 'normal' : 'easy') < 60, 'a runner alone always gets out'); }
+  const rng = E.makeRng('len'), G = R.mazeGeoOf(8, 10); let off = 0;
+  for (let g = 0; g < 20; g++) { const open = R.mazeDeal(G, { branch: 60, minPath: 22, turns: 8 }, rng), t = R.mazeTurns(open, G, E.makeRng('m' + g)); if (Math.abs(t - 8) > 2) off++; }
+  assert.ok(off <= 3, `mazes far from 8 turns: ${off} of 20`);
+  for (let g = 0; g < 60; g++) { const r = E.makeRng('solo' + g), G2 = R.mazeGeoOf(5 + (g % 4), 6 + (g % 5)), open = R.mazeMake(G2, r, g % 3 * 50); assert.ok(tree(open, G2.w, G2.h)); assert.ok(R.mazeSolo(open, G2, r, g % 2 ? 'normal' : 'easy') < 80, 'a runner alone always gets out'); }
 });
 
 test('maze: a dash runs the corridor round its bends to a fork (pick again), a dead end (the turn ends there) or the flag (the square)', () => {
-  const m = E.newMini('maze', E.makeRng('a')), w = m.w, open = m.open.X;
-  const d0 = R.mazeWays(m, 'X')[0], run = R.mazeRun(open, w, m.at.X, d0);
+  const m = E.newMini('maze', E.makeRng('a')), G = R.mazeGeo(m), open = m.open.X;
+  const d0 = R.mazeWays(m, 'X')[0], run = R.mazeRun(open, G, m.at.X, d0);
   const r = E.applyMove(m, 'X', d0, E.makeRng('x'));
   assert.equal(m.at.X, run.path[run.path.length - 1]);
   assert.deepEqual([r.outcome, !!r.again, r.note], run.end === 'flag' ? ['win', false, 'flag'] : run.end === 'dead' ? ['continue', false, 'dead'] : ['continue', true, 'fork']);
@@ -50,7 +50,7 @@ test('maze: a dash runs the corridor round its bends to a fork (pick again), a d
   // a whole run of one side alone: turns counted per dead end, the flag reached
   const t = E.newMini('maze', E.makeRng('b')), rng = E.makeRng('run'); let won = false, dead = 0;
   for (let k = 0; k < 300 && !won; k++) { const q = E.applyMove(t, 'O', E.randomLegalMove(t, 'O', rng), rng); if (q.note === 'dead') dead++; won = q.outcome === 'win'; }
-  assert.ok(won); assert.equal(t.at.O, R.mazeFlag(t.w)); assert.equal(t.turns.O, dead + 1);
+  assert.ok(won); assert.equal(t.at.O, R.mazeFlag(t)); assert.equal(t.turns.O, dead + 1);
 });
 
 test('maze: shared: one maze, both runners in it, what one has seen the other sees', () => {
@@ -75,11 +75,44 @@ test('maze: the computer never re-enters a branch it has finished, and takes the
     assert.ok(won);
   }
   const st = E.newMatch(E.makeRng('i'), { games: ['maze'] }), p = st.turn, q = st.squares[4].mini;
-  const fork = R.DIRS.find(d => { const r = R.mazeRun(q.open[p], q.w, q.at[p], d); return r && r.end === 'fork'; });
+  const fork = R.DIRS.find(d => { const r = R.mazeRun(q.open[p], R.mazeGeo(q), q.at[p], d); return r && r.end === 'fork'; });
   if (fork) {
     assert.ok(E.playMove(st, 4, fork, E.makeRng('e')).ok); assert.deepEqual(Object.keys(st.flash.mz).sort(), ['end', 'fresh', 'from', 'path']); E.endFlash(st);
     assert.equal(st.lock, 4); const at = q.at[p];
     st.timer.deadline = 1; assert.ok(E.timeoutMove(st, E.makeRng('t')).ok); assert.notEqual(st.turn, p); assert.equal(q.at[p], at);
   }
   assert.equal(R.timeoutClose(q, p), null);
+});
+
+test('maze: harder generation: branching makes more dead ends; the shortest path to the flag is held to its minimum', () => {
+  const G = R.mazeGeoOf(8, 10), rng = E.makeRng('gen'), dead = b => { let s = 0; for (let k = 0; k < 40; k++) s += R.mazeDeadEnds(R.mazeMake(G, rng, b)); return s / 40; };
+  const lo = dead(0), hi = dead(100); assert.ok(hi > lo + 0.12, `dead ends: branching 0 ${lo.toFixed(2)}, 100 ${hi.toFixed(2)}`);
+  for (let k = 0; k < 30; k++) { const open = R.mazeLong(G, rng, 60, 24); assert.ok(R.mazePathLen(open, G) >= 24); }
+  assert.equal(R.mazePathLen(R.mazeLong(R.mazeGeoOf(4, 4), rng, 60, 200), R.mazeGeoOf(4, 4)) > 0, true, 'an impossible minimum still deals a maze: the longest drawn');
+  E.setTune('maze', { cols: 6, rows: 12, minPath: 20, turns: 6 }); try { const m = E.newMini('maze', E.makeRng('tall')); assert.deepEqual([m.w, m.h, m.start, m.flag], [6, 12, 66, 5]); assert.ok(R.mazePathLen(m.open.X, R.mazeGeo(m)) >= 20); } finally { E.setTune('maze', null); }
+});
+
+test('maze: one runner: one maze and one runner both players move; whoever\'s dash reaches the flag takes the square', () => {
+  E.setTune('maze', { boards: 'one' });
+  try {
+    const m = E.newMini('maze', E.makeRng('one'));
+    assert.ok(m.one && !m.sep && Array.isArray(m.open)); assert.equal(R.mazeSeen(m, 'X'), R.mazeSeen(m, 'O'));
+    const rng = E.makeRng('play'); let p = 'X', won = null;
+    for (let k = 0; k < 600 && !won; k++) {
+      const r = E.applyMove(m, p, E.localBest(E.publicMini(m, p), p, rng, {}, { level: 'normal' }).move, rng);
+      assert.ok(r.ok, r.reason); assert.equal(m.at.X, m.at.O, 'the one runner: both players\' places the same');
+      if (r.outcome === 'win') won = p; else if (!r.again) p = p === 'X' ? 'O' : 'X';
+    }
+    assert.ok(won); assert.equal(m.at[won], m.flag);
+    assert.match(M.explainVars({ boards: 'one' }).boardText, /One runner for both/);
+  } finally { E.setTune('maze', null); }
+});
+
+test('maze: a square dealt before the rework (no h: a square maze, the door and flag in the middle) plays on as it was', () => {
+  const w = 6, rng = E.makeRng('old'), open = R.mazeMake(R.mazeGeoOf(w, w), rng, 100), start = w * (w - 1) + (w >> 1), seen = new Array(36).fill(-1); seen[start] = open[start];
+  const m = { type: 'maze', v: 1, sep: false, w, open, seen, at: { X: start, O: start }, turns: { X: 0, O: 0 }, last: null };
+  assert.deepEqual(R.mazeGeo(m), { w: 6, h: 6, n: 36, start: 33, flag: 3 });
+  let won = false; for (let k = 0; k < 300 && !won; k++) won = E.applyMove(m, 'X', R.randomMove(m, 'X', rng), rng).outcome === 'win';
+  assert.ok(won); assert.equal(m.at.X, 3);
+  assert.ok(!('h' in R.publicView(m)), 'its record keeps its old shape');
 });
