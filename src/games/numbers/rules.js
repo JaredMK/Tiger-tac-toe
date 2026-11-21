@@ -1,77 +1,60 @@
-// Number Target: the rules (pure: no page, no clock; the server runs the same code).
-// One puzzle for both players at a time (`pz`: the numbers and the target, on show to both): make the target from
-// the numbers with + - x and ÷, each number used once at most, every result a whole number above zero. A move is one
-// attempt, `{ steps: [[i, op, j]...] }`: each step takes two numbers not yet used (by their place: the puzzle's own
-// first, then each step's result in turn) and puts their result in play. The attempt's last result equal to the
-// target takes the square: the first exact hit wins, near misses count for nothing. Every puzzle can be solved (it is
-// dealt by working a target out from its own numbers, in two or three steps, never one a single step makes). After `attempts` attempts each without
-// a hit (or twice that by one player alone) a new puzzle is dealt (the move's rng: the server's online).
-// The attempt's seconds are kept on the mover's phone (the turn's own time is the server's).
+// Number Shuffle: the rules (pure: no page, no clock; the server runs the same code).
+// Everyone gets the same `n` different digits (`d`, on show, smallest first). Somewhere is a hidden order of them, read
+// as one number (`tg`: the server's alone online, `secret`/`hide`). A move is a guess, `{ o: [the digits in an order] }`:
+// the game says whether the hidden number is higher or lower than the guess (`g`: every guess and its answer, in the
+// open), and the exact order takes the square. Race (`mode`): each player their own hidden order, the same digits;
+// Shared: one hidden order, every guess and answer for both. Every order of the digits is a different number, so the
+// orders still possible are always one run of them in size order: `nsRange` gives it from the guesses.
+// A square from before (Number Target: no `v`, a sum puzzle) is dealt again as the record is read (`stale`).
 import { needRng } from '../../core/random.js';
 import { tune, tuneLive } from '../../core/tune.js';
 
-export const NUMS = { pre: 250, step: 480, hold: 750, maxSteps: 8, bigs: [10, 15, 20, 25, 50], ops: ['+', '-', '*', '/'] };
-export function numbersCfg(mini) { const t = tune(mini); return { secs: t.secs, attempts: t.attempts, ai: { easy: t.aiPctEasy, normal: t.aiPct, hard: t.aiPctHard } }; }
-export const numbersOp = (a, op, b) => (op === '+' ? a + b : op === '*' ? a * b : op === '-' ? (a > b ? a - b : null) : op === '/' ? (b > 1 && a % b === 0 ? a / b : null) : null);
-const oneStep = (nums, target) => nums.some((a, i) => nums.some((b, j) => i !== j && NUMS.ops.some(op => numbersOp(a, op, b) === target)));
-// A puzzle: two bigger numbers and the rest from 1 to 9, and a target worked out from three or four of them (never
-// one that two of the numbers make in a single step).
-export function numbersDeal(t, rng) {
-  const r = needRng(rng), n = t.numbers, lo = Math.min(t.tmin, t.tmax), hi = Math.max(t.tmin, t.tmax);
-  for (let tries = 0; tries < 40; tries++) {
-    const nums = [], bigs = NUMS.bigs.slice();
-    for (let k = 0; k < Math.min(2, n - 2); k++) nums.push(bigs.splice(Math.floor(r() * bigs.length), 1)[0]);
-    while (nums.length < n) { const v = 1 + Math.floor(r() * 9); if (nums.filter(x => x === v).length < 2) nums.push(v); }
-    for (let k = nums.length - 1; k > 0; k--) { const j = Math.floor(r() * (k + 1)); [nums[k], nums[j]] = [nums[j], nums[k]]; }
-    for (let w = 0; w < 60; w++) {
-      const order = nums.map((v, i) => i); for (let k = order.length - 1; k > 0; k--) { const j = Math.floor(r() * (k + 1)); [order[k], order[j]] = [order[j], order[k]]; }
-      const used = 3 + (r() < 0.5 ? 1 : 0); let acc = nums[order[0]], ok = true;
-      for (let k = 1; k < Math.min(used, n) && ok; k++) { const b = nums[order[k]], opts = ['+', '*', '*'].concat(acc > b ? ['-'] : [], b > 1 && acc % b === 0 ? ['/'] : []), v = numbersOp(acc, opts[Math.floor(r() * opts.length)], b); if (v == null || v > 5000) ok = false; else acc = v; }
-      if (ok && acc >= lo && acc <= hi && !nums.includes(acc) && !oneStep(nums, acc)) return { nums, target: acc };
-    }
+export const NS = { slide: 110, say: 240, hold: 700 };           // ms: a digit sliding into its slot, the answer after the last, the result held
+export const nsCfg = mini => { const t = tune(mini); return { mode: t.mode === 'shared' ? 'shared' : 'race', n: Math.max(3, Math.min(7, t.n | 0)) }; };
+export const nsVal = o => o.reduce((v, x) => v * 10 + x, 0);
+// Every order of the digits, smallest number first (n! of them; 7 digits: 5,040).
+const PERMS = new Map();
+export function nsPerms(d) {
+  const key = d.join(''); if (PERMS.has(key)) return PERMS.get(key);
+  const out = [], go = (left, acc) => { if (!left.length) { out.push(acc); return; } left.forEach((x, k) => go(left.slice(0, k).concat(left.slice(k + 1)), acc.concat(x))); };
+  go(d.slice().sort((a, b) => a - b), []); PERMS.set(key, out); return out;
+}
+const shuffled = (d, r) => { const a = d.slice(); for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(r() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; };
+export function create(type, rng) {
+  const r = needRng(rng), t = tuneLive(type), mode = t.mode === 'shared' ? 'shared' : 'race', n = Math.max(3, Math.min(7, t.n | 0)), pool = shuffled([1, 2, 3, 4, 5, 6, 7, 8, 9], r);
+  const d = pool.slice(0, n).sort((a, b) => a - b), X = shuffled(d, r);
+  let O = X; if (mode === 'race') { do O = shuffled(d, r); while (O.join('') === X.join('')); }   // (never the same order: the second would read it off the first)
+  return { type, v: 2, mode, d, tg: { X, O }, g: [], last: null };
+}
+export const stale = mini => mini.v !== 2;
+// The guesses that tell player p about their hidden number: their own in a race, everyone's in Shared.
+export const nsMine = (mini, p) => mini.g.filter(e => mini.mode === 'shared' || e.by === p);
+// The orders still possible for p, as places in nsPerms: [lo, hi] (inclusive), and how many.
+export function nsRange(mini, p) {
+  const all = nsPerms(mini.d); let lo = 0, hi = all.length - 1;
+  for (const e of nsMine(mini, p)) {
+    const v = nsVal(e.o), k = all.findIndex(o => nsVal(o) === v); if (k < 0) continue;
+    if (e.r === 'hi') lo = Math.max(lo, k + 1); else if (e.r === 'lo') hi = Math.min(hi, k - 1); else { lo = hi = k; }
   }
-  return { nums: [2, 3, 5, 7, 10, 25].slice(0, Math.max(3, n)), target: Math.max(lo, Math.min(hi, 31)) };   // (never reached with a sensible range: 2 x 3 + 25 = 31)
+  return { lo, hi, left: Math.max(0, hi - lo + 1), all };
 }
-export function create(type, rng) { const t = tuneLive(type); return { type, pz: numbersDeal(t, rng), pn: 1, tries: { X: 0, O: 0 }, n: { X: 0, O: 0 }, last: null }; }
-// An attempt worked through: { ok, out: [[a, op, b, result]...], value (its last result), hit }.
-export function numbersEval(pz, steps) {
-  if (!Array.isArray(steps) || steps.length > Math.min(NUMS.maxSteps, pz.nums.length - 1)) return { ok: false };
-  const work = pz.nums.slice(), used = new Set(), out = [];
-  for (const s of steps) {
-    if (!Array.isArray(s) || s.length !== 3 || !Number.isInteger(s[0]) || !Number.isInteger(s[2]) || s[0] === s[2] || s[0] < 0 || s[2] < 0 || s[0] >= work.length || s[2] >= work.length || used.has(s[0]) || used.has(s[2]) || !NUMS.ops.includes(s[1])) return { ok: false };
-    const v = numbersOp(work[s[0]], s[1], work[s[2]]); if (v == null) return { ok: false };
-    used.add(s[0]); used.add(s[2]); out.push([work[s[0]], s[1], work[s[2]], v]); work.push(v);
-  }
-  const value = out.length ? out[out.length - 1][3] : null;
-  return { ok: true, out, value, hit: value === pz.target };
-}
-// A way to the target in at most `depth` steps, as an attempt's steps, or null (the computer's, the tests').
-export function numbersSolve(pz, depth = 3) {
-  const work = pz.nums.slice(), used = work.map(() => false), steps = [];
-  const go = d => {
-    for (let i = 0; i < work.length; i++) if (!used[i]) for (let j = 0; j < work.length; j++) if (j !== i && !used[j]) for (const op of NUMS.ops) {
-      if ((op === '+' || op === '*') && j < i) continue;
-      const v = numbersOp(work[i], op, work[j]); if (v == null) continue;
-      used[i] = used[j] = true; work.push(v); used.push(false); steps.push([i, op, j]);
-      if (v === pz.target || (d > 1 && go(d - 1))) return true;
-      steps.pop(); used.pop(); work.pop(); used[i] = used[j] = false;
-    }
-    return false;
-  };
-  return go(depth) ? steps.slice() : null;
-}
+const isOrder = (o, d) => Array.isArray(o) && o.length === d.length && o.every(x => Number.isInteger(x)) && o.slice().sort((a, b) => a - b).join() === d.join();
 export function apply(mini, p, m, rng, idx) {
-  const c = numbersCfg(mini), pz = mini.pz, ev = m && typeof m === 'object' ? numbersEval(pz, m.steps) : { ok: false };
-  if (!ev.ok) return { ok: false, reason: 'bad' };
-  mini.tries[p]++; mini.n[p]++;
-  mini.last = { by: p, steps: ev.out, value: ev.value, hit: ev.hit, target: pz.target, nums: pz.nums.slice(), tries: mini.tries[p], fresh: false };
-  if (ev.hit) return { ok: true, outcome: 'win', note: 'won' };
-  if ((mini.tries.X >= c.attempts && mini.tries.O >= c.attempts) || mini.tries[p] >= c.attempts * 2) { mini.pz = numbersDeal(tune(mini), rng); mini.pn++; mini.tries = { X: 0, O: 0 }; mini.last.fresh = true; }
-  return { ok: true, outcome: 'continue', note: mini.last.fresh ? 'fresh' : 'miss' };
+  if (mini.v !== 2) return { ok: false, reason: 'stale' };
+  const o = m && typeof m === 'object' ? m.o : null;
+  if (!isOrder(o, mini.d)) return { ok: false, reason: 'bad' };
+  const tg = mini.tg && mini.tg[p]; if (!tg) return { ok: false, reason: 'secret' };
+  const want = nsVal(tg), v = nsVal(o), r = v === want ? 'eq' : want > v ? 'hi' : 'lo';
+  const e = { by: p, o: o.slice(), r }; mini.g.push(e);
+  mini.last = Object.assign({ k: mini.g.length - 1 }, e);
+  if (r === 'eq') { if (mini.mode === 'race') mini.last.other = (mini.tg[p === 'X' ? 'O' : 'X'] || []).slice(); return { ok: true, outcome: 'win', note: 'won' }; }
+  return { ok: true, outcome: 'continue', note: r };
 }
 export function timeoutClose(mini, p) { return null; }
-export function publicView(mini) { return JSON.parse(JSON.stringify(mini)); }
-export function randomMove(mini, p, rng, from, empties) { const r = needRng(rng); return r() < 0.3 ? { steps: numbersSolve(mini.pz) || [] } : { steps: [[0, '+', 1]] }; }
-export function moveFlash(m, p, range, bjFrom, mini, flash) { flash.nt = JSON.parse(JSON.stringify(mini.last)); }
-export const numbersShowMs = l => NUMS.pre + Math.max(1, l.steps.length) * NUMS.step;
-export function flashMs(f, winLen, won) { return f.nt ? numbersShowMs(f.nt) + NUMS.hold + (won ? 500 : 0) : 0; }
+export function secret(mini) { return mini.tg ? { tg: JSON.parse(JSON.stringify(mini.tg)) } : null; }
+export function hide(m, k, st) { delete m.tg; }
+export function publicView(mini) { const v = JSON.parse(JSON.stringify(mini)); delete v.tg; return v; }   // never the hidden order
+export function randomMove(mini, p, rng, from, empties) { return { o: shuffled(mini.d, needRng(rng)) }; }
+export function moveFlash(m, p, range, bjFrom, mini, flash) { flash.ns = JSON.parse(JSON.stringify(mini.last)); }
+export const nsShowMs = l => NS.slide * ((l && l.o ? l.o.length : 0) + 1) + NS.say;
+export function flashMs(f, winLen, won) { return f.ns ? nsShowMs(f.ns) + NS.hold + (won ? 500 : 0) : 0; }

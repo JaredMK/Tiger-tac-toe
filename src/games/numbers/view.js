@@ -1,88 +1,77 @@
-// Number Target: the screen, the miniature, the move's words and sounds, and this phone's attempt.
-// The card: the target on a burst, the numbers as tiles (the puzzle's own, then each result as it is made), a line for
-// the sum being built, the four signs with Undo, and Start. This phone's attempt runs from Start for the attempt's
-// seconds (a bar across the card, real time whatever the Animation setting): tap a number, a sign, another number: the
-// result becomes a new tile, ready to go on from. The target made, the attempt goes in at once; the time up (or Give
-// up), it goes in as it stands. Only the attempt is sent, never the fiddling before it. Anyone's attempt then plays
-// from the move: its sums written out one by one, then a tick or a cross.
-import { NUMS, numbersCfg, numbersEval, numbersOp, numbersShowMs } from './rules.js';
+// Number Shuffle: the screen, the miniature, the move's words and sounds, and this phone's guess.
+// The card: what is known so far ("Between 23,145 and 31,254"), the slots of the guess being made, the digits to
+// tap into them (a tap on a filled slot takes its digit back), Clear and Guess. Under it the guesses so far with their
+// answers (Higher / Lower / the hit): a column each in a race, one list for both in Shared, the newest first. A guess
+// plays as its digits sliding into the slots one after the other (NS.slide), then its answer (NS.say) landing in the
+// list. Only the guess is sent, never the arranging before it.
+import { NS, nsCfg, nsRange, nsShowMs, nsVal } from './rules.js';
 import { SND, ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { haptic } from '../../net/platform.js';
-import { blocked } from '../../net/room.js';
-import { state } from '../../ui/app.js';
-import { CROSS, TICK } from '../../ui/art.js';
-import { clockLeft } from '../../ui/clock.js';
-import { fxAttr } from '../../ui/fx.js';
-import { arcTally, lateAt, pips } from '../../ui/progress.js';
+import { blocked, mySide } from '../../net/room.js';
+import { esc, mv, state } from '../../ui/app.js';
+import { arcTally, lateAt } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
-import { pipRows, thumbArt } from '../../ui/thumbs.js';
+import { tok } from '../../ui/tok.js';
 
 export const ownLine = true;
-export const replay = { synth: () => [] };                         // only the attempt is sent: it plays from the flash
-let att = null, src = null;                                        // this phone's attempt under way: { sq, p, pn, n, t0, steps, a, op, timer }
-const SIGN = { '+': '+', '-': '−', '*': '×', '/': '÷' };
-const live = () => { const sq = state.squares && state.squares[state.zoom], mini = sq && sq.mini; return att && mini && mini.type === 'numbers' && att.sq === state.zoom && !state.flash && !state.done ? mini : null; };
-function send() { const A = att; if (!A) return; att = null; clearTimeout(A.timer); attemptMove({ steps: A.steps }); render(); }
-function start() {
-  const sq = state.squares && state.squares[state.zoom], mini = sq && sq.mini;
-  if (att || !mini || mini.type !== 'numbers' || sq.owner || state.flash || state.done || state.winner || blocked() || !src || !src.mine) return;
-  const c = numbersCfg(mini), left = clockLeft(), ms = Math.max(1000, Math.min(c.secs * 1000, left == null ? Infinity : left - 1200));
-  att = { sq: state.zoom, p: state.turn, pn: mini.pn, t0: performance.now(), ms, steps: [], a: null, op: null };
-  att.timer = setTimeout(() => { if (att && att.timer) { SND.play('thud'); send(); } }, ms);
-  SND.play('fsGo'); render();
-}
+export const replay = { synth: () => [] };                         // the guess plays from the move: its digits slide in, then the answer
+let draft = null;                                                  // this phone's guess being arranged: { sq, p, k (guesses so far), o: [digits] }
+const draftOf = (sq, p, mini) => (draft && draft.sq === sq && draft.p === p && draft.k === mini.g.length ? draft : null);
+const live = () => { const sq = state.squares && state.squares[state.zoom], m = sq && sq.mini; return m && m.type === 'numbers' && !sq.owner && !state.flash && !state.done && !blocked() ? m : null; };
+function here() { const m = live(); if (!m) return null; let d = draftOf(state.zoom, state.turn, m); if (!d) d = draft = { sq: state.zoom, p: state.turn, k: m.g.length, o: [] }; return { m, d }; }
 export const actions = {
-  'nt-go': () => { ownPress(); if (att) send(); else start(); },
-  'nt-num': b => {
-    const mini = live(); if (!mini) return; ownPress();
-    const i = Number(b.dataset.i), ev = numbersEval(mini.pz, att.steps), work = mini.pz.nums.concat(ev.out.map(q => q[3]));
-    if (att.a != null && att.op && i !== att.a) {
-      const v = numbersOp(work[att.a], att.op, work[i]);
-      if (v == null) { SND.play('error'); haptic('error'); return; }
-      att.steps.push([att.a, att.op, i]); att.a = work.length; att.op = null; SND.play('pop'); haptic('tap');
-      if (v === mini.pz.target) { send(); return; }
-    } else { att.a = att.a === i && !att.op ? null : i; SND.play('rtTick'); haptic('tap'); }
-    render();
-  },
-  'nt-op': b => { const mini = live(); if (!mini || att.a == null) return; ownPress(); att.op = att.op === b.dataset.o ? null : b.dataset.o; SND.play('bdTurn'); haptic('tap'); render(); },
-  'nt-undo': () => { const mini = live(); if (!mini) return; ownPress(); if (att.op) att.op = null; else if (att.steps.length) { att.steps.pop(); att.a = null; } else att.a = null; SND.play('rtTick'); render(); },
+  'ns-d': el => { const h = here(); if (!h) return; ownPress(); const v = Number(el.dataset.v); if (h.d.o.includes(v) || h.d.o.length >= h.m.d.length) return; h.d.o.push(v); SND.play('rtTick', { rate: 1 + h.d.o.length * 0.06 }); haptic('tap'); render(); },
+  'ns-s': el => { const h = here(); if (!h) return; ownPress(); const k = Number(el.dataset.k); if (!(k >= 0 && k < h.d.o.length)) return; h.d.o.splice(k, 1); SND.play('cardSlide'); haptic('tap'); render(); },
+  'ns-clr': () => { const h = here(); if (!h || !h.d.o.length) return; ownPress(); h.d.o = []; SND.play('cardSlide'); render(); },
 };
-const sum = q => `<span class="ntsum"><b>${q[0]}</b><i>${SIGN[q[1]]}</i><b>${q[2]}</b><i>=</i><b class="r">${q[3]}</b></span>`;
+const fmt = v => v.toLocaleString('en-US');
+const ANS = { hi: ['Higher', '▲'], lo: ['Lower', '▼'], eq: ['Got it!', '✓'] };
+const row = (e, cls, at) => `<li ${lateAt(`nsg ${e.r} by${e.by}${cls || ''}`, at)}><span class="nsgn">${e.o.join('')}</span><span class="nsga"><i aria-hidden="true">${ANS[e.r][1]}</i>${ANS[e.r][0]}</span></li>`;
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
-  const c = numbersCfg(mini), s = a && a.nt ? a.nt : null, o = { view, locked, turn }, rest = !s && (view || d) && mini.last && !mini.last.fresh ? mini.last : null, l = s || rest;
-  if (att && (att.sq !== state.zoom || att.p !== turn || att.pn !== mini.pn || s || d || view || locked)) { clearTimeout(att.timer); att = null; }
-  const by = s ? a.by : rest ? rest.by : turn, mine = !view && !locked && !s && !d, on = !!att, end = s ? numbersShowMs(s) : 0;
-  src = { mine };
-  const tal = p => arcTally(p, o, pips(p, s && s.fresh ? (a.by === p ? s.tries : c.attempts) : Math.min(c.attempts, mini.tries[p]), c.attempts, !!(s && a.by === p), end));
-  const pz = l ? { nums: l.nums, target: l.target } : mini.pz;       // (a move on show: the puzzle it was made at, a new one dealt or not)
-  let tiles, work;
-  if (l) {
-    tiles = pz.nums.map(v => `<span class="nttile">${v}</span>`).join('');
-    work = `<div class="ntsteps">${l.steps.length ? l.steps.map((q, k) => `<span ${lateAt('ntrow', s ? NUMS.pre + k * NUMS.step : null)}>${sum(q)}</span>`).join('') : `<span ${lateAt('ntrow none', s ? NUMS.pre : null)}>No sum made</span>`}<b ${lateAt('ntmark ' + (l.hit ? 'ok' : 'no'), s ? end : null)}>${l.hit ? TICK : CROSS}</b></div>`;
-  } else {
-    const ev = on ? numbersEval(pz, att.steps) : { out: [] }, all = pz.nums.concat(ev.out.map(q => q[3])), used = new Set(); if (on) att.steps.forEach(q => { used.add(q[0]); used.add(q[2]); });
-    tiles = all.map((v, i) => `<button class="nttile${i >= pz.nums.length ? ' made' : ''}${on && att.a === i ? ' sel' : ''}${used.has(i) ? ' used' : ''}" data-act="nt-num" data-i="${i}"${on && !used.has(i) ? '' : ' disabled'}>${v}</button>`).join('');
-    const cur = on && att.a != null ? `<span class="ntsum"><b>${all[att.a]}</b>${att.op ? `<i>${SIGN[att.op]}</i><b class="q">?</b>` : ''}</span>` : '';
-    work = `<div class="ntsteps live">${ev.out.slice(-2).map(q => `<span class="ntrow">${sum(q)}</span>`).join('')}<span class="ntrow cur">${cur}</span></div>`;
-  }
-  const bar = on ? `<span class="obar ntbar" style="--d:${att.ms}ms"><i></i></span>` : '<span class="ntbar"></span>';
-  const ops = view ? '' : `<div class="ntops">${NUMS.ops.map(k => `<button class="btn ntop${on && att.op === k ? ' sel' : ''}" data-act="nt-op" data-o="${k}"${on && att.a != null ? '' : ' disabled'} aria-label="${{ '+': 'plus', '-': 'minus', '*': 'times', '/': 'divided by' }[k]}">${SIGN[k]}</button>`).join('')}<button class="btn ntop undo" data-act="nt-undo"${on ? '' : ' disabled'} aria-label="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7 4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 0 12"/></svg></button></div>`;
-  const txt = l ? (l.hit ? `${l.target}! Spot on` : l.value == null ? 'No answer' : `${l.value}: not ${l.target}`) + (s && s.fresh ? ' · New puzzle' : '') : `Puzzle ${mini.pn}`;
-  const line = s ? `<p ${lateAt('ntline ' + (s.hit ? 'ok' : 'no'), end)} role="status">${txt}</p>` : `<p class="ntline${l ? (l.hit ? ' ok' : ' no') : ''}">${txt}</p>`;
-  const btn = view ? '' : `<button class="big ${turn} ntbtn" data-act="nt-go"${mine ? '' : ' disabled'}>${on ? 'Give up' : 'Start'}</button>`;
-  return `<div class="g-nt pc-${by}"><div class="ctals">${tal('X')}${tal('O')}</div><div class="ntcard"${on ? fxAttr(att.t0, 'rt') : ''}><div class="nttarget" aria-label="Target ${pz.target}"><small>Make</small><b>${pz.target}</b></div>${bar}<div class="nttiles n${pz.nums.length}">${tiles}</div>${work}</div>${ops}${line}${btn}</div>`;
+  if (mini.v !== 2) return '<div class="g-ns"><p class="nsline">This square is from an older version.</p></div>';
+  const c = nsCfg(mini), s = a && a.ns ? a.ns : null, o = { view, locked, turn }, n = mini.d.length;
+  const mine = !view && !locked && !s && !d, dr = mine ? draftOf(state.zoom, turn, mini) : null, cur = dr ? dr.o : [];
+  const me = c.mode === 'shared' ? turn : (mySide() || turn);      // whose hidden number the range line is about (this phone's own in a race)
+  const say = s ? nsShowMs(s) : 0;
+  // what is known (before the move on show lands: its answer comes with it)
+  const before = s ? Object.assign({}, mini, { g: mini.g.slice(0, s.k) }) : mini;
+  const rg = nsRange(before, c.mode === 'shared' ? turn : me), lo = rg.all[rg.lo], hi = rg.all[rg.hi];
+  const known = !rg.left ? '' : rg.left === rg.all.length ? `Somewhere from ${fmt(nsVal(rg.all[0]))} to ${fmt(nsVal(rg.all[rg.all.length - 1]))}` : rg.left === 1 ? `It must be ${fmt(nsVal(lo))}` : `Between ${fmt(nsVal(lo))} and ${fmt(nsVal(hi))}`;
+  // the slots: the move on show sliding in, or this phone's draft
+  const shown = s ? s.o : cur;
+  const slots = Array.from({ length: n }, (_, k) => {
+    const v = shown[k];
+    if (s) return `<span ${lateAt(`nsslot full ${s.by}`, NS.slide * k)}>${v}</span>`;
+    return v != null && mine ? `<button class="nsslot full ${turn}" data-act="ns-s" data-k="${k}" aria-label="Take back ${v}">${v}</button>` : `<span class="nsslot"></span>`;
+  }).join('');
+  const digits = mini.d.map(v => `<button class="nsdig" data-act="ns-d" data-v="${v}"${mine && !cur.includes(v) ? '' : ' disabled'} aria-label="${v}">${v}</button>`).join('');
+  const full = mine && cur.length === n;
+  const btns = view ? '' : `<div class="cbtns two"><button class="big" data-act="ns-clr"${mine && cur.length ? '' : ' disabled'}>Clear</button><button class="big ${turn}" data-act="move" ${mv(full ? { o: cur.slice() } : null)}${full ? '' : ' disabled'}>Guess</button></div>`;
+  // the guesses: the newest first, the one on show landing with its answer
+  const fixList = c.mode === 'shared'
+    ? `<ol class="nslist one">${mini.g.map((e, i) => ({ e, i })).reverse().map(({ e, i }) => row(e, '', s && i === s.k ? say : null)).join('')}</ol>`
+    : (() => ['X', 'O'].map(p => { const es = mini.g.map((e, i) => ({ e, i })).filter(x => x.e.by === p).reverse(); return `<div class="nscol ${p}">${tok(p)}<ol class="nslist">${es.map(({ e, i }) => row(e, '', s && i === s.k ? say : null)).join('')}</ol></div>`; }).join(''))();   // (a race: a column each, the one on show found by its place)
+  const res = s ? `<p ${lateAt('nsline ' + s.r, say)} role="status">${s.r === 'eq' ? 'Spot on!' : `${ANS[s.r][0]} than ${fmt(nsVal(s.o))}`}${s.other ? ` <small>· theirs was ${s.other.join('')}</small>` : ''}</p>`
+    : `<p class="nsline">${esc(known)}</p>`;
+  const tal = p => arcTally(p, o, `<span class="nscount">${mini.g.filter(e => e.by === p).length}<small> guess${mini.g.filter(e => e.by === p).length === 1 ? '' : 'es'}</small></span>`);
+  return `<div class="g-ns pc-${s ? s.by : turn} ${c.mode}" style="--n:${n}"><div class="ctals">${tal('X')}${tal('O')}</div>${res}<div class="nsslots">${slots}</div><div class="nsdigs">${digits}</div>${btns}<div class="nslists">${fixList}</div></div>`;
 }
-// The miniature: a little pad of the four signs, beside each player's attempts at this puzzle as pips.
+// The miniature: each player's hidden number as a bar of what is still possible, narrowing as the guesses close in
+// (one bar in Shared), under their marks.
 export function miniature(mini, final) {
-  const c = numbersCfg(mini);
-  const art = '<svg class="tnt" viewBox="0 0 60 60"><rect class="tntb" x="2" y="2" width="56" height="56" rx="9"/><rect class="tntk" x="8" y="8" width="20" height="20" rx="4"/><rect class="tntk" x="32" y="8" width="20" height="20" rx="4"/><rect class="tntk" x="8" y="32" width="20" height="20" rx="4"/><rect class="tntk" x="32" y="32" width="20" height="20" rx="4"/><path class="tnts" d="M13 18h10M18 13v10M37 18h10M14 38l8 8M22 38l-8 8M37 42h10M42 37.500v.010M42 46.500v.010"/></svg>';
-  return thumbArt(art, pipRows({ X: Math.min(c.attempts, mini.tries.X), O: Math.min(c.attempts, mini.tries.O) }, c.attempts), 'tntw', `Number Target: puzzle ${mini.pn}; X has tried ${mini.tries.X} times, O ${mini.tries.O}`);
+  if (mini.v !== 2) return '<div class="tnsw"></div>';
+  const c = nsCfg(mini), bar = (p, x) => {
+    const r = nsRange(mini, p), tot = r.all.length, y0 = 8 + 48 * (r.lo / tot), y1 = 8 + 48 * ((r.hi + 1) / tot);
+    return `<rect class="tnsb" x="${x}" y="8" width="14" height="48" rx="3"/><rect class="tnsf ${c.mode === 'shared' ? 'S' : p}" x="${x}" y="${y0.toFixed(1)}" width="14" height="${Math.max(2, y1 - y0).toFixed(1)}" rx="2"/>`;
+  };
+  const art = c.mode === 'shared' ? bar('X', 23) : bar('X', 12) + bar('O', 34);
+  return `<div class="tnsw" aria-label="Number Shuffle: ${mini.g.length} guesses"><svg viewBox="0 0 60 60" aria-hidden="true">${art}</svg></div>`;
 }
-export function moveText(f, who) { const s = f.nt; return !s ? `${who} tried` : s.hit ? `${who} made ${s.target}` : `${who} missed ${s.target}`; }
-// A pop as each sum is written out, then the chime of the target made or a thud for a miss.
+export function moveText(f, who) { const s = f.ns; return !s ? `${who} guessed` : s.r === 'eq' ? `${who} found the number` : `${who} guessed ${s.o.join('')}: ${ANS[s.r][0].toLowerCase()}`; }
+// A tick as each digit slides in, then the answer: a rising or falling blip, or the chime of the hit.
 export function sounds(f, add, won, mini, last) {
-  const s = f.nt; if (!s) return;
-  s.steps.forEach((q, k) => add('pop', NUMS.pre + k * NUMS.step, 1 + k * 0.06));
-  add(s.hit ? 'solve' : 'thud', numbersShowMs(s));
+  const s = f.ns; if (!s) return;
+  s.o.forEach((x, k) => add('rtTick', NS.slide * k, 1 + k * 0.06));
+  add(s.r === 'eq' ? 'solve' : s.r === 'hi' ? 'ding' : 'thud', nsShowMs(s));
 }
