@@ -17,17 +17,16 @@ import { drawTimeBar, runColours, runInputAt } from '../../ui/runner.js';
 import { stage } from '../../ui/stage.js';
 import { thumbArt } from '../../ui/thumbs.js';
 import { barRows, ptsTally } from '../../ui/tok.js';
-import { flashAnimating, skipFlash } from '../../ui/turns.js';
 
 export const ownLine = true;
 export const replay = { synth: () => [] };                         // the move is a round's result: shown from the flash
-let src = null, hooked = false, skipped = null, drag = null;
+let src = null, hooked = false, drag = null, outro = null;   // outro: this phone's round just ended, kept to ease it out under its result: { L, sq, end (its ms) }
 const FRUIT = [['#3fa34d', '#f25f5c'], ['#f79d2e', '#ffd9a0'], ['#e5484d', '#fff3d6'], ['#f6d32d', '#fff8c9'], ['#8e5bd0', '#e7d4ff']];   // skin, flesh
 const round = makeRound('slice', {
   mine: () => !!src && src.mine,
   begin: (mini, p) => ({ c: sliceCfg(mini), items: sliceRound(mini, p), hit: new Set(), cuts: [], trail: [], boom: null, pts: 0 }),
   step: (L, ms) => !(L.boom != null ? ms > L.boom + SLICE.boom : ms > L.c.secs * 1000),
-  move: L => ({ hit: Array.from(L.hit).sort((a, b) => a - b) }),
+  move: L => { outro = { L, sq: L.sq, end: performance.now() - L.t0 }; return { hit: Array.from(L.hit).sort((a, b) => a - b) }; },
   go: () => go(),
 });
 // A swipe on the field: each stretch of it is tried against everything in the air.
@@ -98,13 +97,16 @@ const go = stage('canvas.fscv', (c, W, H, now) => {
   if (!src) return false;
   const P = runColours(), u = W / SLICE.w, L = round.live && round.on(src.zoom) ? round.live : null;
   c.clearRect(0, 0, W, H); backdrop(c, W, H, u, P);
-  if (L) {                                                        // this phone's round
-    const ms = now - L.t0, T = L.c.secs * 1000;
+  const scene = (L, ms) => {                                      // a round's things in the air and its cuts at `ms`
     L.items.forEach((it, i) => { if (L.hit.has(i)) return; const q = sliceAt(it, ms); if (!q) return; const rot = (ms - it.t) / 260 * (i % 2 ? 1 : -1); if (it.k < 0) bomb(c, u, q[0], q[1], rot, P, now); else fruit(c, u, q[0], q[1], it.k, rot, P); });
     L.cuts.forEach(q => { const it = L.items[q.i], dt = ms - q.t; if (dt > 900) return; if (it.k < 0) { burst(c, u, q.x, q.y, Math.min(1, dt / SLICE.boom), '#ffb300', P, 'BOOM!'); return; } const f = dt / 1000, off = 4 + f * 26, drop = f * f * 150; c.globalAlpha = Math.max(0, 1 - dt / 900); c.fillStyle = FRUIT[it.k][1]; for (let s = 0; s < 5; s++) { c.beginPath(); c.arc((q.x + Math.cos(s * 1.3 + q.i) * f * 34) * u, (q.y + Math.sin(s * 1.3 + q.i) * f * 30 + drop * 0.4) * u, (1.6 - f) * u, 0, 7); c.fill(); } c.globalAlpha = 1; half(c, u, q.x - Math.sin(q.a) * off, q.y + Math.cos(q.a) * off + drop, it.k, q.a + f * 3, 1, P); half(c, u, q.x + Math.sin(q.a) * off, q.y - Math.cos(q.a) * off + drop, it.k, q.a - f * 3, -1, P); });
     while (L.trail.length && now - L.trail[0].t > 220) L.trail.shift();
     c.strokeStyle = '#fff'; c.lineCap = 'round'; c.lineJoin = 'round';
     for (let k = 1; k < L.trail.length; k++) { const a = L.trail[k - 1], b = L.trail[k]; if (b.gap) continue; c.globalAlpha = Math.max(0, 1 - (now - b.t) / 220); c.lineWidth = (1 + 2.2 * (1 - (now - b.t) / 220)) * u; c.beginPath(); c.moveTo(a.x * u, a.y * u); c.lineTo(b.x * u, b.y * u); c.stroke(); }
+  };
+  if (L) {                                                        // this phone's round
+    const ms = now - L.t0, T = L.c.secs * 1000;
+    scene(L, ms);
     c.globalAlpha = 1;
     c.font = `400 ${Math.round(13 * u)}px Bangers, "Arial Black", sans-serif`; c.textAlign = 'left'; c.textBaseline = 'top'; c.lineJoin = 'round'; c.lineWidth = 2 * u; c.strokeStyle = P.ink; c.fillStyle = '#fff'; c.strokeText(String(L.pts), 5 * u, 13 * u); c.fillText(String(L.pts), 5 * u, 13 * u);
     drawTimeBar(c, W, H, 1 - ms / T, P);
@@ -113,7 +115,14 @@ const go = stage('canvas.fscv', (c, W, H, now) => {
   const l = src.show;                                             // a result on show: the tray of what was sliced
   if (l) {
     const at = src.a ? fxAt('move', src.a) : null, t = src.a ? (at == null ? Infinity : now - at) : Infinity, cols = 5, cell = 16, x0 = 50 - (cols - 1) * cell / 2, n = Math.min(l.fr, 20);
+    const O = src.own && outro && outro.sq === src.zoom ? outro : null, fade = O ? Math.min(1, t / SLICE.pre) : 1;
+    if (O && fade < 1) {                                          // this phone's round easing out under its result: slowing to a stop as it fades
+      const e = 1 - (1 - fade) * (1 - fade);
+      c.globalAlpha = 1 - fade; scene(O.L, O.end + SLICE.pre * 0.5 * e); c.globalAlpha = 1;
+    }
+    c.globalAlpha = fade;
     c.fillStyle = 'rgba(255,255,255,.75)'; c.strokeStyle = P.ink; c.lineWidth = 0.8 * u; c.beginPath(); c.roundRect(8 * u, 22 * u, 84 * u, 74 * u, 4 * u); c.fill(); c.stroke();
+    c.globalAlpha = 1;
     for (let k = 0; k < n; k++) { const due = SLICE.pre + k * SLICE.show; if (t < due) break; const pop = Math.min(1, (t - due) / 140), x = x0 + (k % cols) * cell, y = 34 + Math.floor(k / cols) * 15; half(c, u, x - 2.4, y + (1 - pop) * -8, l.got[k], -0.5, 1, P, 5.4 * (0.6 + 0.4 * pop)); half(c, u, x + 2.4, y + 1.5 + (1 - pop) * -8, l.got[k], 0.4, -1, P, 5.4 * (0.6 + 0.4 * pop)); }
     const after = SLICE.pre + l.fr * SLICE.show;
     if (!l.fr && t >= SLICE.pre) { c.font = `400 ${Math.round(9 * u)}px Bangers, "Arial Black", sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = 'rgba(22,18,16,.4)'; c.fillText('NOTHING SLICED', 50 * u, 58 * u); }
@@ -128,11 +137,10 @@ const words = l => (l.bomb ? `Bomb! ${l.pts ? '+' + l.pts : 'Nothing'}` : `${l.f
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   hook();
   const c = sliceCfg(mini), s = a && a.fs ? a.fs : null, own = !!s && ownMove(a), o = { view, locked, turn }, on = round.on(state.zoom);
-  if (s && own && skipped !== a && flashAnimating()) { skipped = a; setTimeout(() => { if (state.flash === a) skipFlash(); }, 0); }   // (a round played here was watched live: straight to its result)
-  const rest = !s && (view || d) && mini.last ? mini.last : null, l = s || rest, by = s ? a.by : rest ? rest.by : turn, mine = !view && !s && !locked && !d, end = s && !own ? sliceShowMs(s) : 0;
-  const tal = p => ptsTally(p, o, c.target, mini.score[p], s && !own && a.by === p ? s.from : null, end);
-  const line = s && !own ? `<p ${lateAt('fsline ' + (s.pts ? 'ok' : 'no'), end)} role="status">${words(s)}</p>` : `<p class="fsline${l && !on ? (l.pts ? ' ok' : ' no') : ''}">${l && !on ? words(l) : ''}</p>`;
-  src = { mini, a: s && !own ? a : null, show: on ? null : l, by, mine, zoom: state.zoom };
+  const rest = !s && (view || d) && mini.last ? mini.last : null, l = s || rest, by = s ? a.by : rest ? rest.by : turn, mine = !view && !s && !locked && !d, end = s ? sliceShowMs(s) : 0;   // (this phone's own round too: it eases out, its fruit land on the tray, then the points count on)
+  const tal = p => ptsTally(p, o, c.target, mini.score[p], s && a.by === p ? s.from : null, end);
+  const line = s ? `<p ${lateAt('fsline ' + (s.pts ? 'ok' : 'no'), end)} role="status">${words(s)}</p>` : `<p class="fsline${l && !on ? (l.pts ? ' ok' : ' no') : ''}">${l && !on ? words(l) : ''}</p>`;
+  src = { mini, a: s ? a : null, own, show: on ? null : l, by, mine, zoom: state.zoom };
   const btn = view ? '' : `<button class="big ${turn} fsbtn" data-act="fs-go"${mine && !on ? '' : ' disabled'}>${on ? 'Slice!' : 'Go'}</button>`;
   go();
   return `<div class="g-fs pc-${by}"><div class="ctals two">${tal('X')}${tal('O')}</div><div class="fsbox"><div class="fsfield${on ? ' live' : ''}"><canvas class="fscv" aria-label="The fruit stall"></canvas></div></div>${line}${btn}</div>`;
@@ -146,11 +154,12 @@ export function miniature(mini, final) {
 export function moveText(f, who) { const s = f.fs; return !s ? `${who} played a round` : `${who} sliced ${s.fr} fruit${s.bomb ? ' and a bomb' : ''} for ${s.pts}`; }
 // Someone else's round, as its result is laid out: a pop for each fruit landing on the tray (thinned for a big
 // round), the bang if a bomb ended it, then a chime for points or a thud for none. A round played here had its
-// sounds live.
+// slices and its bang live: its tray lands quietly (a soft tick a fruit), then the chime or the thud as its points count on.
 export function sounds(f, add, won, mini, last) {
-  const s = f.fs; if (!s || ownMove(f)) return;
-  for (let k = 0; k < s.fr; k += s.fr > 10 ? 2 : 1) add('fsSlice', SLICE.pre + k * SLICE.show, 0.9 + (k % 5) * 0.06);
+  const s = f.fs; if (!s) return;
+  const own = ownMove(f);
+  for (let k = 0; k < s.fr; k += s.fr > 10 ? 2 : 1) add(own ? 'rtTick' : 'fsSlice', SLICE.pre + k * SLICE.show, 0.9 + (k % 5) * 0.06);
   const after = SLICE.pre + s.fr * SLICE.show;
-  if (s.bomb) add('fsBoom', after);
+  if (s.bomb && !own) add('fsBoom', after);
   add(s.pts ? 'ding' : 'thud', sliceShowMs(s));
 }
