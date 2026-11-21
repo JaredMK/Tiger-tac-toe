@@ -54,7 +54,7 @@ export function drawScoop(c, W, H, v, now) {
   c.fillStyle = '#fff6f1'; c.fillRect(-10, -10, W + 20, H + 20);
   c.fillStyle = '#fbdde1'; for (let x = ox + k * 0.2; x < ox + Wu * k; x += k * 1.2) c.fillRect(x, -10, k * 0.6, H + 20);
   const counterY = H - 0.45 * k, coneH = 1.7, rim0 = counterY - coneH * k, top0 = rim0 - nEff * SCOOP.piece * k;
-  const sh = Math.max(0, H - SCOOP_VIEW.top * k - top0), rimY = rim0 + sh, tipY = counterY + sh, topY = top0 + sh;   // a tall stack: the view follows its top
+  const sh = Math.max(0, H - SCOOP_VIEW.base * k - top0), rimY = rim0 + sh, tipY = counterY + sh, topY = top0 + sh;   // the view follows the top from the first scoop (eased with the catch): the top stays on one line, so nothing falling ever jumps
   const dado = counterY + sh - 3.1 * k;                             // the wall's lower panel and its rail
   if (dado < H + 10) { c.fillStyle = 'rgba(214, 120, 140, .16)'; c.fillRect(-10, dado, W + 20, H + 20 - dado); c.fillStyle = '#e9a9b5'; c.fillRect(-10, dado - 2, W + 20, 4); }
   if (ox > 5) for (const [x0, x1, face, s] of [[-10, ox, ox, 1], [ox + Wu * k, W + 10, ox + Wu * k, -1]]) {   // a phone wider than the play area: a painted pilaster either side of it (the cone and the scoops keep between them)

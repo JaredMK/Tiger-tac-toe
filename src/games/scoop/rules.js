@@ -13,7 +13,8 @@ export { fingerFlashMs as flashMs } from '../shared/finger.js';
 // and hazards (pebbles, burnt scoops) fall at the top of the stack. A scoop stacks when it lands within
 // slide of the stack's top; further off but still touching, it slides off; that, or no touch, is a miss.
 // A missed scoop only counts once it has fallen past the bottom edge of the screen (the view keeps the
-// stack's top at most 4.6 units above the bottom: scoopDrop). A hazard touching the top ends the attempt,
+// stack's top on one line, `SCOOP_VIEW.base` above the bottom, from the first scoop: scoopDrop; before 1.28.0 it rose
+// with the stack to 4.6 units, and every falling thing jumped up a scoop at each catch). A hazard touching the top ends the attempt,
 // as do three misses. The stack's top sways a little behind
 // fast moves (more as it grows). Everything falls towards the stack's top (the screen follows it), at a
 // speed and a rate that rise with the stack (counted as if every scoop so far had been caught, so an
@@ -61,7 +62,7 @@ export function scoopStart(mini, p) {
 // draws the counter and the cone under a short stack and keeps a tall one's top 4.6 units up; a missed
 // scoop counts once its middle has fallen that far (and its own radius past it).
 export const SCOOP_VIEW = { top: 4.6, base: 2.15, ball: 0.57, slide: 7, slideT: 0.7 };
-export const scoopDrop = size => Math.min(SCOOP_VIEW.top, SCOOP_VIEW.base + SCOOP.piece * size) + SCOOP_VIEW.ball;
+export const scoopDrop = size => SCOOP_VIEW.base + SCOOP_VIEW.ball;   // (the view follows the top from the first scoop: the bottom always that far below it)
 export const scoopTop = sim => sim.x + sim.s;                            // where the stack's top is (the cone, plus the sway)
 export const scoopSize = sim => sim.n0 + sim.got.length;
 // One step: the cone moves, the stack sways, any item reaching the top lands, slides off, misses or hits.

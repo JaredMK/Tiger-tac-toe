@@ -51,7 +51,7 @@ test('scoop stack: faster and more hazards as the stack grows; nothing lands in 
     const want = kind === 'slide' ? E.SCOOP_VIEW.slideT * Math.sqrt(drop / E.SCOOP_VIEW.slide) : drop / 5;
     assert.ok(Math.abs((s.t - tTop) - want) < 0.03, `${kind}: as it reaches the bottom edge (${(s.t - tTop).toFixed(2)} s after the top, ${want.toFixed(2)} s expected)`);
   }
-  assert.ok(E.scoopDrop(0) < E.scoopDrop(4) && E.scoopDrop(30) === E.scoopDrop(60), 'a short stack is nearer the bottom; a tall one is kept 4.6 units up');
+  assert.ok(E.scoopDrop(0) === E.scoopDrop(4) && E.scoopDrop(30) === E.scoopDrop(60) && E.scoopDrop(0) === E.SCOOP_VIEW.base + E.SCOOP_VIEW.ball, 'the view follows the top from the first scoop: the bottom always the same way below it');
 });
 
 test('scoop stack: its settings (TUNE) are dealt into the square: the misses allowed; the computer\'s hand', () => {
