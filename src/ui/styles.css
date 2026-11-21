@@ -6050,16 +6050,14 @@ button.dukd:active .dukf, .dukd.rpress .dukf { scale: .88; }
 button.gbp { cursor: pointer; touch-action: manipulation; }
 .gbp.nx { box-shadow: 0 0 0 3px var(--x), 0 4px 0 var(--ink); } .gbp.nx.O { box-shadow: 0 0 0 3px var(--o), 0 4px 0 var(--ink); }
 .gbp.nx:active { transform: translateY(3px); box-shadow: 0 0 0 3px var(--x), 0 1px 0 var(--ink); }
-.gbp.s1 { background: #8fd694; }
-.gbp.s2 { background: rgba(22, 18, 16, .3); border-style: dashed; }
+.gbp.s2 { background: none; border-color: transparent; box-shadow: none; }   /* broken glass: gone, a gap in the bridge */
 .gbok { position: absolute; right: 3px; top: 3px; width: 13px; height: 13px; color: #1d6b2a; line-height: 0; } .gbok svg { width: 100%; height: 100%; }
 .gbsh { position: absolute; inset: 12%; width: 76%; height: 76%; fill: rgba(255, 255, 255, .75); stroke: var(--ink); stroke-width: 1; }
-.gbp.s1.fresh { animation: gbsafe .2s var(--hop) both; } .gbp.s1.fresh .gbok { animation: appear .2s var(--hop) both; }
 .gbp.s2.fresh { animation: gbshake var(--crk) linear both, gbbreak .16s var(--crk) both; } .gbp.s2.fresh .gbsh { animation: gbshards var(--dr) var(--crk) ease-in both; }
 @keyframes gbsafe { from { background: #7ec8e6; } }
-@keyframes gbbreak { from { background: #7ec8e6; border-style: solid; } }
-@keyframes gbshake { 0%, 55% { transform: none; background: #7ec8e6; border-style: solid; } 62%, 78%, 94% { transform: translateX(-2px) rotate(-1deg); background: #cfeaf5; border-style: solid; } 70%, 86% { transform: translateX(2px) rotate(1deg); background: #cfeaf5; border-style: solid; } 100% { background: #cfeaf5; border-style: solid; } }
-@keyframes gbshards { 0% { opacity: 0; transform: none; } 5% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes gbbreak { from { background: #7ec8e6; border-style: solid; border-color: var(--ink); } }
+@keyframes gbshake { 0%, 55% { transform: none; background: #7ec8e6; border-style: solid; border-color: var(--ink); } 62%, 78%, 94% { transform: translateX(-2px) rotate(-1deg); background: #cfeaf5; border-style: solid; border-color: var(--ink); } 70%, 86% { transform: translateX(2px) rotate(1deg); background: #cfeaf5; border-style: solid; border-color: var(--ink); } 100% { background: #cfeaf5; border-style: solid; border-color: var(--ink); } }
+@keyframes gbshards { 0% { opacity: 0; transform: none; } 5% { opacity: 1; } 100% { opacity: 0; transform: translateY(70%) rotate(12deg); } }   /* the shards fall away: nothing is left of the pane */
 .ntok.hopin { animation: gbhop var(--hop) cubic-bezier(.3, 0, .4, 1) both; }
 .ntok.fallin { position: absolute; left: 50%; top: 50%; margin: calc(var(--tk) / -2) 0 0 calc(var(--tk) / -2); animation: gbhop var(--hop) cubic-bezier(.3, 0, .4, 1) both, gbdrop var(--dr) var(--crk) cubic-bezier(.5, 0, .9, .5) forwards; }
 .ntok.backin { animation: appearin .28s var(--bk) ease-out both; }
@@ -6069,7 +6067,7 @@ button.gbp { cursor: pointer; touch-action: manipulation; }
 .gbline.ok { color: var(--green); } .gbline.no { color: var(--x); }
 @media (prefers-reduced-motion: reduce) { .ntok.fallin { display: none; } }
 .tgbw .tpic { width: 46cqw; } .tgb { width: 100%; display: block; }
-.tgbp { fill: #9fd6ec; stroke: var(--ink); stroke-width: 1; } .tgbp.s1 { fill: #8fd694; } .tgbp.s2 { fill: rgba(22, 18, 16, .28); stroke-dasharray: 2 1.5; }
+.tgbp { fill: #9fd6ec; stroke: var(--ink); stroke-width: 1; } 
 .tgbt { stroke: var(--ink); stroke-width: 1; fill: var(--x); } .tgbt.O { fill: var(--o); }
 /* A tally whose figures always take their own line under the name (many pips: the name keeps the whole width). */
 .ctals.two .ctal > .tnm { flex: 0 0 100%; max-width: 100%; } .ctals.two .ctal > .tnm + * { margin-left: 0; }

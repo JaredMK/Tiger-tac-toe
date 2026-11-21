@@ -7,7 +7,6 @@
 // each, side by side under its player's mark. Everything is timed from the move (rules.js BRIDGE).
 import { BRIDGE, bridgeSeen } from './rules.js';
 import { N, mv } from '../../ui/app.js';
-import { TICK } from '../../ui/art.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 import { pipRows, thumbArt } from '../../ui/thumbs.js';
 import { tok } from '../../ui/tok.js';
@@ -26,8 +25,8 @@ function bridge(mini, o, a, own) {                               // own: whose b
     return tok(p);
   }).join('') + (s && s.fall && s.r === r && s.i === i ? tok(by, 'fallin') : '');
   const row = r => `<div class="gbrow" style="--n:${mini.n[r]}">${seen[r].map((v, i) => {
-    const fresh = s && s.r === r && s.i === i ? ' fresh' : '', cls = `gbp s${v}${fresh}`, inner = `${v === 1 ? `<i class="gbok">${TICK}</i>` : ''}${v === 2 ? SHARDS : ''}${tokens(r, i)}`;
-    return r === next && v !== 2 ? `<button class="${cls} nx ${mover}" data-act="move" ${mv(i)} aria-label="Row ${r + 1}, platform ${i + 1}${v === 1 ? ', safe' : ''}">${inner}</button>` : `<div class="${cls}">${inner}</div>`;
+    const fresh = s && s.r === r && s.i === i ? ' fresh' : '', cls = `gbp s${v === 2 ? 2 : 0}${fresh}`, inner = `${v === 2 && fresh ? SHARDS : ''}${tokens(r, i)}`;   // (glass that held looks like glass not tried: players remember it)
+    return r === next && v !== 2 ? `<button class="${cls} nx ${mover}" data-act="move" ${mv(i)} aria-label="Row ${r + 1}, platform ${i + 1}">${inner}</button>` : `<div class="${cls}">${inner}</div>`;
   }).join('')}</div>`;
   let rows = ''; for (let r = R - 1; r >= 0; r--) rows += row(r);
   return `<div class="gbb${own ? ' own ' + own : ''}" style="--rows:${R}"><div class="gbend far"><i class="gbflag"></i></div>${rows}<div class="gbend near">${tokens(-1, -1)}</div></div>`;
@@ -48,7 +47,8 @@ export function miniature(mini, final) {
     const seen = own ? mini.seen[own] : mini.seen, h = 56 / R; let out = '';
     for (let r = 0; r < R; r++) for (let i = 0; i < mini.n[r]; i++) {
       const cw = w / mini.n[r], x = x0 + i * cw, y = 58 - (r + 1) * h;
-      out += `<rect class="tgbp s${seen[r][i]}" x="${(x + 0.8).toFixed(1)}" y="${(y + 0.8).toFixed(1)}" width="${(cw - 1.6).toFixed(1)}" height="${(h - 1.6).toFixed(1)}" rx="1.5"/>`;
+      if (seen[r][i] === 2) continue;   // (a broken pane is gone; one that held looks untried)
+      out += `<rect class="tgbp" x="${(x + 0.8).toFixed(1)}" y="${(y + 0.8).toFixed(1)}" width="${(cw - 1.6).toFixed(1)}" height="${(h - 1.6).toFixed(1)}" rx="1.5"/>`;
       for (const p of own ? [own] : ['X', 'O']) if (mini.at[p] === r && mini.pos[p] === i) out += `<circle class="tgbt ${p}" cx="${(x + cw / 2 + (own ? 0 : p === 'X' ? -cw * 0.18 : cw * 0.18)).toFixed(1)}" cy="${(y + h / 2).toFixed(1)}" r="${Math.min(3.4, h * 0.34).toFixed(1)}"/>`;
     }
     return out;
