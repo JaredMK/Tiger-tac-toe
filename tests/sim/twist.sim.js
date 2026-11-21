@@ -1,5 +1,5 @@
 'use strict';
-// Simulations: Twist Five (slow, never part of npm test: `npm run sim -- twist`). The computer against itself, 500
+// Simulations: Twist Four (slow, never part of npm test: `npm run sim -- twist`). The computer against itself, 500
 // squares at Normal (the batch's standard), then by line length, board and level.
 // Five in a row on the 6x6 board runs about ten turns each, so the default is four in a row: its turns are in range,
 // but the first mover wins about two squares in three, over the batch's 60%: a game of placing with nothing by chance

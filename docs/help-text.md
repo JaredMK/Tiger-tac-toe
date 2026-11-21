@@ -566,7 +566,7 @@ Super Chaos Win: Get {goal} right.
 Race Play: You each answer your own questions, just as hard as each other's. A wrong answer is crossed out on your card; a right one brings your next.
 Race Win: Be the first to get {goal} right.
 
-## Twist Five [twist]
+## Twist Four [twist]
 Category: More brain
 Play: Place one of your pieces on an empty spot, then twist one of the four quarters of the board a quarter turn, either way.
 Win: First to line up {line} in a row wins, straight or diagonal. If a twist makes a line for both, the player who twisted wins.

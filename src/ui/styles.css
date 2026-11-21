@@ -6240,11 +6240,11 @@ button.pjc { cursor: pointer; touch-action: manipulation; }
 .g-tw > * { flex: none; }
 .g-tw .ctals { --tk: 22px; }
 .g-tw .twbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
-.twrim { position: relative; width: min(100cqw, 100cqh); aspect-ratio: 1; padding: var(--rim); --rim: 38px; }
+.twrim { position: relative; box-sizing: border-box; width: min(100cqw, 100cqh); height: min(100cqw, 100cqh); padding: 4px; }
 .twboard { width: 100%; height: 100%; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px; padding: 6px; border: 3.5px solid var(--ink); border-radius: 18px; background: #6b4a2b; box-shadow: 0 4px 0 var(--ink); }
 .twq { position: relative; min-width: 0; min-height: 0; border: 2.5px solid var(--ink); border-radius: 12px; background: #e9c99a; }
 .twq:nth-child(2), .twq:nth-child(3) { background: #dcb880; }
-.twqi { position: absolute; inset: 3px; display: grid; grid-template-columns: repeat(var(--h), 1fr); grid-template-rows: repeat(var(--h), 1fr); container-type: size; --tk: calc(100cqw / var(--h) * .7); }
+.twqi { position: absolute; inset: 3px; display: grid; gap: 0; grid-template-columns: repeat(var(--h), 1fr); grid-template-rows: repeat(var(--h), 1fr); container-type: size; --tk: calc(100cqw / var(--h) * .7); }
 .twq.turn { animation: twturn var(--tt) var(--tp) cubic-bezier(.5, 0, .2, 1) both; z-index: 2; }
 @keyframes twturn { from { transform: rotate(var(--from)); } 50% { box-shadow: 0 6px 14px rgba(0, 0, 0, .45); } }
 .twc { position: relative; min-width: 0; min-height: 0; margin: 0; padding: 0; border: 0; background: none; display: grid; place-items: center; font: inherit; }
@@ -6254,11 +6254,17 @@ button.twc { cursor: pointer; touch-action: manipulation; }
 .twc.new .ntok { animation: markpop var(--tp) ease-out both; }
 .twc.win .ntok { box-shadow: 0 2px 0 var(--ink), 0 0 0 4px #ffd23f; } .twc.win.late .ntok { animation: twwin .3s calc(var(--tp) + var(--tt)) both; }
 @keyframes twwin { from { box-shadow: 0 2px 0 var(--ink); } 50% { scale: 1.2; } }
-.twa { position: absolute; z-index: 3; width: 38px; height: 38px; padding: 5px; margin: 0; border: 2.5px solid var(--ink); border-radius: 50%; background: #fff; color: var(--x); box-shadow: 0 3px 0 var(--ink); cursor: pointer; touch-action: manipulation; line-height: 0; translate: -50% -50%; }
-.twa::after { content: ''; position: absolute; inset: -5px; }   /* (a 44px target) */
-.twa.top { top: calc(var(--rim) / 2); left: calc(var(--rim) + (100% - 2 * var(--rim)) * var(--at)); } .twa.bottom { top: calc(100% - var(--rim) / 2); left: calc(var(--rim) + (100% - 2 * var(--rim)) * var(--at)); }
-.twa.left { left: calc(var(--rim) / 2); top: calc(var(--rim) + (100% - 2 * var(--rim)) * var(--at)); } .twa.right { left: calc(100% - var(--rim) / 2); top: calc(var(--rim) + (100% - 2 * var(--rim)) * var(--at)); }
-.twa.O { color: #b8860b; } .twa svg { width: 100%; height: 100%; } .twa:active { box-shadow: none; margin-top: 3px; }
+.twq.can { cursor: pointer; touch-action: manipulation; transition: box-shadow .12s; }   /* a quarter to pick (the piece placed) */
+.twq.pick { box-shadow: 0 0 0 4px #fff, 0 0 0 7px var(--x); z-index: 1; } .pc-O .twq.pick { box-shadow: 0 0 0 4px #fff, 0 0 0 7px var(--o); }
+.twq.prev { border-style: dashed; background: #f6e2bf; }   /* the picked quarter drawn as it would be after the turn */
+.twc .ntok.pv { opacity: .55; box-shadow: 0 0 0 2px rgba(255, 255, 255, .8); }
+.twctl { display: grid; grid-template-columns: 64px 1fr 64px; gap: 10px; align-items: center; height: 64px; }   /* the two big curved arrows and Twist! (their room always kept) */
+.twdir { width: 64px; height: 64px; padding: 6px; margin: 0; border: 3px solid var(--ink); border-radius: 50%; background: #fff; color: var(--x); box-shadow: 0 4px 0 var(--ink); cursor: pointer; touch-action: manipulation; line-height: 0; }
+.twdir.O { color: #b8860b; } .twdir svg { width: 100%; height: 100%; }
+.twdir.on { background: var(--x); color: #fff; } .twdir.O.on { background: var(--o); color: var(--ink); }
+.twdir:disabled { opacity: .35; box-shadow: 0 2px 0 var(--ink); cursor: default; }
+.twdir:not(:disabled):active { box-shadow: none; translate: 0 4px; }
+.twgo.big { height: 56px; margin: 0; } .twgo:disabled { opacity: .45; }
 .twline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 700 17px/26px 'Comic Neue', 'Comic Sans MS', sans-serif; color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .twq.turn { animation: none; } }
 .ttw { width: 62cqw; } .ttw svg { width: 100%; display: block; } .ttwb { fill: #e9c99a; stroke: var(--ink); stroke-width: 2.4; } .ttwq { stroke: var(--ink); stroke-width: 1.6; fill: none; } .ttwh { fill: rgba(22, 18, 16, .28); } .ttwp { fill: var(--x); stroke: var(--ink); stroke-width: 1.4; } .ttwp.O { fill: var(--o); }

@@ -1,4 +1,4 @@
-// Twist Five: the rules (pure: no page, no clock; the server runs the same code).
+// Twist Four: the rules (pure: no page, no clock; the server runs the same code).
 // One board of `n` by `n` (`cells`: 'X', 'O' or null), in four quarters. A move places one piece on an empty cell and
 // then turns one quarter a quarter turn: `{ c, q, d }` (the cell; the quarter 0 top left, 1 top right, 2 bottom left,
 // 3 bottom right; d 1 clockwise, -1 the other way). A line of `L` of one side's pieces, straight or diagonal, wins:

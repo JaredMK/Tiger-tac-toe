@@ -1,4 +1,4 @@
-// Twist Five: the computer's play. A position is scored by the runs still open to each side (`score`: every window of
+// Twist Four: the computer's play. A position is scored by the runs still open to each side (`score`: every window of
 // the winning length holding one side's pieces alone counts by how many it holds). Easy plays any move that does not
 // lose at once, taking a win it sees. Normal takes a win; else, of its best few moves by score, the one that stands
 // best after the other side's best reply (a move a twist undoes is no defence). Hard does the same over more moves

@@ -1,5 +1,5 @@
 'use strict';
-// Twist Five (December 2026): its rules and computer (npm test).
+// Twist Four (December 2026): its rules and computer (npm test).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
