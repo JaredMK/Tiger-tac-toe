@@ -5923,6 +5923,18 @@ button.dukd:active .dukf, .dukd.rpress .dukf { scale: .88; }
 .wtbw { flex: 1 1 auto; min-height: 0; container-type: size; display: grid; place-items: center; }
 .wtboard { --tc: var(--x); position: relative; width: calc(min(100cqw, 100cqh) - 6px); height: calc(min(100cqw, 100cqh) - 6px); display: grid; grid-template: repeat(var(--n, 7), minmax(0, 1fr)) / repeat(var(--n, 7), minmax(0, 1fr)); gap: 2px; padding: 3px; background: var(--ink); border-radius: 9px; box-shadow: 0 0 0 3px var(--tc); container-type: inline-size; touch-action: none; }
 .wtboard.O { --tc: var(--o); }
+.wtbw { position: relative; }
+.wtbw.zoomed .wtboard { width: calc(min(100cqw, 100cqh) - 76px); height: calc(min(100cqw, 100cqh) - 76px); }   /* the board enlarged: a window of it, room round it for the arrows */
+.wtpan { position: absolute; z-index: 4; width: 34px; height: 34px; margin: 0; padding: 6px; border: 2.5px solid var(--ink); border-radius: 50%; background: #fff; color: var(--ink); box-shadow: 0 2px 0 var(--ink); line-height: 0; touch-action: manipulation; cursor: pointer; }
+.wtpan svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.wtpan.u { top: 2px; left: 50%; translate: -50% 0; } .wtpan.d { bottom: 2px; left: 50%; translate: -50% 0; } .wtpan.d svg { rotate: 180deg; }
+.wtpan.l { left: calc(50% - min(50cqw, 50cqh)); top: 50%; translate: 0 -50%; } .wtpan.l svg { rotate: -90deg; }
+.wtpan.r { right: calc(50% - min(50cqw, 50cqh)); top: 50%; translate: 0 -50%; } .wtpan.r svg { rotate: 90deg; }
+.wtpan.u { top: calc(50% - min(50cqw, 50cqh)); } .wtpan.d { bottom: calc(50% - min(50cqw, 50cqh)); }
+.wtpan:disabled { opacity: .3; cursor: default; } .wtpan:not(:disabled):active { box-shadow: none; translate: -50% 2px; } .wtpan.l:not(:disabled):active, .wtpan.r:not(:disabled):active { translate: 0 calc(-50% + 2px); }
+.wtzoom { position: absolute; left: 0; top: 50%; width: 40px; height: 32px; margin: -16px 0 0; padding: 5px; border: 2.5px solid var(--ink); border-radius: 10px; background: #fff; color: var(--ink); box-shadow: 0 2px 0 var(--ink); line-height: 0; touch-action: manipulation; cursor: pointer; }
+.wtzoom svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
+.wtzoom.on { background: var(--ink); color: #ffd23f; } .wtzoom:active { box-shadow: none; margin-top: -14px; }
 .wtc { position: relative; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 3px; background: #efe2c6; box-shadow: inset 0 2px 0 rgba(22, 18, 16, .09); display: grid; place-items: center; font: inherit; color: var(--ink); -webkit-tap-highlight-color: transparent; }
 .wtc:disabled { opacity: 1; cursor: default; }
 .wtc.pl2 { background: #c4e3f4; } .wtc.pl3 { background: #74b7e2; } .wtc.pw2 { background: #dfcff0; } .wtc.pw3 { background: #ad8bd8; }   /* letter squares blue, word squares violet: never a player's red or yellow */

@@ -24,6 +24,28 @@ let draft = null;                                                  // this phone
 let pop = null;                                                    // the draft's last tap, for its motion: { key, at, lay: cell | null, back: { rack index: cell } | null, sel: rack index | null }
 let shown = null;                                                  // this phone's own rack as last drawn before a move: { key, rack } (a swap's tiles fly from it, the tiles kept close up)
 const POP_MS = 420;
+// The board enlarged while placing (the zoom button or a pinch): a window of it, `zoomW` squares a side, drawn at the
+// board's full size; its arrows (or a tap near its edge's arrows) move it. Only this phone's own turn, while placing.
+let zoomOn = false, zr = 0, zc = 0;
+const zoomW = n => (n >= 11 ? 7 : Math.max(3, n - 2));
+const clampW = (v, n) => Math.max(0, Math.min(n - zoomW(n), v));
+function zoomAt(n, cell) { const W = zoomW(n); zr = clampW(Math.floor(cell / n) - Math.floor(W / 2), n); zc = clampW((cell % n) - Math.floor(W / 2), n); }
+// The free square nearest a tap on a taken one (a tap a little off still lands): nearest by distance, then one in line
+// with the tiles laid this turn, then one touching a tile already down.
+export function wtNearest(board, put, n, cell) {
+  const taken = new Set(put.map(([c]) => c)), r0 = Math.floor(cell / n), c0 = cell % n;
+  const rows = new Set(put.map(([c]) => Math.floor(c / n))), cols = new Set(put.map(([c]) => c % n));
+  const touch = i => [[-1, 0], [1, 0], [0, -1], [0, 1]].some(([dr, dc]) => { const r = Math.floor(i / n) + dr, c = (i % n) + dc; return r >= 0 && r < n && c >= 0 && c < n && (board[r * n + c] || taken.has(r * n + c)); });
+  let best = -1, key = null;
+  for (let i = 0; i < board.length; i++) {
+    if (board[i] || taken.has(i)) continue;
+    const r = Math.floor(i / n), c = i % n, dd = (r - r0) ** 2 + (c - c0) ** 2;
+    const k = [dd, put.length && (rows.size === 1 && rows.has(r) || cols.size === 1 && cols.has(c)) ? 0 : 1, touch(i) ? 0 : 1, i];
+    const j = key ? k.findIndex((v, q) => v !== key[q]) : -1;
+    if (!key || (j >= 0 && k[j] < key[j])) { best = i; key = k; }
+  }
+  return best;
+}
 const keyOf = (mini, sq, p) => `${sq}:${p}:${mini.plays[p]}`;
 const draftOf = (mini, sq, p) => (draft && draft.key === keyOf(mini, sq, p) ? draft : null);
 const popOf = key => (pop && pop.key === key && performance.now() - pop.at < POP_MS ? pop : null);
@@ -71,7 +93,12 @@ function wtTable(mini, a, o) {
   const stamped = word && was && was.put.length === s.t.length && s.t.every(([cell]) => was.put.some(([x]) => x === cell));
   const fresh = word ? new Map(s.t.map(([cell], k) => [cell, k])) : new Map();
   const lastW = !s && mini.last && mini.last.kind === 'word' && Array.isArray(mini.last.t) ? new Set(mini.last.t.map(x => x[0])) : word ? new Set(s.t.map(x => x[0])) : new Set();
+  const zoomed = zoomOn && mine && n > 3, ZW = zoomed ? zoomW(n) : n;
+  if (zoomed) { zr = clampW(zr, n); zc = clampW(zc, n); }
+  const inWin = i => !zoomed || (Math.floor(i / n) >= zr && Math.floor(i / n) < zr + ZW && i % n >= zc && i % n < zc + ZW);
+  const wIdx = i => (zoomed ? (Math.floor(i / n) - zr) * ZW + (i % n) - zc : i);
   const cells = board.map((l, i) => {
+    if (!inWin(i)) return '';
     const pr = prem[i], pk = putAt.get(i);
     let inner = '', cls = 'wtc' + (pr !== '.' ? ' p' + (pr === pr.toUpperCase() ? 'w' : 'l') + (pr === 'T' || pr === 't' ? '3' : '2') : '') + (i === centre ? ' ctr' : ''), host = '';
     if (l) {
@@ -80,8 +107,8 @@ function wtTable(mini, a, o) {
     } else if (pk != null) { const laid = pp && pp.lay === i && fly; inner = tile(rack[pk], 'dr o' + me, laid ? cfFrom('wts:' + pk, 0, { d: 220 }) : ''); cls += ' hasdr'; if (laid) host = fxAttr(pp.at); }
     else if (i === centre) inner = STAR;
     else if (pr !== '.') inner = `<em>${PREM_NAME[pr]}</em>`;
-    const can = mine && !l && (pk != null || (d && d.sel != null));
-    if (can && pk == null) cls += ' can';
+    const can = mine && (pk != null || (d && d.sel != null));   // (a tile in hand: a taken square too, the tile going to the free one nearest it)
+    if (can && pk == null && !l) cls += ' can';
     return `<button class="${cls}" data-act="wtc" data-v="${i}"${cfAnchor('wtc:' + i)}${host} aria-label="Square ${i + 1}${pr !== '.' ? ', ' + PREM_LONG[pr] : ''}${l ? ', ' + l : pk != null ? ', ' + rack[pk] + ' (yours, this turn)' : ''}"${can ? '' : ' disabled tabindex="-1"'}>${inner}</button>`;
   }).join('');
   // the draft as it stands, checked
@@ -89,7 +116,7 @@ function wtTable(mini, a, o) {
   const ch = t.length ? wtCheck(board, rack, t, c) : null;
   // over the board: the draft's points on its word's last tile; a word played: each word it made ringed in turn with its points
   let over = '';
-  if (mine && ch && ch.ok) { const z = ch.words[0].cells[ch.words[0].cells.length - 1]; over = `<span class="wtchip ok${z % n === n - 1 ? ' er' : ''}${z < n ? ' et' : ''}" style="${boxAt([z], n)}">+${ch.score}</span>`; }
+  if (mine && ch && ch.ok) { const z = ch.words[0].cells[ch.words[0].cells.length - 1]; if (inWin(z)) { const y = wIdx(z); over = `<span class="wtchip ok${y % ZW === ZW - 1 ? ' er' : ''}${y < ZW ? ' et' : ''}" style="${boxAt([y], ZW)}">+${ch.score}</span>`; } }
   if (word) {
     const b2 = s.board || board, wc = wordCells(b2, s.t);
     over = (s.words || []).map((w, k, ws) => (wc[k] ? `<span class="wtwb${o.won && k === ws.length - 1 ? ' win' : ''}" style="${boxAt(wc[k], n)};--t:${fly ? tim.wordAt(k) : 0}ms"><b>+${w.s}</b></span>` : '')).join('');
@@ -135,8 +162,11 @@ function wtTable(mini, a, o) {
     return arcTally(p, o, `<span class="wtal">${gaugeBar({ goal: c.target, now, was: moved ? Math.min(c.target, s.from) : now, at: REDUCED ? 0 : tim.count, ms: Math.max(400, tim.words * WT.per - 120), pend: draftPts, pendFrom: now })}${sc(p)}</span>`);
   };
   const ok = mine && ch && ch.ok;
+  const PAN = { u: [-1, 0, 'Up'], d: [1, 0, 'Down'], l: [0, -1, 'Left'], r: [0, 1, 'Right'] };
+  const pans = zoomed ? Object.entries(PAN).map(([k, [dr, dc, nm]]) => { const ok2 = clampW(zr + dr, n) !== zr || clampW(zc + dc, n) !== zc; return `<button class="wtpan ${k}" data-act="wtpan" data-d="${k}"${ok2 ? '' : ' disabled'} aria-label="Move the view ${nm.toLowerCase()}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5 10 7.5l5 5"/></svg></button>`; }).join('') : '';
+  const zbtn = mine && n > 3 ? `<button class="wtzoom${zoomed ? ' on' : ''}" data-act="wtzoom" aria-pressed="${zoomed}" aria-label="${zoomed ? 'Show the whole board' : 'Enlarge the board'}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="M15 15l5.5 5.5"/>${zoomed ? '<path d="M7 10h6"/>' : '<path d="M7 10h6M10 7v6"/>'}</svg></button>` : '';
   const btns = o.view ? '' : `<div class="cbtns three"><button class="big" data-act="wtclr"${mine && put.length ? '' : ' disabled'}>Clear</button><button class="big" data-act="move" ${mv('swap')}${mine && !put.length ? '' : ' disabled'}>Swap</button><button class="big wtplay ${turn}${ok ? ' go' : ''}" data-act="move" ${mv(ok ? t : null)}${ok ? '' : ' disabled'}>Play${ok ? ` <b>+${ch.score}</b>` : ''}</button></div>`;
-  return `<div class="g-arc wtg"><div class="ctals">${tal('X')}${tal('O')}</div><div class="wtbw"><div class="wtboard ${fp}${d && d.sel != null ? ' aim' : ''}${n > 7 ? ' big' : ''}" style="--n:${n}">${cells}${over}</div></div><div class="wtmid">${line}${bag}</div><div class="wtrack ${me}">${rackHtml}</div>${btns}</div>`;
+  return `<div class="g-arc wtg"><div class="ctals">${tal('X')}${tal('O')}</div><div class="wtbw${zoomed ? ' zoomed' : ''}"><div class="wtboard ${fp}${d && d.sel != null ? ' aim' : ''}${ZW > 7 ? ' big' : ''}" style="--n:${ZW}">${cells}${over}</div>${pans}</div><div class="wtmid">${line}${zbtn}${bag}</div><div class="wtrack ${me}">${rackHtml}</div>${btns}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = wtTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d, won: !!a && (a.kind === 'claim' || a.kind === 'match') }); return g;
@@ -188,7 +218,11 @@ function rackTap(mini, sq, p, k, quiet) {
 }
 function cellTap(mini, sq, p, cell, quiet) {
   const d = draftHere(mini, sq, p);
-  if (mini.board[cell]) return false;
+  if (mini.board[cell]) {                                            // a taken square: the tile in hand goes to the free square nearest it
+    if (d.sel == null) return false;
+    cell = wtNearest(mini.board, d.put, wtSide(mini.board), cell); if (cell < 0) return false;
+    d.put.push([cell, d.sel]); d.sel = null; popAt(d, { lay: cell }); if (!quiet) SND.play('domClick'); return true;
+  }
   const at = d.put.findIndex(([c]) => c === cell);
   if (at >= 0) { const k = d.put[at][1]; d.put.splice(at, 1); popAt(d, { back: { [k]: cell } }); if (!quiet) SND.play('cardSlide'); return true; }
   if (d.sel == null) { if (!quiet) SND.play('error'); return false; }
@@ -196,6 +230,27 @@ function cellTap(mini, sq, p, cell, quiet) {
   popAt(d, { lay: cell });
   if (!quiet) SND.play('domClick');
   return true;
+}
+// Where the enlarged board opens: the last tile laid this turn, else the last word played, else the centre.
+function zoomFocus(mini, sq, p, n) {
+  const d = draftOf(mini, sq, p);
+  if (d && d.put.length) return d.put[d.put.length - 1][0];
+  if (mini.last && mini.last.kind === 'word' && Array.isArray(mini.last.t) && mini.last.t.length) return mini.last.t[mini.last.t.length - 1][0];
+  return wtCentre(n);
+}
+// A pinch on the board: fingers apart enlarges it about where they are, together shows the whole board.
+if (typeof document !== 'undefined' && document.addEventListener) {
+  let pin = null;
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  document.addEventListener('touchstart', e => { pin = e.touches.length === 2 && e.target && e.target.closest && e.target.closest('.wtbw') ? { d: dist(e.touches), x: (e.touches[0].clientX + e.touches[1].clientX) / 2, y: (e.touches[0].clientY + e.touches[1].clientY) / 2, done: false } : null; }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (!pin || pin.done || e.touches.length !== 2) return;
+    const r = dist(e.touches) / Math.max(1, pin.d), h = here(); if (!h || (r < 1.25 && r > 0.8)) return;
+    pin.done = true; const n = wtSide(h.mini.board);
+    if (r >= 1.25 && !zoomOn) { const el = document.elementFromPoint(pin.x, pin.y), c = el && el.closest && el.closest('.wtc'); zoomOn = true; zoomAt(n, c ? Number(c.dataset.v) : zoomFocus(h.mini, h.sq, h.p, n)); SND.play('open'); render(); }
+    else if (r <= 0.8 && zoomOn) { zoomOn = false; SND.play('close'); render(); }
+  }, { passive: true });
+  document.addEventListener('touchend', e => { if (e.touches.length < 2) pin = null; }, { passive: true });
 }
 function here() {
   if (zoomedType() !== 'wtiles' || state.flash || state.done) return null;
@@ -205,6 +260,8 @@ function here() {
 export const actions = {
   wtr: el => { const h = here(); if (h && rackTap(h.mini, h.sq, h.p, Number(el.dataset.v))) render(); },
   wtc: el => { const h = here(); if (h && cellTap(h.mini, h.sq, h.p, Number(el.dataset.v))) render(); },
+  wtzoom: () => { const h = here(); if (!h) return; const n = wtSide(h.mini.board); zoomOn = !zoomOn; if (zoomOn) zoomAt(n, zoomFocus(h.mini, h.sq, h.p, n)); SND.play(zoomOn ? 'open' : 'close'); render(); },
+  wtpan: el => { const h = here(); if (!h) return; const n = wtSide(h.mini.board), st = Math.max(1, zoomW(n) - 3), dd = { u: [-st, 0], d: [st, 0], l: [0, -st], r: [0, st] }[el.dataset.d]; if (!dd) return; zr = clampW(zr + dd[0], n); zc = clampW(zc + dd[1], n); SND.play('cardSlide'); render(); },
   wtclr: () => { const h = here(); if (!h) return; const d = draftHere(h.mini, h.sq, h.p); popAt(d, { back: Object.fromEntries(d.put.map(([cell, k]) => [k, cell])) }); d.put = []; d.sel = null; SND.play('cardSlide'); render(); },
 };
 // Someone else's word replayed (ui/replay.js): their rack is theirs alone (never on this phone), so their picks and lays
