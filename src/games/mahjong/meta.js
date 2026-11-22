@@ -1,19 +1,24 @@
-// Mahjong: its names, its "?" explainer, its icon, its release default and its settings.
+// Mahjong: its names, its "?" explainer, its icon, its release default and its settings (December 2026: a mini
+// hand-building Mahjong in place of the solitaire layouts).
 
-export const info = { name: 'Mahjong', hint: 'Take off matching pairs of free tiles. First to clear their tiles wins' };
+export const info = { name: 'Mahjong', hint: 'Draw a tile, throw one. First to two sets and a pair wins' };
+export const samePhone = false;   // never two people on one phone: each hand would be on show to the other (games/index.js NO_SAME_PHONE)
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.24.0';   // the oldest client version that has this game (core/client.js)
-export const category = 'luck';   // (with the whole layout to clear, every order of pairs takes as many turns: the deal decides) the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
+export const minVersion = '1.29.0';   // (1.29.0: the hand-building game); the oldest client version that has this game (core/client.js)
+export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const placeholder = false;   // never on a new state's placeholder board (games/index.js PLACE_TYPES): the seeded deals stay as they were
-export const explainer = { name: 'Mahjong', play: 'Tap two matching tiles to take them off. A tile is free when nothing lies on it and its left or right side is open.{chainText}', win: 'First to clear {goal} pairs.' };
-export const explainVars = v => ({ chainText: (v.chain === 'off' ? '' : ' If your pair uncovers a tile underneath, go again.') + (v.even === 'off' ? '' : ' Whoever starts second always gets as many turns: finish level and it is a draw.') });
-export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="9" height="13" rx="1.800"/><rect x="9.500" y="3" width="9" height="13" rx="1.800" fill="#fff"/><path d="M14 7v5M11.800 9.500h4.400"/></svg>';
-// Its settings (the admin's Games page; core/tune.js): the pairs that win, the layout's size in pairs (its shape goes
-// with it), how many different pictures the tiles are drawn from, and whether a pair that uncovers a tile keeps the turn.
+export const explainer = { name: 'Mahjong', play: 'Take a tile from the wall{pileText}, then throw one away. A set is three of a kind, or three in a row in one suit.', win: 'Hold {setText} and a pair after you take a tile.' };
+export const explainVars = v => {
+  const hand = [4, 7, 10].includes(Number(v.hand)) ? Number(v.hand) : 7, m = (hand - 1) / 3;
+  return { pileText: v.mode === 'race' ? '' : ' or the top of the discard pile', setText: m === 1 ? 'a set' : `${['', 'one', 'two', 'three'][m]} sets` };
+};
+export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="6" height="14" rx="1.4"/><rect x="9" y="5" width="6" height="14" rx="1.4"/><rect x="15.5" y="5" width="6" height="14" rx="1.4"/><circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/></svg>';
+// Its settings (the admin's Games page; core/tune.js): read with mjCfg(mini) (rules.js). A hand of 4 wins with a set and
+// a pair, 7 with two sets and a pair, 10 with three. Tuned by tests/sim/mahjong.sim.js.
 export const TUNE = [
-  { k: 'goal', label: 'Pairs to take the square', def: 12, min: 2, max: 12, step: 1, group: 'Rules' },
-  { k: 'chain', label: 'A pair that uncovers a tile keeps the turn', def: 'on', opts: ['on', 'off'], group: 'Rules' },
-  { k: 'even', label: 'Equal turns (the second player may answer; level is a draw)', def: 'on', opts: ['on', 'off'], group: 'Rules' },
-  { k: 'pairs', label: 'Layout size (pairs of tiles)', def: 12, opts: [6, 8, 9, 10, 12], group: 'Board' },
-  { k: 'set', label: 'Pictures to draw the tiles from', def: 12, min: 6, max: 16, step: 1, group: 'Board' },
+  { k: 'mode', label: 'Mode', def: 'shared', opts: ['shared', 'race'], group: 'Rules' },
+  { k: 'hand', label: 'Tiles in a hand', def: 7, opts: [4, 7, 10], group: 'Rules' },
+  { k: 'suits', label: 'Suits', def: 3, min: 1, max: 3, step: 1, group: 'Board' },
+  { k: 'nums', label: 'Numbers in a suit', def: 5, min: 3, max: 9, step: 1, group: 'Board' },
+  { k: 'honours', label: 'Honour tiles (Sun, Moon, Cloud)', def: 'off', opts: ['on', 'off'], group: 'Board' },
 ];

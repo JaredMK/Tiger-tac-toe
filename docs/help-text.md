@@ -291,8 +291,8 @@ Super Chaos Win: {goal} hits, or hit green 0 for an instant win.
 
 ## Mahjong [mahjong]
 Category: More luck
-Play: Tap two matching tiles to take them off. A tile is free when nothing lies on it and its left or right side is open.{chainText}
-Win: First to clear {goal} pairs.
+Play: Take a tile from the wall{pileText}, then throw one away. A set is three of a kind, or three in a row in one suit.
+Win: Hold {setText} and a pair after you take a tile.
 
 ## Mancala Race [mancala]
 Category: More brain
