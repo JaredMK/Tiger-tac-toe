@@ -23,7 +23,7 @@ import { TYPES, rulesOf } from '../games/index.js';
  * last few moves, so a phone that was away can play back what it missed, one move at a time.
  */
 export const RECENT_MAX = 8;
-export const MATCH_FIELDS = ['id', 'seq', 'recent', 'games', 'squares', 'turn', 'lock', 'lockBy', 'moves', 'winner', 'winLine', 'winReason', 'resigned', 'counts', 'lastSquare', 'lastBy', 'pick', 'pickSq', 'timer', 'sqlog', 'sc', 'lastAt', 'at0', 'picks', 'mp', 'mpn'];   // (lastAt: the last move's time, for the time spent in a square: core/board.js)   // (sc: a Super Chaos match's round, the moves sent in, the last recap)
+export const MATCH_FIELDS = ['id', 'seq', 'recent', 'games', 'squares', 'turn', 'lock', 'lockBy', 'moves', 'winner', 'winLine', 'winReason', 'resigned', 'counts', 'lastSquare', 'lastBy', 'pick', 'pickSq', 'timer', 'sqlog', 'sc', 'lastAt', 'at0', 'picks', 'mp', 'mpn', 'quitBy'];   // (quitBy: how a resignation came, 'drop' for a phone offline 2 minutes: the abandonment data, core/quit.js)   // (lastAt: the last move's time, for the time spent in a square: core/board.js)   // (sc: a Super Chaos match's round, the moves sent in, the last recap)
 // The hidden part of a mini-game, or null when it has none.
 export function secretOf(mini) {
   const game = rulesOf(mini.type);
@@ -344,11 +344,12 @@ export function applyRoomSweep(rec, now, rng) {
   return r;
 }
 // A player gives up the match (leaving a matchmaking game through the menu): the other side wins.
-export function applyOnlineResign(rec, side) {
+export function applyOnlineResign(rec, side, how) {
   const full = fullState(rec);
   if (full.winner) return { ok: false, reason: 'over' };
   if (side !== 'X' && side !== 'O') return { ok: false, reason: 'bad' };
   full.winner = other(side); full.winLine = null; full.winReason = 'resign'; full.resigned = side;
+  if (how === 'drop') full.quitBy = 'drop';
   full.lock = null; full.pick = null; full.pickSq = null;
   if (full.timer) { full.timer.deadline = null; full.timer.for = null; }
   return { ok: true, rec: matchRecord(full) };

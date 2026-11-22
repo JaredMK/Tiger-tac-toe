@@ -24,9 +24,9 @@ import { init as connectInit } from './net/connect.js';
 import { checkResume, freshVisit, openFind, resumable } from './net/matchmaking.js';
 import { fetchReleases } from './net/releases.js';
 import { closeSeat, init as roomInit, joinCode, joinName, joinRoom, resumeOnline, setJoinCode, setJoinName } from './net/room.js';
-import { chunkFailed, devAct, devAudio, devError, devOpen, devPulse, init as trackingInit, takeTag } from './net/tracking.js';
+import { chunkFailed, devAct, devAudio, devError, devOpen, devPulse, init as trackingInit, quitOnBoot, takeTag } from './net/tracking.js';
 import { devShort, ownerLink } from './net/owner.js';
-import { clockTimer, commit, setClockTimer, setMenuNote, state } from './ui/app.js';
+import { clockTimer, commit, save, setClockTimer, setMenuNote, state } from './ui/app.js';
 import { fetchAttConfig } from './ui/attention.js';
 import { setTuneVersions, setTunes } from './core/tune.js';
 import { AI_CLOCK } from './core/ai.js';
@@ -114,6 +114,7 @@ function boot() {
   if (link) devAct('invite-open');                             // (the growth events: a join link opened)
   const autoJoin = link ? roomLink(link) : null;
   if (link) tidyLink();                                       // handled once: a reload is not a second link
+  try { const nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0]; if (quitOnBoot(nav && nav.type)) save(); } catch (e) { /* (never worth a failed start) */ }   // a local match left behind by a close or reload: ended as 'closed' with its quit facts (net/tracking.js)
   if (state.screen !== 'join' && !joinAsk) freshVisit();      // a fresh visit: the main menu (a join link: joining, or its question over the match it would leave)
   const play = !link && playLink(url);                        // the empty-queue alert's link: straight into Find Match
   if (play) tidyLink();

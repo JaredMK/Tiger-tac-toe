@@ -147,6 +147,16 @@ async function mlLoad(key) {
   catch (e) { mlEvents[key] = 'error'; }
   render();
 }
+// "Export for analysis" (Matches, Why matches end early): every match in the filters as one row (src/admin/metrics.js
+// abandonRows: its mode, status, how it ended, its quit facts, the games played and dealt; no names, accounts or devices),
+// for scripts/abandon-report.js.
+function abExport() {
+  const rows = P.X.abandonRows(scopeOf()), blob = new Blob([JSON.stringify({ kind: 'ttc-abandon', exported: new Date().toISOString(), env: STAGING ? 'staging' : 'production', filters, rows }, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `abandon-${STAGING ? 'staging' : 'production'}-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
 async function mlExport(key) {
   await mlLoad(key);
   const blob = new Blob([JSON.stringify({ key, exported: new Date().toISOString(), summary: ((raw || {}).logIndex || {})[key] || null, events: Array.isArray(mlEvents[key]) ? mlEvents[key] : [] }, null, 1)], { type: 'application/json' });
@@ -1167,6 +1177,7 @@ app.addEventListener('click', e => {
   if (b.dataset.act === 'allowadd') { const i = document.getElementById('allowAdd'); allowEdit(b, i && i.value, true); return; }
   if (b.dataset.mlexport) { mlExport(b.dataset.mlexport); return; }
   if (b.dataset.retclear) { saveRetire(b, true); return; }
+  if (b.dataset.abexport) { abExport(); return; }
   if (b.dataset.act === 'google') signIn('google');
   else if (b.dataset.act === 'email') signIn('email');
   else if (b.dataset.act === 'signout') fb.authM.signOut(fb.auth);

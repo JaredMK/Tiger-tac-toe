@@ -22,8 +22,8 @@ const MODES = ['local', 'cpu', 'cvc', 'friend', 'match', 'bot', 'casual', 'ranke
 const CLIENT_MODES = ['local', 'cpu', 'cvc', 'chaos'];                 // the ones a phone reports; the server records the online ones itself
 const MAX_MS = 3 * 3600 * 1000;                                        // a match "lasting" longer was left and picked up again: no time for it
 const ENDS = ['won', 'draw', 'open'];
-const REASONS = ['line', 'blocked', 'majority', 'resign', 'timeout', 'both', 'clock', 'left'];   // left (December 2026): a local match left part way by a guest (no loss to record), abandoned   // clock: a match clock run out (core/board.js timeoutMove), a finish like any other   // both: a line each in the same Super Chaos round (a draw)
-const ABANDONED = ['resign', 'timeout', 'left'];                                // a match given up (or left to run out its clock): abandoned, not finished
+const REASONS = ['line', 'blocked', 'majority', 'resign', 'timeout', 'both', 'clock', 'left', 'closed'];   // closed (December 2026): a local match whose page or app was closed part way, reported when the device next opens it   // left (December 2026): a local match left part way by a guest (no loss to record), abandoned   // clock: a match clock run out (core/board.js timeoutMove), a finish like any other   // both: a line each in the same Super Chaos round (a draw)
+const ABANDONED = ['resign', 'timeout', 'left', 'closed'];                                // a match given up (or left to run out its clock): abandoned, not finished
 
 const pad = n => String(n).padStart(2, '0');
 // The day, ISO week and month of a time, in New York (and 'all', the all-time bucket).
@@ -86,8 +86,28 @@ function matchFacts(d) {
   if (d.mp === 'X' || d.mp === 'O') { out.mp = d.mp; if (count(d.mpn, 9999)) out.mpn = d.mpn; }
   if (d.tmo && typeof d.tmo === 'object' && count(d.tmo.X, 999) !== null && count(d.tmo.O, 999) !== null && d.tmo.X + d.tmo.O > 0) out.tmo = { X: d.tmo.X, O: d.tmo.O };
   if (Number.isInteger(d.ab) && d.ab >= -1 && d.ab <= 8) out.ab = d.ab;
+  const q = checkQuit(d.q);
+  if (q) out.q = q;
   return out;
 }
+// A match given up part way: its quit facts (src/core/quit.js quitFacts), kept only as they hold together: the reason, the
+// quitter's side, their squares less the other's, the other side at match point, the mini-game in front of them (a known
+// type, its square), each side's moves still needed there, the moves made, the ms since the last.
+const QUIT_REASONS = ['menu', 'closed', 'bg', 'reload', 'drop', 'timeout'];
+const QUIT_TYPES = new Set();
+function checkQuit(q) {
+  if (!q || typeof q !== 'object' || !QUIT_REASONS.includes(q.r) || (q.s !== 'X' && q.s !== 'O') || !Number.isInteger(q.d) || q.d < -9 || q.d > 9) return null;
+  const out = { r: q.r, s: q.s, d: q.d };
+  if (count(q.n, 9999) !== null) out.n = q.n;
+  if (q.mp === 1) out.mp = 1;
+  if (Number.isInteger(q.i) && q.i >= -1 && q.i <= 8) out.i = q.i;
+  if (typeof q.g === 'string' && /^[a-z0-9]{2,16}$/.test(q.g) && (!QUIT_TYPES.size || QUIT_TYPES.has(q.g)) && out.i >= 0) out.g = q.g;
+  if (Array.isArray(q.st) && q.st.length === 2 && q.st.every(v => Number.isFinite(v) && v >= 0 && v <= 99)) out.st = q.st.map(v => Math.round(v * 10) / 10);
+  if (Number.isFinite(q.idle) && q.idle >= 0 && q.idle <= 86400000) out.idle = Math.round(q.idle);
+  return out;
+}
+// The mini-game types the quit facts may name (the server sets the registry's once it loads: functions/index.js).
+function quitTypes(types) { QUIT_TYPES.clear(); for (const t of types || []) QUIT_TYPES.add(t); }
 // A runner square's run data as a phone reports it: runs and distances per side, the crash points.
 const RUN_BIN = 50, RUN_MAX_M = 5000, RUN_MAX_CRASHES = 40;
 function checkRun(r) {
@@ -124,7 +144,7 @@ function factEnd(sum, ms, t) {
     f: e.f === 'X' || e.f === 'O' ? e.f : undefined, ms: Number.isFinite(e.ms) ? Math.round(e.ms) : undefined, race: e.race ? 1 : undefined, run: e.run || undefined }, playFacts(e))));
   const mf = matchFacts(sum);
   return clean({ t1: t, end: REASONS.includes(sum.reason) ? sum.reason : 'line', w: sum.winner === 'X' || sum.winner === 'O' ? sum.winner : undefined, n: turns || undefined, ms: timed ? Math.round(ms) : undefined, sq: JSON.stringify(sq), sc: sum.sc ? true : undefined,
-    mp: mf.mp, mpn: mf.mpn, tmo: mf.tmo, ab: mf.ab });
+    mp: mf.mp, mpn: mf.mpn, tmo: mf.tmo, ab: mf.ab, q: mf.q });
 }
 // A match's setup (December 2026), kept on its row as one JSON string `su` at its start: av the mini-games the players could
 // have had (the setup's checklist; online, what both clients have and may play), ex the ones left out of it (av less the
@@ -256,5 +276,5 @@ const dayNum = d => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10)
 
 module.exports = {
   META_KEY, metaKey, metaFor, ownerOf, factWho, factStart, factEnd, factFind, factSetup, playFacts, matchFacts, FIND_KINDS, timerOf,
-  checkReport, reportText, REPORT_WHERE, MODES, STEPS, ACTS, CHANNELS, dayNum, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, hashId, idOk, checkEnd, checkRun, RUN_BIN,
+  checkReport, reportText, REPORT_WHERE, checkQuit, quitTypes, QUIT_REASONS, MODES, STEPS, ACTS, CHANNELS, dayNum, CLIENT_MODES, MAX_MS, ABANDONED, TZ, localDate, periodKeys, hashId, idOk, checkEnd, checkRun, RUN_BIN,
   DEV_EVENTS, DEV_MODES, TAG_RE, tagOk, devHash, checkDev };

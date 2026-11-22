@@ -361,3 +361,11 @@ test('Remove from rotation: a date everywhere and one for iOS on a game\'s Relea
   assert.equal(db.writes.length, 0, 'no day: nothing written');
   assert.doesNotMatch(draw('#games'), /href="#games\/war">[^<]*<\/a><\/td>/, 'cleared: off the list');
 });
+test('Matches: "Why matches end early" with its tables and the export for analysis', () => {
+  A.ctl = ctl0();
+  const html = draw('#matches');
+  assert.match(html, /id="abandonCard"><h2>Why matches end early/);
+  for (const id of ['abWhy', 'abMode', 'abGame', 'abPos', 'abStage']) assert.match(html, new RegExp(`data-t(?:able|id)?="${id}"|id="${id}"|"${id}"`), id);
+  assert.match(html, /data-abexport="1"/);
+  assert.ok(html.indexOf('id="abandonCard"') < html.lastIndexOf('<h2>Every match</h2>'), 'above the list of every match');
+});

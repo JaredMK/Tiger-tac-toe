@@ -168,7 +168,31 @@ export function matches(ctx) {
   return `${filterBar(ctx)}${kpis(ctx, ['started', 'finished', 'abandoned', 'unfinished', 'completion', 'turns', 'minutes', 'firstPlayer'])}
     <div class="card"><h2>Matches started per day</h2>${matchChart(ctx)}</div>
     <div class="card"><h2>Length and completion, by mode and timer</h2>${T.html('len', lenCols, X.lengthRows(ctx.S), ctx.ts('len', { sort: { k: 'started', dir: -1 } }))}</div>
+    ${abandonCard(ctx)}
     <div class="card"><h2>Every match</h2>${matchTable(ctx, 'matches', ctx.S.matches(), null, { note: 'Tap a row for the match: its players, its squares and its event log (online matches, and any match a player reported; logs are kept 30 days).' })}</div>`;
+}
+// Why matches end early (December 2026): the matches given up part way or never finished, under every filter: how they
+// ended, by mode, by the mini-game in front of the quitter against how often it is played, by the quitter's board position,
+// by the stage (moves made). Counted by metrics.js abandonRows / abandonReport, the same as scripts/abandon-report.js.
+export function abandonCard(ctx) {
+  const R = X.abandonReport(X.abandonRows(ctx.S)), pc = v => (v == null ? '–' : Math.round(v * 100) + '%');
+  const quitRows = id => R.rows.filter(id);
+  const wCols = [C('label', 'How it ended', r => r.label), C('quits', 'Matches', r => r.quits, { num: true, html: r => drillLink(ctx, 'ab:' + r.why, r.label, 'matches', ctx.S.matches().filter(m => quitRows(x => x.why === r.why).some(x => x.id === m.id)), r.quits) }), C('share', 'Share', r => Math.round(100 * r.quits / (R.quits || 1)), { num: true }), C('idle', 'Idle before (median)', r => (r.idle == null ? null : Math.round(r.idle / 1000)), { num: true, html: r => esc(dur(r.idle)) || '–', tip: 'The time from the last move made to the quit (quit facts only)' })];
+  const mCols = [C('mode', 'Mode', r => X.MODE_LABEL[r.mode] || r.mode), C('started', 'Matches', r => r.started, { num: true }), C('quits', 'Given up', r => r.quits, { num: true }), C('abandoned', 'Abandoned', r => r.abandoned, { num: true }), C('unfinished', 'Never finished', r => r.unfinished, { num: true }), C('rate', 'Given up %', r => (r.rate == null ? null : Math.round(r.rate * 100)), { num: true })];
+  const gCols = [C('name', 'Mini-game', r => ctx.names[r.t] || r.t, { html: r => `<a href="#games/${esc(r.t)}">${esc(ctx.names[r.t] || r.t)}</a>` }), C('played', 'Matches played in', r => r.played, { num: true }), C('quits', 'Quits on it', r => r.quits, { num: true, tip: 'Quits with this game in front of the quitter (the square on screen, held, or last played)' }),
+    C('rate', 'Quit %', r => (r.rate == null ? null : Math.round(r.rate * 100)), { num: true, tip: 'Quits on it, of the matches it was played in' }), C('lift', 'Over-represented', r => (r.lift == null ? null : Math.round(r.lift * 100) / 100), { num: true, tip: 'Its share of the quits over its share of the plays: above 1, quits gather on it more than its play would explain' })];
+  const pCols = [C('pos', 'The quitter on the board', r => ({ behind: 'Behind', level: 'Level', ahead: 'Ahead' }[r.pos])), C('quits', 'Quits', r => r.quits, { num: true }), C('share', 'Share', r => Math.round(100 * r.quits / (R.withPos || 1)), { num: true }), C('derived', 'Of them from the row alone', r => r.derived, { num: true, tip: 'Matches from before the quit facts: the quitter and the squares read from the row (no match point)' }), C('mp', 'The other side at match point', r => r.mp, { num: true })];
+  const sCols = [C('label', 'Stage', r => r.label), C('quits', 'Quits', r => r.quits, { num: true }), C('finishedAt', 'Finished matches that long', r => r.finishedAt, { num: true, tip: 'Finished matches with that many moves: the length a match usually reaches' })];
+  const sq = R.inSquare, sqN = sq.behind + sq.level + sq.ahead;
+  return `<div class="card" id="abandonCard"><h2>Why matches end early ${tipIcon('abandoned')}</h2>
+    <p class="note">${R.quits} of ${R.started} matches (${pc(R.rate)}) were given up: ${R.abandoned} abandoned, ${R.unfinished} never finished. ${R.detail} of them carry the quit facts (from December 2026: how it ended, the board, the mini-game, the moves); the rest say only their mode and how their row ended.${R.idleMed != null ? ` Median time since the last move: ${esc(dur(R.idleMed))}.` : ''}</p>
+    <h3>How it ended</h3>${T.html('abWhy', wCols, R.byWhy, ctx.ts('abWhy', { sort: { k: 'quits', dir: -1 } }), { bare: true })}
+    <h3>By mode</h3>${T.html('abMode', mCols, R.byMode, ctx.ts('abMode', { sort: { k: 'started', dir: -1 } }), { bare: true })}
+    <h3>By mini-game</h3>${T.html('abGame', gCols, R.byGame.filter(r => r.played || r.quits), ctx.ts('abGame', { sort: { k: 'quits', dir: -1 } }), { bare: true, note: 'Against how often each game is played: a game that is simply common gathers quits too, the Over-represented column allows for that. Small numbers say little.' })}
+    <h3>The quitter's board position</h3>${T.html('abPos', pCols, R.byPos, ctx.ts('abPos'), { bare: true, note: sqN ? `In the square in front of them: behind ${sq.behind}, level ${sq.level}, ahead ${sq.ahead} (moves still needed, theirs against the other side's).` : '' })}
+    ${R.byAfter.length ? `<h3>Local matches never finished, before the quit facts: what came next on the device</h3>${T.html('abAfter', [C('label', 'Next on that device', r => r.label), C('quits', 'Matches', r => r.quits, { num: true }), C('err', 'With an error logged in the match', r => r.err, { num: true })], R.byAfter, ctx.ts('abAfter', { sort: { k: 'quits', dir: -1 } }), { bare: true, note: 'Read from each device\'s own events (a guess, not a record): a local match lives on its device alone, so a page reloaded, closed or an app killed part way leaves it unfinished.' })}` : ''}
+    <h3>By stage</h3>${T.html('abStage', sCols, R.byStage, ctx.ts('abStage'), { bare: true })}
+    <div class="row"><button class="btn sm" data-abexport="1">Export for analysis (JSON)</button><span class="note" style="margin:0">Every match in the filters as one row: no names or device IDs.</span></div></div>`;
 }
 export function match(ctx, id) {
   const m = ctx.S.M.matches.find(x => x.id === id);

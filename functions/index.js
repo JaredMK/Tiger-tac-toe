@@ -90,6 +90,7 @@ try { E.setTriviaBank(require('./trivia.json')); } catch (e) { logger.warn('triv
 try { E.setPhysics(makePhysics(require('matter-js'))); } catch (e) { logger.warn('Matter.js missing: Mini Golf, Pool and Bowling are not dealt'); }   // (src/games/shared/physics-sim.js, as the page runs it)
 const R = require('./serverRules.js');
 const S = require('./statsRules.js');
+S.quitTypes(E.TYPES.concat(E.OLD_TYPES));   // (the mini-games a match's quit facts may name)
 const B = require('./bots.js');
 const ML = require('./matchLogRules.js');
 
@@ -338,7 +339,11 @@ exports.track = onCall(CALL, async req => {
     const c = await claimMatch(id, 'e', t);
     if (!c) return { ok: true, seen: true };
     const started = !!(c.prev && c.prev.s), ms = started ? t - c.prev.t0 : Number(d.ms), t0 = started ? c.prev.t0 : t - (Number.isFinite(ms) && ms > 0 && ms <= S.MAX_MS ? ms : 0);
-    await db.ref(factPath(t0, id)).update(Object.assign(started ? {} : start(t0), S.factEnd(sum, ms, t), own ? { own: true } : {}));   // (a start never reported: its row is made now)
+    await db.ref(factPath(t0, id)).update(Object.assign(started ? {} : start(t0), { q: null }, S.factEnd(sum, ms, t), own ? { own: true } : {}));   // (a start never reported: its row is made now; quit facts from a time in the background go unless the end brings its own)
+  } else if (d.ev === 'quit') {                                    // a local match sent to the background part way (net/tracking.js quitHide): its quit facts kept on the row until it ends, so a player who never comes back still says why
+    const q = S.checkQuit(d.q), seen = (await db.ref(`statsSeen/match/${id}`).get()).val();
+    if (!q || !seen || seen.e || !Number.isFinite(seen.t0)) return { ok: true, seen: true };
+    await db.ref(`${factPath(seen.t0, id)}/q`).set(q);
   } else throw new HttpsError('invalid-argument', 'Not an event.');
   await seenNow([who], t);
   return { ok: true };
@@ -1047,7 +1052,7 @@ async function dropCheck(id, t, pres) {
   const gone = ['X', 'O'].find(s => p[s] && p[s].online === false && Number(p[s].at) > 0 && t - Number(p[s].at) >= DROP_RESIGN_MS);
   if (!gone) return false;
   if ((await db.ref(`games/${id}/pub/status`).get()).val() !== 'playing') return false;   // (a match over, its presence kept until it goes)
-  const r = await changeGame(id, null, (rec, side, pub) => (pub && pub.chaos ? { ok: false, reason: 'chaos' } : E.applyOnlineResign(rec, gone)), 'resign');
+  const r = await changeGame(id, null, (rec, side, pub) => (pub && pub.chaos ? { ok: false, reason: 'chaos' } : E.applyOnlineResign(rec, gone, 'drop')), 'resign');
   if (r && r.ok) logger.info('drop: resigned', id, gone);
   return !!(r && r.ok);
 }
@@ -1317,7 +1322,12 @@ async function finishGame(id) {
   up[`games/${id}/dl`] = null;
   const humans = ['X', 'O'].filter(s => !(bg && pub.players[s].uid === bg.bot)).map(s => pub.players[s].uid);
   const own = await anyOwner(humans).catch(() => false);           // a match with the owner in it (an admin account or an owner device): marked on its row
-  factEndPaths(pub.created || t, id, E.matchStats(st), t - (pub.created || t), t, own, up);   // the match's row: its result, length and squares
+  const sum = E.matchStats(st);
+  if (!pub.chaos && (st.winReason === 'resign' || st.winReason === 'timeout') && (st.winner === 'X' || st.winner === 'O')) {   // given up part way: the quit facts (core/quit.js), from the record
+    const q = E.quitFacts(st, st.resigned || E.other(st.winner), st.quitBy === 'drop' ? 'drop' : st.winReason === 'timeout' ? 'timeout' : 'menu', t);
+    if (q) sum.q = q;
+  }
+  factEndPaths(pub.created || t, id, sum, t - (pub.created || t), t, own, up);   // the match's row: its result, length and squares
   up[`${factPath(pub.created || t, id)}/t0`] = pub.created || t; up[`${factPath(pub.created || t, id)}/m`] = bg ? 'bot' : pub.mode;   // (as its start wrote them: a match under way when rows began still has a whole row)
   if (bg) {
     Object.assign(up, { [`botGames/${id}/live`]: null, [`botGames/${id}/next`]: null, [`botGames/${id}/done`]: true, [`botGames/${id}/winner`]: st.winner || null });

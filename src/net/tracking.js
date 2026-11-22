@@ -2,12 +2,13 @@
 import { dropParam, reloadOnce, startLink } from './platform.js';
 import { playerName } from '../core/match.js';
 import { matchStats } from '../core/stats.js';
+import { quitFacts } from '../core/quit.js';
 import { other } from '../core/util.js';
 import { acct, connectQuiet, hadAccount, loggedIn, unverified } from './accounts.js';
 import { call, configured, fb } from './connect.js';
 import { isMM } from './matchmaking.js';
 import { setupTypes } from '../ui/screens/setup.js';
-import { state } from '../ui/app.js';
+import { save, state } from '../ui/app.js';
 import { APP_VERSION, KEY } from '../ui/config.js';
 
 // ----- anonymous game stats: local matches are reported to the server's `track` function (online
@@ -122,9 +123,47 @@ export function helpByPlay(squares, g) {
   }
   return out;
 }
-// The square on this phone's screen when it left the match (-1: the board), noted as it goes (net/room.js quitMatch).
+// The square on this phone's screen when it left the match (-1: the board), noted as it goes (net/room.js quitMatch), with
+// the match's quit facts as it stood (core/quit.js: the abandonment data; a local match's ride its end report).
 let leftOn = null;
-export function noteLeave() { leftOn = { g: matchKeyNow(), sq: state.screen === 'mini' && Number.isInteger(state.zoom) ? state.zoom : -1 }; }
+const onScreen = () => (state.screen === 'mini' && Number.isInteger(state.zoom) ? state.zoom : -1);
+// The side giving up on this phone: against the computer its player's; on one phone the side on the move; online this phone's.
+const quitSide = () => (state.online ? state.online.me : humanSide() || state.turn);
+const quitNow = (reason, at) => { try { return quitFacts(state, quitSide(), reason, at || Date.now(), onScreen()); } catch (e) { return null; } };
+export function noteLeave() { leftOn = { g: matchKeyNow(), sq: onScreen(), q: state.online ? null : quitNow('menu') }; }
+// ---------- a local match given up without the menu (December 2026, the abandonment data) ----------
+// A local match lives on this device alone: a page closed, reloaded or an app killed part way leaves it, never to be
+// resumed (a fresh visit opens the menu). So the page notes the moments: sent to the background (`hid`, and the match's quit
+// facts sent at once, `quit`, so a player who never comes back still says how far they got), back in front (cleared), the
+// page going away (`ph`); and the next time it opens, a match still under way from before is ended as 'closed' with its
+// quit facts (`quitOnBoot`): r 'reload' for a reload, 'bg' when it went to the background and never came back to the
+// front, else 'closed'. Practice, Super Chaos and the computer against itself are never reported.
+const liveLocal = () => !state.online && !state.practice && !state.winner && state.stats && state.stats.id && !state.stats.sent && ['cpu', 'local'].includes(state.stats.mode) && Array.isArray(state.squares) && state.squares.length === 9;
+export function quitHide() {
+  if (!liveLocal()) return;
+  const t = Date.now(), s = state.stats;
+  s.hid = t;
+  if (s.qn !== state.moves) {                                     // (once per stretch of play: a match put away twice without a move between says it once)
+    const q = quitNow('bg', t);
+    if (q) { s.qn = state.moves; track({ ev: 'quit', mode: s.mode, id: s.id, q }); }
+  }
+  saveNow();
+}
+export function quitShow() { if (state.stats && state.stats.hid) { delete state.stats.hid; saveNow(); } }
+export function quitPageHide() { if (liveLocal()) { state.stats.ph = Date.now(); saveNow(); } }
+const saveNow = () => { try { save(); } catch (e) { /* no storage */ } };
+export function quitOnBoot(navType) {
+  if (!liveLocal()) return null;
+  const s = state.stats, hid = Number(s.hid) || 0, ph = Number(s.ph) || 0;
+  const reason = navType === 'reload' ? 'reload' : hid && (!ph || ph - hid > 3000) ? 'bg' : 'closed';
+  const at = ph || hid || Number(state.lastAt) || Date.now();
+  let q = null;
+  try { q = quitFacts(state, quitSide(), reason, at, state.screen === 'mini' && Number.isInteger(state.zoom) ? state.zoom : -1); } catch (e) { q = null; }
+  s.sent = true;
+  endReport('closed', q);
+  delete s.hid; delete s.ph;
+  return q;
+}
 const leftAt = g => (leftOn && leftOn.g === g ? leftOn.sq : undefined);
 export function trackStart() {
   if (state.online || state.practice) return;
@@ -133,12 +172,13 @@ export function trackStart() {
   helps = [];
   track({ ev: 'start', mode: state.stats.mode, id, side: humanSide(), setup: localSetup() });
 }
-function endReport(reason) {
+function endReport(reason, quit) {
   const s = state.stats, m = matchStats(state), g = 'l' + s.id;
+  const q = quit || (leftOn && leftOn.g === g && leftOn.q && (reason === 'left' || state.winReason === 'resign') ? leftOn.q : null);   // (given up through the menu: the facts as it was left)
   const hp = helpByPlay(m.squares, g);
   for (const e of m.squares) { const h = hp[e.k]; if (h) { if (h.X) e.hX = h.X; if (h.O) e.hO = h.O; } }
   track(Object.assign({ ev: 'end', mode: s.mode, id: s.id, side: humanSide(), turns: m.turns, winner: reason ? null : m.winner, reason: reason || m.reason, sc: m.sc, squares: m.squares },
-    m.mp ? { mp: m.mp, mpn: m.mpn } : {}, m.tmo ? { tmo: m.tmo } : {}, leftAt(g) !== undefined ? { ab: leftAt(g) } : {}));
+    m.mp ? { mp: m.mp, mpn: m.mpn } : {}, m.tmo ? { tmo: m.tmo } : {}, leftAt(g) !== undefined ? { ab: leftAt(g) } : {}, q ? { q } : {}));
   helps = helps.filter(h => h.g !== g);
 }
 export function trackEnd() {
@@ -404,7 +444,9 @@ export function init() {
   document.addEventListener('visibilitychange', () => {   // back after half an hour away: a new visit
     if (document.visibilityState === 'visible' && devLast && Date.now() - devLast > 30 * 60000) devOpen();
     if (document.visibilityState === 'visible') flushOutbox();   // reports still waiting go now
+    if (document.visibilityState === 'hidden') quitHide(); else quitShow();   // (a local match put away part way: the abandonment data)
   });
+  window.addEventListener('pagehide', quitPageHide);
   window.addEventListener('online', () => flushOutbox());
   if (outbox().length) setTimeout(flushOutbox, 3000);          // reports left from before (the page closed, offline): sent once the page has started
 }

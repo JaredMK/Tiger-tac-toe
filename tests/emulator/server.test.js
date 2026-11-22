@@ -2332,6 +2332,8 @@ test('disconnects: offline 2 minutes in a row resigns the match (sweep and tick)
   await recorded(g.id);
   const st = await gameState(g.id), pub = await get(`games/${g.id}/pub`);
   assert.deepEqual([st.winner, st.winReason, st.resigned], ['X', 'resign', 'O']);
+  const fq = (await factsNow())[g.id].q;                             // (December 2026: the abandonment data, core/quit.js)
+  assert.deepEqual([fq.r, fq.s, fq.d], ['drop', 'O', 0], 'its row: given up by a disconnect, the quitter level on the board');
   assert.equal(pub.result.how, 'resign');
   assert.deepEqual(pub.result.records.O, { wins: 0, losses: 1, draws: 0 }, 'a loss on the record');
   // the waiting phone's tick does it too, without the sweep
@@ -2342,6 +2344,26 @@ test('disconnects: offline 2 minutes in a row resigns the match (sweep and tick)
   const hs = await until(async () => { const v = await gameState(h.id); return v.winner ? v : null; }, 10000, 'the tick resigned the gone player');
   assert.deepEqual([hs.winner, hs.winReason, hs.resigned], ['X', 'resign', 'O']);
   await recorded(h.id);
+});
+
+// The abandonment data (December 2026): a local match sent to the background part way keeps its quit facts on its row until
+// it ends (track 'quit'); an end with facts of its own ('closed', the next open) replaces them, an end without clears them.
+test('quit facts: a local match put away part way keeps them on its row; its end keeps or clears them; nonsense is not kept', async () => {
+  const guest = await player(null, { anonymous: true }), dev = 'dquit' + Date.now(), id = 'q' + Date.now(), id2 = 'q2' + Date.now();
+  const q = { r: 'bg', s: 'X', d: -1, n: 7, g: 'ttt', i: 4, st: [2, 1], idle: 5000 };
+  await guest.call('track', { ev: 'start', mode: 'cpu', id, dev, side: 'X' });
+  assert.deepEqual(await guest.call('track', { ev: 'quit', mode: 'cpu', id, dev, q }), { ok: true });
+  assert.deepEqual((await factsNow())['l_' + id].q, q, 'kept while it has no end');
+  await guest.call('track', { ev: 'end', mode: 'cpu', id, dev, side: 'X', winner: null, reason: 'closed', squares: [], q: Object.assign({}, q, { r: 'reload' }) });
+  const r = (await factsNow())['l_' + id];
+  assert.deepEqual([r.end, r.q.r], ['closed', 'reload'], 'ended as closed, its own facts');
+  assert.deepEqual(await guest.call('track', { ev: 'quit', mode: 'cpu', id, dev, q }), { ok: true, seen: true }, 'ended: a late quit changes nothing');
+  await guest.call('track', { ev: 'start', mode: 'cpu', id: id2, dev, side: 'X' });
+  await guest.call('track', { ev: 'quit', mode: 'cpu', id: id2, dev, q: { r: 'bg', s: 'Q', d: 0 } });
+  assert.equal((await factsNow())['l_' + id2].q, undefined, 'facts that do not hold together: not kept');
+  await guest.call('track', { ev: 'quit', mode: 'cpu', id: id2, dev, q });
+  await guest.call('track', { ev: 'end', mode: 'cpu', id: id2, dev, side: 'X', winner: 'X', reason: 'line', squares: [{ t: 'ttt', end: 'won', w: 'X', X: 3, O: 2 }] });
+  assert.equal((await factsNow())['l_' + id2].q, undefined, 'played on to a finish: the facts from the time away go');
 });
 
 /* ===================================== the admin's numbers, from the rows this run wrote ===================================== */
@@ -2359,7 +2381,7 @@ test('the admin\'s numbers: built from the rows the server wrote; each headline 
   assert.equal(M.matches.length, rows.length);
   for (const mine of [false, true]) {
     const S = X.scope(M, { range: '7', mine }), v = id => X.metric(S, id).v, n = id => X.metric(S, id).rows.length;
-    const ms = rows.filter(r => mine || !r.own), ended = ms.filter(r => r.t1), fin = ended.filter(r => !['resign', 'timeout'].includes(r.end));
+    const ms = rows.filter(r => mine || !r.own), ended = ms.filter(r => r.t1), fin = ended.filter(r => !X.ABANDONED.includes(r.end));   // (resigned or left, two missed turns, a local match closed part way)
     assert.equal(v('started'), ms.length, 'matches started'); assert.equal(v('finished'), fin.length, 'matches finished'); assert.equal(v('abandoned'), ended.length - fin.length, 'abandoned');
     assert.equal(v('squares'), fin.filter(r => !r.sc).flatMap(r => JSON.parse(r.sq)).filter(e => e.end === 'won').length, 'completed squares');
     const fs = Object.values(finds || {}).flatMap(d => Object.values(d)).filter(r => mine || !r.own);

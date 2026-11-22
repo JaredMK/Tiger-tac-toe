@@ -10,11 +10,11 @@
 
 export const GAP = 30 * 60000;                 // a session ends after this long with nothing from the device
 export const LIVE_MS = 3 * 3600000;            // a match started this long ago and never ended was left unfinished
-export const ABANDONED = ['resign', 'timeout', 'left'];
+export const ABANDONED = ['resign', 'timeout', 'left', 'closed'];   // (closed, December 2026: a local match whose page or app went away part way, reported when the device next opens)
 export const MODE_GROUP = { cpu: 'cpu', local: 'friend', friend: 'friend', match: 'find', bot: 'find', casual: 'find', ranked: 'find', chaos: 'other', cvc: 'other' };
 export const GROUP_LABEL = { cpu: 'vs Computer', friend: 'Friend', find: 'Find Match', other: 'Other' };
 export const MODE_LABEL = { cpu: 'vs Computer', local: 'Same phone', friend: 'Friend room', match: 'Find Match', bot: 'Find Match (took the computer)', chaos: 'Super Chaos', cvc: 'Computer vs computer' };
-export const END_LABEL = { line: 'Three in a row', blocked: 'Draw', majority: 'Majority', both: 'Draw', clock: 'Clock ran out', resign: 'Resigned', timeout: 'Two missed turns', left: 'Left part way' };
+export const END_LABEL = { line: 'Three in a row', blocked: 'Draw', majority: 'Majority', both: 'Draw', clock: 'Clock ran out', resign: 'Resigned', timeout: 'Two missed turns', left: 'Left part way', closed: 'Closed part way' };
 export const RETAIN = [1, 7, 30];
 export const FLAG_MOVES = 6, FLAG_SAMPLE = 30;
 
@@ -28,7 +28,7 @@ export const DEFS = {
   sessionLen: ['Median session', 'The middle session length, first event to last.'],
   started: ['Matches started', 'Matches started in the range. A match on two phones counts once.'],
   finished: ['Matches finished', 'Matches played to a result: three in a row, a draw, a majority, or a clock that ran out.'],
-  abandoned: ['Abandoned', 'Matches a player resigned or lost by missing two turns.'],
+  abandoned: ['Abandoned', 'Matches a player gave up part way: resigned or left through the menu, two missed turns, or (a local match) the page or app closed part way.'],
   unfinished: ['Never finished', 'Matches started more than 3 hours ago that never ended: left, or the game was closed.'],
   completion: ['Completion', 'Matches finished, of the matches started (those still being played left out).'],
   turns: ['Median turns', 'The middle number of turns in a finished match, both sides together. A bonus move within a turn counts once.'],
@@ -203,6 +203,7 @@ export function build(data, now = Date.now()) {
       m.status = m.t1 ? (ABANDONED.includes(m.end) ? 'abandoned' : 'finished') : now - m.t0 > LIVE_MS ? 'unfinished' : 'playing';
       try { m.su = r.su ? JSON.parse(r.su) : null; } catch (e) { m.su = null; }   // (its setup, December 2026: factSetup)
       m.mp = r.mp || null; m.ab = Number.isInteger(r.ab) ? r.ab : null; m.tmo = r.tmo || null;
+      m.q = r.q && typeof r.q === 'object' && m.status !== 'finished' ? r.q : null;   // (its quit facts, December 2026: src/core/quit.js; a finished match has none)
       m.logKey = id.startsWith('l_') ? 'l' + id.slice(2) : 'm' + id;
       const ix = logIndex[m.logKey];
       m.log = ix ? { n: ix.n || 0, reported: ix.reported || 0, note: ix.note || '', vers: ix.vers || '' } : null;
@@ -487,4 +488,76 @@ export function personGames(p) {
     for (const e of m.sq) { if (!by.has(e.t)) by.set(e.t, { t: e.t, played: 0, won: 0, lost: 0 }); const r = by.get(e.t); r.played++; if (e.end === 'won' && side) { if (e.w === side) r.won++; else r.lost++; } }
   }
   return [...by.values()].sort((a, b) => b.played - a.played);
+}
+
+// ---------- abandonment (December 2026): the matches given up part way, and why ----------
+// A quit is a match that was abandoned (resigned or left through the menu, two missed turns, a local match closed part
+// way) or never finished (no end 3 hours after its start). Its row's quit facts (`q`, src/core/quit.js, from December 2026)
+// say how it ended (r), the quitter's side and board position (d: their squares less the other's; mp: the other side one
+// square from the match), the mini-game in front of them and each side's moves still needed there (g, i, st), the moves
+// made (n) and the time since the last (idle). A quit from before them says only what its row has (its mode and end).
+// One flat row per match (abandonRows: also the admin's "Export for analysis") and one aggregate over them (abandonReport),
+// so the page and scripts/abandon-report.js count alike.
+export const QUIT_LABEL = { menu: 'Left through the menu', closed: 'Page or app closed', bg: 'Sent to the background, never back', reload: 'Page reloaded', drop: 'Disconnected (offline 2 min)', timeout: 'Two missed turns', unknown: 'No detail (before the quit facts)' };
+export const STAGES = [['0', 'No move', 0, 0], ['1-5', '1–5 moves', 1, 5], ['6-15', '6–15 moves', 6, 15], ['16-30', '16–30 moves', 16, 30], ['31+', '31+ moves', 31, Infinity]];
+const stageOf = n => (Number.isInteger(n) ? STAGES.find(([, , lo, hi]) => n >= lo && n <= hi)[0] : null);
+const posName = d => (!Number.isInteger(d) ? null : d < 0 ? 'behind' : d > 0 ? 'ahead' : 'level');
+// An abandoned match from before the quit facts, as far as its row says: the quitter (the side that lost it, else the one
+// player on the phone), their squares less the other's (its plays won), the mini-game on the leaver's screen (ab) or
+// the last play left open, the moves made. Marked `derived` (no reason, no idle time, no state of the square).
+function fromRow(m) {
+  const human = m.who.find(w => !w.bot && (w.s === 'X' || w.s === 'O'));
+  const s = m.w === 'X' ? 'O' : m.w === 'O' ? 'X' : human ? human.s : null;
+  if (!s) return null;
+  const won = p => m.sq.filter(e => e.end === 'won' && e.w === p).length, o = s === 'X' ? 'O' : 'X';
+  const open = m.sq.filter(e => e.end === 'open'), at = Number.isInteger(m.ab) && m.ab >= 0 ? open.find(e => e.i === m.ab) : null;
+  const last = at || open.slice().sort((a, b) => (a.k || 0) - (b.k || 0)).pop();
+  return Object.assign({ s, d: won(s) - won(o), n: m.turns || m.sq.reduce((a, e) => a + (e.X || 0) + (e.O || 0), 0), derived: 1 }, last ? { g: last.t, i: last.i } : {});
+}
+// A quit from before the quit facts, read from its device's own events (devlog: the phone logs a match's start with its key):
+// what came next on that device: 'reopened' (the game opened again within 2 minutes of the device's last event: a reload
+// or a relaunch), 'later' (opened again later: the match was gone by then), 'gone' (never seen again), and any error the
+// phone logged in that match. A guess, labelled as one wherever it is shown.
+export const AFTER_LABEL = { reopened: 'Opened again at once (reload or relaunch)', later: 'Came back later', gone: 'Never came back', none: 'No device events' };
+function afterQuit(S, m) {
+  const g = m.logKey, w = m.who.find(x => x.h && !x.bot), dev = w && S.M.devs.get(w.h);
+  if (!dev) return { after: 'none', err: 0 };
+  const evs = dev.evs, i = evs.findIndex(e => e.ev === 'start' && e.g === g);
+  const from = i >= 0 ? i : evs.findIndex(e => e.t >= m.t0);
+  if (from < 0) return { after: 'gone', err: 0 };
+  const err = evs.filter(e => e.ev === 'error' && e.g === g).length;
+  const k = evs.findIndex((e, j) => j > from && e.ev === 'open');
+  if (k < 0) return { after: 'gone', err };
+  return { after: evs[k].t - evs[k - 1].t <= 120000 ? 'reopened' : 'later', err, gap: evs[k].t - evs[k - 1].t };
+}
+export function abandonRows(S) {
+  return S.matches().filter(m => m.status !== 'playing').map(m => {
+    const quit = m.status === 'abandoned' || m.status === 'unfinished', q = m.q || (quit && m.t1 && m.status === 'abandoned' ? fromRow(m) : null);
+    const why = !quit ? null : q && q.r ? q.r : m.end === 'timeout' ? 'timeout' : m.end === 'left' ? 'menu' : m.end === 'resign' && !m.id.startsWith('l_') ? 'unknown' : m.end === 'resign' ? 'menu' : 'unknown';
+    const last = m.sq.length ? m.sq.slice().sort((a, b) => (a.k || 0) - (b.k || 0))[m.sq.length - 1] : null;
+    return { id: m.id, day: m.day, t0: m.t0, mode: m.mode, group: m.group, status: m.status, end: m.end, quit, why, side: q ? q.s : null, d: q && Number.isInteger(q.d) ? q.d : null, pos: q ? posName(q.d) : null, mp: q && q.mp ? 1 : 0,
+      g: q && q.g ? q.g : quit && last && last.end === 'open' ? last.t : null, st: q && q.st ? q.st : null, n: q && Number.isInteger(q.n) ? q.n : m.t1 ? m.turns : null, idle: q && Number.isFinite(q.idle) ? q.idle : null, detail: !!q && !q.derived, derived: !!(q && q.derived),
+      plays: m.sq.map(e => e.t), dealt: m.su && Array.isArray(m.su.b) ? m.su.b : [], own: m.own, ...(quit && !q && m.status === 'unfinished' && m.id.startsWith('l_') ? afterQuit(S, m) : {}) };
+  });
+}
+export function abandonReport(rows) {
+  const all = rows.filter(r => r.status !== 'playing'), quits = all.filter(r => r.quit), withQ = quits.filter(r => r.detail), withPos = quits.filter(r => r.pos);
+  const count = (list, key) => { const o = {}; for (const r of list) { const k = key(r); if (k != null) o[k] = (o[k] || 0) + 1; } return o; };
+  // by mode: started (ended or left), quits, the share
+  const byMode = Object.entries(count(all, r => r.mode)).map(([mode, n]) => { const q = quits.filter(r => r.mode === mode).length; return { mode, started: n, quits: q, rate: ratio(q, n), abandoned: quits.filter(r => r.mode === mode && r.status === 'abandoned').length, unfinished: quits.filter(r => r.mode === mode && r.status === 'unfinished').length }; });
+  // by mini-game: the quits with that game in front of the quitter, against the matches it was played in (a play in its row,
+  // or the game a quit names); over-represented when its share of the quits is above its share of the matches
+  const playedIn = {}; for (const r of all) for (const t of new Set(r.plays.concat(r.quit && r.g ? [r.g] : []))) playedIn[t] = (playedIn[t] || 0) + 1;
+  const quitOn = count(quits, r => r.g), totalQ = Object.values(quitOn).reduce((a, b) => a + b, 0), totalP = Object.values(playedIn).reduce((a, b) => a + b, 0);
+  const byGame = Object.keys(Object.assign({}, playedIn, quitOn)).map(t => ({ t, quits: quitOn[t] || 0, played: playedIn[t] || 0, rate: ratio(quitOn[t] || 0, playedIn[t] || 0), lift: totalQ && totalP && playedIn[t] ? ((quitOn[t] || 0) / totalQ) / (playedIn[t] / totalP) : null }));
+  // by board position (quits with facts), by stage (moves made), by reason
+  const byPos = ['behind', 'level', 'ahead'].map(k => ({ pos: k, quits: withPos.filter(r => r.pos === k).length, derived: withPos.filter(r => r.pos === k && r.derived).length, mp: withPos.filter(r => r.pos === k && r.mp).length }));
+  const stageQ = count(quits, r => stageOf(r.n)), stageF = count(all.filter(r => !r.quit), r => stageOf(r.n));
+  const byStage = STAGES.map(([k, label]) => ({ stage: k, label, quits: stageQ[k] || 0, finishedAt: stageF[k] || 0 }));
+  const byWhy = Object.entries(count(quits, r => r.why)).map(([why, n]) => ({ why, label: QUIT_LABEL[why] || why, quits: n, idle: quant(quits.filter(r => r.why === why && Number.isFinite(r.idle)).map(r => r.idle), 0.5) }));
+  const legacy = quits.filter(r => r.after);
+  const byAfter = Object.entries(count(legacy, r => r.after)).map(([after, n]) => ({ after, label: AFTER_LABEL[after] || after, quits: n, err: legacy.filter(r => r.after === after && r.err).length }));
+  const behindAt = withQ.filter(r => r.st && r.st[0] > r.st[1]).length, aheadAt = withQ.filter(r => r.st && r.st[0] < r.st[1]).length, evenAt = withQ.filter(r => r.st && r.st[0] === r.st[1]).length;
+  return { started: all.length, quits: quits.length, rate: ratio(quits.length, all.length), detail: withQ.length, withPos: withPos.length, abandoned: quits.filter(r => r.status === 'abandoned').length, unfinished: quits.filter(r => r.status === 'unfinished').length,
+    byMode, byGame, byPos, byStage, byWhy, byAfter, errs: quits.filter(r => r.err).length, inSquare: { behind: behindAt, level: evenAt, ahead: aheadAt }, idleMed: quant(withQ.filter(r => Number.isFinite(r.idle)).map(r => r.idle), 0.5), rows: quits };
 }
