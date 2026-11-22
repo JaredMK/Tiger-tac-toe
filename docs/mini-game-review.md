@@ -23,12 +23,14 @@ games to cut or rework further).
 
 ## Where things stand
 - **Phase: 1 (audit), in progress.** No game code is to change in this phase.
-- A separate job was already under way when the review began: six new games (Split It `pint`, Gem Swap `gems`,
-  Castle Smash `castle`, Tank Duel `tanks`, Puzzle Build `jigsaw`, Letter Hive `hive`) and Road Race's rework
-  (`rally`), each built on its own branch `g/<id>` (worktrees `/home/user/g-<id>`), to be merged into
-  `claude/six-games` (worktree `/home/user/ttc-games`) and deployed to staging once. Those seven are audited after
-  that merge; until then their folders hold stand-ins (a copy of Heads or Tails) and must not be audited.
+- The six new games (Split It `pint`, Gem Swap `gems`, Castle Smash `castle`, Tank Duel `tanks`, Puzzle Build `jigsaw`,
+  Letter Hive `hive`) and Road Race's rework (`rally`) were finished, merged and deployed to staging on 23 November 2026
+  (their notes are in CLAUDE.md). They have not been audited yet: audit them with the rest.
 - Audit harness and raw results: see "Method" (scripts under `scripts/audit/`, results under `docs/review-data/`).
+- First simulation pass (22 Nov): `docs/review-data/sim/<id>.json` for 94 games (Wall Race's run did not finish; the
+  seven new games not run). **Not yet trusted**: `scripts/audit/sim.js` disagrees with several games' own
+  `tests/sim/<id>.sim.js` (e.g. Brick Break 82% first mover here, 59% in its own sim; Four in a Row's median 19 moves;
+  Echo stuck: it needs Start). Validate the harness before using these numbers.
 - Next step: see the last line of the log at the end of this file.
 
 ## Method (Phase 1)
@@ -172,3 +174,6 @@ For each game, from the code as it is on `staging`:
 - 22 Nov 2026: file created; the 300-square simulations started for the 95 games already on staging; the audit
   harness (browser play, screenshots, performance) is being written. Next: finish the harness, run it, then audit the
   unreleased games in groups.
+- 23 Nov 2026: the seven new and reworked games merged and deployed to staging (separately from this review). Trail Race
+  fixed on the way (a trail that boxed itself in left its player with no move). Next: validate `scripts/audit/sim.js`,
+  finish the simulation pass, then the browser pass, then audit the Admin only games.
