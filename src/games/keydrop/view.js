@@ -83,11 +83,11 @@ function drawPrize(c, u, kind, x, y, r, P, rot) {                 // a prize abo
   else { c.moveTo(0, r * 0.95); c.bezierCurveTo(-r * 1.5, -r * 0.1, -r * 0.7, -r * 1.2, 0, -r * 0.4); c.bezierCurveTo(r * 0.7, -r * 1.2, r * 1.5, -r * 0.1, 0, r * 0.95); c.closePath(); c.fill(); c.stroke(); }
   c.restore();
 }
-function drawKey(c, u, x, y, P, k, col) {                         // its tip at (x, y); k 0 held off the wall .. 1 pushed home
-  const s = 1.25 * (1 - 0.28 * k) * u, off = (1 - k) * 1.6 * u;
+function drawKey(c, u, x, y, P, k, col, turn) {                   // its tip at (x, y); k 0 held off the wall .. 1 pushed home (beyond 1: into a keyhole); turn: a quarter turn in the lock, 0..1
+  const s = 1.25 * (1 - 0.28 * k) * u, off = Math.max(0, 1 - k) * 1.6 * u, sy = Math.cos((turn || 0) * Math.PI / 2) * 0.86 + 0.14;
   const shape = () => { c.beginPath(); c.rect(0, -0.85, 6.6, 1.7); c.rect(1, 0.85, 1.2, 1.6); c.rect(3, 0.85, 1.2, 1.1); c.moveTo(12, 0); c.arc(9.2, 0, 2.8, 0, 7); };
   c.save(); c.translate(x + off, y + off); c.rotate(Math.PI * 0.75); c.scale(s, s); c.fillStyle = 'rgba(22,18,16,.28)'; shape(); c.fill(); c.restore();
-  c.save(); c.translate(x, y); c.rotate(Math.PI * 0.75); c.scale(s, s);
+  c.save(); c.translate(x, y); c.rotate(Math.PI * 0.75); c.scale(s, s * sy);
   c.fillStyle = '#e9edf5'; c.strokeStyle = P.ink; c.lineWidth = 0.62; c.lineJoin = 'round'; shape(); c.fill(); c.stroke();
   c.fillStyle = col; c.beginPath(); c.arc(9.2, 0, 1.7, 0, 7); c.fill(); c.stroke(); c.fillStyle = P.paper; c.beginPath(); c.arc(9.2, 0, 0.65, 0, 7); c.fill(); c.stroke();
   c.restore();
@@ -114,10 +114,11 @@ const go = stage('canvas.kydcv', (c, W, H, now) => {
     c.fillStyle = 'rgba(22,30,70,.42)'; c.beginPath(); c.rect(X0 - 10.5 * sc * u, py(i) - (pr + 1.6) * u, 21 * sc * u, (2 * pr + 3.2) * u); c.fill();
     c.fillStyle = '#c58a4a'; c.strokeStyle = P.ink; c.lineWidth = u * 0.55; c.beginPath(); c.rect(X0 - 11.5 * sc * u, Y0 - (4.6 * sc + 1.6) * u, 23 * sc * u, 1.6 * u); c.fill(); c.stroke();
     const near = s && s.hit < 0 && s.near && s.hole === i && tk >= 0 && tk < 520;
-    c.fillStyle = plugged ? '#7f8696' : '#e3e7ef'; c.beginPath(); c.arc(X0, Y0, 3.9 * sc * u, 0, 7); c.fill(); c.stroke();
-    if (near) { c.save(); c.globalAlpha = 1 - tk / 520; c.strokeStyle = '#ff9f43'; c.lineWidth = u * 1.1; c.beginPath(); c.arc(X0, Y0, (4.6 + tk / 130) * sc * u, 0, 7); c.stroke(); c.restore(); }
-    const hr = Math.max(1.15, Math.min(2.4, cfg.tol * 0.62)) * sc * u;
-    c.fillStyle = plugged ? '#5b6170' : '#14161f'; c.beginPath(); c.arc(X0, Y0 - hr * 0.25, hr, 0, 7); c.fill(); c.beginPath(); c.moveTo(X0 - hr * 0.5, Y0); c.lineTo(X0 + hr * 0.5, Y0); c.lineTo(X0 + hr * 0.78, Y0 + hr * 1.75); c.lineTo(X0 - hr * 0.78, Y0 + hr * 1.75); c.closePath(); c.fill();
+    const T = cfg.tol * u, plate = Math.max(3.9 * sc * u, T * 1.45);   // the opening is the hit zone itself: within `tol` both across and up of the middle goes in (rules.js keydMeet)
+    c.fillStyle = plugged ? '#7f8696' : '#e3e7ef'; c.beginPath(); c.arc(X0, Y0, plate, 0, 7); c.fill(); c.stroke();
+    if (near) { c.save(); c.globalAlpha = 1 - tk / 520; c.strokeStyle = '#ff9f43'; c.lineWidth = u * 1.1; c.beginPath(); c.arc(X0, Y0, plate + (0.7 + tk / 130) * u, 0, 7); c.stroke(); c.restore(); }
+    c.fillStyle = plugged ? '#5b6170' : '#22283d'; c.strokeStyle = plugged ? '#4a4f5c' : P.ink; c.lineWidth = u * 0.4; c.beginPath(); c.roundRect(X0 - T, Y0 - T, 2 * T, 2 * T, T * 0.35); c.fill(); c.stroke();   // the opening, the hit zone's own size
+    const hr = T * 0.42; c.fillStyle = plugged ? '#3b3f4a' : '#05060a'; c.beginPath(); c.arc(X0, Y0 - hr * 0.55, hr, 0, 7); c.fill(); c.beginPath(); c.moveTo(X0 - hr * 0.45, Y0 - hr * 0.3); c.lineTo(X0 + hr * 0.45, Y0 - hr * 0.3); c.lineTo(X0 + hr * 0.75, Y0 + hr * 1.55); c.lineTo(X0 - hr * 0.75, Y0 + hr * 1.55); c.closePath(); c.fill();
     if (on) { const rock = i === falling && t >= pre + KEYD.push * 0.7 ? Math.sin((t - pre) / 38) * 0.16 : 0; drawPrize(c, u, kindOf(i), X0, py(i), pr * u, P, rock); }
   }
   won.forEach((i, k) => { if (i !== falling || tk >= KEYD.drop) { const q = slot(k); drawPrize(c, u, kindOf(i), q.x, q.y, 3.6 * u, P, (k % 2 ? 0.25 : -0.2)); } });
@@ -158,7 +159,13 @@ const go = stage('canvas.kydcv', (c, W, H, now) => {
       c.restore();
     }
   }
-  drawKey(c, u, kx * u + ox, Y(ky) + oy, P, pk, col);
+  let turn = 0;
+  if (s && s.hit >= 0) {                                           // a hit: the key's tip finds the keyhole's middle as it pushes, sinks in and turns
+    const h = keydHole(mini, s.hit), g = ease(clamp(push * 1.25));
+    kx += (h.x - kx) * g; ky += (h.y - ky) * g;
+    if (tk >= 0) { pk = 1 + 0.4 * ease(clamp(tk / 220)); turn = ease(clamp((tk - 160) / 200)); }
+  }
+  drawKey(c, u, kx * u + ox, Y(ky) + oy, P, pk, col, turn);
   if (falling >= 0 && tk >= 0 && tk < KEYD.drop) {                 // the prize knocked off its shelf, into the box
     const k = tk / KEYD.drop, q = slot(won.indexOf(falling)), x0 = hx(falling), y0 = py(falling), f = k * k;
     drawPrize(c, u, kindOf(falling), x0 + (q.x - x0) * k, y0 + (q.y - y0) * f - Math.sin(k * Math.PI) * 3 * u * (1 - k), (pr + (3.6 - pr) * k) * u, P, k * 2.4);
