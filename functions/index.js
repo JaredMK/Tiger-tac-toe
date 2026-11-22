@@ -607,7 +607,10 @@ exports.cancelSearch = onCall(CALL, async req => {
 async function findMatchOn() { return (await db.ref('features/findMatch').get()).val() === true; }
 // Release control (src/core/games.js: isReleased): the dashboard's switches, releases/{type}; a game not there is
 // as the code has it. testTypes: the games admin only right now (their stats are kept apart).
-async function releasesNow() { return (await db.ref('releases').get()).val() || {}; }
+// As they stand today (core/games.js inRotation): a game past its "remove from rotation" day (releases/retire, New York's day)
+// is dealt to no new match, everywhere or on that platform; a match already dealt keeps it (resets deal from its own list).
+const nyDay = t => { const d = S.localDate(t); return `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`; };
+async function releasesNow() { return E.inRotation((await db.ref('releases').get()).val() || {}, nyDay(now())); }
 // The difficulty configs (config/run for the runners, config/bulls for Bullseye, config/wheels for Risky Spins, config/plinko for Peg Drop, config/pig for Risky Rolls, config/roads for Roads, config/oddone for Odd One Out, config/headcount, config/flash and config/snapshot for the attention games, config/skyhop, config/scoop and config/pinball for the finger games, from the admin's
 // dashboard): set in the engine before a square can be dealt (a new match, a draw's reset), so new
 // squares play by the current values; read afresh after 20 s.

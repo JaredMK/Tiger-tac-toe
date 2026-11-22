@@ -335,3 +335,29 @@ test('Coming soon: a switch and a release date beside Released and iOS; never fo
   assert.match(html, /data-soondate="ttt" value="" disabled>/);
   assert.match(draw('#games'), /badge soon[^>]*>Coming soon · date passed</, 'the list says so too');
 });
+test('Remove from rotation: a date everywhere and one for iOS on a game\'s Release card, saved to releases/retire and cleared; badges and the Scheduled removals list on Games', async () => {
+  await A.loadMetas();
+  const db = mockDb(); A.fb = db.fb;
+  A.ctl = Object.assign(ctl0(), { releases: { retire: { all: { war: '2020-01-02' }, ios: { claw: '2999-03-04' } } } });
+  let html = draw('#games/war');
+  assert.match(html, /<h3>Remove from rotation<\/h3>/);
+  assert.match(html, /<span>Everywhere \(out\)<\/span><input type="date" data-retire="all" data-rt="war" value="2020-01-02">/, 'a day passed: out of rotation');
+  assert.match(html, /data-retclear="war" data-p="all"/, 'a Clear beside a date set');
+  assert.match(html, /data-retire="ios" data-rt="war" value="">/); assert.doesNotMatch(html, /data-retclear="war" data-p="ios"/);
+  const list = draw('#games');
+  assert.ok(list.indexOf('id="retireCard"') > 0 && list.indexOf('id="retireCard"') < list.indexOf('id="gamesCard"'), 'the scheduled removals above the list');
+  assert.deepEqual([...list.matchAll(/<tr><td><a href="#games\/(\w+)">/g)].map(m => m[1]).filter(t => ['war', 'claw'].includes(t)), ['war', 'claw'], 'soonest first');
+  assert.match(list, /href="#games\/war">[\s\S]*?Out of rotation/); assert.match(list, /href="#games\/claw">[^<]*<\/a><\/td><td>iOS<\/td><td>2999-03-04<\/td><td><span class="badge soon">Scheduled/);
+  const row = t => (list.match(new RegExp(`<li><a class="grow" href="#games/${t}"[\\s\\S]*?</a></li>`)) || [''])[0];
+  assert.match(row('war'), /badge ret">Retired</); assert.match(row('claw'), /badge ret">Leaves Mar 4 on iOS</);
+  // a day picked: written; Clear: removed
+  await A.saveRetire({ dataset: { retire: 'ios', rt: 'ttt' }, value: '2999-12-31', closest: () => null, insertAdjacentElement() {} }, false);
+  assert.deepEqual(db.writes.pop(), ['releases/retire/ios/ttt', '2999-12-31']);
+  assert.equal(A.ctl.releases.retire.ios.ttt, '2999-12-31');
+  await A.saveRetire({ dataset: { retclear: 'war', p: 'all' }, closest: () => null, insertAdjacentElement() {} }, true);
+  assert.deepEqual(db.writes.pop(), ['releases/retire/all/war', null]);
+  assert.equal(A.ctl.releases.retire.all.war, undefined);
+  await A.saveRetire({ dataset: { retire: 'all', rt: 'ttt' }, value: '', closest: () => null, insertAdjacentElement() {} }, false);
+  assert.equal(db.writes.length, 0, 'no day: nothing written');
+  assert.doesNotMatch(draw('#games'), /href="#games\/war">[^<]*<\/a><\/td>/, 'cleared: off the list');
+});

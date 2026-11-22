@@ -18,7 +18,7 @@ import { applyMove, newMini, randomLegalMove } from '../core/minis.js';
 import { makeRng } from '../core/random.js';
 import { INFO, VIEWS, viewOf } from '../games/index.js';
 import { PLATFORM, clientInfo } from '../net/platform.js';
-import { releases } from '../net/releases.js';
+import { nowReleases, releases } from '../net/releases.js';
 import { esc } from './app.js';
 import { softName } from './board.js';
 import { rays } from './comic.js';
@@ -33,7 +33,7 @@ export const luState = lu;
 
 // The lists for this platform and client (an older app leaves out the games it does not have).
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };   // (this phone's own day)
-export const lineupNow = () => lineup(releases, PLATFORM, t => clientHas(clientInfo(), t), todayStr());
+export const lineupNow = () => lineup(nowReleases(), PLATFORM, t => clientHas(clientInfo(), t), todayStr());
 const keysOf = L => L.now.map(t => 'r:' + t).concat(L.soon.map(t => 's:' + t));
 // Shown on the menu: once this device has finished a match.
 export const lineupShown = () => matchesDone() >= 1;

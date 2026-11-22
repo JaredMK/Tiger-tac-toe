@@ -75,6 +75,15 @@
           ".validate": "$type.matches(/^[a-z0-9]{2,16}$/) && (newData.val() === true || (newData.isString() && newData.val().matches(/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/)))"
         }
       },
+      "retire": {
+        "$p": {
+          ".validate": "$p.matches(/^(all|web|ios)$/)",
+          "$type": {
+            ".write": "auth != null && auth.token.admin === true",
+            ".validate": "$type.matches(/^[a-z0-9]{2,16}$/) && newData.isString() && newData.val().matches(/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/)"
+          }
+        }
+      },
       "platform": {
         "$p": {
           ".validate": "$p.matches(/^(web|ios)$/)",

@@ -2,7 +2,7 @@
 import { SUPER_CHAOS_ENABLED } from '../core/config.js';
 import { platformOff } from '../core/client.js';
 import { timerSpec, TIMER_DEFAULT } from '../core/timer.js';
-import { allowedTypes, isReleased } from '../core/games.js';
+import { allowedTypes, inRotation, isReleased } from '../core/games.js';
 import { PLATFORM } from './platform.js';
 import { acct } from './accounts.js';
 import { FIREBASE_CONFIG, configured } from './connect.js';
@@ -14,12 +14,20 @@ import { render } from '../ui/render.js';
 // (releases/{type}, read at every start and followed live once online; kept for the next visit). An
 // admin-only game exists only for the admin: in their local matches and the friend games they host.
 const REL_KEY = KEY + '.releases';
-export let releases = (() => { try { const v = JSON.parse(localStorage.getItem(REL_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } })();
+// `releasesRaw` is the node as the database has it; `releases` the switches as they stand today (core/games.js inRotation:
+// a game past its "remove from rotation" day, releases/retire, is off there), worked out again when the New York day turns
+// (nowReleases, from every reader below), so a page left open across the day takes the change without a reload.
+export let releasesRaw = (() => { try { const v = JSON.parse(localStorage.getItem(REL_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } })();
+const NY = (() => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }); } catch (e) { return null; } })();
+export const nyToday = (t = Date.now()) => { try { if (NY) return NY.format(new Date(t)); } catch (e) { /* below */ } return new Date(t - 5 * 3600000).toISOString().slice(0, 10); };
+let relDay = nyToday();
+export let releases = inRotation(releasesRaw, relDay);
+export function nowReleases() { const d = nyToday(); if (d !== relDay) { relDay = d; releases = inRotation(releasesRaw, d); } return releases; }
 export function setReleases(v) {
   const next = v && typeof v === 'object' ? v : {};
-  if (JSON.stringify(next) === JSON.stringify(releases)) return;
-  releases = next;
-  try { localStorage.setItem(REL_KEY, JSON.stringify(releases)); } catch (e) { /* no storage: read again next visit */ }
+  if (JSON.stringify(next) === JSON.stringify(releasesRaw)) return;
+  releasesRaw = next; relDay = nyToday(); releases = inRotation(next, relDay);
+  try { localStorage.setItem(REL_KEY, JSON.stringify(releasesRaw)); } catch (e) { /* no storage: read again next visit */ }
   if (['setup', 'howto', 'join'].includes(state.screen)) render();
 }
 // The admin's Timer (config/timer/spec): Find Match's clock and the default a friend room opens with ('off' never: 30 s
@@ -43,8 +51,8 @@ export function fetchStagingMode() {
 const isAdmin = () => !!(acct && acct.admin);
 // The games this player may see and play: the released ones (every one for the admin), less any the admin has switched
 // off for this platform (releases/platform/{p}/{type} false: core/client.js; the admin still sees them, to test).
-export const visibleTypes = () => allowedTypes(releases, isAdmin()).filter(t => isAdmin() || !platformOff(t, releases, PLATFORM));
-export const testBadge = t => (!isReleased(t, releases) ? '<i class="tst">Testing</i>' : platformOff(t, releases, PLATFORM) ? `<i class="tst">Off on ${PLATFORM === 'ios' ? 'iOS' : PLATFORM}</i>` : '');   // (only the admin ever sees one)
+export const visibleTypes = () => { const r = nowReleases(); return allowedTypes(r, isAdmin()).filter(t => isAdmin() || !platformOff(t, r, PLATFORM)); };
+export const testBadge = t => (nowReleases(), !isReleased(t, releases) ? '<i class="tst">Testing</i>' : platformOff(t, releases, PLATFORM) ? `<i class="tst">Off on ${PLATFORM === 'ios' ? 'iOS' : PLATFORM}</i>` : '');   // (only the admin ever sees one)
 // Super Chaos (simultaneous rounds) is off everywhere for now, admins included (core/config.js SUPER_CHAOS_ENABLED):
 // every match is Classic and no mode is offered anywhere. Its code stays: with the switch back on, it is always open
 // against the computer, and online (a friend room's host; Find Match is the server's) it has its own release switch,

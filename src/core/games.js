@@ -68,3 +68,36 @@ export function soonLate(t, releases, today) {
   const d = soonDate(t, releases);
   return !!d && d < today && soonFlag(t, releases) && (!releasedOn(t, releases, 'web') || !releasedOn(t, releases, 'ios'));
 }
+// Retirement (December 2026): the admin's "remove from rotation" date for a game, everywhere or on one platform, as release
+// is (releases/retire/all/{type}, releases/retire/{web|ios}/{type}: a plain day 'YYYY-MM-DD', New York's, as the admin's
+// numbers are). From that day the game is dealt to no new match there (it is as if released no more: off everywhere, or
+// off on that platform), while a match already dealt keeps it (a reset deals from the match's own list, core/board.js).
+// Pure: `today` is the caller's New York day (the page's net/releases.js, the server's releasesNow).
+export const RETIRE_PLATS = ['all', 'web', 'ios'];
+const retireVal = (releases, p, t) => { const r = releases && releases.retire; const v = r && typeof r === 'object' && r[p] && typeof r[p] === 'object' ? r[p][t] : undefined; return typeof v === 'string' && SOON_DATE.test(v) ? v : null; };
+// The day t leaves rotation on platform p (the earlier of its everywhere date and its platform's); p 'all': the everywhere date alone.
+export function retireDate(t, releases, p) {
+  const ds = [retireVal(releases, 'all', t), p && p !== 'all' ? retireVal(releases, p, t) : null].filter(Boolean).sort();
+  return ds[0] || null;
+}
+export const retiredOn = (t, releases, p, today) => { const d = retireDate(t, releases, p); return !!d && typeof today === 'string' && today >= d; };
+// Every removal scheduled or done: [{ t, p ('all' | 'web' | 'ios'), date }], soonest first (the admin's list).
+export function retireList(releases) {
+  const out = [], r = releases && releases.retire;
+  if (!r || typeof r !== 'object') return out;
+  for (const p of RETIRE_PLATS) for (const t of Object.keys(r[p] || {})) { const d = retireVal(releases, p, t); if (d) out.push({ t, p, date: d }); }
+  return out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.t < b.t ? -1 : 1));
+}
+// The release switches as they stand on `today`: a game retired everywhere is no longer released (releases[t] false, and
+// its Coming soon flag dropped), one retired on a platform is off there (releases.platform[p][t] false). Every other reader
+// (isReleased, releasedOn, platformOff, clientTypes, the lineup) then needs nothing more. The raw node is left as it was.
+export function inRotation(releases, today) {
+  const r = releases && typeof releases === 'object' ? releases : {};
+  if (!r.retire || typeof r.retire !== 'object' || typeof today !== 'string') return r;
+  const out = Object.assign({}, r, { platform: JSON.parse(JSON.stringify(r.platform && typeof r.platform === 'object' ? r.platform : {})), soon: Object.assign({}, r.soon && typeof r.soon === 'object' ? r.soon : {}) });
+  for (const { t, p, date } of retireList(r)) {
+    if (today < date) continue;
+    if (p === 'all') { out[t] = false; delete out.soon[t]; } else (out.platform[p] = out.platform[p] || {})[t] = false;
+  }
+  return out;
+}
