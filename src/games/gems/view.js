@@ -7,7 +7,7 @@
 // A move plays from the move itself (its flash), for everyone: the two gems change places (GEMS.swap), then each step
 // of the cascade: its gems burst (GEMS.pop), the rest fall and the new ones drop in from the top (GEMS.fall), the
 // mover's points counting on with each burst ("+3", then "+7 Combo!" in the line under the board), and a shuffle's
-// swirl at the end where the board was left with no swap (GEMS.shuffle). Every moment comes from `gemsTimes`. The board
+// swirl at the end where the board was left with no swap (GEMS.shuffle: the line says "Shuffle!"). Every moment comes from `gemsTimes`. The board
 // is drawn as one layer a moment (the board as it was, then before each step, then as it ends), each on show only in
 // its own time (`--f` to `--u`), so a gem's whole way down is plain stylesheet animation and a redraw mid-move carries on.
 // Online the new gems are the server's draw: until its record lands the two gems only show pressed.
@@ -136,7 +136,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   if (s) {
     board = layers(s, n, T);
     let acc = 0; const say = s.steps.map((st, k) => { acc += st.x.length; return [words(acc, k), T.steps[k].pop + GEMS.pop / 2]; });
-    if (T.sh != null) say.push([`${words(acc, s.steps.length - 1)} · Shuffle!`, T.sh]);
+    if (T.sh != null) say.push(['Shuffle!', T.sh]);              // (short: on a small phone the line shares its height with a replay's Skip and the reactions' button in the corners)
     line = say.map(([w, t], k) => `<span class="gsw${k + 1 < say.length ? '' : ' fin'}" style="--f:${Math.round(t)}ms${k + 1 < say.length ? `;--u:${Math.round(say[k + 1][1])}ms` : ''}">${w}</span>`).join('');
   } else {
     const arr = gemsArr(mini.b), pk = mine ? picked(mini) : -1, wait = sent && sent.sq === state.zoom && moveWait && !view ? sent : null;
@@ -145,8 +145,8 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
       return mine ? `<button class="${cls}" data-act="gems-cell" data-i="${i}" style="${at(i, n)}" aria-pressed="${on}" aria-label="${KINDS[k].name}, row ${Math.floor(i / n) + 1}, column ${i % n + 1}">${gem(k)}</button>` : `<i class="${cls}" data-i="${i}" style="${at(i, n)}">${gem(k)}</i>`;
     }).join('')}</div>`;
     const fin = mini.final, ans = fin ? (fin.by === 'X' ? 'O' : 'X') : null;
-    if (rest && rest.steps) line = `<span class="gsw fin">${words(rest.n, rest.steps.length - 1)}${rest.sh ? ' · Shuffle!' : ''}</span>`;
-    else if (fin && !view) line = `<span class="gsw fin note"><b class="${fin.by}">${N(fin.by)}</b> has ${fin.pts}: <b class="${ans}">${N(ans)}</b> answers</span>`;
+    if (rest && rest.steps) line = `<span class="gsw fin">${words(rest.n, rest.steps.length - 1)}</span>`;
+    else if (fin && !view) line = `<span class="gsw fin note">${turn === ans ? `Beat ${fin.pts} to take it` : `${fin.pts} to beat`}</span>`;   // (Equal turns: the answer owed; the tally stops at the target, so the total to beat is said here)
   }
   return `<div class="g-gs pc-${by}" style="--ts:${GEMS.swap}ms;--tp:${GEMS.pop}ms;--tf:${GEMS.fall}ms;--th:${GEMS.shuffle / 2}ms">${DEFS}<div class="ctals two">${tal('X')}${tal('O')}</div><div class="gsbox"><div class="gsgrid${mine ? ' live' : ''}" style="--n:${n}" role="group" aria-label="The gems">${board}</div><p class="gsline" role="status">${line}</p></div></div>`;
 }

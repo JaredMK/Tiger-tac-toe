@@ -6655,8 +6655,7 @@ button.gsc { cursor: pointer; touch-action: none; }
 .gsline > * { grid-area: 1 / 1; min-width: 0; max-width: 100%; }
 .gsw { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both, gswin .22s var(--f, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }
 .gsw.fin { animation: tfrom 1ms var(--f, 0ms) both, gswin .22s var(--f, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }
-.gsw.note { animation: none; color: var(--ink); font: 700 16px/28px 'Comic Neue', 'Comic Sans MS', sans-serif; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; }
-.gsw.note b { display: inline-block; max-width: 9ch; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+.gsw.note { animation: none; color: var(--ink); font: 700 17px/28px 'Comic Neue', 'Comic Sans MS', sans-serif; letter-spacing: 0; max-width: calc(100% - 112px); }   /* (clear of the reactions' button and a replay's Skip in the corners of a small phone) */
 @keyframes gswin { from { transform: scale(.6); } }
 .g-gs .gsn { display: inline-grid; } .g-gs .gsn > b { grid-area: 1 / 1; }
 .gsv { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both; } .gsv.fin { animation: tfrom 1ms var(--f, 0ms) both; }
