@@ -15,7 +15,7 @@ export const BAD_SOUNDS = new Set(['kyScrape', 'fsBoom', 'rtMiss', 'bust', 'cras
 for (const n of []) RESULT_SOUNDS.add(n);   // [pint] results
 for (const n of []) BAD_SOUNDS.add(n);   // [pint] bad
 //
-for (const n of []) RESULT_SOUNDS.add(n);   // [gems] results
+for (const n of ['gsPop']) RESULT_SOUNDS.add(n);   // [gems] results
 for (const n of []) BAD_SOUNDS.add(n);   // [gems] bad
 //
 for (const n of []) RESULT_SOUNDS.add(n);   // [castle] results
