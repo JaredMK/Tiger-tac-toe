@@ -21,8 +21,8 @@ for (const n of []) BAD_SOUNDS.add(n);   // [gems] bad
 for (const n of []) RESULT_SOUNDS.add(n);   // [castle] results
 for (const n of []) BAD_SOUNDS.add(n);   // [castle] bad
 //
-for (const n of []) RESULT_SOUNDS.add(n);   // [tanks] results
-for (const n of []) BAD_SOUNDS.add(n);   // [tanks] bad
+for (const n of ['tnBoom', 'tnHit']) RESULT_SOUNDS.add(n);   // [tanks] results
+for (const n of ['tnOut']) BAD_SOUNDS.add(n);   // [tanks] bad
 //
 for (const n of []) RESULT_SOUNDS.add(n);   // [jigsaw] results
 for (const n of []) BAD_SOUNDS.add(n);   // [jigsaw] bad

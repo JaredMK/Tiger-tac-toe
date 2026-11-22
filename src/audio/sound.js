@@ -568,6 +568,14 @@ try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } cat
 // [/castle]
 //
 // [tanks] Tank Duel: its sounds (names start `tn`)
+def('tnTick', 0.05, (c, d, t) => { sfxTone(c, d, t, 980, .035, { to: 760, type: 'triangle', vol: .4, att: .001 }); sfxNoise(c, d, t, .012, { f: 3400, q: 2, vol: .2, att: .001 }); }, { level: .28, vary: true });   // the barrel's ratchet as the aim changes; the tracks' rumble a column driven; the breech shutting as Fire is pressed; the gun; the shell's whistle coming down; the blast; a clang on a direct hit; a shell gone off the field
+def('tnTrack', 0.15, (c, d, t) => { sfxNoise(c, d, t, .13, { f: 190, to: 120, q: .8, filter: 'lowpass', vol: .7, att: .012 }); sfxTone(c, d, t, 74, .12, { to: 58, type: 'square', vol: .16, att: .01 }); sfxNoise(c, d, t + .03, .025, { f: 1700, q: 3, vol: .1, att: .002 }); sfxNoise(c, d, t + .09, .025, { f: 1500, q: 3, vol: .09, att: .002 }); }, { level: .42, vary: true });
+def('tnLoad', 0.14, (c, d, t) => { sfxNoise(c, d, t, .02, { f: 2400, q: 3, vol: .4, att: .001 }); sfxTone(c, d, t, 330, .05, { to: 220, type: 'square', vol: .16, att: .001 }); sfxNoise(c, d, t + .07, .03, { f: 1300, q: 2, vol: .45, att: .001 }); sfxTone(c, d, t + .07, 190, .06, { to: 120, type: 'triangle', vol: .4, att: .001 }); }, { level: .36 });
+def('tnFire', 0.34, (c, d, t) => { sfxNoise(c, d, t, .07, { f: 2200, to: 500, q: .6, vol: .7, att: .001 }); sfxTone(c, d, t, 170, .26, { to: 46, vol: .9, att: .002 }); sfxNoise(c, d, t + .02, .28, { f: 420, to: 110, q: .7, filter: 'lowpass', vol: .5, att: .004 }); }, { level: .62 });
+def('tnWhistle', 0.52, (c, d, t) => { sfxTone(c, d, t, 1750, .5, { to: 620, vol: .32, att: .09 }); sfxTone(c, d, t, 1765, .5, { to: 640, type: 'triangle', vol: .12, att: .09 }); }, { level: .26 });
+def('tnBoom', 0.62, (c, d, t) => { sfxNoise(c, d, t, .09, { f: 1800, to: 300, q: .5, vol: .8, att: .001 }); sfxTone(c, d, t, 120, .45, { to: 34, vol: .95, att: .003 }); sfxNoise(c, d, t + .02, .56, { f: 520, to: 70, q: .6, filter: 'lowpass', vol: .7, att: .006 }); sfxNoise(c, d, t + .16, .3, { f: 2600, to: 900, q: 1.5, vol: .08, att: .05 }); }, { level: .7 });
+def('tnHit', 0.4, (c, d, t) => { sfxTone(c, d, t, 520, .32, { to: 492, type: 'triangle', vol: .5, att: .001 }); sfxTone(c, d, t, 1245, .2, { to: 1190, type: 'triangle', vol: .26, att: .001 }); sfxTone(c, d, t, 1870, .12, { vol: .12, att: .001 }); sfxNoise(c, d, t, .03, { f: 3800, q: 1.5, vol: .5, att: .001 }); }, { level: .5 });
+def('tnOut', 0.42, (c, d, t) => { sfxNoise(c, d, t, .4, { f: 1500, to: 320, q: 1.4, vol: .4, att: .05 }); sfxTone(c, d, t, 620, .34, { to: 210, vol: .12, att: .04 }); }, { level: .26 });
 // [/tanks]
 //
 // [jigsaw] Puzzle Build: its sounds (names start `jg`)
