@@ -1,0 +1,19 @@
+Mini-game,Status,Plays,Excluded %,Played %,Never played %,Not finished %,Seconds (median),Turns (median),Draw %,First mover wins %,Human beats AI %,Avg pick order,Help taps / play,Rematch %
+Coin Flip,Released,71,0,78,22,8,19,4,0,60,42,56.2,0,18
+Four in a Row,Released,68,0,72,28,37,47,8,0,56,70,75.7,0,24
+Snakes and Ladders,Released,65,0,65,35,42,31,8,0,66,37,65.4,0,16
+Rock Paper Scissors,Released,61,0,65,35,34,42,7,0,70,63,65.6,0.15,15
+Tic-tac-toe,Released,58,0,78,22,2,26,6,25,74,67,45.3,0,12
+Risky Rolls,Released,58,0,65,35,40,86,7,0,46,60,42.4,0,14
+Sea Battle,Released,55,0,59,41,24,23,4,0,52,69,49.6,0,13
+Higher/Lower,Released,55,0,60,40,24,25,5,0,50,52,70.8,0,18
+Hangman,Released,54,0,52,48,26,20,3,0,55,28,63.2,0,17
+Bump,Released,43,0,73,27,30,30,8,0,50,63,67.9,0,21
+War,Released,41,0,71,29,37,31,7,0,73,50,100.5,0,22
+Peg Drop,Released,39,0,88,13,31,26,5,0,96,33,67.9,0,26
+Candy Race,Released,37,0,64,36,35,30,8,0,67,38,58.2,0,19
+Claw Machine,Released,32,0,73,27,44,44,7,0,67,44,82.6,0,19
+Codebreaker,Released,30,0,42,58,40,97,5,0,67,17,74.3,0.13,17
+Bullseye,Released,28,0,69,31,46,50,8,0,60,87,94.1,0,29
+Five Letters,Released,24,0,50,50,25,39,3,0,33,33,116.7,0,17
+Little Wheel,Released,24,0,50,50,38,51,9,0,33,73,74.6,0.14,17

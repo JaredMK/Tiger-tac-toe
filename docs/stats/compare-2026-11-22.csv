@@ -1,0 +1,19 @@
+Mini-game,Status,Version,Completed squares,Moves 25%,Moves median,Moves 75%,Seconds median,Reset %,Left open %,First mover wins %,Flags
+Coin Flip,Released,1,65,2,3,5,19,0,7,60,
+Tic-tac-toe,Released,1,43,3,4,4,22,24,2,74,
+Four in a Row,Released,1,43,4,6,9,46,0,37,56,
+Sea Battle,Released,1,42,1,2,3,23,0,21,52,
+Higher/Lower,Released,1,42,2,3,4,25,0,24,50,
+Rock Paper Scissors,Released,1,40,4,5,6,39,0,34,70,
+Hangman,Released,1,39,1,2,3,20,0,26,56,
+Snakes and Ladders,Released,1,37,4,5,6,35,0,42,65,
+Risky Rolls,Released,1,35,3,5,6,78,0,40,46,
+Bump,Released,1,30,4,5,6,29,0,29,50,
+Peg Drop,Released,1,27,3,4,5,26,0,31,96,small
+War,Released,1,26,3,4,6,28,0,37,73,small
+Candy Race,Released,1,24,4,5,6,28,0,35,67,small
+Five Letters,Released,1,18,1,1,2,39,0,25,33,small
+Codebreaker,Released,1,18,3,3,4,74,0,40,67,small
+Claw Machine,Released,1,18,4,4,6,44,0,44,67,small
+Little Wheel,Released,1,15,3,4,6,51,0,35,33,small
+Bullseye,Released,1,15,5,5,7,45,0,46,60,small
