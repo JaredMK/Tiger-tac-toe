@@ -19,7 +19,7 @@ import { tok } from '../../ui/tok.js';
 
 export const ownLine = true;
 export const hold = f => (f.kind === 'again' ? 0 : null);         // a dash to a fork: the next pick at once
-export const MAZEV = { min: 34, dash: 0.88, ease: 0.16 };         // the smallest cell shown (CSS px); the camera's zoom while dashing; its easing a frame
+export const MAZEV = { min: 34, dash: 0.88, ease: 0.16, fog: '#c9cfdf', dots: 'rgba(70, 80, 120, .28)' };         // the smallest cell shown (CSS px); the camera's zoom while dashing; its easing a frame
 let src = null, cam = null;
 const xy = (w, c) => [c % w, Math.floor(c / w)];
 // The camera for a box W by H: the cell size and the maze's offset, the runner (fx, fy, in cells) as near the middle
@@ -82,21 +82,20 @@ const go = stage('canvas.mzcv', (c, W, H, now) => {
   const u = V.u, ox = V.ox, oy = V.oy, X = x => ox + x * u, Y = y => oy + y * u;
   const moving = !V.fit && (Math.abs(focus[0] - cam.fx) + Math.abs(focus[1] - cam.fy) > 0.01 || Math.abs((dashing ? MAZEV.dash : 1) - cam.z) > 0.004);
   c.clearRect(0, 0, W, H);
-  c.fillStyle = '#3b3550'; c.fillRect(0, 0, W, H);
-  c.strokeStyle = 'rgba(255,255,255,.07)'; c.lineWidth = Math.max(1, u * 0.05);
-  const step = u * 0.34, sh = ((ox + oy) % step + step) % step;
-  for (let q = -H - step + sh; q < W; q += step) { c.beginPath(); c.moveTo(q, 0); c.lineTo(q + H, H); c.stroke(); }
+  c.fillStyle = MAZEV.fog; c.fillRect(0, 0, W, H);             // the fog: a light cool grey with a halftone of dots (never the walls' black, never the floor's cream)
+  c.fillStyle = MAZEV.dots; const step = Math.max(6, u * 0.25), dr = Math.max(1, step * 0.17), sx0 = ((ox % step) + step) % step, sy0 = ((oy % step) + step) % step;
+  for (let y = sy0 - step, row = 0; y < H + step; y += step, row++) { c.beginPath(); for (let x = sx0 - step + (row % 2 ? step / 2 : 0); x < W + step; x += step) { c.moveTo(x + dr, y); c.arc(x, y, dr, 0, 7); } c.fill(); }
   const vis = (x, y) => X(x + 1) >= 0 && X(x) <= W && Y(y + 1) >= 0 && Y(y) <= H;
   for (let cc = 0; cc < G.n; cc++) if (known(cc)) { const [x, y] = xy(w, cc); if (vis(x, y)) { c.fillStyle = P.paper; c.fillRect(X(x) - 0.5, Y(y) - 0.5, u + 1, u + 1); } }
   // the flag (always on show) and the door
   const [fx, fy] = xy(w, G.flag), [sx, sy] = xy(w, G.start), wave = s && s.end === 'flag' && k >= s.path.length ? Math.sin((t - s.path.length * MAZE.step) / 70) * 0.12 : 0;
-  if (!known(G.flag)) { c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(X(fx), Y(fy), u, u); }
+  if (!known(G.flag)) { c.fillStyle = 'rgba(255,255,255,.6)'; c.fillRect(X(fx), Y(fy), u, u); }
   c.save(); c.translate(X(fx + 0.36), Y(fy + 0.84)); c.strokeStyle = P.ink; c.lineWidth = u * 0.07; c.lineCap = 'round'; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -u * 0.66); c.stroke();
   c.rotate(wave); for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { c.fillStyle = (i + j) % 2 ? '#fff' : P.ink; c.fillRect(i * u * 0.14 + u * 0.03, -u * 0.66 + j * u * 0.15, u * 0.14, u * 0.15); }
   c.strokeRect(u * 0.03, -u * 0.66, u * 0.42, u * 0.3); c.restore();
   c.fillStyle = '#8d6e63'; c.strokeStyle = P.ink; c.lineWidth = u * 0.05; c.beginPath(); c.roundRect(X(sx + 0.3), Y(sy + 0.62), u * 0.4, u * 0.38, [u * 0.2, u * 0.2, 0, 0]); c.fill(); c.stroke();
   // the walls of every cell seen: its closed sides
-  c.strokeStyle = P.ink; c.lineWidth = Math.max(3, u * 0.11); c.lineCap = 'round';
+  const wl = Math.max(4, u * 0.14); c.lineCap = 'round';           // bold black, outlined in white, so a wall found stands out from the fog and the floor
   c.beginPath();
   for (let cc = 0; cc < G.n; cc++) if (known(cc)) {
     const [x, y] = xy(w, cc), m = seen[cc]; if (!vis(x, y)) continue;
@@ -105,7 +104,8 @@ const go = stage('canvas.mzcv', (c, W, H, now) => {
     if (!(m & 4)) { c.moveTo(X(x), Y(y + 1)); c.lineTo(X(x + 1), Y(y + 1)); }
     if (!(m & 8)) { c.moveTo(X(x), Y(y)); c.lineTo(X(x), Y(y + 1)); }
   }
-  c.stroke();
+  c.strokeStyle = '#fff'; c.lineWidth = wl + Math.max(3, u * 0.08); c.stroke();
+  c.strokeStyle = P.ink; c.lineWidth = wl; c.stroke();
   // the runners
   for (const p of runners) {
     const [x, y] = pos[p]; let bump = 0;

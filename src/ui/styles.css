@@ -6142,7 +6142,7 @@ button.gbp { cursor: pointer; touch-action: manipulation; }
 .mzline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .mzline.ok { color: var(--green); } .mzline.no { color: var(--x); }
 .mzmap { display: block; } .mzmap.sm { width: 30px; height: 30px; flex: none; }
-.mzmf { fill: #3b3550; } .mzms { fill: var(--paper); } .mzmg { fill: #ffd23f; } .mzmt { fill: var(--x); stroke: var(--ink); stroke-width: .1; } .mzmt.O { fill: var(--o); } .mzmt.one { fill: #fff; }
+.mzmf { fill: #b9c0d6; stroke: var(--ink); stroke-width: .12; } .mzms { fill: var(--paper); } .mzmg { fill: #ffd23f; } .mzmt { fill: var(--x); stroke: var(--ink); stroke-width: .1; } .mzmt.O { fill: var(--o); } .mzmt.one { fill: #fff; }
 .tmz { display: flex; gap: 5cqw; align-items: flex-end; justify-content: center; width: 90cqw; } .tmz.one .mzmap { width: 58cqw; }
 .tmzc { display: flex; flex-direction: column; align-items: center; gap: 2cqw; width: 40cqw; } .tmzc .mzmap { width: 100%; } .tmzc b { font-size: 10cqw; line-height: 1; }
 
