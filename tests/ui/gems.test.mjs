@@ -2,18 +2,24 @@
 // from its flash alone (the swap, each step's bursts, falls and new gems, the board at the end), its moments from
 // gemsTimes; the mover's points count on step by step; the gems are buttons only on this phone's turn; the miniature
 // is the board itself.
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 const stub = () => new Proxy(function () {}, { get: (t, k) => (k === Symbol.toPrimitive ? () => '' : k === 'length' ? 0 : stub()), apply: () => stub(), construct: () => stub(), set: () => true });
 for (const k of ['document', 'window', 'localStorage', 'sessionStorage', 'navigator', 'location', 'history', 'matchMedia', 'requestAnimationFrame', 'cancelAnimationFrame', 'Element', 'HTMLElement', 'CSS', 'AudioContext', 'Image', 'getComputedStyle']) {
   try { Object.defineProperty(globalThis, k, { value: stub(), configurable: true, writable: true }); } catch (e) { /* (kept) */ }
 }
+mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 1.7e12 });
+Object.defineProperty(globalThis, 'performance', { value: { now: () => Date.now() - 1.7e12 + 1e5 }, configurable: true, writable: true });
 const require = createRequire(import.meta.url);
 const E = require('../engine.js');
 const R = await import('../../src/games/gems/rules.js');
 const V = await import('../../src/games/gems/view.js');
 const { state } = await import('../../src/ui/app.js');
+const { SND } = await import('../../src/audio/sound.js');
+const C = await import('../../src/net/connect.js');
+const Rm = await import('../../src/net/room.js');
+const heard = []; SND.play = (name, o) => { heard.push(name); return o; };
 
 const count = (html, re) => (html.match(re) || []).length;
 // A square after a move with a cascade of at least `steps` steps (and, asked for, a shuffle): { mini, before, flash }.
@@ -87,4 +93,41 @@ test('Gem Swap: the miniature is the board itself, a shape a gem, beside each pl
   assert.equal(count(html, /class="tr nbar [XO]"/g), 2); assert.ok(html.includes('--w:100.0%') && html.includes('--w:50.0%')); assert.ok(html.includes('X 32, O 16 of 32'));
   assert.ok(!/<text|undefined|NaN/.test(html), 'a picture: no figures in it');
   const scr = draw(mini, { view: true }); assert.ok(scr.includes('aria-label="32 of 32"') && scr.includes('<b>32</b><small>/32</small>'));
+});
+
+test('Gem Swap: a tap picks a gem, a tap on a neighbour swaps; a swap that makes no line is never sent; online the two gems only show pressed until the server answers', async () => {
+  const sent = [];
+  C.setFb({ fns: {}, uid: 'u-x', fnM: {}, db: {}, m: new Proxy({}, { get: () => () => Promise.resolve({ val: () => null }) }) });
+  C.setConnected(true);
+  let answer = null; C.setCall((name, data) => { sent.push([name, data]); return new Promise(res => { answer = res; }); });
+  const rec = E.newOnlineMatch({ names: { X: 'Ann', O: 'Bo' }, games: { gems: true }, timer: 0 }, E.makeRng('gs-on'), 'm-gs');
+  rec.state.turn = 'X';
+  state.online = { kind: 'mm', game: 'g-gs', me: 'X', joined: true, matchId: 'm-gs', shownSeq: rec.state.seq, room: 'ABCDE', code: 'ABCDE', role: 'host', introFor: 'g-gs' };
+  state.setup.names = { X: 'Ann', O: 'Bo' };
+  const pub = { players: { X: { name: 'Ann' }, O: { name: 'Bo' } }, state: JSON.stringify(rec.state), timer: 0, mode: 'friend', status: 'playing' };
+  Rm.setRoom({ kind: 'mm', status: 'playing', players: pub.players, match: { state: pub.state }, setup: { timer: 0 }, pub });
+  Rm.takeFields(rec.state);
+  Object.assign(state, { sc: null, cpu: null, flash: null, done: null, spot: null, winner: null, lock: null, screen: 'mini', zoom: 4, notice: null });
+  Rm.setMoveWait(null);
+  const mini = state.squares[4].mini, g = R.gemsArr(mini.b), n = mini.n, ok = R.gemsMoves(g, n)[0];
+  let no = null; for (let i = 0; i < n * n - 1 && !no; i++) if (i % n < n - 1 && !R.gemsValid(g, n, i, i + 1)) no = [i, i + 1];
+  const tap = i => V.actions['gems-cell']({ dataset: { i: String(i) } });
+  const shown = () => V.screen(4, null, null, state.squares[4].mini, false, Rm.blocked(), null, false, false, null, false, 'X');
+  // a pick: its own sound, the gem ringed; the same gem again puts it down
+  tap(no[0]); assert.deepEqual(heard, ['gsPick']); assert.equal(count(shown(), /class="gsc pick"/g), 1); assert.ok(shown().includes(`class="gsc pick" data-act="gems-cell" data-i="${no[0]}"`));
+  tap(no[0]); assert.equal(count(shown(), /class="gsc pick"/g), 0);
+  // a neighbour that makes no line: the soft no, nothing sent, nothing picked
+  heard.length = 0; tap(no[0]); tap(no[1]);
+  assert.deepEqual(heard, ['gsPick', 'gsNo']); assert.equal(sent.length, 0); assert.equal(count(shown(), /class="gsc pick/g), 0); assert.equal(state.flash, null);
+  // a gem far from the picked one moves the pick there
+  tap(no[0]); tap(n * n - 1); assert.ok(shown().includes(`class="gsc pick" data-act="gems-cell" data-i="${n * n - 1}"`)); tap(n * n - 1);
+  // a swap that makes a line goes to the server as { a, b }; until it answers the two gems show pressed, nothing else moves
+  heard.length = 0; tap(ok[0]); tap(ok[1]);
+  assert.deepEqual(sent.map(x => [x[0], x[1].square, x[1].move]), [['move', 4, { a: ok[0], b: ok[1] }]]);
+  assert.ok(Rm.moveWait); assert.equal(state.flash, null); assert.equal(state.squares[4].mini.b, mini.b, 'the board waits for the server\'s gems');
+  const wait = shown();
+  assert.equal(count(wait, /class="gsc pick pend"/g), 2); assert.ok(wait.includes(`class="gsc pick pend" data-i="${ok[0]}"`) && wait.includes(`class="gsc pick pend" data-i="${ok[1]}"`)); assert.equal(count(wait, /<button/g), 0);
+  assert.ok(!heard.includes('gsSwap') && !heard.includes('error'));
+  answer({ ok: true }); await Promise.resolve(); await Promise.resolve();
+  Rm.setMoveWait(null); state.online = null;
 });

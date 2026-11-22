@@ -6,8 +6,8 @@
 //   square that lasts 4 to 5 turns each needs 50 points.
 // - The opening board is a settled one (rules.js gemsOpen): on a fresh deal the first swap was sure of 7.2 gems and
 //   brought 9.2, against 5.0 and 6.3 on a board in play, and the first to move won 67-69% of squares.
-// - 32 to win: a mean of 4.8 turns each (median 4.5), the winner's 5.1; about three squares in a hundred are won
-//   inside their winner's first two turns (a turn's most in 500 squares: 40 gems).
+// - 32 to win: a mean of 4.8 turns each (median 4.5), the winner's 5.1; two or three squares in a hundred are won
+//   inside their winner's first two turns and two in a thousand on a first turn (a turn's most in 3,000 squares: 40 gems).
 // THE FIRST MOVER: every turn adds about the same (6.3 gems, give or take 4), so this is a plain race and the first
 // to move wins about 60.5% of squares (6,000 squares; 61.2% at 30 to win, 59.7% at 36 and 38): at the very top of the
 // batch's 45-60%, a shade over it, and no target or board brings it clearly inside. The assert below allows a
