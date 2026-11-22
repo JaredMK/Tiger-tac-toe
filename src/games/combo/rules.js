@@ -15,7 +15,7 @@ import { goAgain, tune } from '../../core/tune.js';
 // kind; four of a kind is also three), a large straight is also a small one; a full house is three of one value
 // and two of another (five alike is not a full house). A timeout mid-move claims nothing (the move simply ends:
 // the next player's move, or this player's next, starts afresh: `cur` is the mover's move under way).
-export const COMBO = { kinds: ['3k', '4k', 'fh', 'ss', 'ls', '5k'], dice: 5, roll: 700 + DIE_MORE, land: 520 + DIE_MORE, stag: 45, hold: 450, claim: 900, stamp: 170 };   // ms: roll, a roll's result on show (its words); land, its last die landing (each one before it `stag` sooner); hold, the dice on show after; claim, a claim's whole time; stamp, from the mark's start to its hit on the card
+export const COMBO = { kinds: ['3k', '4k', 'fh', 'ss', 'ls', '5k'], dice: 5, roll: 700 + DIE_MORE, land: 520 + DIE_MORE, stag: 45, sort: 280, hold: 450, claim: 900, stamp: 170 };   // ms: roll, a roll's result on show (its words); land, its last die landing (each one before it `stag` sooner); hold, the dice on show after; claim, a claim's whole time; stamp, from the mark's start to its hit on the card
 export const COMBO_NAMES = { '3k': 'Three of a kind', '4k': 'Four of a kind', fh: 'Full house', ss: 'Small straight', ls: 'Large straight', '5k': 'Five alike' };
 export const COMBO_SHORT = { '3k': '3 alike', '4k': '4 alike', fh: 'Full house', ss: 'Sm straight', ls: 'Lg straight', '5k': '5 alike' };
 export const comboCfg = mini => tune(mini);
@@ -54,11 +54,12 @@ export function apply(mini, p, m, rng, idx) {
     if (cur && cur.rolls >= max) return { ok: false, reason: 'bad' };
     const r = needRng(rng), held = m === 'roll' ? [0, 0, 0, 0, 0] : m.slice(5).split('').map(Number);
     if (held.every(Boolean)) return { ok: false, reason: 'bad' };   // (a roll rolls something)
-    const from = cur ? cur.dice.slice() : [], dice = held.map((h, i) => (h ? from[i] : 1 + randInt(r, 6)));
+    const from = cur ? cur.dice.slice() : [], raw = held.map((h, i) => (h ? from[i] : 1 + randInt(r, 6)));
+    const order = raw.map((v, i) => i).sort((a, b) => raw[a] - raw[b] || a - b), dice = order.map(i => raw[i]);   // (sorted, smallest first: the view slides them there once they land)
     const rolls = (cur ? cur.rolls : 0) + 1;
     mini.cur = { by: p, dice, rolls };
     const open = comboOpen(mini, p, dice);
-    mini.last = { by: p, kind: 'roll', from, held, dice: dice.slice(), rolls, open };
+    mini.last = { by: p, kind: 'roll', from, held, raw, order, dice: dice.slice(), rolls, open };
     if (rolls >= max && !open.length) { mini.cur = null; mini.last.none = true; return { ok: true, outcome: 'continue', note: 'none' }; }   // nothing to claim: the move ends
     return { ok: true, outcome: 'continue', note: 'roll', again: true };
   }
@@ -94,7 +95,8 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
 export function comboTimes(c) {
   if (!c || c.kind === 'end') return { land: 0, end: 300 };
   if (c.kind === 'claim') return { land: 0, mark: 120, hit: 120 + COMBO.stamp, end: COMBO.claim };
-  return { land: COMBO.roll, end: COMBO.roll + (c.none ? COMBO.claim : COMBO.hold) };
+  const land = c.order ? Math.max(COMBO.roll, COMBO.land + COMBO.sort) : COMBO.roll;   // (the dice land, then slide into order, smallest first: COMBO.sort after the last lands)
+  return { land, end: land + (c.none ? COMBO.claim : COMBO.hold) };
 }
 export function flashMs(f, winLen, won) { return comboTimes(f.combo).end + (won ? 600 : 0); }
 // A timeout with a move under way (core/board.js timeoutClose): it ends as it stands, nothing claimed ('auto'), so the

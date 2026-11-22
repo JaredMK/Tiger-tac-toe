@@ -5274,6 +5274,8 @@ button.cmbc.can { cursor: pointer; } button.cmbc.can:active { transform: transla
 .cmbtray { --ds: clamp(36px, min(14cqw, 11cqh), 58px); position: relative; flex: none; box-sizing: border-box; padding: calc(var(--ds) * .36) 4px calc(var(--ds) * .22); border: 3px solid var(--ink); border-radius: 18px; background: radial-gradient(circle at 50% 40%, #58a05a, #2f7046); box-shadow: inset 0 5px 0 rgba(22, 18, 16, .25); overflow: hidden; }
 .cmbdice { display: flex; justify-content: center; }
 .cmbd { position: relative; flex: 1 1 0; min-width: 0; max-width: 74px; height: calc(var(--ds) + 16px); margin: 0; padding: 0; display: grid; place-items: center; border: 0; background: none; line-height: 0; touch-action: manipulation; }
+.cmbs { display: grid; place-items: center; width: 100%; height: 100%; animation: cmbsort 280ms var(--tq, 0ms) cubic-bezier(.4, 0, .2, 1) both; }   /* a die just thrown sliding from where it landed to its sorted place (COMBO.sort) */
+@keyframes cmbsort { from { translate: calc(var(--dx) * 100%) 0; } }
 .cmbd .d3 { --ds: inherit; transition: transform .16s cubic-bezier(.4, 0, .2, 1); }
 button.cmbd { cursor: pointer; } button.cmbd:active .d3 { transform: scale(.93); }
 .cmbtray.idle .cmbd { opacity: .5; }

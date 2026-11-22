@@ -48,21 +48,22 @@ const count = (s, re) => (s.match(re) || []).length;
 const here = mini => { state.screen = 'mini'; state.zoom = 4; state.squares = Array.from({ length: 9 }, (_, i) => ({ owner: null, mini: i === 4 ? mini : { type: 'ttt' } })); state.flash = null; state.done = null; state.lock = null; state.winner = null; state.online = null; state.cpu = null; };
 
 // ---------- Dice Combo ----------
-test('Dice Combo: the controls are as they were: Roll; a die is a button that holds it; Roll again carries the holds; a lit combo is the claim', () => {
+test('Dice Combo: Roll 5 dice; a die is a button that holds it; the button counts the dice it will roll, live; the dice sorted smallest first; a lit combo is the claim', () => {
   const m0 = E.newMini('combo', E.makeRng('c')); here(m0); state.turn = 'X';
   let h = screen(CV, m0, null, 'X');
-  assert.match(h, /<div class="cbtns one"><button class="big X" data-act="move" data-m='"roll"'>Roll<\/button><\/div>/);
+  assert.match(h, /<div class="cbtns one"><button class="big X" data-act="move" data-m='"roll"'>Roll 5 dice<\/button><\/div>/);
   assert.equal(count(h, /data-act="cmbhold"/g), 0, 'nothing to hold before a roll'); assert.equal(count(h, /class="d3q"/g) >= 5, true, 'five dice not rolled yet');
   const r1 = play('combo', m0, 'X', 'roll', faces(4, 4, 2, 4, 6)); here(r1.mini); state.turn = 'X';
+  assert.deepEqual([r1.mini.cur.dice, r1.flash.combo.raw, r1.flash.combo.order], [[2, 4, 4, 4, 6], [4, 4, 2, 4, 6], [2, 0, 1, 3, 4]], 'sorted after the roll, smallest first');
   h = screen(CV, r1.mini, null, 'X');
   const dice = [...h.matchAll(/<button class="cmbd[^"]*" data-act="cmbhold" data-k="(\d)" aria-pressed="(true|false)" aria-label="Die (\d): (\d)[^"]*">/g)];
-  assert.deepEqual(dice.map(d => [d[1], d[2], d[3], d[4]]), [['0', 'false', '1', '4'], ['1', 'false', '2', '4'], ['2', 'false', '3', '2'], ['3', 'false', '4', '4'], ['4', 'false', '5', '6']], 'five dice, in order, each its own button');
-  assert.match(h, /<button class="big X" data-act="move" data-m='"roll:00000"'>Roll again \(1 left\)<\/button>/);
+  assert.deepEqual(dice.map(d => [d[1], d[2], d[3], d[4]]), [['0', 'false', '1', '2'], ['1', 'false', '2', '4'], ['2', 'false', '3', '4'], ['3', 'false', '4', '4'], ['4', 'false', '5', '6']], 'five dice, smallest first, each its own button');
+  assert.match(h, /<button class="big X" data-act="move" data-m='"roll:00000"'>Roll 5 dice<\/button>/);
   assert.match(h, /<button class="cmbc can" data-act="move" data-m='"c:3k"' aria-label="Three of a kind: claim it">/); assert.equal(count(h, /<button class="cmbc/g), 1, 'only what the dice make can be claimed');
   // two dice held (as a replayed tap does it: the same draft)
   CV.replay.input('cmbhold', 'k=0', { sq: 4 }); CV.replay.input('cmbhold', 'k=3', { sq: 4 });
   h = screen(CV, r1.mini, null, 'X');
-  assert.match(h, /<button class="cmbd held" data-act="cmbhold" data-k="0" aria-pressed="true" aria-label="Die 1: 4, held">/); assert.match(h, /data-m='"roll:10010"'>Roll again \(1 left\)/);
+  assert.match(h, /<button class="cmbd held" data-act="cmbhold" data-k="0" aria-pressed="true" aria-label="Die 1: 2, held">/); assert.match(h, /data-m='"roll:10010"'>Roll 3 dice/);
   assert.deepEqual(CV.replay.synth('roll:10010').map(x => x.slice(1)), [['cmbhold', 'k=0'], ['cmbhold', 'k=3'], ['move', 'm="roll:10010"']]);
   // the other side looking on, or a finished square: no control at all
   assert.equal(count(screen(CV, r1.mini, null, 'X', { locked: true }), /data-act="cmbhold"|<button class="cmbc/g), 0);
@@ -70,15 +71,15 @@ test('Dice Combo: the controls are as they were: Roll; a die is a button that ho
 });
 
 test('Dice Combo: a roll throws the dice not held (the shared die), landing one after the other; what it makes lights up as the last one lands, never before', () => {
-  const T = CR.COMBO, m0 = E.newMini('combo', E.makeRng('c')), r1 = play('combo', m0, 'X', 'roll', faces(4, 4, 2, 4, 6)), r2 = play('combo', r1.mini, 'X', 'roll:11010', faces(4, 1));
-  assert.deepEqual(r2.flash.combo.dice, [4, 4, 4, 4, 1]); here(r1.mini); state.turn = 'X';
+  const T = CR.COMBO, m0 = E.newMini('combo', E.makeRng('c')), r1 = play('combo', m0, 'X', 'roll', faces(4, 4, 2, 4, 6)), r2 = play('combo', r1.mini, 'X', 'roll:01110', faces(1, 4));
+  assert.deepEqual([r2.flash.combo.raw, r2.flash.combo.dice], [[1, 4, 4, 4, 4], [1, 4, 4, 4, 4]]); here(r1.mini); state.turn = 'X';
   const h = screen(CV, r1.mini, r2.flash, 'X');
   const cells = [...h.matchAll(/<span class="cmbd([^"]*)"[^>]*aria-label="Die (\d): \d[^"]*"><span class="d3 d3cube([^"]*)"(?: style="--dur:(\d+)ms")?/g)].map(d => [d[1].trim(), /roll/.test(d[3]), Number(d[4] || 0)]);
-  assert.deepEqual(cells, [['held', false, 0], ['held', false, 0], ['', true, T.land - T.stag], ['held', false, 0], ['', true, T.land]], 'the held dice stay; the others are thrown, the last down at COMBO.land');
+  assert.deepEqual(cells, [['', true, T.land - T.stag], ['held', false, 0], ['held', false, 0], ['held', false, 0], ['', true, T.land]], 'the held dice stay; the others are thrown, the last down at COMBO.land');
   assert.equal(CV.comboLand(2, [1, 1, 0, 1, 0]), T.land - T.stag); assert.equal(CV.comboLand(0, [0, 0, 0, 0, 0]), T.land - 4 * T.stag);
   assert.doesNotMatch(h, /cmbd[^>]*style="[^"]*--t:/, 'never --t on a die: the shared die reads it as its own start');
-  assert.match(h, new RegExp(`<span class="cmbc can soon" style="--t:${T.land + 40}ms" aria-label="Four of a kind: claim it">`)); assert.equal(count(h, /<button class="cmbc/g), 0, 'no claim while it plays');
-  assert.match(h, /data-m='"roll:11010"' disabled>Roll again \(1 left\)</, 'the button reads as it did when pressed');
+  assert.match(h, new RegExp(`<span class="cmbc can soon" style="--t:${T.land + T.sort + 40}ms" aria-label="Four of a kind: claim it">`)); assert.equal(count(h, /<button class="cmbc/g), 0, 'no claim while it plays');
+  assert.match(h, /data-m='"roll:01110"' disabled>Roll 2 dice</, 'the button reads as it did when pressed');
   const snd = sounds(CV, r2.flash);
   assert.deepEqual(snd.map(s => s.slice(0, 2)), [['rattle', 0], ['diceTap', Math.round((T.land - T.stag) * DIE_BOUNCE)], ['thunk', T.land]]);
   assert.ok(T.land + 40 + 240 <= CR.flashMs(r2.flash), 'inside the move\'s time');
@@ -86,7 +87,7 @@ test('Dice Combo: a roll throws the dice not held (the shared die), landing one 
   const none = play('combo', r1.mini, 'X', 'roll:00000', faces(1, 3, 5, 6, 6)); assert.equal(none.flash.combo.none, true);
   const hn = screen(CV, none.mini, none.flash, 'X'), tn = CR.comboTimes(none.flash.combo);
   assert.equal(count(hn, new RegExp(`class="cmbd dull late" style="--tz:${tn.land}ms"`, 'g')), 5); assert.match(hn, new RegExp(`<p class="arcres no appear" style="--t:${tn.land}ms" role="status">No combo: nothing claimed</p>`));
-  assert.deepEqual(sounds(CV, none.flash).at(-1).slice(0, 2), ['thud', T.roll + 100]); assert.ok(T.roll + 100 + 420 <= CR.flashMs(none.flash));
+  assert.deepEqual(sounds(CV, none.flash).at(-1).slice(0, 2), ['thud', tn.land + 100]); assert.ok(tn.land + 100 + 420 <= CR.flashMs(none.flash));
 });
 
 test('Dice Combo: a claim rings the dice that make it, stamps the card and fills the pip as the stamp hits; the square won: the card hops', () => {

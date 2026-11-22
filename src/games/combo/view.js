@@ -1,7 +1,7 @@
 // Dice Combo: the screen, the miniature, the move's words and sounds, and the inputs (November 2026).
 import { tune } from '../../core/tune.js';
 import { COMBO, COMBO_NAMES, COMBO_SHORT, comboCounts, comboOpen, comboTimes } from './rules.js';
-import { N, mv, state, waitLine } from '../../ui/app.js';
+import { N, REDUCED, mv, state, waitLine } from '../../ui/app.js';
 import { DIE_BOUNCE, die3d } from '../../ui/dice.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 import { markSvgG } from '../../ui/thumbs.js';
@@ -51,7 +51,7 @@ export const comboLand = (i, held) => { const thrown = [0, 1, 2, 3, 4].filter(j 
 function card(mini, p, o, open, tap, f, tim) {
   const mine = mini.claimed[p] || [], newest = mine[mine.length - 1];
   const stampNow = f && f.kind === 'claim' && f.by === p ? f.combo : null;
-  const litAt = f && f.kind === 'roll' ? COMBO.land + 40 : null;      // (a roll playing: the combos it makes light up as its last die lands, never before)
+  const litAt = f && f.kind === 'roll' ? COMBO.land + (f.order ? COMBO.sort : 0) + 40 : null;      // (a roll playing: the combos it makes light up as its last die lands, never before)
   const cells = COMBO.kinds.map(k => {
     const got = mine.includes(k), can = open.includes(k) && !got, stamp = stampNow === k;
     const cls = `cmbc${got ? ' got ' + p : ''}${got && k === newest ? ' new' : ''}${can ? ' can' : ''}${can && litAt != null ? ' soon' : ''}${stamp ? ' stamp' : ''}`;
@@ -79,12 +79,14 @@ function comboTable(mini, a, o) {
   const made = seen && seen.kind === 'claim' && !cur ? comboDice(seen.dice, seen.combo) : [];   // the dice that made the combo just claimed
   const dull = !!(seen && !cur && (seen.none || seen.kind === 'end'));                           // a move that ended with nothing: its dice greyed
   const pc = f ? f.by : turn;
+  const sorting = rolling && Array.isArray(f.order) && !REDUCED;   // a roll on show: each die thrown in its old place, then sliding to its sorted one
   const die = i => {
-    const v = dice ? dice[i] : null, cls = ['cmbd'], st = [];
-    if (held[i]) cls.push('held');
+    const v = dice ? dice[i] : null, cls = ['cmbd'], st = [], ri = sorting ? f.order[i] : i;
+    if (held[ri]) cls.push('held');
     if (made.includes(i)) { cls.push('mk'); if (f) { cls.push('late'); st.push(`--tk:${made.indexOf(i) * 45}ms`); } }
     if (dull && v) { cls.push('dull'); if (f) { cls.push('late'); st.push(`--tz:${tim.land}ms`); } }
-    const body = die3d(v, { roll: rolling && !held[i] ? comboLand(i, held) : 0, v: i });
+    const d3 = die3d(v, { roll: rolling && !held[ri] ? comboLand(ri, held) : 0, v: ri });
+    const body = sorting && ri !== i ? `<span class="cmbs" style="--dx:${ri - i};--tq:${COMBO.land}ms">${d3}</span>` : d3;
     const lab = v ? `Die ${i + 1}: ${v}${held[i] ? ', held' : ''}` : `Die ${i + 1}`;
     return canHold ? `<button class="${cls.join(' ')}" data-act="cmbhold" data-k="${i}" aria-pressed="${!!held[i]}" aria-label="${lab}">${body}</button>`
       : `<span class="${cls.join(' ')}"${st.length ? ` style="${st.join(';')}"` : ''} role="img" aria-label="${lab}">${body}</span>`;
@@ -99,8 +101,8 @@ function comboTable(mini, a, o) {
     : `<p class="arcnote">${cur ? '' : `${W(turn)} to play`}</p>`;   // (no help text in the game: the lit combos and Roll say it; the roll count is in the header, heldSub)
   const rollsLeft = cur ? R - cur.rolls : R, rollM = !cur || !cur.rolls ? 'roll' : 'roll:' + held.join('');
   const canRoll = mover && !f && rollsLeft > 0 && !(cur && held.every(Boolean));
-  const pre = rolling && f.by === turn ? f.rolls - 1 : cur ? cur.rolls : 0;   // (a roll playing: the button reads as it did when pressed)
-  const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv(rollM)}${canRoll ? '' : ' disabled'}>${pre ? `Roll again (${R - pre} left)` : 'Roll'}</button></div>`;
+  const nRoll = rolling && f.by === turn ? f.held.filter(h => !h).length : cur && cur.rolls ? held.filter(h => !h).length : 5;   // (a roll playing: the button reads as it did when pressed; between rolls it counts the dice not held, live)
+  const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv(rollM)}${canRoll ? '' : ' disabled'}>Roll ${nRoll} ${nRoll === 1 ? 'die' : 'dice'}</button></div>`;
   const tray = `<div class="cmbtray${dice ? '' : ' idle'}${canHold ? ' pick' : ''}" aria-label="The dice"><div class="cmbdice">${[0, 1, 2, 3, 4].map(die).join('')}</div></div>`;
   const C = p => card(mini, p, o, turn === p ? open : [], mover && !f, f, tim);
   return `<div class="g-arc g-cmb pc-${pc}"><div class="ctals">${tal('X')}${tal('O')}</div><div class="cmb"><div class="cmbcards">${C('X')}${C('O')}</div>${tray}${res}</div>${btn}</div>`;
@@ -173,7 +175,7 @@ export function sounds(f, add, won, mini, last) {
     add('diceTap', Math.round(comboLand(thrown[0], c.held) * DIE_BOUNCE));
     if (thrown.length > 2) add('diceTap', comboLand(thrown[Math.floor(thrown.length / 2) - 1], c.held));
     add('thunk', COMBO.land);
-    if (c.none) add('thud', COMBO.roll + 100);
+    if (c.none) add('thud', comboTimes(c).land + 100);
     return;
   }
   if (c.kind === 'claim') { const t = comboTimes(c); add('stamp', t.hit - 30); add('ding', t.hit + 120); }

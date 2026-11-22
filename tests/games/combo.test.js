@@ -27,11 +27,11 @@ test('combo: a move: roll, hold and roll again up to the rolls allowed, then a c
     assert.equal(E.applyMove(m, 'X', 'roll:10000', E.makeRng('z')).ok, false, 'no holds before the first roll');
     assert.equal(E.applyMove(m, 'X', 'c:3k', E.makeRng('z')).ok, false, 'no claim before a roll');
     let r = E.applyMove(m, 'X', 'roll', faces(2, 2, 5, 1, 6));
-    assert.deepEqual([r.ok, r.again, m.cur.dice, m.cur.rolls], [true, true, [2, 2, 5, 1, 6], 1]);
+    assert.deepEqual([r.ok, r.again, m.cur.dice, m.cur.rolls], [true, true, [1, 2, 2, 5, 6], 1], 'sorted, smallest first');
     assert.equal(E.applyMove(m, 'X', 'roll', E.makeRng('z')).ok, false, 'a first roll only once');
     assert.equal(E.applyMove(m, 'X', 'roll:11111', E.makeRng('z')).ok, false, 'a roll rolls something');
     assert.equal(E.applyMove(m, 'X', 'c:3k', E.makeRng('z')).ok, false, 'not made');
-    r = E.applyMove(m, 'X', 'roll:11000', faces(2, 4, 4));
+    r = E.applyMove(m, 'X', 'roll:01100', faces(2, 4, 4));
     assert.deepEqual(m.cur.dice, [2, 2, 2, 4, 4], 'the held dice stay, the rest rolled'); assert.equal(r.again, true);
     assert.deepEqual(m.last.open.sort(), ['3k', 'fh']);
     r = E.applyMove(m, 'X', 'c:fh', E.makeRng('z'));
@@ -95,5 +95,5 @@ test('combo: the public view and the flash carry the dice, the holds and the car
   E.setTune('combo', { goal: 2, rolls: 3 });
   try { const m = E.newMini('combo', E.makeRng('tt')); assert.deepEqual(m.tune, { goal: 2, rolls: 3 }); } finally { E.setTune('combo', null); }
   const meta = require('../../src/games/combo/meta.js');
-  assert.deepEqual([meta.release, meta.category, meta.minVersion, meta.TUNE[0].k, meta.TUNE[0].def], ['admin', 'luck', '1.17.0', 'again', 'off']);
+  assert.deepEqual([meta.release, meta.category, meta.minVersion, meta.TUNE[0].k, meta.TUNE[0].def], ['admin', 'luck', '1.29.0', 'again', 'off']);
 });
