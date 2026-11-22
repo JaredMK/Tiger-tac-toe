@@ -6,7 +6,7 @@
 import { needRng } from '../../core/random.js';
 import { tune, tuneLive } from '../../core/tune.js';
 
-export const HEADS = { flip: 1150, judge: 1250, hold: 520 };   // ms from the move: the coin lands, the verdict, the result held
+export const HEADS = { flip: 1700, judge: 1800, hold: 520 };   // (December 2026: ten full twirls, slowing before it lands)   // ms from the move: the coin lands, the verdict, the result held
 export const headsCfg = mini => ({ wins: tune(mini).wins });
 export function create(type, rng) { return { type, shared: tuneLive(type).boards === 'shared', n: { X: 0, O: 0 }, flips: 0, last: null }; }
 export function apply(mini, p, m, rng, idx) {

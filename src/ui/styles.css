@@ -6355,15 +6355,15 @@ button.wlc { cursor: pointer; touch-action: manipulation; }
 .g-ht > * { flex: none; }
 .httable { flex: 1 1 0; min-height: 0; position: relative; display: grid; place-items: center; container-type: size; border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 18px; background: radial-gradient(circle at 50% 62%, #45b3ab, #1f7a78); box-shadow: 0 4px 0 var(--ink); overflow: hidden; perspective: 700px; }
 .htshadow { position: absolute; left: 50%; top: 50%; width: min(50cqw, 56cqh); aspect-ratio: 3.2; margin-top: min(26cqw, 29cqh); transform: translateX(-50%); border-radius: 50%; background: rgba(22, 18, 16, .28); }
-.htshadow.toss { animation: htshade 1150ms ease-in-out both; }
-@keyframes htshade { 45% { transform: translateX(-50%) scale(.45); opacity: .5; } }
+.htshadow.toss { animation: htshade 1700ms linear both; }
+@keyframes htshade { 40% { transform: translateX(-50%) scale(.45); opacity: .5; } 84% { transform: translateX(-50%); opacity: 1; } }
 .htcoin { position: relative; width: min(56cqw, 62cqh); aspect-ratio: 1; transform-style: preserve-3d; }
 .htcoin.t { transform: rotateX(180deg); }
 .htface { position: absolute; inset: 0; width: 100%; height: 100%; display: block; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .htface.ft { transform: rotateX(180deg); }
-.htcoin.toss.h { animation: httossh 1150ms cubic-bezier(.3, .1, .4, 1) both; } .htcoin.toss.t { animation: httosst 1150ms cubic-bezier(.3, .1, .4, 1) both; }
-@keyframes httossh { from { transform: translateY(0) rotateX(0); } 45% { transform: translateY(-30cqh) rotateX(900deg) scale(1.1); } 88% { transform: translateY(0) rotateX(1800deg); } 94% { transform: translateY(-3cqh) rotateX(1800deg); } to { transform: rotateX(1800deg); } }
-@keyframes httosst { from { transform: translateY(0) rotateX(0); } 45% { transform: translateY(-30cqh) rotateX(990deg) scale(1.1); } 88% { transform: translateY(0) rotateX(1980deg); } 94% { transform: translateY(-3cqh) rotateX(1980deg); } to { transform: rotateX(1980deg); } }
+.htcoin.toss.h { animation: httossh 1700ms linear both; } .htcoin.toss.t { animation: httosst 1700ms linear both; }   /* ten full twirls up and down, the spin easing out before it lands (HEADS.flip) */
+@keyframes httossh { 0% { transform: translateY(0cqh) rotateX(0deg) scale(1); } 10% { transform: translateY(-14cqh) rotateX(792deg) scale(1.05); } 20% { transform: translateY(-24cqh) rotateX(1512deg) scale(1.09); } 30% { transform: translateY(-29cqh) rotateX(2124deg) scale(1.1); } 40% { transform: translateY(-30cqh) rotateX(2592deg) scale(1.1); } 50% { transform: translateY(-28cqh) rotateX(2952deg) scale(1.09); } 60% { transform: translateY(-22cqh) rotateX(3222deg) scale(1.06); } 70% { transform: translateY(-13cqh) rotateX(3420deg) scale(1.03); } 78% { transform: translateY(-5cqh) rotateX(3546deg) scale(1.01); } 84% { transform: translateY(0cqh) rotateX(3600deg) scale(1); } 91% { transform: translateY(-2.5cqh) rotateX(3600deg); } to { transform: rotateX(3600deg); } }
+@keyframes httosst { 0% { transform: translateY(0cqh) rotateX(0deg) scale(1); } 10% { transform: translateY(-14cqh) rotateX(832deg) scale(1.05); } 20% { transform: translateY(-24cqh) rotateX(1588deg) scale(1.09); } 30% { transform: translateY(-29cqh) rotateX(2230deg) scale(1.1); } 40% { transform: translateY(-30cqh) rotateX(2722deg) scale(1.1); } 50% { transform: translateY(-28cqh) rotateX(3100deg) scale(1.09); } 60% { transform: translateY(-22cqh) rotateX(3383deg) scale(1.06); } 70% { transform: translateY(-13cqh) rotateX(3591deg) scale(1.03); } 78% { transform: translateY(-5cqh) rotateX(3723deg) scale(1.01); } 84% { transform: translateY(0cqh) rotateX(3780deg) scale(1); } 91% { transform: translateY(-2.5cqh) rotateX(3780deg); } to { transform: rotateX(3780deg); } }
 .htline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .htline.ok { color: var(--green); } .htline.no { color: var(--muted); }
 .htbtns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
