@@ -581,6 +581,16 @@ def('pnSlide', 0.3, (c, d, t) => { sfxNoise(c, d, t, .2, { f: 900, to: 2400, q: 
 // [/jigsaw]
 //
 // [hive] Letter Hive: its sounds (names start `hv`)
+// (the burst's start, a rising pair; a letter's cell pressed, a soft wooden tock played higher as the word grows; a letter taken back; the outer letters shuffled, a quick rustle; a word accepted, a rising chime; a full-hive word, a climbing flourish with a sparkle; a word refused, a soft low buzz; the time up, a falling pair; a word landing in someone else's list, a pop)
+def('hvGo', 0.24, (c, d, t) => { sfxTone(c, d, t, 587, .08, { type: 'triangle', vol: .36 }); sfxTone(c, d, t + .09, 880, .13, { type: 'triangle', vol: .36 }); }, { level: .4 });
+def('hvKey', 0.07, (c, d, t) => { sfxNoise(c, d, t, .012, { f: 2400, q: 2, vol: .22, att: .001 }); sfxTone(c, d, t, 430, .055, { to: 330, type: 'triangle', vol: .42, att: .001 }); }, { level: .36 });
+def('hvDel', 0.07, (c, d, t) => sfxTone(c, d, t, 250, .055, { to: 180, type: 'triangle', vol: .38, att: .001 }), { level: .3 });
+def('hvShuf', 0.2, (c, d, t) => { [0, .045, .09].forEach((o, i) => sfxNoise(c, d, t + o, .05, { f: 1500 + i * 500, q: 1.4, vol: .28, att: .003 })); }, { level: .34 });
+def('hvWord', 0.34, (c, d, t) => { sfxTone(c, d, t, 784, .09, { type: 'triangle', vol: .4, att: .002 }); sfxTone(c, d, t + .07, 1175, .22, { type: 'triangle', vol: .4, att: .002 }); sfxTone(c, d, t + .07, 2350, .12, { vol: .1 }); }, { level: .46 });
+def('hvFull', 0.8, (c, d, t) => { [659, 784, 988, 1319].forEach((f, i) => sfxTone(c, d, t + i * .075, f, i === 3 ? .34 : .11, { type: 'triangle', vol: .4, att: .002 })); [2093, 2637, 3136].forEach((f, i) => sfxTone(c, d, t + .34 + i * .07, f, .14, { vol: .16 })); }, { level: .52 });
+def('hvNo', 0.16, (c, d, t) => { sfxTone(c, d, t, 170, .13, { to: 120, type: 'sawtooth', vol: .2, att: .004 }); sfxTone(c, d, t, 85, .13, { vol: .3, att: .004 }); }, { level: .32 });
+def('hvEnd', 0.34, (c, d, t) => { sfxTone(c, d, t, 660, .11, { type: 'triangle', vol: .36 }); sfxTone(c, d, t + .12, 440, .2, { type: 'triangle', vol: .36 }); }, { level: .4 });
+def('hvLand', 0.12, (c, d, t) => { sfxTone(c, d, t, 620, .09, { to: 880, type: 'sine', vol: .42, att: .002 }); sfxNoise(c, d, t, .012, { f: 3000, q: 2, vol: .14, att: .001 }); }, { level: .38 });
 // [/hive]
 //
 // [rally] Road Race: its sounds (names start `rr`)

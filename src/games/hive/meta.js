@@ -1,16 +1,42 @@
-// Letter Hive: a stand-in (a copy of Heads or Tails) until the real game replaces this folder.
+// Letter Hive: its names, its "?" explainer, its icon, its release default and its settings.
+import { AGAIN_TUNE } from '../../core/tune.js';
 
-export const info = { name: 'Letter Hive', hint: 'Call the flip. First to 3 right calls wins' };
+export const info = { name: 'Letter Hive', hint: 'Make words from the seven letters, always with the centre one. First to the target wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const minVersion = '1.30.0';   // the oldest client version that has this game (core/client.js)
-export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
+export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const placeholder = false;   // never on a new state's placeholder board (games/index.js PLACE_TYPES): the seeded deals stay as they were
-export const explainer = { name: 'Letter Hive', play: 'Call heads or tails, then the coin flips. A right call is a point.{sharedText}', win: 'First to {wins} points.' };
-export const explainVars = v => ({ sharedText: v.boards === 'shared' ? ' A wrong call is a point for the other player.' : '' });
-export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9" ry="9"/><path d="M8.500 9.500v5M11.500 9.500v5M8.500 12h3M14 9.500h3.500M15.750 9.500v5"/></svg>';
-// Its settings (the admin's Games page; core/tune.js): the right calls needed, and whether each flip is the caller's
-// alone (separate) or counts for both players (shared: a wrong call scores for the other side).
+export const realTime = true;   // its move is a timed burst (core/timer.js moveRate)
+export const turnSecs = 60;   // an online turn's seconds here: the burst and the time to begin it (core/timer.js turnSecs)
+export const explainer = { name: 'Letter Hive', play: 'A turn is a burst of {secs} seconds. Tap the letters to make words of 4 letters or more, always with the centre letter; a letter can be used again. A 4-letter word scores {four}, a longer word its length, and a word with all seven letters {bonus} more. A word found is gone for both players.{goAgain}', win: 'First to {target} points.' };
+// {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).
+export const goAgainText = { on: ' All seven letters in a word? Go again.', off: '' };
+// The icon: a little hive of three cells, a letter's strokes in the middle one.
+export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.500 3.500h5l2.500 4.250-2.500 4.250h-5L7 7.750z"/><path d="M4.500 12h5l2.500 4.250L9.500 20.500h-5L2 16.250z"/><path d="M14.500 12h5l2.500 4.250-2.500 4.250h-5L12 16.250z"/><path d="M10.750 9.500 12 6l1.250 3.500M11.150 8.500h1.700"/></svg>';
+// Its settings (the admin's Games page; core/tune.js): read with hiveCfg(mini). The burst's length and the target;
+// what a 4-letter word and a full-hive word are worth (a longer word is always its length); and the computer's hand:
+// the words it finds in a burst by level (never more than a person could enter in the time) and its lean to short
+// words (how likely a word is beside one a letter shorter: 100 no lean, 50 half as likely a letter) and to everyday
+// ones (the puzzles mark them: how likely an unusual word is beside one), with Hard's chance of going for a
+// full-hive word. Tuned by tests/sim/hive.sim.js (December 2026): 40 points with Normal's 1 to 4 words a burst: 4.6
+// bursts each (median 4.5), the winner's 4.9, the first mover 56.7% over 4,000 squares (35 points: 4.1, 57%; 45: 5.1,
+// 56%; Normal at 2 to 4 words: 3.9, 60.5%); Hard against Hard 3.05 bursts, 61%. The target tops out at 50: every
+// puzzle holds 4 times that in points (scripts/make-hive-puzzles.js TOTAL).
 export const TUNE = [
-  { k: 'wins', label: 'Right calls to take the square', def: 3, min: 1, max: 7, step: 1, group: 'Rules' },
-  { k: 'boards', label: 'Each flip counts for', def: 'separate', opts: ['separate', 'shared'], group: 'Rules' },
+  AGAIN_TUNE,
+  { k: 'secs', label: 'Burst length (s)', def: 20, min: 8, max: 45, step: 1, group: 'Timing' },
+  { k: 'target', label: 'Points to take the square', def: 40, min: 10, max: 50, step: 1, group: 'Rules' },
+  { k: 'four', label: 'A 4-letter word scores', def: 1, min: 1, max: 4, step: 1, group: 'Rules' },
+  { k: 'bonus', label: 'All seven letters in a word: extra points', def: 7, min: 0, max: 15, step: 1, group: 'Rules' },
+  { k: 'aiRare', label: 'Computer: an unusual word is this likely beside an everyday one (%)', def: 20, min: 0, max: 100, step: 5, group: 'Computer' },
+  { k: 'aiMin', label: 'Normal computer: words a burst, at least', def: 1, min: 0, max: 12, step: 1, group: 'Computer' },
+  { k: 'aiMax', label: 'Normal computer: words a burst, at most', def: 4, min: 0, max: 12, step: 1, group: 'Computer' },
+  { k: 'aiShort', label: 'Normal computer: a letter longer is this likely (%)', def: 45, min: 5, max: 150, step: 5, group: 'Computer' },
+  { k: 'aiMinHard', label: 'Hard computer: words a burst, at least', def: 2, min: 0, max: 12, step: 1, group: 'Computer' },
+  { k: 'aiMaxHard', label: 'Hard computer: words a burst, at most', def: 5, min: 0, max: 12, step: 1, group: 'Computer' },
+  { k: 'aiShortHard', label: 'Hard computer: a letter longer is this likely (%)', def: 50, min: 5, max: 150, step: 5, group: 'Computer' },
+  { k: 'aiFullHard', label: 'Hard computer: goes for a full-hive word (% of bursts)', def: 10, min: 0, max: 100, step: 5, group: 'Computer' },
+  { k: 'aiMinEasy', label: 'Easy computer: words a burst, at least', def: 1, min: 0, max: 12, step: 1, group: 'Computer' },
+  { k: 'aiMaxEasy', label: 'Easy computer: words a burst, at most', def: 3, min: 0, max: 12, step: 1, group: 'Computer' },
+  { k: 'aiShortEasy', label: 'Easy computer: a letter longer is this likely (%)', def: 35, min: 5, max: 150, step: 5, group: 'Computer' },
 ];
