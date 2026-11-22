@@ -12,7 +12,7 @@ for (const k of ['document', 'window', 'localStorage', 'sessionStorage', 'naviga
   try { Object.defineProperty(globalThis, k, { value: stub(), configurable: true, writable: true }); } catch (e) { /* (kept) */ }
 }
 const require = createRequire(import.meta.url);
-const E = require('../engine.js');
+const E = require('../engine.js'); E.setTune('jigsaw', { centre: 'on' });   // (these views were written for the 3 by 3 with its centre piece in place: the setting's other value, the default being off)
 const { GAMES } = await import('../../src/games/index.js');
 const V = await import('../../src/games/jigsaw/view.js');
 const R = await import('../../src/games/jigsaw/rules.js');
