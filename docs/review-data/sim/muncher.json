@@ -1,0 +1,1 @@
+{"type":"muncher","name":"Muncher","n":300,"stuck":1,"stuckWhy":["never ended (3000 actions)"],"draws":0,"winnerMoves":{"p25":3,"p50":3,"p75":4,"mean":3.61},"loserMedian":3,"firstMover":0.575,"winIn1":0,"winIn2":0.214,"actionsMedian":6,"refused":0,"secs":27}

@@ -1,0 +1,1 @@
+{"type":"clash","name":"Standoff Grid","n":300,"stuck":8,"stuckWhy":["never ended (3000 actions)","nobody can move"],"draws":0.062,"winnerMoves":{"p25":3,"p50":4,"p75":5,"mean":4.57},"loserMedian":4,"firstMover":0.609,"winIn1":0.015,"winIn2":0.091,"actionsMedian":8,"refused":0,"secs":28}

@@ -1,0 +1,1 @@
+{"type":"numbers","name":"Number Shuffle","n":300,"stuck":0,"stuckWhy":[],"draws":0,"winnerMoves":{"p25":4,"p50":6,"p75":6,"mean":5.31},"loserMedian":5,"firstMover":0.59,"winIn1":0.027,"winIn2":0.07,"actionsMedian":11,"refused":0,"secs":0}

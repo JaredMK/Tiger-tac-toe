@@ -1,0 +1,1 @@
+{"type":"c4","name":"Four in a Row","n":300,"stuck":0,"stuckWhy":[],"draws":0.11,"winnerMoves":{"p25":18,"p50":19,"p75":20,"mean":19.02},"loserMedian":18,"firstMover":0.757,"winIn1":0,"winIn2":0,"actionsMedian":37,"refused":0,"secs":900}

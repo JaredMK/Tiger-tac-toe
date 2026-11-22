@@ -1,0 +1,1 @@
+{"type":"bridge","name":"Glass Bridge","n":300,"stuck":0,"stuckWhy":[],"draws":0,"winnerMoves":{"p25":3,"p50":4,"p75":4,"mean":3.76},"loserMedian":3,"firstMover":0.483,"winIn1":0.017,"winIn2":0.123,"actionsMedian":28,"refused":0,"secs":0}

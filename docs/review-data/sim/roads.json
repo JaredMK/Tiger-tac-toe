@@ -1,0 +1,1 @@
+{"type":"roads","name":"Roads","n":300,"stuck":0,"stuckWhy":[],"draws":0.327,"winnerMoves":{"p25":5,"p50":6,"p75":7,"mean":6.05},"loserMedian":5,"firstMover":0.772,"winIn1":0,"winIn2":0,"actionsMedian":11,"refused":0,"secs":76}

@@ -1,0 +1,1 @@
+{"type":"coins","name":"Coin Flip","n":300,"stuck":0,"stuckWhy":[],"draws":0,"winnerMoves":{"p25":2,"p50":3,"p75":7,"mean":4.93},"loserMedian":3,"firstMover":0.547,"winIn1":0.187,"winIn2":0.357,"actionsMedian":6,"refused":0,"secs":2}

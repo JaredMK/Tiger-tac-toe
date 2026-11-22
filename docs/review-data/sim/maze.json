@@ -1,0 +1,1 @@
+{"type":"maze","name":"Maze Runner","n":300,"stuck":0,"stuckWhy":[],"draws":0,"winnerMoves":{"p25":3,"p50":4,"p75":6,"mean":4.72},"loserMedian":4,"firstMover":0.573,"winIn1":0.053,"winIn2":0.19,"actionsMedian":28,"refused":0,"secs":179}

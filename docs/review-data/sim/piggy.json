@@ -1,0 +1,1 @@
+{"type":"piggy","name":"Pig","n":300,"stuck":0,"stuckWhy":[],"draws":0,"winnerMoves":{"p25":1,"p50":2,"p75":3,"mean":2.34},"loserMedian":1,"firstMover":0.62,"winIn1":0.32,"winIn2":0.65,"actionsMedian":14,"refused":0,"secs":1}

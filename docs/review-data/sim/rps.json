@@ -1,0 +1,1 @@
+{"type":"rps","name":"Rock Paper Scissors","n":300,"stuck":0,"stuckWhy":[],"draws":0,"winnerMoves":{"p25":4,"p50":5,"p75":6,"mean":4.81},"loserMedian":4,"firstMover":0.617,"winIn1":0,"winIn2":0,"actionsMedian":13,"refused":0,"secs":0}

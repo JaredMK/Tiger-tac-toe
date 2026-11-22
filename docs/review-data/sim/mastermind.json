@@ -1,0 +1,1 @@
+{"type":"mastermind","name":"Codebreaker","n":300,"stuck":0,"stuckWhy":[],"draws":0,"winnerMoves":{"p25":2,"p50":2,"p75":3,"mean":2.35},"loserMedian":2,"firstMover":0.4,"winIn1":0.033,"winIn2":0.623,"actionsMedian":4,"refused":0,"secs":14}

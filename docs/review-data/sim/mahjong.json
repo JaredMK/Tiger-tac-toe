@@ -1,0 +1,1 @@
+{"type":"mahjong","name":"Mahjong","n":300,"stuck":0,"stuckWhy":[],"draws":0,"winnerMoves":{"p25":4,"p50":5,"p75":6,"mean":5.25},"loserMedian":4,"firstMover":0.51,"winIn1":0.017,"winIn2":0.077,"actionsMedian":17,"refused":0,"secs":21}

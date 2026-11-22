@@ -1,0 +1,1 @@
+{"type":"bowling","name":"Bowling","n":300,"stuck":0,"stuckWhy":[],"draws":0,"winnerMoves":{"p25":4,"p50":4,"p75":5,"mean":4.26},"loserMedian":3,"firstMover":0.733,"winIn1":0,"winIn2":0,"actionsMedian":7,"refused":0,"secs":50}

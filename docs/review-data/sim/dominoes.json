@@ -1,0 +1,1 @@
+{"type":"dominoes","name":"Dominoes","n":300,"stuck":0,"stuckWhy":[],"draws":0.003,"winnerMoves":{"p25":3,"p50":4,"p75":8,"mean":5.63},"loserMedian":4,"firstMover":0.525,"winIn1":0,"winIn2":0,"actionsMedian":11,"refused":0,"secs":46}

@@ -1,0 +1,1 @@
+{"type":"hilo","name":"Higher/Lower","n":300,"stuck":0,"stuckWhy":[],"draws":0,"winnerMoves":{"p25":2,"p50":3,"p75":4,"mean":3.12},"loserMedian":3,"firstMover":0.503,"winIn1":0.09,"winIn2":0.27,"actionsMedian":6,"refused":0,"secs":3}

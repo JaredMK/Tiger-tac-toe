@@ -1,0 +1,1 @@
+{"type":"hunt","name":"Treasure Hunt","n":300,"stuck":0,"stuckWhy":[],"draws":0,"winnerMoves":{"p25":2,"p50":2,"p75":2,"mean":2.14},"loserMedian":2,"firstMover":0.477,"winIn1":0.097,"winIn2":0.763,"actionsMedian":4,"refused":0,"secs":9}
