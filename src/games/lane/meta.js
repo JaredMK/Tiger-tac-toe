@@ -6,7 +6,7 @@ export const minVersion = '1.9.0';   // (1.9.0: the first version with its rules
 export const turnSecs = 60;   // an online turn's time in this game (core/timer.js turnSecs): 60 seconds, against the match's 30
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
-export const explainer = { name: 'Lane Rush', play: 'Swipe to change lanes and dodge traffic.', win: 'Reach 1,000 m first.' };
+export const explainer = { name: 'Lane Rush', play: 'Swipe, or tap the arrows, to change lanes and dodge traffic.', win: 'Reach 1,000 m first.' };
 // Its settings (the admin's Mini-game Settings; core/tune.js), beside the runner config (config/run): dealt
 // into the square's cfg when changed (shared/runner.js).
 export const TUNE = [

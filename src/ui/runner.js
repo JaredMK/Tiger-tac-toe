@@ -101,6 +101,8 @@ export function runTable(mini, a, o) {
   const count = live && live.phase === 'count' ? `<div class="rcount"${fxAttr(Math.round(live.at + (RUN.countdown - live.count) * 1000), 'rt')} aria-live="assertive"><b>${live.count > 0 ? live.count : 'GO!'}</b></div>` : '';   // (each digit pops in from its own second: a redraw mid-count never starts it over)
   const hud = `<div class="rhud" data-run="hud">${fmtM(live ? live.sim.d : r ? (playing ? r.from : r.to) : mini.dist[who])} m</div>`;
   const scene = `<div class="rscene ${type}" data-run="scene" aria-label="${TX.scene}"><canvas data-run="cv"></canvas>${hud}${count}${hint}</div>`;
+  const ARW = d => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d < 0 ? 'M15 4 7 12l8 8' : 'M9 4l8 8-8 8'}"/></svg>`;
+  if (!o.view && type === 'lane' && live) return `<div class="g-arc"><div class="runner"><div class="rprogs">${bar('X')}${bar('O')}</div>${scene}${res}</div><div class="cbtns two lanearw">${[-1, 1].map(d => `<button class="big lanego ${turn}" data-lane="${d}" aria-label="Steer ${d < 0 ? 'left' : 'right'}">${ARW(d)}</button>`).join('')}</div></div>`;   // (Lane Rush under way: the steer arrows in the button's room, so nothing moves; a swipe or a tap on a side of the road still steers)
   const btn = o.view ? '' : `<div class="cbtns one${mine && !live ? '' : ' hold'}"><button class="big ${turn}" data-act="run-go"${mine && !live ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>${TX.go}${mini.dist[turn] > 0 ? ` on from ${fmtM(mini.dist[turn])} m` : ''}</button></div>`;   // always there (hidden while it can't be used), so the course never moves
   return `<div class="g-arc"><div class="runner"><div class="rprogs">${bar('X')}${bar('O')}</div>${scene}${res}</div>${btn}</div>`;
 }
@@ -333,6 +335,8 @@ export function runnerSounds(f, add, won, mini, last) {
 export function init() {
   app.addEventListener('pointerdown', e => {
     const rd = runDraft;
+    const arw = rd && rd.sim.type === 'lane' && e.target && e.target.closest ? e.target.closest('[data-lane]') : null;
+    if (arw) { e.preventDefault(); ownPress(); if (rd.phase === 'run' && runLane(rd.sim, Number(arw.dataset.lane) < 0 ? -1 : 1)) { SND.play('skid'); haptic('tap'); } return; }   // Lane Rush's steer arrows: on the press itself
     if (!rd || rd.phase !== 'run' || !runInputAt(e.target)) return;
     const scene = app.querySelector('[data-run="scene"]');
     e.preventDefault(); ownPress();

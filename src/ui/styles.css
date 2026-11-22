@@ -6579,3 +6579,8 @@ button.nsslot { cursor: pointer; touch-action: manipulation; }
 .gkeyh { font: 400 18px/1.1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; }
 .gkeyr { margin: 0; display: flex; align-items: center; gap: 10px; font: 700 15px/1.25 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); }
 .gkeyr svg { width: 30px; height: 30px; flex: none; color: var(--ink); } .gkeyr b { display: block; font: 400 17px/1.1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; }
+
+/* Lane Rush's steer arrows (December 2026): two big buttons in the run button's room while a run is on, each turning
+   the car a lane that way; a swipe or a tap on a side of the road still steers (ui/runner.js). */
+.lanearw .lanego { display: grid; place-items: center; padding: 0; touch-action: none; }
+.lanearw .lanego svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }

@@ -279,7 +279,7 @@ Super Chaos Win: Win {goal} rounds.
 
 ## Lane Rush [lane]
 Category: More skill
-Play: Swipe to change lanes and dodge traffic.
+Play: Swipe, or tap the arrows, to change lanes and dodge traffic.
 Win: Reach 1,000 m first.
 
 ## Little Wheel [rl]
