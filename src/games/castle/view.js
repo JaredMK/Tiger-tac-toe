@@ -35,7 +35,7 @@ export const replay = { synth: () => [] };                         // the move i
 export const CSV = {
   px: 1, win: 346, pad: 8, ease: 170, ground: 0.085,
   axle: 26, rest: Math.PI - 0.2, back: 0.58, over: 0.28,
-  pull: 0.36, least: 12, arc: 46, dot: 4,
+  pull: 0.36, least: 12, arc: 27, dot: 3,
   puff: 380, chips: 560, burst: CST.burst, crack: 260, trail: 5,
 };
 const FR = 1000 * CS.sub / CS.hz, STEP = 1000 / CS.hz;            // a recorded frame, a step (ms)
@@ -136,8 +136,9 @@ function frame(c, s, k, x0, gy, fn) {
   c.restore();
 }
 function rrect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.lineTo(x + w - r, y); c.quadraticCurveTo(x + w, y, x + w, y + r); c.lineTo(x + w, y + h - r); c.quadraticCurveTo(x + w, y + h, x + w - r, y + h); c.lineTo(x + r, y + h); c.quadraticCurveTo(x, y + h, x, y + h - r); c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y); c.closePath(); }
-// One block at its pose (the frame's units; px: a pixel in them). A cracked stone carries its cracks; `hot`: struck just now.
-function drawBlock(c, P, b, pose, px, hot) {
+// One block at its pose (the frame's units; px: a pixel in them). A cracked stone carries its cracks (`hits`: the hard
+// hits it shows); `hot`: cracked this moment.
+function drawBlock(c, P, b, pose, px, hits, hot) {
   const Kd = KINDS[b[0]], w = Kd.w, h = Kd.h, lw = Math.max(1.5 * px, 1.3);
   c.save(); c.translate(pose[0], pose[1]); c.rotate(-pose[2]);
   c.lineJoin = 'round'; c.lineCap = 'round';
@@ -162,11 +163,11 @@ function drawBlock(c, P, b, pose, px, hot) {
     c.fillStyle = COL.stoneHi; c.fillRect(-w / 2 + 2, h / 2 - 4.4, w - 4, 2.4);
     c.fillStyle = 'rgba(60,52,40,.3)'; for (const [x, y] of w > h ? [[-9, -2.5], [5, 1], [10, -4]] : [[-3.5, -3], [3.5, 1]]) { c.beginPath(); c.arc(x, y, 1, 0, 7); c.fill(); }
     rrect(c, -w / 2, -h / 2, w, h, 2.2); c.strokeStyle = P.ink; c.lineWidth = lw; c.stroke();
-    if (b[4] || hot) {
+    if (hits) {
       c.lineWidth = lw * 0.75; c.beginPath();
       c.moveTo(-w * 0.14, h / 2); c.lineTo(w * 0.02, h * 0.12); c.lineTo(-w * 0.1, -h * 0.08); c.lineTo(w * 0.06, -h / 2);
       c.moveTo(w * 0.02, h * 0.12); c.lineTo(w * 0.24, h * 0.02);
-      if (b[4] > 1) { c.moveTo(w * 0.3, h / 2); c.lineTo(w * 0.22, 0); c.lineTo(w * 0.34, -h / 2); }
+      if (hits > 1) { c.moveTo(w * 0.3, h / 2); c.lineTo(w * 0.22, 0); c.lineTo(w * 0.34, -h / 2); }
       c.stroke();
     }
   }
@@ -200,7 +201,7 @@ function drawCatapult(c, P, col, th, px, loaded) {
   c.fillStyle = '#6f4a2a'; c.strokeStyle = P.ink; c.lineWidth = lw; c.beginPath(); c.arc(0, 2.5, 5.5, Math.PI, 0); c.closePath(); c.fill(); c.stroke();
   c.restore();
   c.fillStyle = P.ink; c.beginPath(); c.arc(X, CSV.axle, 2.2, 0, 7); c.fill();
-  if (loaded) drawBoulder(c, P, ex - uy * 6, ey + ux * 6 + 2, px, 0.4);
+  if (loaded) drawBoulder(c, P, ex + uy * 4, ey - ux * 4, px, 0.4);   // (in the spoon: on the arm, its end the place it leaves from)
 }
 // The dust, splinters, rubble and the crystal's burst: each a picture of the time since its event (never kept).
 function puff(c, x, h, u, col, n, reach) {
@@ -259,8 +260,9 @@ const go = stage('canvas.cscv', (c, W, H, now) => {
   c.fillStyle = 'rgba(40,90,30,.18)'; for (let gx = -((x0 * k) % 26); gx < W; gx += 26) c.fillRect(gx, gy + 7 + ((Math.round(gx + x0 * k) / 26) % 2 ? 4 : 0), 9, 2.5);
   c.fillStyle = P.ink; c.fillRect(0, gy - 1.5, W, 3);
   // each side's own things, in its shooter's frame: the banner behind the castle it throws at, that castle, its catapult
-  let more = false, hotAt = null;
-  if (ph && d) for (const e of ph.ev) if (e.k === 'crack') { const te = tr - e.t * STEP; if (te >= 0 && te < CSV.crack) (hotAt = hotAt || new Set()).add(e.i); }
+  let more = false;
+  const struck = new Map();                                        // a stone cracked by this shot: from its moment on (bright for a blink)
+  if (ph && d) for (const e of ph.ev) if (e.k === 'crack') { const te = tr - e.t * STEP; if (te >= 0) struck.set(e.i, te < CSV.crack); }
   for (const s of [tg, by]) {                                      // (the shooter's own frame last: its boulder and dust over everything)
     const def = other(s), shooting = s === by && !!ph;
     frame(c, s, k, x0, gy, px => {
@@ -274,7 +276,7 @@ const go = stage('canvas.cscv', (c, W, H, now) => {
       const list = rec ? ph.was : mini.c[def];
       for (let i = 0; i < list.length; i++) {
         const b = list[i], pose = rec ? poseAt(d, b, i, Math.max(0, fr)) : [b[1] / 10, b[2] / 10, b[3] / 1000];
-        if (pose) drawBlock(c, P, b, pose, px, !!(rec && hotAt && hotAt.has(i)));
+        if (pose) drawBlock(c, P, b, pose, px, (b[4] || 0) + (rec && struck.has(i) ? 1 : 0), !!(rec && struck.get(i)));
       }
       // the catapult: at rest, drawn back by the drag or the pull, swinging, or thrown
       let th = CSV.rest, loaded = false;

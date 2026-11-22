@@ -5,8 +5,9 @@
 // nearer it brings the core's end: the core ended is the best there is; else the shield about the core it takes away
 // (castleShield), the blocks it breaks or knocks out, and how far it shifts the core. Then its hand: the chosen throw
 // is off by its level's error in aim and in power (a normal spread: `aiAim`/`aiPow`, Hard's and Easy's own). Easy
-// weighs only a few of the candidates; Hard throws `aiTries` such unsteady throws in its head and keeps the best
-// (a steadier hand, never a perfect one), inside `ctx.until`. Without the physics library (the page's worker, a
+// weighs only a few of the candidates; Hard also tries its best candidate a little flatter, steeper, softer and
+// harder, then throws `aiTries` unsteady throws in its head and keeps the best (a steadier hand, never a perfect
+// one), all inside `ctx.until`. Without the physics library (the page's worker, a
 // page still loading) it throws at the core by geometry alone.
 import { gaussOf } from '../../core/random.js';
 import { other } from '../../core/util.js';
@@ -33,7 +34,7 @@ export function castleScore(before, r) {
 }
 export function needs(pm, p) {
   const t = pm.c[other(p)];
-  return castleCore(t) ? Math.max(1, 1 + castleShield(t) / 2.2) : 0;
+  return castleCore(t) ? Math.max(1, 1.2 + 0.8 * castleShield(t)) : 0;   // (a fresh castle's shield is about 6, and a Normal hand alone needs about 6 throws at it: tests/sim/castle.sim.js)
 }
 // Every candidate's score against a castle as it lies: worked out once and kept while the castle lies so (a board may
 // hold several castles, and the computer is asked about each of them every turn: only the one just struck has changed).
@@ -56,6 +57,13 @@ export function best(pm, me, rng, style, ctx) {
   const sc = weighed(target, c, M);
   let top = null;
   cands.forEach(s => { const v = sc[all.indexOf(s)]; if (!top || v > top.sc) top = { s, sc: v }; });
+  if (level === 'hard' && top.sc < 1000) {                         // Hard looks about its best throw too: a little flatter or steeper, softer or harder
+    for (const [da, dp] of [[0.07, 0], [-0.07, 0], [0, 0.06], [0, -0.06]]) {
+      const s = castleMove({ aim: clamp(top.s.aim + da, CS.aimLo, CS.aimHi), power: clamp(top.s.power + dp, 0, 1) }), v = castleScore(target, castleShot(M, target, s, c, true));
+      if (v > top.sc) top = { s, sc: v };
+      if (late()) break;
+    }
+  }
   let move = wobble(top.s, err, rng);
   if (level === 'hard') {
     let bs = -Infinity;

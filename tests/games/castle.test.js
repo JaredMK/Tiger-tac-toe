@@ -203,7 +203,7 @@ test('castle: the computer: a legal throw at every level, the same from the same
   assert.ok(h > e, `Hard ${h.toFixed(1)} against Easy ${e.toFixed(1)}`);
   const m = fresh('same'), one = A.best(E.publicMini(m, 'O'), 'O', E.makeRng('z'), {}, { level: 'normal', until: null }), two = A.best(E.publicMini(m, 'O'), 'O', E.makeRng('z'), {}, { level: 'normal', until: null });
   assert.deepEqual(one, two);
-  assert.ok(A.needs(E.publicMini(m, 'X'), 'X') >= 2 && A.needs(E.publicMini(m, 'X'), 'X') <= 6, 'a fresh castle: a few throws');
+  assert.ok(A.needs(E.publicMini(m, 'X'), 'X') >= 3 && A.needs(E.publicMini(m, 'X'), 'X') <= 9, 'a fresh castle: a few throws');
   const done = fresh('done'); done.c.O = done.c.O.filter(b => b[0] !== K.core); assert.equal(A.needs(E.publicMini(done, 'X'), 'X'), 0);
   assert.ok(A.castleCands(m.c.X, R.castleCfg(m)).length >= 6); assert.ok(A.castleCands(m.c.X, R.castleCfg(m)).every(s => R.castleMove(s)));
   // Hard keeps to its time: with none left it still answers

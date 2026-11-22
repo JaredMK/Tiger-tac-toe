@@ -34,7 +34,7 @@ test('castle: a hand alone: every one of 300 castles falls, never at the first t
   assert.ok(first / need.length <= 0.04, `first-throw wins ${first}`); assert.ok(Math.max(...need) <= 60);
 });
 test('castle: by setting and by level', () => {
-  const T = (label, t, a = 'normal', b = 'normal', n = 150) => console.log(line(label, duel('castle', a, b, n, t, { cap: 400 })));
+  const T = (label, t, a = 'normal', b = 'normal', n = Number(process.env.CASTLE_SIM_N) || 80) => console.log(line(label, duel('castle', a, b, n, t, { cap: 400 })));
   T('3 layers', { layers: 3 }); T('5 layers', { layers: 5 });
   T('stone crumbles at its first hard hit', { stoneHits: 1 }); T('stone takes three', { stoneHits: 3 });
   T('softer stone (3.5)', { stoneTough: 35 }); T('harder stone (6)', { stoneTough: 60 }); T('tougher timber (8)', { woodTough: 80 }); T('a softer crystal (3.5)', { coreTough: 35 });

@@ -3,14 +3,14 @@
 // CS.rel at a castle whose footprint is CS.foot; x runs to the right, h is the height above the ground. The other
 // player's shot is the same picture mirrored (the view turns it round: x -> CS.w - x), so a castle is always kept as its
 // attacker sees it, and the two castles of a square are dealt as the very same list.
-// A BLOCK is [kind, x, h, angle] or [kind, x, h, angle, hits]: its kind (KINDS: stone bricks and cubes, timber posts,
-// planks and beams, the core), its centre in tenths of a unit, its angle in thousandths of a radian (clockwise on the
+// A BLOCK is [kind, x, h, angle] or [kind, x, h, angle, hits]: its kind (KINDS: stone bricks and cubes, timber posts
+// and beams, the core), its centre in tenths of a unit, its angle in thousandths of a radian (clockwise on the
 // screen, as Matter.js has it) and, for a stone the boulder has cracked, the hard hits it has taken.
 // A SHOT is { aim, power } (castleMove): the boulder leaves the release point at the elevation `aim` (radians) and a
 // speed between CS.vMin and the square's top speed by `power` (0..1). Its flight is plain arithmetic, a step at a time
 // (the speed takes the gravity, the place takes the speed: exactly what Matter.js does to a body in free flight), until
 // it comes within reach of the castle or lands in the castle's yard: only then is a world made (Matter.js: the ground,
-// the castle's blocks as they lie, the boulder as it flies) and stepped at 60 Hz until everything has come to rest. A
+// the castle's blocks as they lie, the boulder as it flies) and stepped CS.hz times a second until all is at rest. A
 // boulder that lands short of the yard or flies past it is a dud: nothing is simulated, nothing moves.
 // WHAT HAPPENS IN THE WORLD: every block is knocked about as a rigid body. A knock's PUNCH is the speed the two bodies
 // close at, along the line they meet on, times the weight of the one that strikes (a block landing on the ground: its
@@ -33,19 +33,20 @@ export const CS = {
   foot: [382, 510], yard: [346, 548], zone: [322, 560],         // the castle's footprint; the yard a block must stay in; the ground a boulder may land on and roll
   u: 16, r: 9,                                                  // the grid a castle is built on; the boulder's radius
   hz: 120, sub: 4,                                              // steps a second (a stack of blocks sags four times less than at 60); a recorded frame every `sub` steps
-  vMin: 4, aimLo: 0.12, aimHi: 1.45,                          // the slowest throw (units a tick, a tick a sixtieth of a second: Matter's own measure of speed); the elevations a throw may have
-  flight: 840, cap: 600, life: 90, after: 90,                  // the longest flight, the longest time in the world, the boulder's life after its first knock, the scene's run-on after the core's end (steps)
+  vMin: 4, aimLo: 0.12, aimHi: 1.45,                            // the slowest throw (units a tick, a tick a sixtieth of a second: Matter's own measure of speed); the elevations a throw may have
+  flight: 840, cap: 600, life: 90, after: 90,                   // the longest flight, the longest time in the world, the boulder's life after its first knock, the scene's run-on after the core's end (steps)
   slow: 0.25, still: 0.07, stillA: 0.004, stillN: 20,           // the boulder's stop; the blocks' rest (units and radians a tick, for stillN steps)
-  eps: 1, epsA: 0.02, drop: 9,                                // a block has moved beyond this; the core is off its perch this far down
-  coarse: 2, rest: 2, evMax: 40, knock: 1.6,                               // the computer's reckoning steps this many steps at a time; Matter's resting threshold for this world; the knocks noted at most; the slowest knock worth a sound
+  eps: 1, epsA: 0.02, drop: 9,                                  // a block has moved beyond this; the core is off its perch this far down
+  coarse: 2, rest: 2, evMax: 40, knock: 1.6,                    // the computer's reckoning steps this many steps at a time; Matter's resting threshold for this world; the knocks noted at most; the slowest knock worth a sound
 };
-// The kinds of block: width, height, what it is made of.
+// The kinds of block: width, height, what it is made of (stone, wood, the core's crystal). A brick is two cubes long;
+// a post stands two layers high; a beam spans six columns, lying ten thick.
 export const KINDS = [
   { id: 'brick', w: 32, h: 16, m: 's' }, { id: 'cube', w: 16, h: 16, m: 's' },
-  { id: 'post', w: 10, h: 32, m: 'w' }, { id: 'plank', w: 64, h: 10, m: 'w' }, { id: 'beam', w: 96, h: 10, m: 'w' },
+  { id: 'post', w: 10, h: 32, m: 'w' }, { id: 'beam', w: 96, h: 10, m: 'w' },
   { id: 'core', w: 14, h: 18, m: 'c' },
 ];
-export const K = { brick: 0, cube: 1, post: 2, plank: 3, beam: 4, core: 5 };
+export const K = { brick: 0, cube: 1, post: 2, beam: 3, core: 4 };
 // What they are made of: density (stone's and the boulder's by the square's settings), grip, bounce.
 const MAT = { s: { d: 0.002, f: 0.85, fs: 1.6, e: 0.02 }, w: { d: 0.0009, f: 0.7, fs: 1.2, e: 0.04 }, c: { d: 0.001, f: 0.85, fs: 1.6, e: 0 } };
 const DT = 1000 / CS.hz, TK = 60 / CS.hz, GS = 0.001 * DT * DT;   // a step (ms); ticks a step; gravity, units a step a step (Matter's own)

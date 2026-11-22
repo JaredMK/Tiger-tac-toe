@@ -28,9 +28,9 @@ export const TUNE = [
   { k: 'coreTough', label: 'Crystal strength (the punch that smashes it, tenths)', def: 55, min: 10, max: 200, step: 5, group: 'Rules' },
   { k: 'aiAim', label: 'Normal computer: aim error (mrad)', def: 40, min: 0, max: 300, step: 5, group: 'Computer' },
   { k: 'aiPow', label: 'Normal computer: power error (%)', def: 4, min: 0, max: 30, step: 0.5, group: 'Computer' },
-  { k: 'aiAimHard', label: 'Hard computer: aim error (mrad)', def: 25, min: 0, max: 300, step: 5, group: 'Computer' },
-  { k: 'aiPowHard', label: 'Hard computer: power error (%)', def: 2.5, min: 0, max: 30, step: 0.5, group: 'Computer' },
-  { k: 'aiTries', label: 'Hard computer: throws it tries and keeps the best of', def: 3, min: 1, max: 8, step: 1, group: 'Computer' },
+  { k: 'aiAimHard', label: 'Hard computer: aim error (mrad)', def: 20, min: 0, max: 300, step: 5, group: 'Computer' },
+  { k: 'aiPowHard', label: 'Hard computer: power error (%)', def: 2, min: 0, max: 30, step: 0.5, group: 'Computer' },
+  { k: 'aiTries', label: 'Hard computer: throws it tries and keeps the best of', def: 4, min: 1, max: 8, step: 1, group: 'Computer' },
   { k: 'aiAimEasy', label: 'Easy computer: aim error (mrad)', def: 80, min: 0, max: 300, step: 5, group: 'Computer' },
   { k: 'aiPowEasy', label: 'Easy computer: power error (%)', def: 8, min: 0, max: 30, step: 0.5, group: 'Computer' },
 ];
