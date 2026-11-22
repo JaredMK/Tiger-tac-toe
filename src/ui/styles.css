@@ -6628,6 +6628,70 @@ button.nsslot { cursor: pointer; touch-action: manipulation; }
 /* [/jigsaw] */
 
 /* [hive] Letter Hive */
+/* (top to bottom: the tallies, each player's found words under their tally, the time bar, the word being made, the
+   reserved line, the hive, the buttons: every row but the hive a set height, the hive sized from the room left.
+   Timings mirror view.js HIVEV and rules.js HIVE. The centre cell is the sea's blue: never a player's colour.) */
+.g-hv { width: min(var(--gw), 440px); height: min(var(--gh), 640px); display: flex; flex-direction: column; gap: 6px; touch-action: none; }
+.g-hv > * { flex: none; }
+/* (the words' boxes hold whole rows of chips, 25px a row: two on a short phone, up to five on a tall one, so a box at its top or scrolled to its end never shows a sliver of another row) */
+.hvfound { --hvr: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (min-height: 700px) { .hvfound { --hvr: 3; } }
+@media (min-height: 780px) { .hvfound { --hvr: 4; } }
+@media (min-height: 860px) { .hvfound { --hvr: 5; } }
+.hvlist { position: relative; box-sizing: content-box; height: calc(var(--hvr) * 25px - 3px); list-style: none; margin: 0; padding: 3px; min-width: 0; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 3px 4px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: none; border: 2.5px solid var(--ink); border-radius: 10px 8px 12px 8px; }
+.hvlist::-webkit-scrollbar { display: none; }
+.hvlist.X { background: color-mix(in srgb, var(--x-soft) 55%, #fff); } .hvlist.O { background: color-mix(in srgb, var(--o-soft) 55%, #fff); }
+.hvw { flex: none; max-width: 100%; height: 22px; padding: 0 6px; border: 1.5px solid var(--ink); border-radius: 7px; background: #fff; color: var(--ink); font: 700 14px/19px 'Comic Neue', 'Comic Sans MS', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hvw.full { background: var(--ink); color: #fff; }
+.hvw.full::before { content: '★ '; color: var(--gold); }
+.hvw.new, .hvw.land { animation: hvland .26s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }
+@keyframes hvland { from { opacity: 0; transform: translateY(8px) scale(.6); } }
+.g-hv .npts b.hvbump { display: inline-block; animation: hvbump .3s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes hvbump { 40% { transform: scale(1.45); } }
+.hvbar { height: 10px; border: 2px solid var(--ink); border-radius: 6px; background: rgba(22, 18, 16, .14); overflow: hidden; visibility: hidden; }
+.hvbar.on { visibility: visible; }
+.hvbar i { display: block; height: 100%; background: #3aa35a; }
+.hvbar.mid i { background: #f0a020; } .hvbar.low i { background: #e0434f; }
+.hvent { height: 36px; display: flex; align-items: center; justify-content: center; gap: 1px; overflow: hidden; white-space: nowrap; font: 400 29px/1 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .05em; color: var(--ink); padding-top: 3px; }
+.hvent.long { font-size: 22px; letter-spacing: .03em; }
+.hvent b { font-weight: 400; } .hvent b.mid { color: var(--sea); }
+.hvent b.new { display: inline-block; animation: hvkey .12s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes hvkey { from { transform: translateY(10px) scale(.5); opacity: .2; } }
+.hvout { display: inline-block; opacity: 0; animation: hvout .34s ease-in; }
+@keyframes hvout { 0% { opacity: .8; transform: translateX(0); } 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { opacity: .6; transform: translateX(-4px); } 100% { opacity: 0; transform: translateX(0); } }
+.hvcar { flex: none; width: 3px; height: 26px; margin: -3px 0 0 3px; border-radius: 2px; background: var(--ink); animation: hvblink 1s steps(2, jump-none) infinite; }
+@keyframes hvblink { to { opacity: 0; } }
+.hvline { margin: 0; height: 24px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 700 17px/24px 'Comic Neue', 'Comic Sans MS', sans-serif; color: var(--ink); }
+.hvline.ok { color: var(--green); } .hvline.no { color: var(--muted); }
+.hvline.full { font: 400 19px/26px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .03em; color: var(--sea); }
+.hvline.pop { animation: hvpop .22s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes hvpop { from { transform: scale(.6); opacity: .3; } }
+.hvbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.hvhive { width: min(100cqw, 92cqh); height: auto; display: block; overflow: visible; touch-action: none; -webkit-user-select: none; user-select: none; }
+.hvc .hvsh { fill: var(--ink); stroke: var(--ink); stroke-width: 3.2; stroke-linejoin: round; }
+.hvc .hvhx { fill: var(--card); stroke: var(--ink); stroke-width: 3.2; stroke-linejoin: round; }
+.hvc.mid .hvhx { fill: var(--sea); }
+.hvc text { font: 400 30px 'Luckiest Guy', 'Arial Black', sans-serif; text-anchor: middle; fill: var(--ink); pointer-events: none; }
+.hvc.mid text { fill: #fff; }
+.hvhive.on .hvc { cursor: pointer; }
+.hvc .hvtop { transition: transform .05s; }
+.hvhive.on .hvc.dn .hvtop { transform: translateY(4px); }
+.hvhive.shuf .hvc:not(.mid) .hvtop { animation: hvshuf .2s calc(var(--i) * 18ms) cubic-bezier(.3, 1.4, .5, 1) backwards; }
+@keyframes hvshuf { from { transform: scale(.55); opacity: .2; } }
+.hvhive .hvtop { transform-box: fill-box; transform-origin: center; }
+.hvhive.wave .hvc .hvtop { animation: hvwave .42s calc(var(--i) * 40ms) cubic-bezier(.3, 0, .4, 1); }
+@keyframes hvwave { 35% { transform: translateY(-9px) scale(1.08); } 70% { transform: translateY(2px); } }
+.hvbtns { display: grid; grid-template-columns: 1fr 1fr 1.15fr; gap: 8px; height: 50px; }
+.hvbtns .big { height: 50px; min-width: 0; padding: 0 4px; font-size: 18px; touch-action: none; }
+.hvbtns .hvgo { grid-column: 1 / -1; font-size: 22px; }
+.hvgo.nod { animation: hvnod .32s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes hvnod { 40% { transform: scale(1.06) rotate(-1.5deg); } 70% { transform: scale(.98) rotate(1deg); } }
+@media (max-height: 600px) { .g-hv { gap: 4px; } .hvent { height: 30px; font-size: 25px; } .hvent.long { font-size: 19px; } .hvcar { height: 22px; } .hvline { height: 20px; line-height: 20px; } .hvbtns, .hvbtns .big { height: 44px; } }   /* (a very short phone: the rows tighten so the hive keeps its cells) */
+/* the miniature: the little honeycomb, the centre cell marked, each player's points as a bar beside it */
+.tart.thvw { gap: 2.5cqw; width: 95cqw; } .tart.thvw .tpic { width: 60cqw; } .tart.thvw .tpip { width: auto; flex: 1; gap: 6cqw; }
+.thv { width: 100%; height: auto; display: block; overflow: visible; }
+.thvc { fill: var(--card); stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; } .thvc.mid { fill: var(--sea); }
+.thvl { font: 400 18.6px 'Luckiest Guy', 'Arial Black', sans-serif; text-anchor: middle; fill: var(--ink); } .thvl.mid { fill: #fff; }
 /* [/hive] */
 
 /* [rally] Road Race */

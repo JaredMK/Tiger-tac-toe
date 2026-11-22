@@ -27,8 +27,8 @@ for (const n of []) BAD_SOUNDS.add(n);   // [tanks] bad
 for (const n of []) RESULT_SOUNDS.add(n);   // [jigsaw] results
 for (const n of []) BAD_SOUNDS.add(n);   // [jigsaw] bad
 //
-for (const n of []) RESULT_SOUNDS.add(n);   // [hive] results
-for (const n of []) BAD_SOUNDS.add(n);   // [hive] bad
+for (const n of ['hvWord', 'hvFull']) RESULT_SOUNDS.add(n);   // [hive] results
+for (const n of ['hvNo']) BAD_SOUNDS.add(n);   // [hive] bad
 //
 for (const n of []) RESULT_SOUNDS.add(n);   // [rally] results
 for (const n of []) BAD_SOUNDS.add(n);   // [rally] bad
