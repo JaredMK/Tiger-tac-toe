@@ -109,6 +109,12 @@ import * as blocksR from './blocks/rules.js'; import * as blocksA from './blocks
 import * as numbersR from './numbers/rules.js'; import * as numbersA from './numbers/ai.js'; import * as numbersM from './numbers/meta.js'; add('numbers', numbersR, numbersA, numbersM);
 import * as trailR from './trail/rules.js'; import * as trailA from './trail/ai.js'; import * as trailM from './trail/meta.js'; add('trail', trailR, trailA, trailM);
 import * as keydropR from './keydrop/rules.js'; import * as keydropA from './keydrop/ai.js'; import * as keydropM from './keydrop/meta.js'; add('keydrop', keydropR, keydropA, keydropM);
+import * as pintR from './pint/rules.js'; import * as pintA from './pint/ai.js'; import * as pintM from './pint/meta.js'; add('pint', pintR, pintA, pintM);
+import * as gemsR from './gems/rules.js'; import * as gemsA from './gems/ai.js'; import * as gemsM from './gems/meta.js'; add('gems', gemsR, gemsA, gemsM);
+import * as castleR from './castle/rules.js'; import * as castleA from './castle/ai.js'; import * as castleM from './castle/meta.js'; add('castle', castleR, castleA, castleM);
+import * as tanksR from './tanks/rules.js'; import * as tanksA from './tanks/ai.js'; import * as tanksM from './tanks/meta.js'; add('tanks', tanksR, tanksA, tanksM);
+import * as jigsawR from './jigsaw/rules.js'; import * as jigsawA from './jigsaw/ai.js'; import * as jigsawM from './jigsaw/meta.js'; add('jigsaw', jigsawR, jigsawA, jigsawM);
+import * as hiveR from './hive/rules.js'; import * as hiveA from './hive/ai.js'; import * as hiveM from './hive/meta.js'; add('hive', hiveR, hiveA, hiveM);
 import * as clashR from './clash/rules.js'; import * as clashA from './clash/ai.js'; import * as clashM from './clash/meta.js'; add('clash', clashR, clashA, clashM);
 import * as diceR from './dice/rules.js'; import * as diceA from './dice/ai.js'; import * as diceM from './dice/meta.js'; add('dice', diceR, diceA, diceM);
 import * as hexapawnR from './hexapawn/rules.js'; import * as hexapawnA from './hexapawn/ai.js'; import * as hexapawnM from './hexapawn/meta.js'; add('hexapawn', hexapawnR, hexapawnA, hexapawnM);

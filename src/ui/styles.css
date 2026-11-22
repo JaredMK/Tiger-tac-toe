@@ -6610,3 +6610,26 @@ button.nsslot { cursor: pointer; touch-action: manipulation; }
    the car a lane that way; a swipe or a tap on a side of the road still steers (ui/runner.js). */
 .lanearw .lanego { display: grid; place-items: center; padding: 0; touch-action: none; }
 .lanearw .lanego svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ===== The six games of December 2026 (and Road Race's circuit): each game's styles between its two marks. ===== */
+/* [pint] Split It */
+/* [/pint] */
+
+/* [gems] Gem Swap */
+/* [/gems] */
+
+/* [castle] Castle Smash */
+/* [/castle] */
+
+/* [tanks] Tank Duel */
+/* [/tanks] */
+
+/* [jigsaw] Puzzle Build */
+/* [/jigsaw] */
+
+/* [hive] Letter Hive */
+/* [/hive] */
+
+/* [rally] Road Race */
+/* [/rally] */
+

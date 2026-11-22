@@ -11,6 +11,28 @@ import { state } from './app.js';
 // ui/runner.js ...). The rest (the rolling, the ticks, the bounces on the way) are the move's motion: no buzz.
 export const RESULT_SOUNDS = new Set(['kyIn', 'thunk', 'thud', 'ballDrop', 'clink', 'knock', 'boom', 'sink', 'dartHit', 'dartBull', 'strike', 'ding', 'higher', 'lower', 'point', 'bank', 'boing', 'solve', 'pair', 'sparkle', 'band', 'diceWin', 'plop', 'splash', 'appleDrop', 'snkCrunch', 'swPop', 'domClick', 'bgBall', 'poolDrop', 'golfCup', 'golfLip', 'golfBoing', 'bowlHit', 'c4drop', 'tkFlip', 'distLock', 'dukBoot', 'gbTink', 'hrCrack', 'pjLand', 'twTurn', 'mcBank', 'wlWall', 'tpHit', 'htLand', 'tlWipe', 'bdDrop', 'bdClear', 'rrLap', 'fsSlice', 'tsIn', 'tsRim', 'sbClack', 'mbDrop', 'mbStop']);
 export const BAD_SOUNDS = new Set(['kyScrape', 'fsBoom', 'rtMiss', 'bust', 'crash', 'diceLose', 'buzz', 'dartMiss', 'birdChirp', 'spill', 'snkBonk', 'swBlast', 'snkGulp', 'poolScratch', 'bowlGutter', 'golfSplash', 'pgOink', 'gbSmash', 'mzBonk']);
+// The six games of December 2026 (and Road Race's wheel): each game's result and bad sounds on its own two lines.
+for (const n of []) RESULT_SOUNDS.add(n);   // [pint] results
+for (const n of []) BAD_SOUNDS.add(n);   // [pint] bad
+//
+for (const n of []) RESULT_SOUNDS.add(n);   // [gems] results
+for (const n of []) BAD_SOUNDS.add(n);   // [gems] bad
+//
+for (const n of []) RESULT_SOUNDS.add(n);   // [castle] results
+for (const n of []) BAD_SOUNDS.add(n);   // [castle] bad
+//
+for (const n of []) RESULT_SOUNDS.add(n);   // [tanks] results
+for (const n of []) BAD_SOUNDS.add(n);   // [tanks] bad
+//
+for (const n of []) RESULT_SOUNDS.add(n);   // [jigsaw] results
+for (const n of []) BAD_SOUNDS.add(n);   // [jigsaw] bad
+//
+for (const n of []) RESULT_SOUNDS.add(n);   // [hive] results
+for (const n of []) BAD_SOUNDS.add(n);   // [hive] bad
+//
+for (const n of []) RESULT_SOUNDS.add(n);   // [rally] results
+for (const n of []) BAD_SOUNDS.add(n);   // [rally] bad
+//
 const WON_GAP_MS = 250;                                              // (a result this close to the win: the win's buzz alone)
 
 // This phone's side: online, the player's; against the computer, the person's; on one phone shared by two (or the

@@ -557,12 +557,35 @@ SND.setVolume = function (pct) {
 };
 try { const v = Number(localStorage.getItem(KEY + '.vol')); if (localStorage.getItem(KEY + '.vol') != null && Number.isFinite(v)) SND.volume = Math.max(0, Math.min(100, v)) / 100; } catch (e) { /* no storage: full volume */ }
 try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch (e) { /* not here: the silent switch is the phone's own */ }
+// ----- The six games of December 2026 (and Road Race's wheel): each game's own sounds between its two marks (one block a game, so they merge cleanly). -----
+// [pint] Split It: its sounds (names start `pn`)
+// [/pint]
+//
+// [gems] Gem Swap: its sounds (names start `gs`)
+// [/gems]
+//
+// [castle] Castle Smash: its sounds (names start `cs`)
+// [/castle]
+//
+// [tanks] Tank Duel: its sounds (names start `tn`)
+// [/tanks]
+//
+// [jigsaw] Puzzle Build: its sounds (names start `jg`)
+// [/jigsaw]
+//
+// [hive] Letter Hive: its sounds (names start `hv`)
+// [/hive]
+//
+// [rally] Road Race: its sounds (names start `rr`)
+// [/rally]
+//
 // A press a game takes itself, on pointerdown (Echo's pads, Bullseye, Bowling, the drags and the runs): the
 // click that ends it plays no tap, whatever is under the finger by then (the result coming up, say).
 let ownDown = false, ownUp = -1e9;
 export function ownPress() { ownDown = true; }
 // Every control plays its tap sound when pressed (whether or not the game takes the press). The moves
 // and card turns play their own sounds, from their events. A press on a disabled control is an error.
+const GAME_ACT = /^(pint|gems|castle|tanks|jig|hive)-/;   // a control of one of these games (its data-act starts with the game's prefix) plays the game's own sound, never the interface's tap
 const TAP_SOUND = { 'golf-key': 'open', 'ky-hold': null, 'mj-pick': null, 'pj-pick': null, 'tw-place': null, wtzoom: null, wtpan: null, 'tw-q': null, 'tw-dir': null, 'tp-stop': null, 'tl-go': null, 'tl-undo': null, 'tl-done': null, 'ns-d': null, 'ns-s': null, 'ns-clr': null, 'bd-col': null, 'bd-turn': null, 'bd-drop': null, 'rr-go': null, 'rt-go': null, 'fs-go': null, 'ck-stop': null, 'hr-go': null, explain: 'open', 'explain-close': 'close', pause: 'open', 'pause-resume': 'close', zoom: null, move: null, pick: null,
   'echo-tap': null, 'echo-play': null, bulls: null, bowl: null, 'run-go': null, 'fing-start': null, 'odd-reveal': null, 'trivia-reveal': null, 'att-start': null, 'hc-key': null, 'snap-cell': null, 'snap-submit': null, pokmark: null, domtile: null, hpsel: 'select',   // a game's own inputs: each plays its own sound (from its handler or its move), never the click as well
   mmcol: 'peg', mmslot: 'peg', rlnum: 'peg', rlgrp: 'peg', rlzero: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', 'anim-set': 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
@@ -627,7 +650,7 @@ export function init() {
     const el = e.target.closest && e.target.closest('[data-act], label.chk');
     if (!el || el.classList.contains('chk')) return;                 // (a box: its change plays the toggle)
     const act = el.dataset.act;
-    let name = act && act in TAP_SOUND ? TAP_SOUND[act] : (el.classList.contains('back') ? 'back' : 'tap');
+    let name = act && act in TAP_SOUND ? TAP_SOUND[act] : act && GAME_ACT.test(act) ? null : (el.classList.contains('back') ? 'back' : 'tap');   // (GAME_ACT: the December 2026 games' own controls, by their prefix: a game input, its own sound)
     if (el.closest('main.cc') && name !== null) name = comicSound(el, act);   // a Comic Chaos screen: its own family
     if (name) SND.play(name, { ui: true });
   }, true);
