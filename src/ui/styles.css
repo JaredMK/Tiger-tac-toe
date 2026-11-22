@@ -6631,6 +6631,51 @@ button.nsslot { cursor: pointer; touch-action: manipulation; }
 /* [/pint] */
 
 /* [gems] Gem Swap */
+/* The tallies, the tray of gems (a square sized from its box; a cell is --gu, placed by --gc and --gr), the result's line.
+   A move is layers (.gsl), each on show from --f to --u; its moments mirror rules.js GEMS (swap 180, pop 260, fall 240,
+   half a shuffle 320: --ts, --tp, --tf, --th on .g-gs). */
+.g-gs { width: min(var(--gw), 440px); height: min(var(--gh), 600px); display: flex; flex-direction: column; gap: 6px; }
+.g-gs > * { flex: none; }
+.g-gs.pc-X { --gsp: var(--x); } .g-gs.pc-O { --gsp: var(--o); }
+.g-gs .gsdefs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.g-gs .gsbox { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; container-type: size; }
+.g-gs .gsbox > * { flex: none; }
+.gsgrid { --gu: min(calc((100cqw - 8px) / var(--n)), calc((100cqh - 50px) / var(--n))); box-sizing: content-box; position: relative; width: calc(var(--gu) * var(--n)); height: calc(var(--gu) * var(--n)); border: 3.5px solid var(--ink); border-radius: 14px; background-color: #2a2140; background-image: linear-gradient(45deg, rgba(255, 255, 255, .05) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, .05) 75%), linear-gradient(45deg, rgba(255, 255, 255, .05) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, .05) 75%); background-size: calc(var(--gu) * 2) calc(var(--gu) * 2); background-position: 0 0, var(--gu) var(--gu); box-shadow: 0 4px 0 var(--ink); overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.gsl { position: absolute; inset: 0; animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both; }
+.gsl.still { animation: none; }
+.gsl.fin { animation: tfrom 1ms var(--f, 0ms) both; }
+.gsc { position: absolute; left: calc(var(--gu) * var(--gc)); top: calc(var(--gu) * var(--gr)); width: var(--gu); height: var(--gu); margin: 0; padding: 0; border: 0; border-radius: 26%; background: none; display: grid; place-items: center; font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; }
+button.gsc { cursor: pointer; touch-action: none; }
+.gsg { width: 86%; height: 86%; display: block; overflow: visible; pointer-events: none; }
+.gsc.pick { background: rgba(255, 255, 255, .16); box-shadow: inset 0 0 0 3.5px var(--gsp, #fff), inset 0 0 0 5.5px rgba(22, 18, 16, .55); z-index: 1; }
+.gsc.pick .gsg { animation: gsbob .7s ease-in-out infinite; }
+@keyframes gsbob { 50% { transform: translateY(-7%) scale(1.06); } }
+.gsc.swap { animation: gsswap var(--ts, 180ms) cubic-bezier(.4, 0, .2, 1) both; z-index: 1; }
+@keyframes gsswap { to { transform: translate(calc(var(--gu) * var(--dx, 0)), calc(var(--gu) * var(--dy, 0))); } }
+.gsc.pop .gsg { animation: gspop var(--tp, 260ms) var(--t, 0ms) ease-in both; }
+@keyframes gspop { 0% { transform: none; opacity: 1; filter: none; } 35% { transform: scale(1.22) rotate(8deg); opacity: 1; filter: brightness(1.6); } 100% { transform: scale(.1) rotate(40deg); opacity: 0; filter: brightness(2); } }
+.gsc.pop::before { content: ''; position: absolute; inset: 8%; border-radius: 50%; border: calc(var(--gu) * .09) solid var(--gsp, #fff); opacity: 0; animation: gsring var(--tp, 260ms) var(--t, 0ms) ease-out both; }
+.gsc.pop::after { content: ''; position: absolute; inset: 30%; border-radius: 50%; background: #fff; opacity: 0; animation: gsflash var(--tp, 260ms) var(--t, 0ms) ease-out both; }
+@keyframes gsring { 0% { transform: scale(.3); opacity: 0; } 25% { opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
+@keyframes gsflash { 0% { transform: scale(.2); opacity: 0; } 30% { opacity: .9; } 100% { transform: scale(1.6); opacity: 0; } }
+.gsc.fall { animation: gsfall var(--tf, 240ms) var(--t, 0ms) cubic-bezier(.45, 0, .85, .55) both; }
+@keyframes gsfall { 0% { transform: none; } 82% { transform: translateY(calc(var(--gu) * var(--d, 1))) scaleY(1); } 91% { transform: translateY(calc(var(--gu) * var(--d, 1) + var(--gu) * .04)) scaleY(.9); } 100% { transform: translateY(calc(var(--gu) * var(--d, 1))); } }
+.gsc.drop { animation: gsdrop var(--tf, 240ms) var(--t, 0ms) cubic-bezier(.45, 0, .85, .55) both; }
+@keyframes gsdrop { 0% { transform: translateY(calc(var(--gu) * var(--d, 1) * -1)); } 82% { transform: none; } 91% { transform: translateY(calc(var(--gu) * .04)) scaleY(.9); } 100% { transform: none; } }
+.gsl.swirl { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both, gsswirl var(--th, 320ms) var(--f, 0ms) cubic-bezier(.5, 0, .9, .5) both; }
+.gsl.unswirl { animation: tfrom 1ms var(--f, 0ms) both, gsunswirl var(--th, 320ms) var(--f, 0ms) cubic-bezier(.1, .6, .4, 1) both; }
+@keyframes gsswirl { to { transform: rotate(200deg) scale(.05); opacity: .4; } }
+@keyframes gsunswirl { from { transform: rotate(-200deg) scale(.05); opacity: .4; } }
+.gsline { margin: 0; width: 100%; height: 28px; display: grid; place-items: center; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; color: var(--green); }
+.gsline > * { grid-area: 1 / 1; min-width: 0; max-width: 100%; }
+.gsw { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both, gswin .22s var(--f, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }
+.gsw.fin { animation: tfrom 1ms var(--f, 0ms) both, gswin .22s var(--f, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; }
+.gsw.note { animation: none; color: var(--ink); font: 700 17px/28px 'Comic Neue', 'Comic Sans MS', sans-serif; letter-spacing: 0; max-width: calc(100% - 112px); }   /* (clear of the reactions' button and a replay's Skip in the corners of a small phone) */
+@keyframes gswin { from { transform: scale(.6); } }
+.g-gs .gsn { display: inline-grid; } .g-gs .gsn > b { grid-area: 1 / 1; }
+.gsv { animation: tfrom 1ms var(--f, 0ms) both, tuntil 1ms var(--u, 0ms) both; } .gsv.fin { animation: tfrom 1ms var(--f, 0ms) both; }
+@media (prefers-reduced-motion: reduce) { .gsl:not(.fin):not(.still), .gsw:not(.fin), .gsv:not(.fin) { display: none; } }
+.tart.tgsw { gap: 3cqw; width: 94cqw; } .tgsw .tpic { width: 52cqw; } .tgsw .tpip { width: auto; flex: 1; min-width: 0; } .tgs { width: 100%; display: block; } .tgsb { fill: #2a2140; stroke: var(--ink); stroke-width: 2; } .tgsk { stroke: var(--ink); stroke-width: .9; stroke-linejoin: round; }
 /* [/gems] */
 
 /* [castle] Castle Smash */

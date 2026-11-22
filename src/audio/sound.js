@@ -569,6 +569,15 @@ def('pnSlide', 0.3, (c, d, t) => { sfxNoise(c, d, t, .2, { f: 900, to: 2400, q: 
 // [/pint]
 //
 // [gems] Gem Swap: its sounds (names start `gs`)
+// A gem picked up: a glassy tick. The swap: two gems sliding past each other. A burst: a bright chime with a crack of
+// glass (played a note higher with each step of a cascade). The landing: a soft clack of stones. A swap that makes
+// no line: a low, soft double "uh-uh". A shuffle: a rattle of stones in a tray.
+def('gsPick', 0.1, (c, d, t) => { sfxTone(c, d, t, 1480, .08, { to: 1900, vol: .4, type: 'triangle' }); sfxNoise(c, d, t, .015, { f: 5200, q: 2, vol: .15 }); }, { level: .36, vary: true });
+def('gsSwap', 0.2, (c, d, t) => { sfxNoise(c, d, t, .16, { f: 1400, to: 3200, q: 1.4, vol: .3, att: .02 }); sfxTone(c, d, t, 520, .12, { to: 780, vol: .22, type: 'sine' }); sfxTone(c, d, t + .05, 780, .1, { to: 520, vol: .16, type: 'sine' }); }, { level: .42 });
+def('gsPop', 0.26, (c, d, t) => { sfxTone(c, d, t, 1046, .2, { to: 1568, vol: .5, type: 'triangle' }); sfxTone(c, d, t + .03, 2093, .14, { vol: .22, type: 'sine' }); sfxNoise(c, d, t, .05, { f: 6000, q: .8, vol: .3, filter: 'highpass' }); }, { level: .5 });
+def('gsLand', 0.09, (c, d, t) => { sfxNoise(c, d, t, .035, { f: 1100, q: 1.2, vol: .5 }); sfxTone(c, d, t, 300, .06, { to: 180, vol: .3, type: 'triangle' }); }, { level: .34, vary: true });
+def('gsNo', 0.24, (c, d, t) => { sfxTone(c, d, t, 300, .09, { to: 250, vol: .4, type: 'triangle' }); sfxTone(c, d, t + .11, 240, .11, { to: 190, vol: .4, type: 'triangle' }); }, { level: .4 });
+def('gsShuffle', 0.6, (c, d, t) => { for (let k = 0; k < 9; k++) sfxNoise(c, d, t + k * .06, .03, { f: 900 + (k * 370) % 1500, q: 1.5, vol: .4 }); sfxNoise(c, d, t, .55, { f: 700, to: 2400, q: .7, vol: .16, att: .1 }); }, { level: .42 });
 // [/gems]
 //
 // [castle] Castle Smash: its sounds (names start `cs`)
