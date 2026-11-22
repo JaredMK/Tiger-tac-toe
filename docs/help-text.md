@@ -61,7 +61,7 @@ Win: Move all 3 of your pieces off first.
 
 ## Bin Shot [toss]
 Category: More skill
-Play: Flick up the room to throw the paper: a faster flick throws further. The fan pushes it sideways: the arrow shows which way and how many bins wide. Aim into the wind. The fan changes after every throw.
+Play: Swipe up to throw the paper ball at the bin: the swipe's angle aims it, its speed throws it further. The fan beside the bin pushes it sideways: its arrow shows which way and its number how many bins wide. A ball on the rim may drop in or bounce out. The fan changes after every throw.
 Win: First to {goal} baskets.
 
 ## Bingo [bingo]
