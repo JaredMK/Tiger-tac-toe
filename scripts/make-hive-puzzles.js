@@ -12,7 +12,7 @@
 //   - the centre is the letter whose list is nearest WANT words, among those with LO to HI words and TOTAL points or
 //     more (4 letters 1 point, longer its length, 7 more for a full-hive word: the game's defaults; TOTAL is 4 times the
 //     highest target the puzzles are meant for, so a square never runs out of words);
-//   - no two puzzles on the same seven letters.
+//   - no two puzzles on the same seven letters;
 //   - EVERYDAY everyday words at least (COMMON, below), worth EVERYDAY_PTS points or more between them.
 // A pick that breaks a rule stops the script. Each puzzle is written as its letters (the centre first, the rest in
 // alphabetical order), a colon, and its words sorted, each as the count of letters it shares with the word before
