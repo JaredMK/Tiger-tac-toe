@@ -101,6 +101,11 @@ Category: More luck
 Play: Spin and jump to the next space of that colour.
 Win: Reach the finish first.
 
+## Castle Smash [castle]
+Category: More skill
+Play: Drag back to aim your catapult, further for more power, and let go to fling a boulder at the other castle. Timber snaps, stone cracks and then crumbles, and what falls stays fallen.{goAgain}
+Win: Smash the other castle's crystal first: hit it hard with a boulder, crush it under a falling block or knock it off its perch.
+
 ## Chopper [chopper]
 Category: More skill
 Play: Hold to rise, let go to drop.
@@ -217,6 +222,11 @@ Category: More skill
 Play: A turn is one round of {secs} seconds. Swipe through the fruit as it flies: each one is a point. Slice a bomb and the round ends there and costs you {bombCost} points of it.
 Win: First to {target} points.
 
+## Gem Swap [gems]
+Category: More brain
+Play: Swap two gems side by side to line up three or more of a kind. They burst, new gems drop in, and anything that lines up then bursts too. Every gem burst is a point.{goAgain}
+Win: First to {target} points.{evenText}
+
 ## Glass Bridge [bridge]
 Category: More luck
 Play: Hop to a platform in the next row. Safe glass holds and you hop again. Weak glass breaks for good: your turn ends and you go back to the start.
@@ -281,6 +291,11 @@ Super Chaos Win: Win {goal} rounds.
 Category: More skill
 Play: Swipe, or tap the arrows, to change lanes and dodge traffic.
 Win: Reach 1,000 m first.
+
+## Letter Hive [hive]
+Category: More brain
+Play: A turn is a burst of {secs} seconds. Tap the letters to make words of 4 letters or more, always with the centre letter; a letter can be used again. A 4-letter word scores {four}, a longer word its length, and a word with all seven letters {bonus} more. A word found is gone for both players.{goAgain}
+Win: First to {target} points.
 
 ## Little Wheel [rl]
 Category: More luck
@@ -390,6 +405,11 @@ Category: More skill
 Play: Drag to aim and shoot.{goAgain} Sink the white and a ball comes back for you: one of your sunk balls, or a new one if none is sunk.
 Win: Sink all your balls on the table first. Sink the black ball and you lose. Both last balls down on one shot: a draw.
 
+## Puzzle Build [jigsaw]
+Category: More brain
+Play: You both build one picture puzzle. Draw a piece: it fits next to a piece on the board. Tap its place, or drag it there, within {secs} seconds. Right: it locks in and scores you a point. Wrong or too slow: it goes back in the pile.{goAgain}
+Win: Place more than half of the pieces.
+
 ## Rhythm Tap [rhythm]
 Category: More skill
 Play: A turn is one round of {secs} seconds. Notes come down three lanes to the beat. Tap a lane as its note reaches the line: right on the beat is Perfect, 2 points; close is Good, 1 point.{livesText}
@@ -412,7 +432,7 @@ Win: Reach {target} first.
 
 ## Road Race [rally]
 Category: More skill
-Play: A turn is one lap attempt. Drag left and right to steer: the car follows your finger. Leave the road and you crash: the attempt is over. Every attempt is a new road.
+Play: A turn is one lap attempt. Press GO and the car drives itself round the circuit: drag the steering wheel left and right to steer, and let go to straighten up. Leave the road and you crash: the attempt is over. Both players race the same circuit.
 Win: First to finish {laps} laps.
 
 ## Roads [roads]
@@ -513,6 +533,11 @@ Super Chaos Win: Be the first dog onto the treasure.
 Race Play: You each have a dog and your own treasure, the same number of steps from where both dogs start. Move yours one step, any of 8 ways (a diagonal counts as one step), to see if it's getting hotter, colder or the same. You can watch the other dog.
 Race Win: Be the first dog onto your treasure.
 
+## Split It [pint]
+Category: More skill
+Play: Your pint glass has your mark on it. Hold to drink: the glass tips and the level drops. Let go to stop. Stop the level on the middle of your mark: a split scores 1, a perfect split 2. One hold a go, and a fresh pint every time.{goAgain}
+Win: First to {goal} points.
+
 ## Standoff Grid [clash]
 Category: More brain
 Play: Claim a square. Pick the same square as your opponent in the same round and it's blocked for good.
@@ -527,6 +552,11 @@ Win: Score {target} first.
 Category: More brain
 Play: Tap an empty square to take it and the squares around it, even your opponent's.
 Win: Own the most when the board is full.
+
+## Tank Duel [tanks]
+Category: More skill
+Play: Drive if you like, drag on the field to set your barrel's angle and power, then fire. The wind (its arrow and number are at the top) bends the shot. A blast hurts any tank near it, yours too: a direct hit takes {hitDmg}.{goAgain}
+Win: Take the other tank's health from {health} to 0.
 
 ## Target Practice [target]
 Category: More skill
@@ -657,6 +687,7 @@ Not now: Not now
 Trivia: <p>Trivia questions from the <a href="https://opentdb.com" target="_blank" rel="noopener noreferrer">Open Trivia Database</a>, opentdb.com, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>
 Physics games: <p>Mini Golf, Pool, Bowling and Pinball run on <a href="https://brm.io/matter-js" target="_blank" rel="noopener noreferrer">Matter.js</a> (MIT licence).</p>
 Word Tiles: <p>Word Tiles checks its words against the ENABLE word list (public domain).</p>
+Letter Hive: <p>Letter Hive puzzles are made from the ENABLE word list (public domain).</p>
 Fonts: Fonts: Luckiest Guy, Patrick Hand, Bangers and Comic Neue (SIL Open Font License).
 Privacy note: What the game keeps about you, and how to delete your account
 Privacy link: Privacy policy
