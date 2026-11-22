@@ -629,6 +629,7 @@ def('hvLand', 0.12, (c, d, t) => { sfxTone(c, d, t, 620, .09, { to: 880, type: '
 // [/hive]
 //
 // [rally] Road Race: its sounds (names start `rr`)
+def('rrSqueal', 0.3, (c, d, t) => { sfxNoise(c, d, t, .26, { f: 2300, to: 1700, q: 9, vol: .5, att: .02 }); sfxTone(c, d, t, 1480, .24, { to: 1260, type: 'sawtooth', vol: .1, att: .03 }); }, { level: .3 });   // tyres at a hard lock: a narrow band of noise sliding down, a thin whine under it
 // [/rally]
 //
 // A press a game takes itself, on pointerdown (Echo's pads, Bullseye, Bowling, the drags and the runs): the
