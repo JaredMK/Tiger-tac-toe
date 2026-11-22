@@ -6652,12 +6652,12 @@ button.nsslot { cursor: pointer; touch-action: manipulation; }
 .hvbar.on { visibility: visible; }
 .hvbar i { display: block; height: 100%; background: #3aa35a; }
 .hvbar.mid i { background: #f0a020; } .hvbar.low i { background: #e0434f; }
-.hvent { height: 36px; display: flex; align-items: center; justify-content: center; gap: 1px; overflow: hidden; white-space: nowrap; font: 400 29px/1 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .05em; color: var(--ink); padding-top: 3px; }
+.hvent { position: relative; height: 36px; display: flex; align-items: center; justify-content: center; gap: 1px; overflow: hidden; white-space: nowrap; font: 400 29px/1 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .05em; color: var(--ink); padding-top: 3px; }
 .hvent.long { font-size: 22px; letter-spacing: .03em; }
 .hvent b { font-weight: 400; } .hvent b.mid { color: var(--sea); }
 .hvent b.new { display: inline-block; animation: hvkey .12s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes hvkey { from { transform: translateY(10px) scale(.5); opacity: .2; } }
-.hvout { display: inline-block; opacity: 0; animation: hvout .34s ease-in; }
+.hvout { position: absolute; left: 0; right: 0; text-align: center; opacity: 0; animation: hvout .34s ease-in; pointer-events: none; }   /* (a refused word on its way out: out of the line's flow, so the caret is back in the middle at once) */
 @keyframes hvout { 0% { opacity: .8; transform: translateX(0); } 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { opacity: .6; transform: translateX(-4px); } 100% { opacity: 0; transform: translateX(0); } }
 .hvcar { flex: none; width: 3px; height: 26px; margin: -3px 0 0 3px; border-radius: 2px; background: var(--ink); animation: hvblink 1s steps(2, jump-none) infinite; }
 @keyframes hvblink { to { opacity: 0; } }
