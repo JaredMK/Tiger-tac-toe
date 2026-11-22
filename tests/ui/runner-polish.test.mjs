@@ -109,3 +109,13 @@ test('runners: every scene draws a run under way, a crash as it plays and at res
   }
   assert.equal(FX.hitNow({ crash: { ob: { k: 'time' } } }), false, 'the time limit: no burst'); assert.equal(FX.hitNow({ crash: { ob: null } }), true);
 });
+test('runners: a square won by someone else\'s run chimes only once the run has played (the chime once came as it began)', async () => {
+  const { moveSounds } = await import('../../src/audio/sound.js');
+  for (const t of RUNNERS) {
+    const s2 = square(t), r = R.runAi(s2.mini, 'X', E.makeRng('won')); E.playMove(state, 0, r.move, E.makeRng('p'));
+    const f = Object.assign({}, state.flash, { kind: 'claim' }), drive = Math.round(f.run.steps * R.runStepOf(t) * 1000);
+    state.cpu = 'X'; const snd = moveSounds(f); state.cpu = null;
+    const won = snd.find(s => s[0] === 'won'), last = Math.max(...snd.filter(s => s[0] !== 'won').map(s => s[1]));
+    assert.ok(won && won[1] >= last && won[1] >= drive, `${t}: the chime at ${won && won[1]}, after the run (${drive}) and its result (${last})`);
+  }
+});

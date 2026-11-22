@@ -589,8 +589,9 @@ export function moveSounds(f) {
   const game = viewOf(f.type);
   if (game.sounds) game.sounds(f, add, won, mini, last);
   const CASINO = ['shell', 'wtiles', 'claw', 'duck', 'pusher', 'poker', 't31', 'rummy', 'rps', 'shut', 'combo', 'bglite', 'scc', 'bj', 'bus', 'rl', 'bullseye', 'echo', 'plinko', 'pong', 'trivia', 'oddone', 'dash', 'lane', 'golf', 'pool', 'bowling', 'craps', 'takeover', 'flood', 'seating', 'districts', 'shelves', 'roads', 'flap', 'chopper', 'patterns', 'wheels', 'sniff', 'clash', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball', 'apple', 'muncher', 'swarm', 'bricks', 'snake', 'dominoes', 'war', 'scratch', 'bingo', 'snakes', 'candy', 'bump'];   // (the race tracks: as the piece jumps on its last space)
-  if (won && (CASINO.includes(f.type) || game.ownLine)) add('won', game.wonAt ? game.wonAt(f, total) : total - 600);   // the card games and the wheel: the chime once the result shows (a view's own `wonAt`: Trivia and Odd One Out, whose mover's phone skips the reveal and the pause the others see)
-  else if (won && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.round(total * .5));   // the game is won: a chime (the square's stamp, and a match's end, follow on the board)
+  const lastAt = out.reduce((m, x) => Math.max(m, x[1] || 0), 0);   // the move's own last sound (its result): the won chime never comes before it (a replayed run, throw or aim plays its lead-in before its result: Dash's computer once chimed as its run began)
+  if (won && (CASINO.includes(f.type) || game.ownLine)) add('won', Math.max(lastAt, game.wonAt ? game.wonAt(f, total) : total - 600));   // the card games and the wheel: the chime once the result shows (a view's own `wonAt`: Trivia and Odd One Out, whose mover's phone skips the reveal and the pause the others see)
+  else if (won && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.max(Math.min(lastAt, total), Math.round(total * .5)));   // the game is won: a chime (the square's stamp, and a match's end, follow on the board)
   if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game
   return out;
 }
