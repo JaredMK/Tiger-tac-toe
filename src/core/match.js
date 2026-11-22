@@ -120,8 +120,9 @@ export function startCpu(state, rng, name) {
 // or null (not a game that can be dealt now).
 export function startPractice(state, rng, type, name, level) {   // (level: the computer's; Easy for How to Play's Practice, Hard for the admin's Test play, ui/sandbox.js)
   if (!TYPES.includes(type) || SC_ONLY.includes(type) || !dealable(type)) return null;
-  const s = state.setup, keep = { games: s.games, vsCpu: s.vsCpu };
-  s.games = { [type]: true }; s.vsCpu = { pick: 'X', level: level || 'easy' };   // (the player is always X and moves first: startMatch gives X the first turn) s.vs = 'cpu'; s.mode = 'two';
+  const s = state.setup, keep = { games: s.games, vsCpu: s.vsCpu, vs: s.vs };
+  s.games = { [type]: true }; s.vsCpu = { pick: 'X', level: level || 'easy' };   // (the player is always X and moves first: startMatch gives X the first turn)
+  s.vs = 'cpu';                                                  // (against the computer, whatever setup was last open: a Same phone setup once barred the games with hidden hands, so Dominoes' Practice did nothing)
   const human = startCpu(state, rng, name);
   Object.assign(s, keep);
   state.practice = human ? { type } : null;

@@ -74,3 +74,13 @@ test('practice stays in the square: after a move the turn passes where it stands
   const r = E.playMove(st, 4, 3, rng); assert.ok(r.ok); E.endFlash(st);
   assert.equal(st.turn, E.other(me), 'the computer is on the move'); assert.equal(st.screen, 'mini'); assert.equal(st.zoom, 4); assert.equal(st.done, null); assert.equal(st.stamp, null);
 });
+
+test('startPractice: opens for every game that can be dealt, whatever setup was last open (Same phone barred Dominoes, Thirty-One, Rummy Lite and Word Tiles)', () => {
+  const E = require('../engine.js');
+  for (const vs of [undefined, 'cpu', 'same']) for (const t of E.TYPES) {
+    if (!E.dealable(t) || E.SC_ONLY.includes(t)) continue;
+    const st = E.newState(E.makeRng('a')); if (vs) st.setup.vs = vs;
+    assert.ok(startPractice(st, E.makeRng('b'), t, 'Me'), `${t} opens (setup ${vs || 'none'})`);
+    assert.equal(st.setup.vs, vs, 'the setup kept as it was');
+  }
+});
