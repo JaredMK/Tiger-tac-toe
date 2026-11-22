@@ -78,3 +78,10 @@ test('trail: the computer: takes a win, steps round a wall; Hard never lets the 
     try { let ends = 0; for (let g = 0; g < 60; g++) { const rng = E.makeRng('w' + g), t = E.newMini('trail', rng); let q = 'X'; for (let k = 0; k < 600; k++) { const b = E.localBest(E.publicMini(t), q, rng, {}, { level: ['easy', 'normal', 'hard'][g % 3] }); const r = E.applyMove(t, q, b.move, rng); assert.ok(r.ok, `${r.reason}: ${b.move}`); if (r.outcome !== 'continue') { ends++; break; } q = q === 'X' ? 'O' : 'X'; } } assert.equal(ends, 60, 'equal turns ' + even); } finally { E.setTune('trail', null); }
   }
 });
+test('a move that boxes the mover in rubs the mover\'s own trail out: it starts again from its edge (never a player with no move)', () => {
+  const m = E.newMini('trail', E.makeRng('self-box'));
+  m.tr = { X: [[0, 3], [0, 2], [0, 1], [1, 1], [1, 2], [2, 2], [2, 1]], O: [[5, 3], [5, 2], [4, 2], [4, 3], [4, 4], [3, 4], [3, 3], [2, 3], [2, 4], [2, 5], [1, 5], [1, 4]] };
+  const r = E.applyMove(m, 'O', 'w', E.makeRng('x'));                 // (O steps to [1,3]: X above, its own trail beside: no step left)
+  assert.equal(r.ok, true); assert.equal(m.last.wipe, 'O'); assert.deepEqual(m.tr.O, [[5, 3]]); assert.equal(m.wipes.O, 1);
+  assert.ok(E.randomLegalMove(m, 'O', E.makeRng('y')) != null, 'O has a move again');
+});

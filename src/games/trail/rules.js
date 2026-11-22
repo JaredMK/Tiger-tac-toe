@@ -52,7 +52,14 @@ export function trailTry(mini, p, m, cells) {
   }
   t.moves[p]++; t.used[p] += path.length;
   const o = p === 'X' ? 'O' : 'X'; let wipe = null, was = null;
-  { const [orow, ocol] = trailHead(t, o); if (orow !== trailFar(t, o) && !trailSteps(g, o, orow, ocol).length) { wipe = o; was = t.tr[o]; was.forEach(([a, b]) => { g[a][b] = null; }); const row = o === 'X' ? 0 : t.n - 1; let col = mid(t.n); for (let k = 0; k < t.n && g[row][col]; k++) col = mid(t.n) + (k % 2 ? 1 : -1) * Math.ceil((k + 1) / 2); t.tr[o] = [[row, Math.max(0, Math.min(t.n - 1, col))]]; t.wipes[o]++; } }
+  // A trail left with no step is rubbed out and starts again from its edge: the other player's (boxed in by this move),
+  // else the mover's own (a move that boxes itself in: November 2026, before it the boxed player had no move at all and
+  // the square stood still for them).
+  for (const q of [o, p]) {
+    if (wipe || (q === p && won)) continue;
+    const [qr, qc] = trailHead(t, q); if (qr === trailFar(t, q) || trailSteps(g, q, qr, qc).length) continue;
+    wipe = q; was = t.tr[q]; was.forEach(([a, b]) => { g[a][b] = null; }); const row = q === 'X' ? 0 : t.n - 1; let col = mid(t.n); for (let k = 0; k < t.n && g[row][col]; k++) col = mid(t.n) + (k % 2 ? 1 : -1) * Math.ceil((k + 1) / 2); t.tr[q] = [[row, Math.max(0, Math.min(t.n - 1, col))]]; t.wipes[q]++;
+  }
   return { mini: t, path, won, wipe, was };
 }
 export function apply(mini, p, m, rng, idx) {

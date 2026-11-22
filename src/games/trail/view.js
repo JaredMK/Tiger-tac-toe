@@ -75,7 +75,7 @@ export function miniature(mini, final) {
   const art = `<svg class="ttl" viewBox="-1 -1 ${W + 2} ${W + 2}"><rect class="tlbg" x="0" y="0" width="${W}" height="${W}" rx="3"/>${['X', 'O'].map(p => `${mini.tr[p].length > 1 ? `<path class="tltrail ${p}" d="${line(n, mini.tr[p])}"/>` : ''}<circle class="ttlh ${p}" cx="${xy(n, ...trailHead(mini, p))[0]}" cy="${xy(n, ...trailHead(mini, p))[1]}" r="4"/>`).join('')}</svg>`;
   return thumbArt(art, barRows({ X: rows('X'), O: rows('O') }, n - 1), 'ttlw', `Trail Race: X ${rows('X')}, O ${rows('O')} of ${n - 1} rows`);
 }
-export function moveText(f, who) { const s = f.tl; return !s ? `${who} moved` : `${who} grew their trail by ${s.path.length}${s.wipe ? ' and boxed the other trail in' : ''}`; }
+export function moveText(f, who) { const s = f.tl; return !s ? `${who} moved` : `${who} grew their trail by ${s.path.length}${s.wipe ? (s.wipe === s.by ? ' and boxed itself in' : ' and boxed the other trail in') : ''}`; }
 // A step's tick for each new square (someone else's: a move made here had its ticks as it was lined up), and a falling
 // sweep as a boxed-in trail is rubbed out.
 export function sounds(f, add, won, mini, last) {

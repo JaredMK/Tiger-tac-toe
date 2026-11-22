@@ -183,7 +183,7 @@ export function castleShot(M, was, shot, c, quick) {
     if (nh - CS.r <= 0) {
       if (nx >= CS.zone[0] && nx <= CS.zone[1]) break;
       const f = clamp((h - CS.r) / Math.max(1e-6, h - nh), 0, 1);  // a dud: it stops where it lands
-      x += vx * f; h = CS.r; n++; kind = x < CS.zone[0] ? 'short' : 'long'; ev('thud', { x: Math.round(x), v: Math.round(Math.abs(nvh) / TK * 10) / 10 });
+      x += vx * f; h = CS.r; n++; kind = x < CS.zone[0] ? 'short' : 'long'; ev('thud', { x: Math.round(x) + 0, v: Math.round(Math.abs(nvh) / TK * 10) / 10 });
       if (n % CS.sub) n++;
       snap(); break;
     }
@@ -209,7 +209,7 @@ export function castleShot(M, was, shot, c, quick) {
     const alive = was.map(() => true), mat = was.map(b => KINDS[b[0]].m), ci = was.findIndex(b => b[0] === K.core), coreH = ci >= 0 ? was[ci][2] / 10 : 0;
     const doomed = new Set(), struck = new Set(), samples = was.map(() => []), goneAt = was.map(() => -1), f0 = Math.floor(n / CS.sub);
     let core = null, touch = -1, ballOn = true, slow = 0, still = 0, broke = 0, off = 0, deadAt = -1, lastKnock = -9;
-    const pt = b => ({ x: Math.round(b.position.x), h: Math.round(-b.position.y) });
+    const pt = b => ({ x: Math.round(b.position.x) + 0, h: Math.round(-b.position.y) + 0 });
     Events.on(engine, 'collisionStart', e => {
       for (const pair of e.pairs) {
         const A = pair.bodyA, B = pair.bodyB, nr = pair.collision.normal;
@@ -223,8 +223,8 @@ export function castleShot(M, was, shot, c, quick) {
           else if (mat[i] === 'w') { if (punch >= c.woodTough) doomed.add(i); }
           else if (O === ball && punch >= c.stoneTough && !struck.has(i)) { struck.add(i); if ((was[i][4] || 0) + 1 >= c.stoneHits) doomed.add(i); else ev('crack', Object.assign({ i }, pt(bodies[i]))); }
         }
-        if (isBall) { const o = A === ball ? B : A; ev('hit', Object.assign({ v: Math.round(rv * 10) / 10, m: o === ground ? 'g' : mat[Number(o.label)] }, pt(ball))); }
-        else if (rv >= CS.knock && n - lastKnock >= 6) { lastKnock = n; ev('knock', { v: Math.round(rv * 10) / 10, m: A === ground || B === ground ? 'g' : mat[Number(A.label)] === 'w' || mat[Number(B.label)] === 'w' ? 'w' : 's' }); }
+        if (isBall) { const o = A === ball ? B : A; ev('hit', Object.assign({ v: Math.round(rv * 10) / 10 + 0, m: o === ground ? 'g' : mat[Number(o.label)] }, pt(ball))); }
+        else if (rv >= CS.knock && n - lastKnock >= 6) { lastKnock = n; ev('knock', { v: Math.round(rv * 10) / 10 + 0, m: A === ground || B === ground ? 'g' : mat[Number(A.label)] === 'w' || mat[Number(B.label)] === 'w' ? 'w' : 's' }); }
       }
     });
     const drop = (i, k, e) => { alive[i] = false; goneAt[i] = n; Composite.remove(engine.world, bodies[i]); ev(k, Object.assign({ i }, pt(bodies[i]), e)); };
@@ -237,7 +237,7 @@ export function castleShot(M, was, shot, c, quick) {
     const m0 = n;
     while (n - m0 < CS.cap) {
       Engine.update(engine, DT * big); n += big;
-      for (const i of doomed) if (alive[i]) { broke++; drop(i, 'break', { a: Math.round(bodies[i].angle * 100) / 100, m: mat[i] }); }
+      for (const i of doomed) if (alive[i]) { broke++; drop(i, 'break', { a: Math.round(bodies[i].angle * 100) / 100 + 0, m: mat[i] }); }
       doomed.clear();
       for (let i = 0; i < bodies.length; i++) {
         if (!alive[i] || i === ci) continue;
@@ -274,7 +274,7 @@ export function castleShot(M, was, shot, c, quick) {
       const b = bodies[i], w = was[i];
       const far = alive[i] && (Math.abs(b.position.x - w[1] / 10) > CS.eps || Math.abs(-b.position.y - w[2] / 10) > CS.eps || Math.abs(b.angle - w[3] / 1000) > CS.epsA);
       const hit = alive[i] && struck.has(i);
-      if (alive[i]) blocks.push(far || hit ? (far ? [w[0], Math.round(b.position.x * 10), Math.round(-b.position.y * 10), Math.round(b.angle * 1000)] : w.slice(0, 4)).concat(hit ? [(w[4] || 0) + 1] : w[4] ? [w[4]] : []) : w);
+      if (alive[i]) blocks.push(far || hit ? (far ? [w[0], Math.round(b.position.x * 10) + 0, Math.round(-b.position.y * 10) + 0, Math.round(b.angle * 1000) + 0] : w.slice(0, 4)).concat(hit ? [(w[4] || 0) + 1] : w[4] ? [w[4]] : []) : w);
       if (far || !alive[i]) moved++;
       if (quick || !(far || !alive[i])) continue;
       const s = samples[i], q = [Math.round(w[1] / 5), Math.round(w[2] / 5), Math.round(w[3] / 20)], cnt = s.length / 3;

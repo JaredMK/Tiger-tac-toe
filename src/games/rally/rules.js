@@ -155,7 +155,7 @@ export function rallyRun(c, tr, log, steps, pick) {
 export function apply(mini, p, m, rng, idx) {
   if (mini.v !== 2) return { ok: false, reason: 'stale' };
   if (!m || typeof m !== 'object' || !rallyLogOk(m.log, m.steps)) return { ok: false, reason: 'bad' };
-  const c = rallyCfg(mini), run = rallyRun(c, rallyTrack(mini), m.log, m.steps), from = mini.laps[p], q = v => Math.round(v * 100) / 100;
+  const c = rallyCfg(mini), run = rallyRun(c, rallyTrack(mini), m.log, m.steps), from = mini.laps[p], q = v => Math.round(v * 100) / 100 + 0;
   if (run.done) mini.laps[p]++;
   mini.n[p]++;
   mini.last = { by: p, done: run.done, crash: run.crash, pct: run.pct, from, to: mini.laps[p], at: [q(run.x), q(run.y), q(run.hx), q(run.hy)] };
@@ -173,7 +173,7 @@ export function rallyDrive(c, tr, rng, lapse) {
     let to = w;
     if (held > 0) held--; else if (rng() < lapse / RALLY.hz) held = 18 + Math.floor(rng() * 30);
     else {
-      const q = (S.i + c.look) % n, dx = tr.x[q] - S.x, dy = tr.y[q] - S.y, want = Math.round(clamp(2 * (S.hx * dy - S.hy * dx) / (dx * dx + dy * dy) * c.speed / c.turn, -1, 1) * L);
+      const q = (S.i + c.look) % n, dx = tr.x[q] - S.x, dy = tr.y[q] - S.y, want = Math.round(clamp(2 * (S.hx * dy - S.hy * dx) / (dx * dx + dy * dy) * c.speed / c.turn, -1, 1) * L) + 0;
       to = w + clamp(want - w, -2, 2);
     }
     if (to !== last) { log.push([S.k, to]); last = to; }
