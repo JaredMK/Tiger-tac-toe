@@ -20,7 +20,7 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export const TUNE = [
   AGAIN_TUNE,
   { k: 'size', label: 'Grid size (n x n pieces)', def: 3, min: 3, max: 5, step: 1, group: 'Board' },
-  { k: 'centre', label: 'Centre piece in place at the start (odd grids only: an even grid has no centre and starts empty)', def: 'on', opts: ['on', 'off'], group: 'Board' },
+  { k: 'centre', label: 'Centre piece in place at the start (odd grids only: an even grid has no centre and starts empty)', def: 'off', opts: ['on', 'off'], group: 'Board' },   // (off by default, December 2026: on, eight pieces between two careful players often ends 4-4, a draw; off, nine pieces, never a draw)
   { k: 'secs', label: 'Piece timer (seconds to place a piece)', def: 8, min: 3, max: 30, step: 1, group: 'Timing' },
   { k: 'aiEasy', label: 'Easy computer: right placements (%)', def: 55, min: 5, max: 100, step: 1, group: 'Computer' },
   { k: 'aiNormal', label: 'Normal computer: right placements (%)', def: 75, min: 5, max: 100, step: 1, group: 'Computer' },

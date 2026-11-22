@@ -13,22 +13,28 @@ const { FIND_MATCH_HOLD } = require('../../src/core/games.js');
 E.setPhysics(require('../physics.js'));
 
 const lcg = seed => () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
-const mini = (seed, t) => { E.setTune('jigsaw', t || null); try { return E.newMini('jigsaw', E.makeRng(seed || 'jg')); } finally { E.setTune('jigsaw', null); } };
+const ON = { centre: 'on' };   // (most tests here deal the 3 by 3 with its centre piece in place, the setting's other value: the default is off)
+E.setTune('jigsaw', ON);
+const mini = (seed, t) => { E.setTune('jigsaw', Object.assign({}, ON, t || {})); try { return E.newMini('jigsaw', E.makeRng(seed || 'jg')); } finally { E.setTune('jigsaw', ON); } };
 const other = p => (p === 'X' ? 'O' : 'X');
 const draw = (m, p, rng) => E.applyMove(m, p, 'draw', rng || lcg(7));
 // A square set by hand: the board as a string, each side's count from it, the piece on show.
 const fixed = (placed, offer, by, t) => { const m = mini('fx', t); m.placed = placed; m.got = { X: [...placed].filter(v => v === 'X').length, O: [...placed].filter(v => v === 'O').length }; m.offer = offer == null ? null : offer; m.by = offer == null ? null : by || 'X'; return m; };
 
-test('jigsaw: the defaults: a 3 by 3 puzzle with its centre piece in place, laid by nobody; eight pieces to lay, five take the square; nothing drawn, nothing hidden', () => {
+test('jigsaw: the defaults: a 3 by 3 puzzle with nothing in place: nine pieces to lay, five take the square (never a draw)', () => {
+  E.setTune('jigsaw', null); const d = E.newMini('jigsaw', E.makeRng('dflt')); E.setTune('jigsaw', ON);
+  assert.deepEqual([d.n, d.placed, R.jigTotal(d), R.jigNeed(d)], [3, '.........', 9, 5]); assert.equal(d.tune, undefined, 'nothing kept for the defaults');
+  assert.equal(E.tuneFields('jigsaw').find(f => f.k === 'centre').def, 'off');
+});
+test('jigsaw: with the centre piece in place: a 3 by 3 puzzle, the centre laid by nobody; eight pieces to lay, five take the square; nothing drawn, nothing hidden', () => {
   const m = mini();
   assert.deepEqual([m.n, m.placed, m.got, m.offer, m.by, m.k, m.last], [3, '....C....', { X: 0, O: 0 }, null, null, 0, null]);
   assert.ok(Number.isInteger(m.seed) && m.seed >= 0 && m.seed < 1e9, 'the picture\'s seed');
   assert.deepEqual([R.jigTotal(m), R.jigNeed(m), R.jigLeft(m), R.jigEnd(m)], [8, 5, 8, null]);
   assert.deepEqual(R.jigEdge(m), [1, 3, 5, 7], 'the pieces that touch the centre');
-  assert.equal(m.tune, undefined, 'nothing kept for the defaults');
   assert.equal(E.secretOf(m), null, 'no secret: the picture is drawn from the public seed');
   const pv = E.publicMini(m);
-  assert.deepEqual(pv, { type: 'jigsaw', n: 3, seed: m.seed, placed: '....C....', got: { X: 0, O: 0 }, offer: null, by: null, k: 0, last: null });
+  assert.deepEqual(Object.assign({}, pv, { tune: undefined }), { type: 'jigsaw', n: 3, seed: m.seed, placed: '....C....', got: { X: 0, O: 0 }, offer: null, by: null, k: 0, last: null, tune: undefined });
   assert.notEqual(mini('a').seed, mini('b').seed, 'a new picture each game');
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder], ['admin', 'brain', '1.30.0', false]);
   assert.ok(FIND_MATCH_HOLD.includes('jigsaw'), 'held out of Find Match: the piece timer is the phone\'s word');

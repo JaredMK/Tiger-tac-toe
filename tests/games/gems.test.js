@@ -12,13 +12,17 @@ const arr = s => R.gemsArr(s);
 // A square with a board of the test's own (rows of digits, every cell given).
 const square = (rows, pts) => { const m = E.newMini('gems', E.makeRng('sq')); m.n = rows.length; m.b = rows.join(''); if (pts) m.pts = pts; return m; };
 const sound = (g, n) => R.gemsLines(g, n).length === 0 && R.gemsMoves(g, n).length > 0;
-const withTune = (t, fn) => { E.setTune('gems', t); try { return fn(); } finally { E.setTune('gems', null); } };
+// (Equal turns is on by default from December 2026; these tests were written for the first to the target winning at once, so they deal with it off unless a test says otherwise.)
+const OFF = { even: 'off' };
+E.setTune('gems', OFF);
+const withTune = (t, fn) => { E.setTune('gems', Object.assign({}, OFF, t)); try { return fn(); } finally { E.setTune('gems', OFF); } };
 
 test('gems: Admin only, brain; a 7x7 board of six kinds, 32 to win, nothing hidden', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder], ['admin', 'brain', '1.30.0', false]);
   assert.deepEqual(E.tuneFields('gems').map(f => f.k), ['again', 'againAt', 'target', 'even', 'size', 'kinds', 'aiEasy', 'aiHard']);
-  const m = E.newMini('gems', E.makeRng('a'));
+  E.setTune('gems', null); const m = E.newMini('gems', E.makeRng('a')); E.setTune('gems', OFF);
   assert.deepEqual([m.n, m.kinds, m.b.length, m.pts, m.last, m.tune], [7, 6, 49, { X: 0, O: 0 }, null, undefined]);
+  assert.equal(R.gemsCfg(m).even, true, 'Equal turns on by default');
   assert.ok(/^[0-5]{49}$/.test(m.b));
   assert.equal(E.secretOf(m), null);
   assert.deepEqual(R.gemsCfg(m).target, 32);
@@ -38,7 +42,7 @@ test('gems: every dealt board, at every size and number of kinds, has no line re
     assert.ok(sound(R.gemsPlain(n), n), 'the set board');
   }
   for (const v of [0, 0.5, 0.999]) { const g = R.gemsDeal(7, 6, () => v); assert.ok(sound(g, 7), `a deal under a constant ${v}`); }
-  withTune({ size: 5, kinds: 4 }, () => { const m = E.newMini('gems', E.makeRng('b')); assert.deepEqual([m.n, m.kinds, m.b.length], [5, 4, 25]); assert.deepEqual(m.tune, { size: 5, kinds: 4 }); });
+  withTune({ size: 5, kinds: 4 }, () => { const m = E.newMini('gems', E.makeRng('b')); assert.deepEqual([m.n, m.kinds, m.b.length], [5, 4, 25]); assert.deepEqual(m.tune, { even: 'off', size: 5, kinds: 4 }); });
   // the opening is a settled board: a fresh deal's best swap is surer of more than a board in play gives
   const rng = E.makeRng('settle'), best = g => Math.max(...R.gemsMoves(g, 7).map(m => R.gemsResolve(g, 7, 6, m[0], m[1], null).pts));
   let fresh = 0, open = 0; for (let k = 0; k < 300; k++) { fresh += best(R.gemsDeal(7, 6, rng)); open += best(R.gemsOpen(7, 6, rng)); }
@@ -147,10 +151,10 @@ test('gems: Go again on success: off, a swap is the turn; on, a swap that remove
   assert.equal(M.explainVars({ again: 'on', againAt: 6 }).goAgain, ' Burst 6 or more with one swap and you go again.'); assert.equal(M.explainVars({ again: 'off' }).goAgain, '');
 });
 
-test('gems: Equal turns (a setting, off by default): the first to move reaching the target gives the other player a turn to answer', () => {
+test('gems: Equal turns (a setting, on by default): the first to move reaching the target gives the other player a turn to answer', () => {
   const rows = ['0102345', '1021534', '2345012', '3450123', '4501234', '5012345', '0123450'], mv = { a: 1, b: 8 };
   const at = (pts, turns) => { const m = square(rows, pts); m.turns = turns; return m; };
-  assert.equal(E.tuneFields('gems').find(f => f.k === 'even').def, 'off');
+  assert.equal(E.tuneFields('gems').find(f => f.k === 'even').def, 'on');
   withTune({ even: 'on' }, () => {
     // X has had a turn more once it moves: it reaches the target and the square waits for O's answer
     let m = at({ X: 30, O: 10 }, { X: 3, O: 3 }), r = E.applyMove(m, 'X', mv, E.makeRng('e1'));

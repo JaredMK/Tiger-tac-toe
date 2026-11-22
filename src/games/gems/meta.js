@@ -19,7 +19,7 @@ export const TUNE = [
   AGAIN_TUNE,
   { k: 'againAt', label: 'Go again: gems burst by one swap', def: 6, min: 4, max: 20, step: 1, group: 'Rules' },
   { k: 'target', label: 'Points to win', def: 32, min: 6, max: 80, step: 1, group: 'Rules' },
-  { k: 'even', label: 'Equal turns (the other player answers; the higher score wins)', def: 'off', opts: ['off', 'on'], group: 'Rules' },
+  { k: 'even', label: 'Equal turns (the other player answers; the higher score wins)', def: 'on', opts: ['off', 'on'], group: 'Rules' },   // (on by default, December 2026: first to the target outright gave the first mover 60-61%; with the answer, 48%)
   { k: 'size', label: 'Board size (a side)', def: 7, min: 5, max: 8, step: 1, group: 'Board' },
   { k: 'kinds', label: 'Kinds of gem', def: 6, min: 4, max: 6, step: 1, group: 'Board' },
   { k: 'aiEasy', label: 'Easy: swaps taken at random (%)', def: 60, min: 0, max: 100, step: 5, group: 'Computer' },

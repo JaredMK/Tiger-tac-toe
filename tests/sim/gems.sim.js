@@ -42,9 +42,9 @@ function early(N, k, tune) {
   return { quick: quick / N, mean, sd: Math.sqrt(sq / turns - mean * mean), top };
 }
 
-test('gems: 500 squares at Normal (the defaults: 7x7, six kinds, 32 to win): the turns each are in range; the first mover is at the top edge of the band', () => {
-  const r = duel('gems', 'normal', 'normal', 500);
-  console.log(line('Normal v Normal', r));
+test('gems: 500 squares at Normal, first to the target outright (Equal turns off: 7x7, six kinds, 32 to win): the turns each are in range; the first mover is at the top edge of the band', () => {
+  const r = duel('gems', 'normal', 'normal', 500, { even: 'off' });
+  console.log(line('Normal v Normal, Equal turns off', r));
   assert.equal(r.open, 0); assert.equal(r.draws, 0);
   assert.ok(r.each >= 3 && r.each <= 6, `mean turns each ${r.each}`); assert.ok(r.eachMed >= 3 && r.eachMed <= 6, `median turns each ${r.eachMed}`);
   assert.ok(r.first >= 0.45 && r.first <= 0.63, `first mover ${r.first}: about 60.5% over 6,000 squares (see the header): two points of noise allowed, no more`);
@@ -52,10 +52,11 @@ test('gems: 500 squares at Normal (the defaults: 7x7, six kinds, 32 to win): the
   console.log(`  a turn brings ${e.mean.toFixed(2)} gems (sd ${e.sd.toFixed(2)}, the most ${e.top}); won inside the winner's first two turns: ${(100 * e.quick).toFixed(1)}% of squares`);
   assert.ok(e.quick <= 0.06, `squares won in two turns: ${e.quick}`);
 });
-test('gems: Equal turns on (the other player answers): the first mover inside the band', () => {
-  const r = duel('gems', 'normal', 'normal', 500, { even: 'on' });
-  console.log(line('Equal turns on', r));
+test('gems: the defaults, 500 squares at Normal (Equal turns on: the other player answers): the first mover inside the band', () => {
+  const r = duel('gems', 'normal', 'normal', 500);
+  console.log(line('Normal v Normal (the defaults, Equal turns on)', r));
   assert.equal(r.open, 0); assert.ok(r.first >= 0.43 && r.first <= 0.57, `first mover ${r.first}`); assert.ok(r.draws < 0.06);
+  assert.ok(r.each >= 3 && r.each <= 6 && r.eachMed >= 3 && r.eachMed <= 6, `turns each ${r.each} (median ${r.eachMed})`);
 });
 test('gems: by target, kinds, board, switch and level', () => {
   const T = (label, t, a = 'normal', b = 'normal', n = 500) => console.log(line(label, duel('gems', a, b, n, t)));
