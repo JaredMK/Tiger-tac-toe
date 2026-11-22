@@ -57,7 +57,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const end = s ? trailMs(s) : 0, far = p => Math.abs(trailHead(mini, p)[0] - (p === 'X' ? 0 : mini.n - 1));
   const tal = p => arcTally(p, o, `<span class="tlrow" aria-label="${far(p)} of ${mini.n - 1} rows">${far(p)}<small>/${mini.n - 1}</small></span>`);
   const opt = { tr: mini.tr, by };
-  if (s) { opt.fresh = { p: s.by, from: s.from, t: 0 }; if (s.wipe) opt.gone = { p: s.wipe, cells: s.was, t: s.path.length * TRAIL.step }; }
+  if (s) { if (s.wipe !== s.by) opt.fresh = { p: s.by, from: s.from, t: 0 }; if (s.wipe) opt.gone = { p: s.wipe, cells: s.was, t: s.wipe === s.by ? 0 : s.path.length * TRAIL.step }; }   // (a trail that boxed itself in: its whole trail, the new steps with it, fades as it starts again)
   else if (mine && draft) {
     const grid = trailGrid(mini); draft.at.forEach(([r, cc]) => { grid[r][cc] = turn; });
     const [hr, hc] = draft.at.length ? draft.at[draft.at.length - 1] : trailHead(mini, turn);
