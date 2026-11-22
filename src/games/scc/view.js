@@ -21,8 +21,8 @@ import { markSvgG } from '../../ui/thumbs.js';
 const ROLE = ['ship', 'captain', 'crew'], NAME = ['Ship', 'Captain', 'Crew'];
 const FIG = {
   ship: '<path d="M6 30h36l-6 9H12z"/><path d="M24 6v24" class="mast"/><path d="M24 8l12 17H24z" class="sail"/>',
-  captain: '<path d="M7 27c4-12 30-12 34 0z"/><path d="M5 27h38v4H5z"/><circle cx="24" cy="19" r="3.2" class="badge"/>',
-  crew: '<circle cx="24" cy="14" r="7"/><path d="M11 40c1-11 25-11 26 0z"/><path d="M15 11h18l-2-5H17z" class="cap"/>',
+  captain: '<path class="coat" d="M11 44c0-8 5-13 13-13s13 5 13 13z"/><path class="lap" d="M24 31l-4.5 6M24 31l4.5 6"/><circle class="btn" cx="24" cy="38.5" r="1.3"/><circle class="btn" cx="24" cy="42.2" r="1.1"/><path class="skin" d="M21 26h6v6.5h-6z"/><circle class="skin" cx="24" cy="20" r="7.6"/><circle class="eye" cx="21.3" cy="19.6" r="1"/><circle class="eye" cx="26.7" cy="19.6" r="1"/><path class="smile" d="M21 23.4q3 2.2 6 0"/><path class="hat" d="M14.5 13.4c0-6.2 4.2-8.6 9.5-8.6s9.5 2.4 9.5 8.6z"/><path class="brim" d="M13 13.2h22l-2.4 3.3H15.4z"/><circle class="badge" cx="24" cy="9.4" r="1.9"/>',
+  crew: '<path class="shirt" d="M11 44c0-8 5-13 13-13s13 5 13 13z"/><path class="stripe" d="M13.4 37h21.2M12.2 41h23.6"/><path class="collar" d="M17.5 31.2l6.5 5.3 6.5-5.3z"/><path class="skin" d="M21 26.5h6v6h-6z"/><circle class="skin" cx="24" cy="20.5" r="7.6"/><circle class="eye" cx="21.3" cy="20.4" r="1"/><circle class="eye" cx="26.7" cy="20.4" r="1"/><path class="smile" d="M21 24q3 2.2 6 0"/><path class="hat" d="M15.6 14.2c.6-5 4.2-7.2 8.4-7.2s7.8 2.2 8.4 7.2z"/><path class="band" d="M15.3 14h17.4v2.8H15.3z"/><circle class="pom" cx="24" cy="6.4" r="2"/>',
 };
 export const SCC_BELL = [0.84, 1, 1.19];                          // the bell's pitch for the ship, the captain, the crew (shipBell's playback rate)
 const W = p => `<b class="${p}">${N(p)}</b>`;

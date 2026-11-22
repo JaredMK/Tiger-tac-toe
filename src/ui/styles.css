@@ -5334,8 +5334,12 @@ button.cmbd { cursor: pointer; } button.cmbd:active .d3 { transform: scale(.93);
 .sccslot.on .sccnm { color: var(--ink); }
 .sccslot.on > svg { stroke: var(--ink); fill: #f4e3c4; }
 .sccslot.on.ship > svg path:first-child { fill: #b5763a; } .sccslot.on.ship > svg .sail { fill: #fff; } .sccslot.on > svg .mast { fill: none; }
-.sccslot.on.captain > svg path { fill: #2d3a6b; } .sccslot.on.captain > svg .badge { fill: var(--gold, #f2b705); }
-.sccslot.on.crew > svg path:nth-of-type(1) { fill: #3d7fe0; } .sccslot.on.crew > svg .cap { fill: #fff; }
+.sccslot > svg .smile, .sccslot > svg .lap, .sccslot > svg .stripe { fill: none; } .sccslot > svg .eye { fill: rgba(22, 18, 16, .38); stroke: none; }   /* the captain and the crew (December 2026): simple comic figures, the head joined to the body */
+.sccslot.on > svg .skin { fill: #f6c9a0; } .sccslot.on > svg .eye { fill: var(--ink); } .sccslot.on > svg .smile, .sccslot.on > svg .lap { stroke-width: 2; }
+.sccslot.on.captain > svg .coat { fill: #2d3a6b; } .sccslot.on.captain > svg .lap { stroke: #fff; } .sccslot.on.captain > svg .btn, .sccslot.on.captain > svg .badge { fill: var(--gold, #f2b705); }
+.sccslot.on.captain > svg .hat { fill: #fff; } .sccslot.on.captain > svg .brim { fill: #1d2547; }
+.sccslot.on.crew > svg .shirt { fill: #fff; } .sccslot.on.crew > svg .stripe { stroke: #3d7fe0; stroke-width: 2.4; } .sccslot.on.crew > svg .collar, .sccslot.on.crew > svg .band { fill: #3d7fe0; }
+.sccslot.on.crew > svg .hat { fill: #fff; } .sccslot.on.crew > svg .pom { fill: #e53935; }
 .sccslot.fresh { animation: sccslotin .16s var(--t, 0ms) both; }
 .sccslot.fresh > svg { animation: sccfig .42s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }
 .sccslot.fresh .sccnm { animation: sccnm .16s var(--t, 0ms) both; }
