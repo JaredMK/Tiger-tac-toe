@@ -1,12 +1,14 @@
 // Glass Bridge: the screen, the miniature, the move's words and sounds.
 // The bridge runs up the screen from the near bank to the flag: a row of glass platforms a line, each a button while
 // it is in the mover's next row. Glass nobody has stood on is pale blue; glass that held is green with a tick; glass
-// that broke is a hole with its shards. A hop: the mover's token jumps onto the platform (BRIDGE.hop) and it turns
-// green under it; a break: the token lands, the glass cracks (BRIDGE.crack), gives way and the token drops through
-// (BRIDGE.drop), then stands on its old row again (BRIDGE.back). Shared: one bridge with both tokens; separate: one
+// that broke is a hole with its shards. A hop: the mover's token crouches where it stands, leaps in an arc onto the
+// platform and lands with a squash (BRIDGE.hop, `jump`: Web Animations from the platform it left, measured); a break:
+// it lands, the glass cracks (BRIDGE.crack), gives way and the token drops through (BRIDGE.drop), then stands back on
+// the near bank (BRIDGE.back: v 2 starts its next turn from the beginning). Shared: one bridge with both tokens; separate: one
 // each, side by side under its player's mark. Everything is timed from the move (rules.js BRIDGE).
 import { BRIDGE, bridgeSeen } from './rules.js';
-import { N, mv } from '../../ui/app.js';
+import { N, REDUCED, app, mv } from '../../ui/app.js';
+import { fx, fxAt } from '../../ui/fx.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 import { pipRows, thumbArt } from '../../ui/thumbs.js';
 import { tok } from '../../ui/tok.js';
@@ -19,24 +21,51 @@ function bridge(mini, o, a, own) {                               // own: whose b
   const seen = own ? mini.seen[own] : mini.seen, who = own ? [own] : ['X', 'O'], mover = o.turn;
   const next = !o.view && !o.locked && (!own || own === mover) ? mini.at[mover] + 1 : -1;
   const here = (p, r, i) => (r < 0 ? mini.at[p] < 0 : mini.at[p] === r && mini.pos[p] === i);
+  const fromKey = s ? (s.r > 0 && s.from >= 0 ? `${s.r - 1}:${s.from}` : 'bank') : '';   // where the jump took off: the platform stood on, or the near bank
+  const jump = (p, cls) => `<span class="gbj${cls ? ' ' + cls : ''}" data-gbj="${fromKey}">${tok(p)}</span>`;
   const tokens = (r, i) => who.filter(p => here(p, r, i)).map(p => {
-    if (s && by === p && !s.fall && s.r === r && s.i === i) return tok(p, 'hopin');           // just landed here
-    if (s && by === p && s.fall) return tok(p, 'backin');                                       // fell: back on this row once the fall has played
+    if (s && by === p && !s.fall && s.r === r && s.i === i) return jump(p);                    // just landed here
+    if (s && by === p && s.fall) return tok(p, 'backin');                                       // fell: back at the start once the fall has played
     return tok(p);
-  }).join('') + (s && s.fall && s.r === r && s.i === i ? tok(by, 'fallin') : '');
+  }).join('') + (s && s.fall && s.r === r && s.i === i ? jump(by, 'fallin') : '');
   const row = r => `<div class="gbrow" style="--n:${mini.n[r]}">${seen[r].map((v, i) => {
     const fresh = s && s.r === r && s.i === i ? ' fresh' : '', cls = `gbp s${v === 2 ? 2 : 0}${fresh}`, inner = `${v === 2 && fresh ? SHARDS : ''}${tokens(r, i)}`;   // (glass that held looks like glass not tried: players remember it)
-    return r === next && v !== 2 ? `<button class="${cls} nx ${mover}" data-act="move" ${mv(i)} aria-label="Row ${r + 1}, platform ${i + 1}">${inner}</button>` : `<div class="${cls}">${inner}</div>`;
+    return r === next && v !== 2 ? `<button class="${cls} nx ${mover}" data-gba="${r}:${i}" data-act="move" ${mv(i)} aria-label="Row ${r + 1}, platform ${i + 1}">${inner}</button>` : `<div class="${cls}" data-gba="${r}:${i}">${inner}</div>`;
   }).join('')}</div>`;
   let rows = ''; for (let r = R - 1; r >= 0; r--) rows += row(r);
-  return `<div class="gbb${own ? ' own ' + own : ''}" style="--rows:${R}"><div class="gbend far"><i class="gbflag"></i></div>${rows}<div class="gbend near">${tokens(-1, -1)}</div></div>`;
+  return `<div class="gbb${own ? ' own ' + own : ''}" style="--rows:${R}"><div class="gbend far"><i class="gbflag"></i></div>${rows}<div class="gbend near" data-gba="bank">${tokens(-1, -1)}</div></div>`;
+}
+// The jump, once drawn (a frame after the render): each jumping token is carried from the middle of the platform it
+// took off from to its own place, crouching there first, then up and over in an arc (its peak above the higher end)
+// and down with a squash; timed from the move, so a redraw mid-jump picks it up where it is. A token that breaks the
+// glass then drops through it (its own CSS, after the landing).
+let jumped = new WeakSet();
+function jumpNext(a) { if (typeof requestAnimationFrame === 'function' && !REDUCED) requestAnimationFrame(() => jumpRun(a)); }
+function jumpRun(a) {
+  if (!app || !app.querySelectorAll) return;
+  const T = BRIDGE.hop, c = BRIDGE.crouch;
+  app.querySelectorAll('.g-gb .gbj').forEach(el => {
+    if (jumped.has(el) || typeof el.animate !== 'function') return;
+    jumped.add(el);
+    const bb = el.closest('.gbb'), src = bb && bb.querySelector(`[data-gba="${el.dataset.gbj}"]`); if (!src) return;
+    const a1 = el.getBoundingClientRect(), b1 = src.getBoundingClientRect(), k = (bb.getBoundingClientRect().width / (bb.offsetWidth || 1)) || 1;
+    const dx = (b1.left + b1.width / 2 - (a1.left + a1.width / 2)) / k, dy = (b1.top + b1.height / 2 - (a1.top + a1.height / 2)) / k;
+    const h = Math.abs(dy) / 2 + 26, P = u => [dx * (1 - u), dy * (1 - u) - 4 * h * u * (1 - u)];   // the arc: its peak well above the higher end
+    const frames = [{ offset: 0, transform: `translate(${dx}px, ${dy}px)` }, { offset: c * 0.6, transform: `translate(${dx}px, ${dy + 3}px) scale(1.14, .78)` }, { offset: c, transform: `translate(${dx}px, ${dy}px) scale(.92, 1.12)` }];
+    for (let j = 1; j <= 6; j++) { const u = j / 7, [x, y] = P(u); frames.push({ offset: c + (0.86 - c) * u, transform: `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${(1 + 0.12 * Math.sin(Math.PI * u)).toFixed(3)})` }); }
+    frames.push({ offset: 0.86, transform: 'translate(0, 0) scale(1.16, .8)' }, { offset: 0.94, transform: 'translate(0, -2px) scale(.96, 1.06)' }, { offset: 1, transform: 'none' });
+    const an = el.animate(frames, { duration: T, fill: 'both', easing: 'linear' });
+    const at = fxAt('move', a), rate = (fx.move && fx.move.rate) || 1;
+    if (at != null) { try { an.playbackRate = rate; an.currentTime = Math.max(0, performance.now() - at); } catch (e) { /* (kept) */ } }
+  });
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   const R = mini.n.length, s = a && a.gb ? a.gb : null, o = { view, locked, turn }, T = BRIDGE;
   const tal = p => arcTally(p, o, pips(p, mini.at[p] + 1, R, !!(s && !s.fall && a.by === p), T.hop));
-  const say = s ? (s.fall ? ['Crack! It broke', 'no', T.hop + T.crack] : fresh ? ['Across!', 'ok', T.hop] : ['Safe!', 'ok', T.hop]) : null;
+  const say = s ? (s.fall ? [s.home ? 'Crack! Back to the start' : 'Crack! It broke', 'no', T.hop + T.crack] : fresh ? ['Across!', 'ok', T.hop] : ['Safe!', 'ok', T.hop]) : null;
   const line = say ? `<p ${lateAt('gbline ' + say[1], say[2])} role="status">${say[0]}</p>` : '<p class="gbline"></p>';
   const br = mini.sep ? bridge(mini, o, a, 'X') + bridge(mini, o, a, 'O') : bridge(mini, o, a, null);
+  if (s) jumpNext(a);
   return `<div class="g-gb${mini.sep ? ' sep' : ''}" style="--hop:${T.hop}ms;--crk:${T.hop + T.crack}ms;--bk:${T.hop + T.crack + T.drop}ms;--dr:${T.drop}ms"><div class="ctals two">${tal("X")}${tal("O")}</div><div class="gbwrap">${br}</div>${line}</div>`;
 }
 export function heldSub(mini, turn, f, a) { return f ? '' : `<b class="${turn}">${N(turn)}</b> hops again`; }

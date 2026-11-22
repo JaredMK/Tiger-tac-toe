@@ -219,7 +219,7 @@ Win: First to {target} points.
 
 ## Glass Bridge [bridge]
 Category: More luck
-Play: Hop to a platform in the next row. Safe glass holds and you hop again. Weak glass breaks for good: your turn ends and you stay where you were.
+Play: Hop to a platform in the next row. Safe glass holds and you hop again. Weak glass breaks for good: your turn ends and you go back to the start.
 Win: First across wins.
 
 ## Hangman [hangman]

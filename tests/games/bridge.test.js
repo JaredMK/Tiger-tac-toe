@@ -10,7 +10,7 @@ const idx = m => max => Number.isInteger(m) && m >= 0 && m < max;
 const safeOf = (m, p, r) => { const bad = m.sep ? m.bad[p][r] : m.bad[r]; return Array.from({ length: m.n[r] }, (_, i) => i).find(i => !bad.includes(i)); };
 
 test('bridge: Admin only, luck; the deal: rows of platforms, every row with a safe one, the weak ones hidden', () => {
-  assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'luck', '1.24.0']);
+  assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'luck', '1.29.0']);
   assert.deepEqual(E.tuneFields('bridge').map(f => f.k), ['rows', 'pmin', 'pmax', 'bmin', 'bmax', 'boards']);
   for (const set of [null, { pmin: 2, pmax: 3, bmin: 0, bmax: 2, rows: 9 }, { boards: 'separate' }]) {
     E.setTune('bridge', set);
@@ -27,7 +27,7 @@ test('bridge: Admin only, luck; the deal: rows of platforms, every row with a sa
   const d = E.newMini('bridge', E.makeRng('def')); assert.deepEqual([d.n.length, d.n.every(k => k === 3), d.bad.every(b => b.length === 2)], [6, true, true], 'the defaults: 6 rows of 3, 2 weak');
 });
 
-test('bridge: safe glass holds and keeps the turn; weak glass breaks for good, ends the turn and leaves the player where they were', () => {
+test('bridge: safe glass holds and keeps the turn; weak glass breaks for good, ends the turn and sends the player back to the start', () => {
   const m = E.newMini('bridge', E.makeRng('a')), s0 = safeOf(m, 'X', 0), b0 = m.bad[0][0];
   let r = E.applyMove(m, 'X', b0, E.makeRng('x'));
   assert.deepEqual([r.outcome, r.note, !!r.again, m.at.X, m.seen[0][b0], m.falls.X], ['continue', 'fall', false, -1, 2, 1]);
@@ -36,6 +36,12 @@ test('bridge: safe glass holds and keeps the turn; weak glass breaks for good, e
   assert.deepEqual([r.note, r.again, m.at.O, m.pos.O, m.seen[0][s0]], ['hop', true, 0, s0, 1]);
   assert.equal(E.applyMove(m, 'O', 7, E.makeRng('x')).ok, false);
   assert.ok(R.bridgeMoves(m, 'X').includes(s0) && !R.bridgeMoves(m, 'X').includes(b0));
+  // v 2: a fall further along sends the player back to the start (the row reached is lost); v 1 left them where they were
+  E.applyMove(m, 'O', safeOf(m, 'O', 1), E.makeRng('x')); const b2 = m.bad[2][0];
+  r = E.applyMove(m, 'O', b2, E.makeRng('x'));
+  assert.deepEqual([m.v, r.note, m.at.O, m.pos.O, m.last.home, m.last.r], [2, 'fall', -1, -1, true, 2], 'back to the near bank');
+  const old = E.newMini('bridge', E.makeRng('a')); old.v = 1; E.applyMove(old, 'X', safeOf(old, 'X', 0), E.makeRng('x')); E.applyMove(old, 'X', old.bad[1][0], E.makeRng('x'));
+  assert.equal(old.at.X, 0, 'a square from before: left on the row reached');
   const hidden = JSON.parse(JSON.stringify(m)); R.hide(hidden);
   assert.equal(E.applyMove(hidden, 'X', s0, E.makeRng('x')).reason, 'secret', 'a phone without the layout cannot judge a hop');
 });
