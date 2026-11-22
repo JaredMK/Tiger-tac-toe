@@ -6679,6 +6679,21 @@ button.gsc { cursor: pointer; touch-action: none; }
 /* [/gems] */
 
 /* [castle] Castle Smash */
+/* The tallies (each player's shots, the count turning over as the boulder leaves), the scene (a canvas the size of the room there is), the result line in its reserved row. The miniature: both castles as they stand. Timings: games/castle/rules.js CST, view.js CSV. */
+.g-cs { width: min(var(--gw), 600px); height: min(var(--gh), 640px); display: flex; flex-direction: column; gap: 8px; }
+.g-cs > * { flex: none; }
+.g-cs .csbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.csfield { position: relative; width: 100cqw; height: 100cqh; border: 3.5px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); background: #9fd3ee; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.csfield.live { cursor: grab; }
+.cscv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.csline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.csline.ok { color: var(--green); } .csline.no { color: var(--muted); }
+.g-cs .ctal .dbig.cscnt { font-size: 24px; padding-top: 0; min-width: 78px; }
+.g-cs .cscnt > i { grid-area: 1 / 1; display: flex; align-items: baseline; justify-content: flex-end; gap: 4px; font-style: normal; }
+.g-cs .cscnt > i small { grid-area: auto; align-self: auto; min-width: 2.7em; font-size: 14px; }
+.g-cs .cscnt > i.was { animation: tuntil 1ms var(--t, 0ms) both; } .g-cs .cscnt > i.now { animation: tfrom 1ms var(--t, 0ms) both; }
+.tcs { width: 92cqw; } .tcs svg { width: 100%; height: auto; display: block; overflow: visible; }
+.tcss { fill: #d9d3c4; stroke: var(--ink); stroke-width: 2.6; } .tcsw { fill: #cb9257; stroke: var(--ink); stroke-width: 2.6; } .tcsg { fill: #9a6cf0; stroke: var(--ink); stroke-width: 2.6; stroke-linejoin: round; } .tcsl { stroke: var(--ink); stroke-width: 3; stroke-linecap: round; fill: none; }
 /* [/castle] */
 
 /* [tanks] Tank Duel */

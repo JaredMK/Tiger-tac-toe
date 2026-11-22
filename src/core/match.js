@@ -170,7 +170,7 @@ export function newState(rng) {
 // Returns false (and changes nothing) when no mini-game is ticked.
 // A game that can be dealt right now (sc: in a Super Chaos match; a Super Chaos only game never in another): Trivia only once its questions are in (trivia.json: the page
 // fetches it, the server has it as a file); without them a Trivia square could never be played.
-export const dealable = (t, sc) => (!sc && SC_ONLY.includes(t) ? false : t === 'trivia' ? triviaReady() : PHYS_TYPES.includes(t) || t === 'pinball' ? physicsReady() && !!PHYSICS.lib.PIN : true);
+export const dealable = (t, sc) => (!sc && SC_ONLY.includes(t) ? false : t === 'trivia' ? triviaReady() : PHYS_TYPES.includes(t) || t === 'pinball' ? physicsReady() && !!PHYSICS.lib.PIN : t === 'castle' ? physicsReady() && !!PHYSICS.lib.Matter : true);   // (Castle Smash: its shots are worked out on Matter.js too)
 export function startMatch(state, rng, only) {   // only: the games this kind of match may deal (Super Chaos's)
   rng = needRng(rng);
   const same = state.setup.vs === 'same' && state.setup.mode !== 'online';   // two people on one phone: a game with hidden hands is never dealt (meta.js samePhone false)

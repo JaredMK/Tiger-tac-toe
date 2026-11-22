@@ -18,8 +18,8 @@ for (const n of ['pnMiss']) BAD_SOUNDS.add(n);   // [pint] bad
 for (const n of ['gsPop']) RESULT_SOUNDS.add(n);   // [gems] results
 for (const n of []) BAD_SOUNDS.add(n);   // [gems] bad
 //
-for (const n of []) RESULT_SOUNDS.add(n);   // [castle] results
-for (const n of []) BAD_SOUNDS.add(n);   // [castle] bad
+for (const n of ['csBreak', 'csCrumble', 'csCrack', 'csSmash']) RESULT_SOUNDS.add(n);   // [castle] results
+for (const n of ['csDud']) BAD_SOUNDS.add(n);   // [castle] bad
 //
 for (const n of []) RESULT_SOUNDS.add(n);   // [tanks] results
 for (const n of []) BAD_SOUNDS.add(n);   // [tanks] bad

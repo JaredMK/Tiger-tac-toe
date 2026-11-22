@@ -581,6 +581,18 @@ def('gsShuffle', 0.6, (c, d, t) => { for (let k = 0; k < 9; k++) sfxNoise(c, d, 
 // [/gems]
 //
 // [castle] Castle Smash: its sounds (names start `cs`)
+def('csPull', 0.3, (c, d, t) => { sfxTone(c, d, t, 92, .26, { to: 132, type: 'sawtooth', vol: .2, att: .03 }); sfxNoise(c, d, t + .02, .24, { f: 700, to: 1300, q: 5, vol: .22, att: .04 }); }, { level: .3 });
+def('csFling', 0.3, (c, d, t) => { sfxTone(c, d, t, 210, .07, { to: 120, type: 'triangle', vol: .6 }); sfxNoise(c, d, t, .03, { f: 1800, q: 1, vol: .35, att: .001 }); sfxNoise(c, d, t + .03, .24, { f: 500, to: 2200, q: 1.2, vol: .3, att: .05 }); }, { level: .5 });
+def('csWhoosh', 0.5, (c, d, t) => { sfxNoise(c, d, t, .46, { f: 1500, to: 520, q: 1.4, vol: .28, att: .14 }); }, { level: .22 });
+def('csKnock', 0.14, (c, d, t) => { sfxTone(c, d, t, 170, .1, { to: 95, vol: .6 }); sfxNoise(c, d, t, .035, { f: 900, q: .9, vol: .45, att: .001 }); }, { level: .5, vary: true });
+def('csWood', 0.13, (c, d, t) => { sfxTone(c, d, t, 330, .09, { to: 210, type: 'triangle', vol: .55 }); sfxNoise(c, d, t, .025, { f: 1700, q: 1.2, vol: .3, att: .001 }); }, { level: .44, vary: true });
+def('csThump', 0.2, (c, d, t) => { sfxTone(c, d, t, 105, .18, { to: 58, vol: .65 }); sfxNoise(c, d, t, .08, { f: 320, filter: 'lowpass', vol: .4 }); }, { level: .5, vary: true });
+def('csCrack', 0.2, (c, d, t) => { for (let k = 0; k < 3; k++) sfxNoise(c, d, t + k * .045, .03, { f: 3200 - k * 600, q: 3, vol: .5, att: .001 }); sfxTone(c, d, t, 140, .12, { to: 90, vol: .35 }); }, { level: .5 });
+def('csBreak', 0.3, (c, d, t) => { sfxNoise(c, d, t, .05, { f: 2400, q: 1, vol: .6, att: .001 }); sfxTone(c, d, t, 420, .08, { to: 180, type: 'square', vol: .22 }); sfxTone(c, d, t + .06, 300, .1, { to: 140, type: 'triangle', vol: .35 }); sfxNoise(c, d, t + .08, .18, { f: 1200, to: 500, q: .8, vol: .25 }); }, { level: .55 });
+def('csCrumble', 0.5, (c, d, t) => { sfxNoise(c, d, t, .42, { f: 520, to: 180, filter: 'lowpass', vol: .6, att: .01 }); for (let k = 0; k < 4; k++) sfxTone(c, d, t + .05 + k * .08, 150 - k * 14, .07, { to: 80, vol: .35 }); }, { level: .55 });
+def('csOff', 0.18, (c, d, t) => { sfxNoise(c, d, t, .15, { f: 900, to: 2400, q: 1.5, vol: .3, att: .03 }); sfxTone(c, d, t + .06, 260, .09, { to: 380, type: 'triangle', vol: .25 }); }, { level: .32 });
+def('csSmash', 0.75, (c, d, t) => { sfxNoise(c, d, t, .09, { f: 5200, q: .7, vol: .6, att: .001 }); sfxTone(c, d, t, 90, .3, { to: 50, vol: .55 }); [1976, 1568, 2349, 1319, 1760, 2637].forEach((f, k) => sfxTone(c, d, t + .03 + k * .055, f, .32, { to: f * .82, type: 'triangle', vol: .3 - k * .03 })); sfxNoise(c, d, t + .1, .5, { f: 6500, to: 3000, q: 4, vol: .2, att: .02 }); }, { level: .62 });
+def('csDud', 0.3, (c, d, t) => { sfxTone(c, d, t, 95, .22, { to: 52, vol: .6 }); sfxNoise(c, d, t, .1, { f: 260, filter: 'lowpass', vol: .45 }); sfxTone(c, d, t + .1, 180, .16, { to: 120, type: 'triangle', vol: .18 }); }, { level: .48 });
 // [/castle]
 //
 // [tanks] Tank Duel: its sounds (names start `tn`)
