@@ -1,16 +1,36 @@
-// Castle Smash: a stand-in (a copy of Heads or Tails) until the real game replaces this folder.
+// Castle Smash: its names, its "?" explainer, its icon, its release default and its settings.
+import { AGAIN_TUNE } from '../../core/tune.js';
 
-export const info = { name: 'Castle Smash', hint: 'Call the flip. First to 3 right calls wins' };
+export const info = { name: 'Castle Smash', hint: 'Fling boulders at the other castle. Smash its crystal to win' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
 export const minVersion = '1.30.0';   // the oldest client version that has this game (core/client.js)
-export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
+export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const placeholder = false;   // never on a new state's placeholder board (games/index.js PLACE_TYPES): the seeded deals stay as they were
-export const explainer = { name: 'Castle Smash', play: 'Call heads or tails, then the coin flips. A right call is a point.{sharedText}', win: 'First to {wins} points.' };
-export const explainVars = v => ({ sharedText: v.boards === 'shared' ? ' A wrong call is a point for the other player.' : '' });
-export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9" ry="9"/><path d="M8.500 9.500v5M11.500 9.500v5M8.500 12h3M14 9.500h3.500M15.750 9.500v5"/></svg>';
-// Its settings (the admin's Games page; core/tune.js): the right calls needed, and whether each flip is the caller's
-// alone (separate) or counts for both players (shared: a wrong call scores for the other side).
+export const realTime = true;   // its move plays back in real time (a recording): never sped up past the replay's own speed (core/timer.js moveRate)
+export const explainer = { name: 'Castle Smash', play: 'Drag back to aim your catapult, further for more power, and let go to fling a boulder at the other castle. Timber snaps, stone cracks and then crumbles, and what falls stays fallen.{goAgain}', win: 'Smash the other castle\'s crystal first: hit it hard with a boulder, crush it under a falling block or knock it off its perch.' };
+// {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).
+export const goAgainText = { on: ' Break a timber or knock a block clean out of the castle to shoot again.', off: '' };
+// The icon: a tower with its battlements and its door, a boulder on its way to it.
+export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.500 21V10h1.500V8h2.500v2h2V8H19v2h1.500v11z"/><path d="M14 21v-3.500a1.500 1.500 0 0 1 3 0V21"/><circle cx="5.500" cy="6" r="2.600"/><path d="M2 11l1.500-1.300M3.500 13.500l1.300-1.100"/></svg>';
+// Its settings (the admin's Games page; core/tune.js), read with rules.js castleCfg: how high a castle is built, the
+// catapult's top speed, the boulder's and the stone's weight, what breaks timber, cracks stone and ends the core (a
+// punch: the speed two things meet at times the striker's weight, in tenths; the boulder weighs 1.5 at 100%), and the computer's hand by level (its aim's and its
+// power's error, a normal spread; Hard keeps the best of `aiTries` such throws). Tuned by tests/sim/castle.sim.js.
 export const TUNE = [
-  { k: 'wins', label: 'Right calls to take the square', def: 3, min: 1, max: 7, step: 1, group: 'Rules' },
-  { k: 'boards', label: 'Each flip counts for', def: 'separate', opts: ['separate', 'shared'], group: 'Rules' },
+  AGAIN_TUNE,
+  { k: 'layers', label: 'Castle height (layers of stone)', def: 4, min: 3, max: 5, step: 1, group: 'Board' },
+  { k: 'stone', label: 'Stone weight (%)', def: 100, min: 40, max: 250, step: 10, group: 'Board' },
+  { k: 'power', label: 'Catapult top speed (units/s)', def: 600, min: 480, max: 780, step: 20, group: 'Rules' },
+  { k: 'weight', label: 'Boulder weight (%)', def: 100, min: 40, max: 250, step: 10, group: 'Rules' },
+  { k: 'woodTough', label: 'Timber strength (the punch that breaks it, tenths)', def: 50, min: 10, max: 200, step: 5, group: 'Rules' },
+  { k: 'stoneTough', label: 'Stone: the boulder\'s punch that cracks it (tenths)', def: 45, min: 10, max: 200, step: 5, group: 'Rules' },
+  { k: 'stoneHits', label: 'Stone: hard hits before it crumbles', def: 2, min: 1, max: 4, step: 1, group: 'Rules' },
+  { k: 'coreTough', label: 'Crystal strength (the punch that smashes it, tenths)', def: 55, min: 10, max: 200, step: 5, group: 'Rules' },
+  { k: 'aiAim', label: 'Normal computer: aim error (mrad)', def: 40, min: 0, max: 300, step: 5, group: 'Computer' },
+  { k: 'aiPow', label: 'Normal computer: power error (%)', def: 4, min: 0, max: 30, step: 0.5, group: 'Computer' },
+  { k: 'aiAimHard', label: 'Hard computer: aim error (mrad)', def: 25, min: 0, max: 300, step: 5, group: 'Computer' },
+  { k: 'aiPowHard', label: 'Hard computer: power error (%)', def: 2.5, min: 0, max: 30, step: 0.5, group: 'Computer' },
+  { k: 'aiTries', label: 'Hard computer: throws it tries and keeps the best of', def: 3, min: 1, max: 8, step: 1, group: 'Computer' },
+  { k: 'aiAimEasy', label: 'Easy computer: aim error (mrad)', def: 80, min: 0, max: 300, step: 5, group: 'Computer' },
+  { k: 'aiPowEasy', label: 'Easy computer: power error (%)', def: 8, min: 0, max: 30, step: 0.5, group: 'Computer' },
 ];

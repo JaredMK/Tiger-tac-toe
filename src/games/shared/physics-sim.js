@@ -1120,5 +1120,5 @@ export function makePhysics(Matter) {
     return out;
   }
 
-  return { GOLF, POOL, BOWL, HOLES, LAYOUTS, SIZES, FPS, TS, run, TERR, golfTerrainOn, millAngle, PIN, PIN_LAYOUTS, PIN_LOWER, PIN_OUTER, PIN_CLASSIC, pinTable, PIN_FRAME, pinAllSpots, pinNew, pinServe, pinLaunch, pinRun, pinStep, pinFlipLine, pinSpinAt, pinResult, pinEnd, pinAi, pinReach, pinLayoutCheck, pinV, pinSetV, pinUnpack, pinFlipAngles, pinLogPack, pinLogUnpack, pinReplay, pinReplayTo, pinCopy, dsin, dcos };
+  return { Matter, GOLF, POOL, BOWL, HOLES, LAYOUTS, SIZES, FPS, TS, run, TERR, golfTerrainOn, millAngle, PIN, PIN_LAYOUTS, PIN_LOWER, PIN_OUTER, PIN_CLASSIC, pinTable, PIN_FRAME, pinAllSpots, pinNew, pinServe, pinLaunch, pinRun, pinStep, pinFlipLine, pinSpinAt, pinResult, pinEnd, pinAi, pinReach, pinLayoutCheck, pinV, pinSetV, pinUnpack, pinFlipAngles, pinLogPack, pinLogUnpack, pinReplay, pinReplayTo, pinCopy, dsin, dcos };
 }
