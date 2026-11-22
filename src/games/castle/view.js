@@ -33,7 +33,7 @@ export const replay = { synth: () => [] };                         // the move i
 // from straight ahead), the drag (a full pull as a share of the scene's smaller side, the least pull that is a shot),
 // the dotted arc (steps of flight shown, a dot every `dot`), and how long each effect lasts (ms).
 export const CSV = {
-  px: 1, win: 346, pad: 8, ease: 170, ground: 0.085,
+  px: 1, win: 362, pad: 8, ease: 170, ground: 0.085,
   axle: 26, rest: Math.PI - 0.2, back: 0.58, over: 0.28,
   pull: 0.36, least: 12, arc: 27, dot: 3,
   puff: 380, chips: 560, burst: CST.burst, crack: 260, trail: 5,
@@ -187,7 +187,7 @@ function drawBoulder(c, P, x, h, px, spin, alpha) {
 const spoon = th => [CS.cat + Math.cos(th) * ARM, CSV.axle + Math.sin(th) * ARM];
 // A catapult in its shooter's frame: a frame on wheels, the throwing arm on its axle with a spoon at the long end and
 // a weight box (in its owner's colour) hanging from the short one.
-function drawCatapult(c, P, col, th, px, loaded) {
+function drawCatapult(c, P, col, th, px, loaded, ring) {
   const X = CS.cat, lw = Math.max(1.5 * px, 1.3), ux = Math.cos(th), uy = Math.sin(th);
   const beam = (x1, y1, x2, y2, w, fill) => { c.lineCap = 'round'; c.strokeStyle = P.ink; c.lineWidth = w + 2 * lw; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); c.strokeStyle = fill; c.lineWidth = w; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); };
   beam(X - 15, 11, X, CSV.axle, 3.2, COL.wood2); beam(X + 15, 11, X, CSV.axle, 3.2, COL.wood2);
@@ -201,6 +201,7 @@ function drawCatapult(c, P, col, th, px, loaded) {
   c.fillStyle = '#6f4a2a'; c.strokeStyle = P.ink; c.lineWidth = lw; c.beginPath(); c.arc(0, 2.5, 5.5, Math.PI, 0); c.closePath(); c.fill(); c.stroke();
   c.restore();
   c.fillStyle = P.ink; c.beginPath(); c.arc(X, CSV.axle, 2.2, 0, 7); c.fill();
+  if (ring) { c.strokeStyle = col; c.lineWidth = Math.max(2.4 * px, 2); c.beginPath(); c.arc(ex + uy * 4, ey - ux * 4, CS.r + 4.5, 0, 7); c.stroke(); }   // (this phone's shot to make: the boulder ringed in the shooter's colour)
   if (loaded) drawBoulder(c, P, ex + uy * 4, ey - ux * 4, px, 0.4);   // (in the spoon: on the arm, its end the place it leaves from)
 }
 // The dust, splinters, rubble and the crystal's burst: each a picture of the time since its event (never kept).
@@ -279,7 +280,7 @@ const go = stage('canvas.cscv', (c, W, H, now) => {
         if (pose) drawBlock(c, P, b, pose, px, (b[4] || 0) + (rec && struck.has(i) ? 1 : 0), !!(rec && struck.get(i)));
       }
       // the catapult: at rest, drawn back by the drag or the pull, swinging, or thrown
-      let th = CSV.rest, loaded = false;
+      let th = CSV.rest, loaded = false, ring = false;
       const col = s === 'X' ? P.X : P.O;
       if (shooting) {
         const back = CSV.rest + CSV.back * ph.power;
@@ -288,14 +289,14 @@ const go = stage('canvas.cscv', (c, W, H, now) => {
         else { const u = clamp(tr / 260, 0, 1); th = REL - CSV.over * Math.sin(u * Math.PI) * (1 - u * 0.5); }
       } else if (s === src.by && !ph && src.mine) {
         const m = draft && draft.sq === src.zoom ? pullOf(draft, s) : null;
-        th = m ? CSV.rest + CSV.back * m.power : CSV.rest; loaded = true;
+        th = m ? CSV.rest + CSV.back * m.power : CSV.rest; loaded = true; ring = !m && !pend;
         if (m) {                                                   // the first part of the flight, dotted
           const arc = castleArc(m, castleCfg(mini).vMax, CSV.arc);
           for (let q = CSV.dot - 1; q < arc.length; q += CSV.dot) { const u = q / arc.length; c.globalAlpha = 1 - u * 0.75; c.fillStyle = col; c.strokeStyle = P.ink; c.lineWidth = Math.max(px, 0.9); c.beginPath(); c.arc(arc[q][0], arc[q][1], Math.max(2.4 * px, 2.2) * (1 - u * 0.35), 0, 7); c.fill(); c.stroke(); }
           c.globalAlpha = 1;
         }
       } else if (s === src.by && !ph && !src.view) loaded = true;
-      drawCatapult(c, P, col, th, px, loaded);
+      drawCatapult(c, P, col, th, px, loaded, ring);
       if (!shooting || tr < 0) return;
       // the boulder: along its recorded path (a streak behind it), then gone where it crumbled
       const end = ph.ev.find(e => e.k === 'end' || e.k === 'thud');

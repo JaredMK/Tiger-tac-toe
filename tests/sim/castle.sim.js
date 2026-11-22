@@ -1,13 +1,22 @@
 'use strict';
 // Simulations: Castle Smash (slow, never part of npm test: `npm run sim -- castle`). The computer against itself, 500
 // squares at Normal (the batch's standard), a hand shooting alone at 300 castles (every one must fall), then by setting
-// and by level. The computer's aim and power errors stand in for a finger on the drag: real play decides the castle's
-// strength, and every number here is a setting (meta.js TUNE).
+// and by level (80 squares each, CASTLE_SIM_N to change it: a rough picture, the first mover's share within 10 points).
+// The computer's aim and power errors stand in for a finger on the drag: real play decides the castle's strength, and
+// every number here is a setting (meta.js TUNE).
 // The two castles of a square are the same and each is shot at by one player alone, so a square is two hands racing
-// at the same job: the first to move wins whenever the two need the same number of throws (about one square in seven),
-// which is all of the first mover's edge.
-// December 2026, the defaults (4 layers, a stone cracked at a punch of 4.5 and crumbling at its second hard hit, timber
-// broken at 5, the crystal at 5.5, the boulder 1.5 heavy at up to 600 units a second): see the numbers this prints.
+// at the same job: the first to move wins whenever the two need the same number of throws (about one square in seven
+// at Normal), which is all of the first mover's edge.
+// December 2026, the defaults (4 layers; a stone cracked by a punch of 4.5 and crumbling at its second hard hit, timber
+// broken at 5, the crystal at 5.5; the boulder 1.5 heavy at up to 600 units a second): Normal v Normal over 500 squares
+// 4.90 turns each (median 4.5), the winner's 5.18 (median 5), the first mover 55.2%; a hand alone needs 6.45 throws
+// (never one, two in 1.3% of castles, the most 14). Before stone had a strength of its own (blocks only moved) the
+// winner's throws ran from 1 to 27 and one square in eight fell at the first throw. By setting, 40 squares each:
+// 3 layers 4.4 turns each, 5 layers 4.8; stone crumbling at its first hard hit 2.6, at its third 7.8; softer stone
+// (3.5) 4.5, harder (6) 5.9; tougher timber (8) 6.3; a softer crystal (3.5) 4.4; a heavier boulder (150%) 2.7, a
+// lighter one (70%) 7.5; heavier stone (150%) 6.1; a looser hand (70 mrad, 7%) 5.9; Go again on success 2.2. By
+// level: Hard v Hard 4.4 (a hand alone 4.8 throws), Easy v Easy 6.7 (alone 8.0); Hard beats Normal 78% moving first and
+// 58% moving second.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');

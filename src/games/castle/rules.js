@@ -1,18 +1,20 @@
 // Castle Smash: the rules (pure: no page, no clock; the server runs the same code).
-// Each player has a castle, a pile of stone and timber blocks around a core (a crystal on a stone perch), and a
+// Each player has a castle, a pile of stone and timber blocks round a core (a crystal on a stone perch), and a
 // catapult standing before it. The two castles of a square are dealt as one and the same (sim.js castleDeal: a plan and
 // its details from the rng, `layers` high), each kept as its attacker sees it: `c[p]` is the castle p DEFENDS, a list
-// of blocks [kind, x, h, angle] (tenths of a unit, thousandths of a radian). A move is one shot, `{ aim, power }`: the
-// elevation (radians) and the power (0..1) of the throw (castleMove). The shot is played out by the rules themselves
-// (sim.js castleShot on Matter.js: the server's online, this phone's in local play) against the OTHER player's castle
-// as it lies, and that castle is saved as it came to rest: blocks knocked about stay where they fell, timber struck
-// hard enough is broken and gone (`woodTough`), a block knocked out of the castle's yard is gone. The core ends when
-// the boulder touches it, when a block strikes it hard enough (`coreTough`), or when it drops off its perch: the first
-// to end the other's core takes the square. A castle only ever gets weaker, so a player shooting alone always gets
-// there. "Go again on success" (off by default): a shot that breaks a timber or knocks a block clean out of the yard
+// of blocks [kind, x, h, angle(, hits)] (tenths of a unit, thousandths of a radian, a cracked stone's hard hits). A move
+// is one shot, `{ aim, power }`: the elevation (radians) and the power (0..1) of the throw (castleMove). The shot is
+// played out by the rules themselves (sim.js castleShot on Matter.js: the server's online, this phone's in local play)
+// against the OTHER player's castle as it lies, and that castle is saved as it came to rest: blocks knocked about stay
+// where they fell, timber struck hard enough is broken and gone (`woodTough`), a stone the boulder strikes hard is
+// cracked and at its `stoneHits`th such hit crumbles (`stoneTough`), a block knocked out of the castle's yard is gone.
+// The core ends when the boulder or a block strikes it hard enough (`coreTough`) or when it drops off its perch: the
+// first to end the other's core takes the square. A castle only ever gets weaker, so a player shooting alone always
+// gets there. "Go again on success" (off by default): a shot that breaks a block or knocks one clean out of the yard
 // shoots again. Nothing is hidden and nothing is by chance: the same shot at the same castle is the same shot.
 // The move's recording (the boulder's and the blocks' motion, sim.js) never rides the square: `last` keeps the shot and
 // what came of it, and the flash carries the recording (`phys.rec`: core/records.js keeps only the latest move's).
+// Without the physics library (the page until Matter.js has loaded) no castle is dealt (core/match.js dealable).
 import { goAgain, tune, tuneLive } from '../../core/tune.js';
 import { needRng } from '../../core/random.js';
 import { other } from '../../core/util.js';
@@ -22,8 +24,9 @@ export { CS, KINDS, K, castleMove, castleArc, castleAimAt, castleSpeed, castleSh
 // The move's moments on the screen (ms; view.js): someone else's catapult is drawn back first (`pull`), the arm
 // swings (`swing`) and the boulder leaves; the recording plays; the result is held (`hold`), a win a little longer.
 export const CST = { pull: 520, swing: 140, hold: 450, win: 700, burst: 620 };
-// A square's own numbers (meta.js TUNE): the top speed (units a tick), the boulder's and the stone's density, the
-// punch that breaks timber and the punch that ends the core, and the computer's hand by level.
+// A square's own numbers (meta.js TUNE): the top speed (units a tick), the boulder's and the stone's density (the
+// boulder weighs 1.5 and a brick 1 at 100%), the punches that break timber, crack stone and end the core, the hard
+// hits a stone takes, and the computer's hand by level.
 export function castleCfg(mini) {
   const t = tune(mini);
   return {
