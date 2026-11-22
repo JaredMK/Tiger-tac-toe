@@ -21,7 +21,6 @@ import { barRows, ptsTally } from '../../ui/tok.js';
 export const ownLine = true;
 export const replay = { synth: () => [] };                         // the move is a round's result: shown from the flash
 let src = null, hooked = false, drag = null, outro = null;   // outro: this phone's round just ended, kept to ease it out under its result: { L, sq, end (its ms) }
-const FRUIT = [['#3fa34d', '#f25f5c'], ['#f79d2e', '#ffd9a0'], ['#e5484d', '#fff3d6'], ['#f6d32d', '#fff8c9'], ['#8e5bd0', '#e7d4ff']];   // skin, flesh
 const round = makeRound('slice', {
   mine: () => !!src && src.mine,
   begin: (mini, p) => ({ c: sliceCfg(mini), items: sliceRound(mini, p), hit: new Set(), cuts: [], trail: [], boom: null, pts: 0 }),
@@ -57,18 +56,57 @@ function hook() {
 export const actions = { 'fs-go': () => { ownPress(); if (!round.live) { SND.play('fsGo'); round.start(); } } };
 
 // ---- the drawing ----
+// The five fruit (k: 0 watermelon, 1 orange, 2 apple, 3 banana, 4 pineapple), original drawings, each its own outline
+// (`body`), skin details, and the face a cut shows (`face`); juice in its own colour (JUICE).
+const JUICE = ['#ff4d5e', '#ffa424', '#fff3c8', '#fff1a6', '#ffe14d'];
+function body(c, k, R) {                                          // the fruit's outline, as a path (filled and stroked by the caller)
+  c.beginPath();
+  if (k === 0) c.ellipse(0, 0, R * 1.18, R * 0.9, 0, 0, 7);
+  else if (k === 2) { c.moveTo(0, -R * 0.62); c.bezierCurveTo(R * 0.55, -R * 1.08, R * 1.2, -R * 0.55, R * 0.98, R * 0.25); c.bezierCurveTo(R * 0.82, R * 0.9, R * 0.3, R * 1.08, 0, R * 0.86); c.bezierCurveTo(-R * 0.3, R * 1.08, -R * 0.82, R * 0.9, -R * 0.98, R * 0.25); c.bezierCurveTo(-R * 1.2, -R * 0.55, -R * 0.55, -R * 1.08, 0, -R * 0.62); c.closePath(); }
+  else if (k === 3) { c.moveTo(-R * 1.25, -R * 0.55); c.quadraticCurveTo(0, R * 1.55, R * 1.25, -R * 0.55); c.quadraticCurveTo(R * 1.12, -R * 0.3, R * 0.98, -R * 0.32); c.quadraticCurveTo(0, R * 0.25, -R * 0.98, -R * 0.32); c.quadraticCurveTo(-R * 1.12, -R * 0.3, -R * 1.25, -R * 0.55); c.closePath(); }
+  else if (k === 4) c.ellipse(0, R * 0.15, R * 0.78, R * 0.98, 0, 0, 7);
+  else c.arc(0, 0, R, 0, 7);
+}
+const SKIN = ['#2e8b3a', '#f7941d', '#e53935', '#f9d71c', '#e0a526'];
+function skin(c, k, R, u) {                                       // the details on the skin, inside the outline (clipped by the caller)
+  if (k === 0) { c.strokeStyle = '#1a5c25'; c.lineWidth = R * 0.16; for (const x of [-0.75, -0.25, 0.25, 0.75]) { c.beginPath(); c.moveTo(x * R, -R); for (let j = 1; j <= 6; j++) c.lineTo((x + (j % 2 ? 0.07 : -0.07)) * R, -R + j * R / 3); c.stroke(); } }
+  if (k === 1) { c.fillStyle = 'rgba(160, 80, 0, .35)'; for (let j = 0; j < 9; j++) { c.beginPath(); c.arc(Math.cos(j * 2.4) * R * (0.25 + (j % 3) * 0.22), Math.sin(j * 2.4) * R * (0.25 + (j % 3) * 0.22), R * 0.05, 0, 7); c.fill(); } }
+  if (k === 3) { c.fillStyle = '#6d4c1f'; c.beginPath(); c.arc(-R * 1.18, -R * 0.48, R * 0.13, 0, 7); c.arc(R * 1.18, -R * 0.48, R * 0.13, 0, 7); c.fill(); c.strokeStyle = 'rgba(150, 110, 20, .45)'; c.lineWidth = R * 0.07; c.beginPath(); c.moveTo(-R * 1.05, -R * 0.38); c.quadraticCurveTo(0, R * 1.05, R * 1.05, -R * 0.38); c.stroke(); }
+  if (k === 4) { c.strokeStyle = 'rgba(120, 70, 0, .55)'; c.lineWidth = R * 0.07; for (let d = -2; d <= 2; d++) { c.beginPath(); c.moveTo(-R, d * R * 0.45 - R * 0.6); c.lineTo(R, d * R * 0.45 + R * 0.9); c.stroke(); c.beginPath(); c.moveTo(R, d * R * 0.45 - R * 0.6); c.lineTo(-R, d * R * 0.45 + R * 0.9); c.stroke(); } }
+}
+function top(c, k, R, P) {                                        // what grows out of the top (outside the outline)
+  c.strokeStyle = P.ink; c.lineWidth = R * 0.08;
+  if (k === 1 || k === 2) { c.strokeStyle = '#5b3a1e'; c.lineWidth = R * 0.12; c.beginPath(); c.moveTo(0, -R * (k === 2 ? 0.6 : 0.95)); c.lineTo(R * 0.1, -R * 1.25); c.stroke(); c.fillStyle = '#43a047'; c.strokeStyle = P.ink; c.lineWidth = R * 0.06; c.beginPath(); c.ellipse(R * 0.42, -R * 1.12, R * 0.34, R * 0.15, -0.5, 0, 7); c.fill(); c.stroke(); }
+  if (k === 4) { c.fillStyle = '#3f9b3f'; c.strokeStyle = P.ink; c.lineWidth = R * 0.06; c.beginPath(); c.moveTo(-R * 0.45, -R * 0.72); for (const [x, y] of [[-0.55, -1.5], [-0.2, -1.0], [0, -1.75], [0.2, -1.0], [0.55, -1.5], [0.45, -0.72]]) c.lineTo(x * R, y * R); c.closePath(); c.fill(); c.stroke(); }
+}
 function fruit(c, u, x, y, k, rot, P, r) {
   c.save(); c.translate(x * u, y * u); c.rotate(rot); const R = (r || SLICE.fr) * u;
-  c.fillStyle = FRUIT[k][0]; c.strokeStyle = P.ink; c.lineWidth = 0.7 * u; c.beginPath(); c.arc(0, 0, R, 0, 7); c.fill(); c.stroke();
-  if (k === 0) { c.strokeStyle = '#256b33'; c.lineWidth = 0.9 * u; for (let s = -1; s <= 1; s++) { c.beginPath(); c.ellipse(0, 0, R * (0.25 + Math.abs(s) * 0.45), R * 0.96, 0, s < 0 ? Math.PI / 2 : -Math.PI / 2, s < 0 ? Math.PI * 1.5 : Math.PI / 2); if (s) c.stroke(); } }
-  if (k === 2 || k === 4) { c.strokeStyle = '#5b3a1e'; c.lineWidth = 0.9 * u; c.beginPath(); c.moveTo(0, -R * 0.85); c.lineTo(R * 0.15, -R * 1.25); c.stroke(); c.fillStyle = '#43a047'; c.beginPath(); c.ellipse(R * 0.45, -R * 1.1, R * 0.34, R * 0.16, -0.5, 0, 7); c.fill(); }
-  c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(-R * 0.35, -R * 0.4, R * 0.26, R * 0.16, -0.6, 0, 7); c.fill();
+  top(c, k, R, P);
+  c.fillStyle = SKIN[k]; c.strokeStyle = P.ink; c.lineWidth = 0.7 * u; body(c, k, R); c.fill();
+  c.save(); body(c, k, R); c.clip(); skin(c, k, R, u); c.restore();
+  body(c, k, R); c.stroke();
+  if (k !== 3) { c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.ellipse(-R * 0.38, -R * 0.38, R * 0.24, R * 0.13, -0.6, 0, 7); c.fill(); }
   c.restore();
 }
-function half(c, u, x, y, k, rot, side, P, r) {                   // one half of a sliced fruit, its flesh showing
+function face(c, k, R, u, P) {                                    // the cut face, along the cut (y 0), an ellipse R wide
+  const w = k === 0 ? R * 1.1 : k === 3 ? R * 0.5 : k === 4 ? R * 0.74 : R * 0.9, h = R * 0.24, x0 = k === 3 ? R * 0.0 : 0;
+  c.fillStyle = k === 0 ? '#2e8b3a' : SKIN[k]; c.beginPath(); c.ellipse(x0, 0, w, h, 0, 0, 7); c.fill();
+  c.fillStyle = k === 0 ? '#f8f3e0' : k === 1 ? '#ffd38a' : k === 2 ? '#fff6dc' : k === 3 ? '#fff4c6' : '#ffe56b';
+  c.beginPath(); c.ellipse(x0, 0, w * 0.9, h * 0.8, 0, 0, 7); c.fill();
+  if (k === 0) { c.fillStyle = '#ff4d5e'; c.beginPath(); c.ellipse(0, 0, w * 0.78, h * 0.68, 0, 0, 7); c.fill(); c.fillStyle = P.ink; for (const sx of [-0.5, -0.2, 0.15, 0.45]) { c.beginPath(); c.ellipse(sx * w, 0, R * 0.05, R * 0.03, 0, 0, 7); c.fill(); } }
+  if (k === 1) { c.strokeStyle = '#f0a33c'; c.lineWidth = R * 0.05; for (let j = 0; j < 6; j++) { const an = j * Math.PI / 3; c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.cos(an) * w * 0.85, Math.sin(an) * h * 0.7); c.stroke(); } }
+  if (k === 2) { c.fillStyle = '#5b3a1e'; c.beginPath(); c.ellipse(-R * 0.1, 0, R * 0.06, R * 0.035, 0, 0, 7); c.ellipse(R * 0.1, 0, R * 0.06, R * 0.035, 0, 0, 7); c.fill(); }
+  if (k === 4) { c.fillStyle = '#f6c23e'; c.beginPath(); c.ellipse(0, 0, w * 0.25, h * 0.3, 0, 0, 7); c.fill(); }
+  c.strokeStyle = P.ink; c.lineWidth = 0.6 * u; c.beginPath(); c.ellipse(x0, 0, w, h, 0, 0, 7); c.stroke();
+}
+function half(c, u, x, y, k, rot, side, P, r) {                   // one half of a sliced fruit: its skin cut along the middle, the face it shows
   c.save(); c.translate(x * u, y * u); c.rotate(rot); const R = (r || SLICE.fr) * u;
-  c.fillStyle = FRUIT[k][0]; c.strokeStyle = P.ink; c.lineWidth = 0.7 * u; c.beginPath(); c.arc(0, 0, R, side > 0 ? 0 : Math.PI, side > 0 ? Math.PI : Math.PI * 2); c.closePath(); c.fill(); c.stroke();
-  c.fillStyle = FRUIT[k][1]; c.beginPath(); c.ellipse(0, 0, R * 0.86, R * 0.2, 0, 0, 7); c.fill(); c.stroke();
+  c.save(); c.beginPath(); c.rect(-R * 2, side > 0 ? 0 : -R * 2.2, R * 4, R * 2.2); c.clip();
+  if (side < 0) top(c, k, R, P);
+  c.fillStyle = SKIN[k]; c.strokeStyle = P.ink; c.lineWidth = 0.7 * u; body(c, k, R); c.fill();
+  c.save(); body(c, k, R); c.clip(); skin(c, k, R, u); c.restore(); body(c, k, R); c.stroke();
+  c.restore();
+  face(c, k, R, u, P);
   c.restore();
 }
 function bomb(c, u, x, y, rot, P, now) {
@@ -99,7 +137,7 @@ const go = stage('canvas.fscv', (c, W, H, now) => {
   c.clearRect(0, 0, W, H); backdrop(c, W, H, u, P);
   const scene = (L, ms) => {                                      // a round's things in the air and its cuts at `ms`
     L.items.forEach((it, i) => { if (L.hit.has(i)) return; const q = sliceAt(it, ms); if (!q) return; const rot = (ms - it.t) / 260 * (i % 2 ? 1 : -1); if (it.k < 0) bomb(c, u, q[0], q[1], rot, P, now); else fruit(c, u, q[0], q[1], it.k, rot, P); });
-    L.cuts.forEach(q => { const it = L.items[q.i], dt = ms - q.t; if (dt > 900) return; if (it.k < 0) { burst(c, u, q.x, q.y, Math.min(1, dt / SLICE.boom), '#ffb300', P, 'BOOM!'); return; } const f = dt / 1000, off = 4 + f * 26, drop = f * f * 150; c.globalAlpha = Math.max(0, 1 - dt / 900); c.fillStyle = FRUIT[it.k][1]; for (let s = 0; s < 5; s++) { c.beginPath(); c.arc((q.x + Math.cos(s * 1.3 + q.i) * f * 34) * u, (q.y + Math.sin(s * 1.3 + q.i) * f * 30 + drop * 0.4) * u, (1.6 - f) * u, 0, 7); c.fill(); } c.globalAlpha = 1; half(c, u, q.x - Math.sin(q.a) * off, q.y + Math.cos(q.a) * off + drop, it.k, q.a + f * 3, 1, P); half(c, u, q.x + Math.sin(q.a) * off, q.y - Math.cos(q.a) * off + drop, it.k, q.a - f * 3, -1, P); });
+    L.cuts.forEach(q => { const it = L.items[q.i], dt = ms - q.t; if (dt > 900) return; if (it.k < 0) { burst(c, u, q.x, q.y, Math.min(1, dt / SLICE.boom), '#ffb300', P, 'BOOM!'); return; } const f = dt / 1000, off = 4 + f * 26, drop = f * f * 150; c.globalAlpha = Math.max(0, 1 - dt / 900); c.fillStyle = JUICE[it.k]; for (let s = 0; s < 9; s++) { const sp = 0.6 + (s % 3) * 0.3; c.beginPath(); c.arc((q.x + Math.cos(s * 0.7 + q.i) * f * 34 * sp) * u, (q.y + Math.sin(s * 0.7 + q.i) * f * 30 * sp + drop * 0.5) * u, Math.max(0.3, (1.9 - f * 1.6) * (1.2 - (s % 3) * 0.25)) * u, 0, 7); c.fill(); } if (dt < 260) { c.globalAlpha = 0.55 * (1 - dt / 260); c.beginPath(); c.ellipse(q.x * u, q.y * u, (6 + dt / 18) * u, (3 + dt / 40) * u, q.a, 0, 7); c.fill(); } c.globalAlpha = 1; half(c, u, q.x - Math.sin(q.a) * off, q.y + Math.cos(q.a) * off + drop, it.k, q.a + f * 3, 1, P); half(c, u, q.x + Math.sin(q.a) * off, q.y - Math.cos(q.a) * off + drop, it.k, q.a - f * 3, -1, P); });
     while (L.trail.length && now - L.trail[0].t > 220) L.trail.shift();
     c.strokeStyle = '#fff'; c.lineCap = 'round'; c.lineJoin = 'round';
     for (let k = 1; k < L.trail.length; k++) { const a = L.trail[k - 1], b = L.trail[k]; if (b.gap) continue; c.globalAlpha = Math.max(0, 1 - (now - b.t) / 220); c.lineWidth = (1 + 2.2 * (1 - (now - b.t) / 220)) * u; c.beginPath(); c.moveTo(a.x * u, a.y * u); c.lineTo(b.x * u, b.y * u); c.stroke(); }
@@ -130,7 +168,7 @@ const go = stage('canvas.fscv', (c, W, H, now) => {
     return t < sliceShowMs(l) + 200;
   }
   // idle: a few fruit at rest on the counter
-  [0, 1, 2, 3, 4].forEach(k => fruit(c, u, 18 + k * 16, 105 - (k % 2) * 3, k, k * 0.7, P));
+  [0, 1, 2, 3, 4].forEach(k => fruit(c, u, 18 + k * 16, 105 - (k % 2) * 3, k, [-0.2, 0.1, 0.15, -0.25, 0.05][k], P));
   return false;
 });
 const words = l => (l.bomb ? `Bomb! ${l.pts ? '+' + l.pts : 'Nothing'}` : `${l.fr} sliced! +${l.pts}`);
