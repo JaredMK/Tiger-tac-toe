@@ -209,7 +209,7 @@ Win: {k} in a row, any direction.
 
 ## Fruit Reels [reels]
 Category: More luck
-Play: Spin the three reels, or hold one reel from your last spin and spin the other two. Two alike score {pair}. Three cherries {tri1}, lemons {tri2}, bells {tri3}.{starText}
+Play: Spin the reels: nine pictures, three by three. Five lines score: the three rows and the two diagonals. Three alike on a line: cherries {tri1}, lemons {tri2}, bells {tri3}.{starText}
 Win: First to {target} points.
 
 ## Fruit Slice [slice]

@@ -6093,24 +6093,28 @@ button.gbp { cursor: pointer; touch-action: manipulation; }
 .g-fr { width: min(var(--gw), 440px); height: min(var(--gh), 540px); display: flex; flex-direction: column; gap: 8px; }
 .g-fr > * { flex: none; }
 .frcab { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 3.5px solid var(--ink); border-radius: 22px 16px 24px 18px; background: linear-gradient(180deg, #7e57c2, #5e35b1); box-shadow: 0 4px 0 var(--ink), inset 0 0 0 4px rgba(255, 255, 255, .18); }
-.frwin { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; container-type: size; }
-.frreel { position: relative; overflow: hidden; display: grid; place-items: center; border: 3px solid var(--ink); border-radius: 12px; background: linear-gradient(180deg, #d9d2c0 0, #fff 22%, #fff 78%, #d9d2c0 100%); }
-.frsym { width: min(74%, 78cqh); aspect-ratio: 1; display: block; } .frq { font: 400 26px 'Luckiest Guy', 'Arial Black', sans-serif; fill: rgba(22, 18, 16, .3); }
-.frstrip { position: absolute; left: 0; right: 0; top: 0; height: calc(var(--n) * 100%); display: grid; grid-auto-rows: 1fr; justify-items: center; align-items: center; animation: frroll var(--t) cubic-bezier(.25, .6, .3, 1) both; }
-.frstrip .frsym { width: min(74%, 78cqh); }
-@keyframes frroll { from { transform: translateY(calc(-100% + 100% / var(--n))); } 86% { transform: translateY(1.2%); } to { transform: none; } }
-.frreel.hit { box-shadow: inset 0 0 0 4px var(--gold, #f5b301); background: #fff8dc; } .frreel.hit.late { animation: frhit .3s var(--tj) both; }
-@keyframes frhit { from { box-shadow: none; background: #fff; } 50% { transform: scale(1.06); } }
-.frheld { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); padding: 2px 7px 0; border: 2px solid var(--ink); border-radius: 99px; background: var(--ink); color: #ffe45c; font: 400 13px/16px 'Bangers', 'Arial Black', sans-serif; letter-spacing: .05em; }
-.frholds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.g-fr .frhold { min-height: 44px; padding: 4px 2px 0; font-size: 17px; min-width: 0; }
+.frwin { position: relative; flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; container-type: size; }
+.frreel { position: relative; overflow: hidden; display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); border: 3px solid var(--ink); border-radius: 12px; background: linear-gradient(180deg, #d9d2c0 0, #fff 14%, #fff 86%, #d9d2c0 100%); }
+.frreel.spin { display: block; }
+.frcell { position: relative; display: grid; place-items: center; min-height: 0; }
+.frcell .frsym, .frstrip .frsym { width: min(70%, 25cqh); aspect-ratio: 1; display: block; } .frq { font: 400 26px 'Luckiest Guy', 'Arial Black', sans-serif; fill: rgba(22, 18, 16, .3); }
+.frstrip { position: absolute; left: 0; right: 0; top: 0; height: calc(var(--n) * 100% / 3); display: grid; grid-auto-rows: 1fr; animation: frroll var(--t) cubic-bezier(.25, .6, .3, 1) both; }
+@keyframes frroll { from { transform: translateY(calc(-100% + 300% / var(--n))); } 86% { transform: translateY(1.2%); } to { transform: none; } }
+.frcell.hit::before { content: ''; position: absolute; inset: 3px; border-radius: 8px; background: #fff3c4; box-shadow: inset 0 0 0 3px var(--gold, #f5b301); }
+.frcell.hit > svg { position: relative; } .frcell.hit.late::before { animation: frhit .3s var(--th) both; } .frcell.hit.late > svg { animation: frpop .36s var(--th) cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes frhit { from { opacity: 0; } } @keyframes frpop { 50% { transform: scale(1.18); } }
+.frlines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.frln { fill: none; stroke: #e53935; stroke-width: 8; stroke-linecap: round; vector-effect: non-scaling-stroke; opacity: .85; filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 1px #fff); }
+.pc-O .frln { stroke: #f2a900; }
+.frln.late { stroke-dasharray: 1; animation: frdraw .24s var(--th) cubic-bezier(.4, 0, .2, 1) both; } @keyframes frdraw { from { stroke-dashoffset: 1; opacity: 0; } 1% { opacity: .85; } to { stroke-dashoffset: 0; } }
+.frpay .frl5 b { font: 400 16px/1 'Luckiest Guy', sans-serif; } .frpay .frl5 i { color: var(--ink); font-weight: 700; }
 .frpay { display: flex; justify-content: space-between; gap: 3px; padding: 4px 6px; border: 2.5px solid var(--ink); border-radius: 10px; background: var(--paper); }
 .frpay span { display: inline-flex; align-items: center; gap: 2px; font: 700 13px/1 'Comic Neue', 'Comic Sans MS', sans-serif; white-space: nowrap; } .frpay .frsym { width: 17px; flex: none; } .frpay i { font-style: normal; color: var(--green); font-weight: 700; } .frpay b { font-weight: 700; }
 .frline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .frline.ok { color: var(--green); } .frline.no { color: var(--muted); }
 .g-fr .frspin { height: 58px; }
 @media (prefers-reduced-motion: reduce) { .frstrip { animation: none; } }
-.tfrw .tpic { width: 70cqw; } .tfr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2cqw; padding: 3cqw; border: 1.4cqw solid var(--ink); border-radius: 5cqw; background: #6a3fb8; }
+.tfrw .tpic { width: 70cqw; } .tfr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1cqw; padding: 2.4cqw; border: 1.4cqw solid var(--ink); border-radius: 5cqw; background: #6a3fb8; }
 .tfr i { display: grid; place-items: center; aspect-ratio: 1; border: 1.2cqw solid var(--ink); border-radius: 3cqw; background: #fff; } .tfr .frsym { width: 78%; }
 /* A miniature with its picture over its two score bars (the batch's score races). */
 .tart.col { flex-direction: column; gap: 4cqw; } .tart.col .tpip { flex: none; width: 80cqw; gap: 3cqw; }
