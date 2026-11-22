@@ -149,7 +149,8 @@ for (const pass of PASSES) for (const mode of ['cpu', 'same']) {
     }
     assert.deepEqual(bad, [], 'every claim settles on the board');
     assert.ok((!types.includes('hilo') || checked.includes('hilo')) && (pass.race || !types.includes('ttt') || checked.includes('ttt')), `hilo checked (skipped: ${skipped.join('; ')})`);
-    assert.ok(checked.length >= types.length - (pass.race ? 2 : 12), `games checked: ${checked.length} of ${types.length} (skipped: ${skipped.join('; ')})`);
+    const dealt = types.filter(t => mode !== 'same' || !G.NO_SAME_PHONE.includes(t)).length;   // (the games never dealt on one phone are not played there)
+    assert.ok(checked.length >= dealt - (pass.race ? 2 : 12), `games checked: ${checked.length} of ${dealt} (skipped: ${skipped.join('; ')})`);
   });
 }
 
@@ -246,6 +247,7 @@ for (const pass of PASSES) for (const timer of (pass.race ? ['m5+5'] : [0, 'm5+5
     }
     assert.deepEqual(bad, [], 'every claim settles on the board');
     assert.ok(!types.includes('hilo') || checked.includes('hilo'), `hilo checked (skipped: ${skipped.join('; ')})`);
-    assert.ok(checked.length >= types.length - (pass.race ? 2 : 12), `games checked: ${checked.length} of ${types.length} (skipped: ${skipped.join('; ')})`);
+    const dealt = types.length;
+    assert.ok(checked.length >= dealt - (pass.race ? 2 : 12), `games checked: ${checked.length} of ${dealt} (skipped: ${skipped.join('; ')})`);
   });
 }
