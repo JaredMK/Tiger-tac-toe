@@ -6631,5 +6631,28 @@ button.nsslot { cursor: pointer; touch-action: manipulation; }
 /* [/hive] */
 
 /* [rally] Road Race */
+/* (December 2026: the circuit from above over the steering wheel; these follow, and so stand over, the game's first
+   block above. --rrh: the wheel strip's height; --rrd: the wheel's width, about half the game's, never so big that
+   its hub leaves the strip: its foot may dip under the strip's edge, as behind a dashboard) */
+.g-rr { height: min(var(--gh), 720px); gap: 6px; --rrh: clamp(98px, calc(min(var(--gh), 720px) * .27), 200px); --rrd: min(calc(min(var(--gw), 440px) * .5), calc((var(--rrh) - 14px) / .74)); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
+.g-rr .rrfield { width: min(100cqw, calc(100cqh * 100 / 110)); aspect-ratio: 100 / 110; border-radius: 16px; }
+.g-rr .rrline { height: 24px; line-height: 26px; }
+.rrstrip { position: relative; height: var(--rrh); overflow: hidden; touch-action: none; border-bottom: 3.5px solid var(--ink); border-radius: 0 0 14px 14px; background: linear-gradient(to top, rgba(22, 18, 16, .1), rgba(22, 18, 16, 0) 62%); }
+.rrstrip::before, .rrstrip::after { content: ''; position: absolute; top: 50%; width: 22px; height: 22px; margin-top: -8px; border: solid rgba(22, 18, 16, .3); border-width: 0 0 5px 5px; border-radius: 3px; }   /* which ways the wheel goes: decoration */
+.rrstrip::before { left: calc(25% - var(--rrd) / 4 - 8px); rotate: 45deg; } .rrstrip::after { right: calc(25% - var(--rrd) / 4 - 8px); rotate: -135deg; }
+.rrptr { position: absolute; left: 50%; top: 0; margin-left: -8px; border: solid transparent; border-width: 11px 8px 0; border-top-color: var(--ink); z-index: 2; }
+.rrwh { position: absolute; left: 50%; top: 12px; width: var(--rrd); aspect-ratio: 1; margin-left: calc(var(--rrd) / -2); }
+.rrwh::before { content: ''; position: absolute; inset: 2%; border-radius: 50%; border: calc(var(--rrd) * .14) solid rgba(22, 18, 16, .22); translate: 0 6px; }
+.rrwheel { position: absolute; inset: 0; will-change: transform; }
+.rrwheel svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.rwk { fill: none; stroke: var(--ink); stroke-width: 15; } .rwr { fill: none; stroke: #3a3d47; stroke-width: 10; }
+.rwsk { fill: none; stroke: var(--ink); stroke-width: 12; stroke-linecap: round; } .rws { fill: none; stroke: #c9ccd6; stroke-width: 7; stroke-linecap: round; }
+.rwm { fill: none; stroke: #fff; stroke-width: 10; } .rwe { fill: none; stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; }
+.rwh { fill: var(--x); stroke: var(--ink); stroke-width: 3.5; } .g-rr.pc-O .rwh { fill: var(--o); }
+.rrstrip.live .rwm { stroke: #ffe9a8; }
+.rrgo { position: absolute; left: 50%; top: 50%; width: 46%; min-width: 56px; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; border: 3.5px solid var(--ink); background: var(--x); color: #fff; box-shadow: 0 5px 0 var(--ink); font: 400 clamp(22px, calc(var(--rrd) * .2), 34px)/1 Bangers, 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .04em; text-shadow: var(--ol1); padding: 3px 0 0; cursor: pointer; touch-action: none; }
+.rrgo.O { background: var(--o); }
+.rrgo:active { translate: -50% calc(-50% + 4px); box-shadow: 0 1px 0 var(--ink); }
+.trcw .tpic { width: 42cqw; } .trc { width: 100%; display: block; } .trcg { fill: #6cbf62; stroke: var(--ink); stroke-width: 3; } .trck { fill: none; stroke: var(--ink); stroke-linejoin: round; } .trct { fill: none; stroke: #5c616e; stroke-linejoin: round; } .trcl { fill: none; stroke: #fff; stroke-width: 3.5; } .trcc { fill: #fff; stroke: var(--ink); stroke-width: 2.4; }
 /* [/rally] */
 
