@@ -6613,6 +6613,21 @@ button.nsslot { cursor: pointer; touch-action: manipulation; }
 
 /* ===== The six games of December 2026 (and Road Race's circuit): each game's styles between its two marks. ===== */
 /* [pint] Split It */
+/* Split It (December 2026): the tallies, the scene (a canvas the size of its box, at most a little taller than wide), the result's own line, the hold button. */
+.g-pnt { width: min(var(--gw), 440px); height: min(var(--gh), 600px); display: flex; flex-direction: column; gap: 8px; }
+.g-pnt > * { flex: none; }
+.g-pnt .pntbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.pntfield { position: relative; width: 100cqw; height: min(100cqh, 104cqw); border: 3.5px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); box-sizing: border-box; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.pntcv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.pntline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.pntline.ok { color: var(--green); } .pntline.no { color: var(--muted); }
+.g-pnt .pntbtn { height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.g-pnt .pntbtn svg { width: 24px; height: 24px; flex: none; transform-origin: 50% 90%; transition: rotate .12s; } .g-pnt .pntbtn.held svg { rotate: -32deg; }
+.g-pnt .pntbtn.held:not(:disabled) { transform: translateY(4px); box-shadow: none; filter: brightness(.94); }
+/* the miniature: the glass as the last attempt left it, its mark on its ring */
+.tpntw .tpic { width: 26cqw; } .tpnt { width: 100%; display: block; } .tpng { fill: #dff1f7; } .tpnd { fill: #231512; } .tpnf { fill: #f3e3bf; }
+.tpno { fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linejoin: round; } .tpnr { stroke: #fff; stroke-width: 1.6; stroke-linecap: round; }
+.tpnb { stroke: var(--ink); stroke-width: 1.6; } .tpnm.X .tpnb { fill: var(--x); } .tpnm.O .tpnb { fill: var(--o); } .tpnm .tmk { stroke: #fff; } .tpnm.O .tmk { stroke: var(--ink); }
 /* [/pint] */
 
 /* [gems] Gem Swap */

@@ -12,8 +12,8 @@ import { state } from './app.js';
 export const RESULT_SOUNDS = new Set(['kyIn', 'thunk', 'thud', 'ballDrop', 'clink', 'knock', 'boom', 'sink', 'dartHit', 'dartBull', 'strike', 'ding', 'higher', 'lower', 'point', 'bank', 'boing', 'solve', 'pair', 'sparkle', 'band', 'diceWin', 'plop', 'splash', 'appleDrop', 'snkCrunch', 'swPop', 'domClick', 'bgBall', 'poolDrop', 'golfCup', 'golfLip', 'golfBoing', 'bowlHit', 'c4drop', 'tkFlip', 'distLock', 'dukBoot', 'gbTink', 'hrCrack', 'pjLand', 'twTurn', 'mcBank', 'wlWall', 'tpHit', 'htLand', 'tlWipe', 'bdDrop', 'bdClear', 'rrLap', 'fsSlice', 'tsIn', 'tsRim', 'sbClack', 'mbDrop', 'mbStop']);
 export const BAD_SOUNDS = new Set(['kyScrape', 'fsBoom', 'rtMiss', 'bust', 'crash', 'diceLose', 'buzz', 'dartMiss', 'birdChirp', 'spill', 'snkBonk', 'swBlast', 'snkGulp', 'poolScratch', 'bowlGutter', 'golfSplash', 'pgOink', 'gbSmash', 'mzBonk']);
 // The six games of December 2026 (and Road Race's wheel): each game's result and bad sounds on its own two lines.
-for (const n of []) RESULT_SOUNDS.add(n);   // [pint] results
-for (const n of []) BAD_SOUNDS.add(n);   // [pint] bad
+for (const n of ['pnSplit', 'pnPerfect']) RESULT_SOUNDS.add(n);   // [pint] results
+for (const n of ['pnMiss']) BAD_SOUNDS.add(n);   // [pint] bad
 //
 for (const n of []) RESULT_SOUNDS.add(n);   // [gems] results
 for (const n of []) BAD_SOUNDS.add(n);   // [gems] bad

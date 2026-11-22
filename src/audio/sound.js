@@ -559,6 +559,13 @@ try { const v = Number(localStorage.getItem(KEY + '.vol')); if (localStorage.get
 try { if (navigator.audioSession) navigator.audioSession.type = 'ambient'; } catch (e) { /* not here: the silent switch is the phone's own */ }
 // ----- The six games of December 2026 (and Road Race's wheel): each game's own sounds between its two marks (one block a game, so they merge cleanly). -----
 // [pint] Split It: its sounds (names start `pn`)
+def('pnGulp', 0.1, (c, d, t) => { sfxTone(c, d, t, 210, .08, { to: 120, vol: .5, att: .004 }); sfxNoise(c, d, t, .03, { f: 700, q: 1.2, vol: .14, att: .002 }); }, { level: .36, vary: true });   // Split It (December 2026): a gulp as the drink goes down; the gasp as the glass comes away; the drink sloshing to rest; a split's chime, a perfect one's run, a miss's low note; the fresh pint sliding up into the hand
+def('pnStop', 0.2, (c, d, t) => { sfxNoise(c, d, t, .02, { f: 2400, q: 1.5, vol: .3, att: .001 }); sfxNoise(c, d, t + .03, .15, { f: 1500, to: 700, q: .8, vol: .26, att: .03 }); }, { level: .32 });
+def('pnSlosh', 0.5, (c, d, t) => { sfxNoise(c, d, t, .2, { f: 500, to: 1300, q: 1.4, vol: .3, att: .05 }); sfxNoise(c, d, t + .2, .16, { f: 1100, to: 600, q: 1.4, vol: .2, att: .04 }); sfxNoise(c, d, t + .36, .12, { f: 700, to: 900, q: 1.4, vol: .1, att: .03 }); }, { level: .3 });
+def('pnSplit', 0.36, (c, d, t) => { sfxTone(c, d, t, 880, .3, { type: 'triangle', vol: .45, att: .003 }); sfxTone(c, d, t + .07, 1320, .26, { type: 'triangle', vol: .32, att: .003 }); }, { level: .46 });
+def('pnPerfect', 0.7, (c, d, t) => { [784, 988, 1319, 1568].forEach((f, i) => sfxTone(c, d, t + i * .085, f, i === 3 ? .4 : .14, { type: 'triangle', vol: .42, att: .003 })); sfxTone(c, d, t + .26, 3136, .36, { vol: .12 }); sfxNoise(c, d, t + .26, .3, { f: 6500, q: 2, vol: .08, att: .02 }); }, { level: .5 });
+def('pnMiss', 0.3, (c, d, t) => { sfxTone(c, d, t, 233, .26, { to: 150, type: 'triangle', vol: .5, att: .006 }); sfxTone(c, d, t, 117, .22, { to: 80, vol: .3 }); }, { level: .4 });
+def('pnSlide', 0.3, (c, d, t) => { sfxNoise(c, d, t, .2, { f: 900, to: 2400, q: 1, vol: .22, att: .05 }); sfxTone(c, d, t + .2, 1850, .08, { type: 'triangle', vol: .3, att: .001 }); sfxNoise(c, d, t + .2, .02, { f: 3800, q: 2, vol: .3, att: .001 }); }, { level: .34 });
 // [/pint]
 //
 // [gems] Gem Swap: its sounds (names start `gs`)
