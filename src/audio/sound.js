@@ -599,6 +599,20 @@ def('csDud', 0.3, (c, d, t) => { sfxTone(c, d, t, 95, .22, { to: 52, vol: .6 });
 // [/tanks]
 //
 // [jigsaw] Puzzle Build: its sounds (names start `jg`)
+// A piece scraping out of the pile; pressed flat on the tray (and each piece dropping in at the end); lifted for a drag;
+// sliding over the board; the click as it locks in and the little chime after it; the double knock of a piece that does
+// not fit; the timer's last three seconds ticking (this phone's own piece alone); the two falling notes of the timer run
+// out; the shimmer as the picture comes whole.
+def('jgDraw', 0.24, (c, d, t) => { sfxNoise(c, d, t, .2, { f: 900, to: 2600, q: 1.1, vol: .34, att: .02 }); sfxTone(c, d, t + .12, 420, .09, { to: 620, type: 'triangle', vol: .22 }); }, { level: .34 });
+def('jgSet', 0.09, (c, d, t) => { sfxTone(c, d, t, 300, .06, { to: 180, type: 'triangle', vol: .5, att: .001 }); sfxNoise(c, d, t, .02, { f: 1500, q: 1.2, vol: .3, att: .001 }); }, { level: .36, vary: true });
+def('jgLift', 0.08, (c, d, t) => { sfxTone(c, d, t, 520, .06, { to: 760, type: 'triangle', vol: .32 }); }, { level: .28 });
+def('jgSlide', 0.26, (c, d, t) => sfxNoise(c, d, t, .22, { f: 700, to: 1700, q: .9, vol: .3, att: .05 }), { level: .24 });
+def('jgSnap', 0.12, (c, d, t) => { sfxNoise(c, d, t, .018, { f: 3200, q: 2.2, vol: .55, att: .001 }); sfxTone(c, d, t, 230, .09, { to: 150, type: 'triangle', vol: .6, att: .001 }); sfxNoise(c, d, t + .03, .03, { f: 900, q: 1, vol: .22, att: .002 }); }, { level: .5 });
+def('jgShine', 0.3, (c, d, t) => { sfxTone(c, d, t, 1320, .12, { type: 'triangle', vol: .32, att: .003 }); sfxTone(c, d, t + .08, 1760, .2, { type: 'sine', vol: .3, att: .003 }); }, { level: .34 });
+def('jgNope', 0.24, (c, d, t) => { for (const k of [0, .11]) { sfxTone(c, d, t + k, 190, .08, { to: 130, type: 'triangle', vol: .55, att: .001 }); sfxNoise(c, d, t + k, .025, { f: 700, q: 1, vol: .3, att: .001 }); } }, { level: .42 });
+def('jgSlow', 0.4, (c, d, t) => { sfxTone(c, d, t, 440, .16, { to: 392, type: 'triangle', vol: .42 }); sfxTone(c, d, t + .18, 330, .2, { to: 262, type: 'triangle', vol: .42 }); }, { level: .38 });
+def('jgTick', 0.06, (c, d, t) => { sfxTone(c, d, t, 880, .04, { type: 'square', vol: .16, att: .001 }); sfxNoise(c, d, t, .012, { f: 2800, q: 3, vol: .3, att: .001 }); }, { level: .28 });
+def('jgWhole', 0.7, (c, d, t) => { [523, 659, 784, 1047].forEach((f, k) => sfxTone(c, d, t + k * .07, f, .42 - k * .05, { type: 'triangle', vol: .3, att: .004 })); sfxNoise(c, d, t + .1, .5, { f: 5200, to: 7800, q: 3, vol: .12, att: .1 }); }, { level: .42 });
 // [/jigsaw]
 //
 // [hive] Letter Hive: its sounds (names start `hv`)
