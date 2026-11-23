@@ -4,7 +4,7 @@ import { huntRanges } from './rules.js';
 
 export const info = { name: 'Treasure Hunt', hint: 'Dig a cell: hot, warm, cool or cold. Dig up the treasure to win' };
 export const release = 'released';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.14.0';   // (1.14.0: the first version with its rules as they are now, December 2026 audit; was 1.0.0); the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
+export const minVersion = '1.31.0';   // (1.31.0: the Hint difficulty setting, its bands one table read by the clue, the key and the computer; 1.14.0 before, the December 2026 audit; was 1.0.0); the oldest client version that has this game (core/client.js: Find Match and friend rooms deal it only when both players' clients do)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds
 export const explainer = { name: 'Treasure Hunt', play: 'Dig a square. It tells you if the treasure is {bandWords}. Steps count up, down, left and right only, not diagonally.{hintText}', win: 'Dig up the treasure.' };

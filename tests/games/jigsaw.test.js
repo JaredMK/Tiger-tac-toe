@@ -36,7 +36,7 @@ test('jigsaw: with the centre piece in place: a 3 by 3 puzzle, the centre laid b
   const pv = E.publicMini(m);
   assert.deepEqual(Object.assign({}, pv, { tune: undefined }), { type: 'jigsaw', n: 3, seed: m.seed, placed: '....C....', got: { X: 0, O: 0 }, offer: null, by: null, k: 0, last: null, tune: undefined });
   assert.notEqual(mini('a').seed, mini('b').seed, 'a new picture each game');
-  assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder], ['admin', 'brain', '1.30.0', false]);
+  assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder], ['admin', 'brain', '1.31.0', false]);
   assert.ok(FIND_MATCH_HOLD.includes('jigsaw'), 'held out of Find Match: the piece timer is the phone\'s word');
 });
 

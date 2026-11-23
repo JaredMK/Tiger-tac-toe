@@ -19,7 +19,7 @@ const withCastle = (list, tune) => { const m = fresh('made', tune); m.c.O = made
 const F = CS.foot[0];
 
 test('castle: Admin only, skill, its settings in their groups; the deal: one castle for both, its crystal on a perch, the same from the same rng', () => {
-  assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder, M.realTime, M.info.name], ['admin', 'skill', '1.30.0', false, true, 'Castle Smash']);
+  assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder, M.realTime, M.info.name], ['admin', 'skill', '1.31.0', false, true, 'Castle Smash']);
   assert.deepEqual(E.tuneFields('castle').map(f => f.k), ['again', 'layers', 'stone', 'power', 'weight', 'woodTough', 'stoneTough', 'stoneHits', 'coreTough', 'aiAim', 'aiPow', 'aiAimHard', 'aiPowHard', 'aiTries', 'aiAimEasy', 'aiPowEasy']);
   assert.ok(E.tuneFields('castle').every(f => ['Board', 'Rules', 'Timing', 'Computer'].includes(f.group)));
   const plans = new Set();

@@ -3,7 +3,7 @@ import { AGAIN_TUNE } from '../../core/tune.js';
 
 export const info = { name: 'Castle Smash', hint: 'Fling boulders at the other castle. Smash its crystal to win' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.30.0';   // the oldest client version that has this game (core/client.js)
+export const minVersion = '1.31.0';   // (1.31.0: the camera's intro, its flashMs) the oldest client version that has this game (core/client.js)
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const placeholder = false;   // never on a new state's placeholder board (games/index.js PLACE_TYPES): the seeded deals stay as they were
 export const realTime = true;   // its move plays back in real time (a recording): never sped up past the replay's own speed (core/timer.js moveRate)

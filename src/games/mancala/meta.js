@@ -2,7 +2,7 @@
 
 export const info = { name: 'Mancala Race', hint: 'Sow seeds round the board into your bank. First to bank enough wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.30.0';   // (1.30.0: the end by an empty side, the sweep, v 2) the oldest client version that has this game (core/client.js)
+export const minVersion = '1.31.0';   // (1.31.0: the end by an empty side, the sweep, v 2) the oldest client version that has this game (core/client.js)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const placeholder = false;   // never on a new state's placeholder board (games/index.js PLACE_TYPES): the seeded deals stay as they were
 export const explainer = { name: 'Mancala Race', play: 'Pick one of your pits. Its seeds are sown one by one round the board: along your side, into your bank, then along the other side.{extraText}{captureText}', win: 'First to bank {target} seeds wins. When a side runs out of seeds, each player banks the seeds left on their side and the bigger bank wins. Level: a draw.' };

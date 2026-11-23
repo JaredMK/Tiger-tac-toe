@@ -3,7 +3,7 @@ import { AGAIN_TUNE } from '../../core/tune.js';
 
 export const info = { name: 'Puzzle Build', hint: 'Draw a piece and fit it into the picture before the timer runs out. Place more than half to win' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.30.0';   // the oldest client version that has this game (core/client.js)
+export const minVersion = '1.31.0';   // (1.31.0: the edge marks and the pieces drawn rotated, `{ c, r }`) the oldest client version that has this game (core/client.js)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const placeholder = false;   // never on a new state's placeholder board (games/index.js PLACE_TYPES): the seeded deals stay as they were
 export const superChaos = false;   // one shared puzzle and one piece on show at a time: not a game for simultaneous rounds
