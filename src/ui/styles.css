@@ -3416,9 +3416,9 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tart.tall .tpic { width: 30cqw; }
 /* Pips that always fit (November 2026, the board's fit check, scripts/check-miniature-fit.js): a row is its mark and --pb, the pips' room
    (pips and their gaps, split .76/.24), however many pips the game's settings ask for (Home Run Heroes, Target Practice, Glass Bridge,
-   Block Drop, Rock Paper Scissors, Echo: each one's picture P and --pb kept to P + 3cqw + the mark's 16px + --pb within the 92cqw of .tart). */
-.tart:is(.thrw, .ttpw, .tgbw, .tbdw, .trpsw, .techow) .tpip .tr { --pw: min(9cqw, calc(var(--pb, 40cqw) / var(--n, 3) * .76)); gap: min(2.6cqw, calc(var(--pb, 40cqw) / var(--n, 3) * .24)); }
-.tart:is(.thrw, .ttpw, .tgbw, .tbdw, .trpsw, .techow) .tpip i { border-width: min(1.3cqw, calc(var(--pw) * .2)); }
+   Block Drop, Rock Paper Scissors, Echo, Mahjong: each one's picture P and --pb kept to P + 3cqw + the mark's 16px + --pb within the 92cqw of .tart). */
+.tart:is(.thrw, .ttpw, .tgbw, .tbdw, .trpsw, .techow, .tmjw) .tpip .tr { --pw: min(9cqw, calc(var(--pb, 40cqw) / var(--n, 3) * .76)); gap: min(2.6cqw, calc(var(--pb, 40cqw) / var(--n, 3) * .24)); }
+.tart:is(.thrw, .ttpw, .tgbw, .tbdw, .trpsw, .techow, .tmjw) .tpip i { border-width: min(1.3cqw, calc(var(--pw) * .2)); }
 .ttok circle { stroke: var(--ink); stroke-width: 1.6; } .ttok.X circle { fill: var(--x); } .ttok.O circle { fill: var(--o); }
 .ttok text { fill: #fff; font-weight: 900; text-anchor: middle; font-family: Nunito, Arial, sans-serif; } .ttok.O text { fill: var(--ink); }
 .tfin .a { fill: var(--ink); } .tfin .b { fill: var(--paper); }
@@ -5699,12 +5699,12 @@ button.bglg i { animation: bglring 1s ease-in-out infinite alternate; } button.b
 .t31c.can .plc { filter: drop-shadow(0 0 6px rgba(255, 240, 160, .9)); transition: transform .12s cubic-bezier(.4, 0, .2, 1); }
 .t31c:not(:disabled):active .plc { transform: translateY(-5px); }
 .t31row .t31dk { --sx: 0px; --sy: -110px; } .t31row .t31pk { --sx: 60px; --sy: -110px; } .t31pile .t31in { --sx: -40px; --sy: 110px; } .t31pile .t31od { --sx: -30px; --sy: -110px; }
-.tart.tt31w { gap: 3cqw; width: 96cqw; } .tart.tt31w .tpic { width: 50cqw; } .tart.tt31w .tpip { width: auto; flex: 1; gap: 6cqw; }   /* the miniature: the felt with the deck and the pile's top card, each hand as backs beside its mark */
-.tt31f { display: flex; gap: 3cqw; justify-content: center; align-items: center; padding: 4cqw 2cqw; border-radius: 5cqw; background: radial-gradient(ellipse at 50% 42%, #4f8a5a, #2f5f3a); border: 1.4cqw solid var(--ink); }
+.tart.tt31w { gap: 2.5cqw; width: 96cqw; } .tart.tt31w .tpic { width: 49cqw; } .tart.tt31w .tpip { width: auto; flex: 1; gap: 6cqw; }   /* the miniature: the felt with the deck and the pile's top card, each hand as backs beside its mark */
+.tt31f { display: flex; gap: 2.6cqw; justify-content: center; align-items: center; padding: 4cqw 1.6cqw; border-radius: 5cqw; background: radial-gradient(ellipse at 50% 42%, #4f8a5a, #2f5f3a); border: 1.4cqw solid var(--ink); }
 .tt31f .tcd { width: 20cqw; height: 28cqw; border-width: 1.2cqw; border-radius: 2.6cqw; } .tt31f .tcd b { font-size: var(--mt); line-height: .9; } .tt31f .tcd svg { width: 9cqw; height: 9cqw; }
 .tt31f .tcd.tt31e { background: none; border-style: dashed; border-color: rgba(255, 255, 255, .5); }
 .tt31w .tpip .tr { gap: 2cqw; } .tt31h { display: flex; }
-.tt31h .tcd { width: 9cqw; height: 12.5cqw; border-width: 1cqw; border-radius: 1.6cqw; } .tt31h .tcd + .tcd { margin-left: -2.2cqw; }
+.tt31h .tcd { width: 8cqw; height: 11cqw; border-width: 1cqw; border-radius: 1.5cqw; } .tt31h .tcd + .tcd { margin-left: -2.4cqw; }
 .tt31h .tcd.X { box-shadow: inset 0 0 0 .7cqw var(--x); } .tt31h .tcd.O { box-shadow: inset 0 0 0 .7cqw var(--o); }
 /* Rummy Lite (rummy; the polish sweep: Thirty-One's sibling): one felt with the other hand as backs at the top, the shared deck and pile, the move's line and this phone's hand (seven cards' room, whatever it holds); melds ringed in their player's colour */
 .g-arc.rmy { gap: 6px; }
@@ -6264,8 +6264,8 @@ button.mjh.can:active .mjt { translate: 0 -6px; } button.mjh.can .mjt { cursor: 
 .mjt.flipin { animation: mjflip 240ms var(--t, 0ms) ease-out both; } @keyframes mjflip { from { scale: 0 1; filter: brightness(.6); } to { scale: 1 1; } }
 .mjgrp.won { animation: mjwon 520ms var(--t, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; } @keyframes mjwon { 0% { translate: 0 0; filter: none; } 45% { translate: 0 -10px; filter: drop-shadow(0 0 8px #fff6a0); } 100% { translate: 0 0; filter: drop-shadow(0 0 6px #fff6a0); } }
 @media (prefers-reduced-motion: reduce) { .mjt.flipin, .mjgrp.won { animation: none; } }
-.tmjw .tpic { display: flex; justify-content: center; } .tmjf { display: flex; gap: 3cqw; justify-content: center; align-items: center; padding: 4cqw 3cqw; border-radius: 5cqw; background: radial-gradient(ellipse at 50% 42%, #3f8f6a, #24604a); border: 1.4cqw solid var(--ink); }
-.tmjf .mjt { --s: 20cqw; border-width: 1.2cqw; box-shadow: 0 1.4cqw 0 #2f7a5a, 0 1.4cqw 0 1.2cqw var(--ink); } .tmjf .mjt .mjn { display: none; }
+.tart.tmjw { --pb: 28cqw; } .tmjw .tpic { display: flex; justify-content: center; width: 44cqw; } .tmjf { display: flex; gap: 3cqw; justify-content: center; align-items: center; padding: 4cqw 3cqw; border-radius: 5cqw; background: radial-gradient(ellipse at 50% 42%, #3f8f6a, #24604a); border: 1.4cqw solid var(--ink); }
+.tmjf .mjt { --s: 16cqw; border-width: 1.2cqw; box-shadow: 0 1.4cqw 0 #2f7a5a, 0 1.4cqw 0 1.2cqw var(--ink); } .tmjf .mjt .mjn { display: none; }
 
 /* Peg Jump Race: tallies, the board (a home bar at each end, the grid of holes between), the result line. A peg sits in
    a full-cell wrapper (.pjmv) so its slide or hop is in cells: --dx, --dy the cells it came from, --t its time. */
