@@ -6859,11 +6859,6 @@ button.jgcell { cursor: pointer; touch-action: none; }
 .jgline { margin: 0; height: 26px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; color: var(--muted); }
 .jgline.wait { font: 700 15px/28px 'Comic Neue', 'Comic Sans MS', sans-serif; letter-spacing: 0; }
 .jgline.ok { color: var(--green); } .jgline.no, .jgline.out, .jgline.askew { color: #b0472f; } .jgline b { font: inherit; }
-/* the edge marks (`edges` on: picture.js jigEdgeArt): a violet stripe inside each side on the picture's border, an ink
-   line on its inner edge, and a pennant flag in a corner (never the players' red or yellow) */
-.jgek { fill: none; stroke: var(--ink); stroke-linejoin: round; } .jgeg { fill: none; stroke: #7448e0; stroke-linejoin: round; }
-.jgflag path { stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.jgfh { fill: #fff; stroke: #fff; stroke-width: 4px; } .jgfp { fill: none; stroke: var(--ink); stroke-width: 2.6px; } .jgfn { fill: #7448e0; stroke: var(--ink); stroke-width: 2px; } .jgfs { fill: none; stroke: #d9ccff; stroke-width: 1.6px; }
 /* the turned pieces (`rotate` on): a piece turned --jr quarter turns about its middle; someone else's turning on the
    tray a quarter at a time (.jgq, JIG.turn 190 ms each, from the move) and gone as it leaves for the cell; Rotate beside
    the piece on show, its room always kept */

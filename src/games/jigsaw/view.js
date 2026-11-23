@@ -11,16 +11,16 @@
 // own winning moment; the claim is the board's). Someone else's turn plays from its two moves: Draw a piece pressed
 // and the piece coming out, then that piece travelling to the cell they chose and what came of it (replay.synth).
 // What animates comes from the move being played (a: its flash), never from the square's last result.
-// The two options (both off by default; off, all of this is as it was). `edges`: a piece of the picture's border shows
-// a bold stripe along each of its border sides and a little flag (picture.js jigEdgeArt), wherever it is drawn: on the
-// tray, dragged, flying, in place. `rotate`: the piece on show is drawn turned as it was drawn (rules.js `rot`); on
+// The two options (both off by default; off, all of this is as it was). `edges`: a piece's sides on the picture's outer border
+// are cut straight, as on a real jigsaw (picture.js jigPiecePath `flat`), wherever it is drawn: on the tray, dragged,
+// flying, in place, dropping in at the end, and in the miniature; the whole puzzle has a straight outline. `rotate`: the piece on show is drawn turned as it was drawn (rules.js `rot`); on
 // this phone's own turn Rotate beside it, or a tap on the piece, turns it a quarter turn clockwise (a draft, written
 // straight onto the page: no redraw), and dragged it keeps its turn; the placement carries how it was left, { c, r }.
 // Someone else's placement first turns their piece on the tray from how it was drawn to how they placed it, a quarter
 // turn at a time with a click each (rules.js jigTimes `pre`), then it travels; this phone's own goes at once. Its own
 // cell turned the wrong way is a wrong placement: it lands turned, shakes and goes back ("Turn it").
-import { JIG, JIG_DRAW, JIG_OUT, jigBorder, jigCells, jigEdgesOn, jigEnd, jigGot, jigLeft, jigNeed, jigOffer, jigRot, jigRotOn, jigSize, jigTimes, jigTurns } from './rules.js';
-import { PIC, jigEdgeArt, jigPicture, jigPieceBox, jigPiecePath } from './picture.js';
+import { JIG, JIG_DRAW, JIG_OUT, jigCells, jigEdgesOn, jigEnd, jigGot, jigLeft, jigNeed, jigOffer, jigRot, jigRotOn, jigSize, jigTimes, jigTurns } from './rules.js';
+import { PIC, jigPicture, jigPieceBox, jigPiecePath } from './picture.js';
 import { dur } from '../../core/timer.js';
 import { tune } from '../../core/tune.js';
 import { SND, ownPress } from '../../audio/sound.js';
@@ -50,10 +50,10 @@ const seedOf = mini => (Number.isFinite(Number(mini && mini.seed)) ? Math.abs(Ma
 // ---- the pieces ----
 // A piece of the picture: the sheet clipped to the piece's outline (the sheet itself is drawn once a screen, in the
 // defs at its top, and used here), its outline in ink, and a white flash over it for the moment it clicks in; with
-// `edges` on (eg), a border piece's stripes inside its outline and its flag over it.
+// `edges` on (eg), its sides on the picture's outer border cut straight.
 function pieceSvg(sd, n, i, eg) {
-  const b = jigPieceBox(n, i).map(v => Math.round(v * 10) / 10), d = jigPiecePath(sd, n, i), id = `jgc${sd}-${n}-${i}`, mk = eg ? jigEdgeArt(sd, n, i, jigBorder(n, i)) : null;
-  return `<svg class="jgp" viewBox="${b.join(' ')}" aria-hidden="true"><clipPath id="${id}"><path d="${d}"/></clipPath><g clip-path="url(#${id})"><use href="#jgs${sd}"/>${mk ? mk.band : ''}</g><path class="jgpo" d="${d}"/>${mk ? mk.flag : ''}<path class="jgpf" d="${d}"/></svg>`;
+  const b = jigPieceBox(n, i).map(v => Math.round(v * 10) / 10), d = jigPiecePath(sd, n, i, eg), id = `jgc${sd}-${n}-${i}${eg ? 'f' : ''}`;
+  return `<svg class="jgp" viewBox="${b.join(' ')}" aria-hidden="true"><clipPath id="${id}"><path d="${d}"/></clipPath><g clip-path="url(#${id})"><use href="#jgs${sd}"/></g><path class="jgpo" d="${d}"/><path class="jgpf" d="${d}"/></svg>`;
 }
 // A piece turned r quarter turns clockwise (`rotate` on; its box is square about the cell's middle, so it turns in place);
 // `quarters` more of them playing one after another from the move (someone else's piece turning on the tray).
@@ -199,7 +199,7 @@ export function heldSub(mini, turn, f, a) {                         // the heade
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   hook();
   const n = jigSize(mini), sd = seedOf(mini), cells = jigCells(mini), need = jigNeed(mini), got = jigGot(mini), o = { view, locked, turn }, eg = jigEdgesOn(mini), rotOn = jigRotOn(mini);
-  const P = i => pieceSvg(sd, n, i, eg);                            // (a piece, with its edge marks when they are on)
+  const P = i => pieceSvg(sd, n, i, eg);                            // (a piece, its border sides flat when `edges` is on)
   const fb = a && a.jig ? a.jig : null, s = fb && !fb.draw ? fb : null, dr = fb && fb.draw ? fb : null;   // the move playing: a placement (s) or a draw (dr)
   const offer = dr ? dr.c : jigOffer(mini), ended = jigEnd(mini), here = !!(state.squares && state.squares[state.zoom] && state.squares[state.zoom].mini === mini && state.screen === 'mini');
   const mine = here && !view && !locked && !fb && !d && !rep;        // this phone's step to make
@@ -281,9 +281,9 @@ export const wonAt = (f, total) => (f.jig && f.jig.end ? jigTimes(f.jig, ownOf(f
 // centre piece, laid by nobody, plain), an empty cell a dashed slot; beside it each player's pieces as pips to the
 // number that takes the square. Public information only: the picture itself is never drawn here.
 export function miniature(mini, final) {
-  const n = jigSize(mini), sd = seedOf(mini), cells = jigCells(mini), need = jigNeed(mini), got = jigGot(mini), s = PIC.size / n;
+  const n = jigSize(mini), sd = seedOf(mini), cells = jigCells(mini), need = jigNeed(mini), got = jigGot(mini), s = PIC.size / n, eg = jigEdgesOn(mini);
   const slots = cells.map((v, i) => (v === '.' ? `<rect class="tjgs" x="${Math.round((i % n) * s + s * 0.14)}" y="${Math.round(Math.floor(i / n) * s + s * 0.14)}" width="${Math.round(s * 0.72)}" height="${Math.round(s * 0.72)}" rx="${Math.round(s * 0.12)}"/>` : '')).join('');
-  const laid = cells.map((v, i) => (v === '.' ? '' : `<path class="tjgp ${v === 'C' ? 'N' : v}" d="${jigPiecePath(sd, n, i)}"/>`)).join('');
+  const laid = cells.map((v, i) => (v === '.' ? '' : `<path class="tjgp ${v === 'C' ? 'N' : v}" d="${jigPiecePath(sd, n, i, eg)}"/>`)).join('');
   const art = `<svg class="tjg" viewBox="-30 -30 360 360">${slots}${laid}</svg>`;
   return thumbArt(art, need <= 6 ? pipRows(got, need) : barRows(got, need), 'tjgw', `Puzzle Build: X ${got.X}, O ${got.O} of ${need} pieces to win`);
 }

@@ -137,7 +137,6 @@ test('a seed that is not a number never reaches the markup', () => {
 // ---- the two options (both off by default) ----
 const withTune = (t, fn) => { E.setTune('jigsaw', Object.assign({ centre: 'on' }, t)); try { return fn(); } finally { E.setTune('jigsaw', { centre: 'on' }); } };
 const piecesOf = html => html.match(/<svg class="jgp"[\s\S]*?<\/svg>/g) || [];
-const stripes = svg => { const m = svg.match(/<path class="jgeg" d="([^"]+)"/); return m ? (m[1].match(/M/g) || []).length : 0; };
 // The square as a real match on this phone (so its own controls go through the page's own flow: attemptMove, playMove).
 async function liveMatch(mini, turn = 'X') {
   Object.assign(state, E.newMatch(E.makeRng('jg-live'), { games: ['ttt', 'jigsaw'] }));
@@ -145,28 +144,40 @@ async function liveMatch(mini, turn = 'X') {
 }
 const own = (turn = 'X') => { const sq = state.squares[0]; return V.screen(sq, state.flash, null, sq.mini, false, !!state.flash, state.flash, null, false, () => -1, false, turn, ''); };
 
-test('with both options off nothing of them is in the page: no stripes, no flag, no turned piece, no Rotate', () => {
+test('with both options off nothing of them is in the page: no flat sides, no turned piece, no Rotate', () => {
   const d = play(E.newMini('jigsaw', E.makeRng('off')), 'X', 'draw', E.makeRng('jgv-d'));
   for (const html of [screen(d.mini, d.flash), screen(d.mini, null), screen(d.mini, null, { locked: true })]) assert.doesNotMatch(html, /jgeg|jgek|jgflag|jgrt|jgq|jgrot|jgstage rot/);
 });
 
-test('Mark edge pieces: a piece on the picture\'s border carries a stripe along each of its border sides and a flag, wherever it is drawn (the tray, in place); an inner piece none; never in the whole picture or the miniature', () => withTune({ edges: 'on' }, () => {
-  const m = fixed('X...C...O', 1, 'O');
-  const html = screen(m, null, { turn: 'O' }), ps = piecesOf(html);
-  assert.equal(ps.length, 4, 'the three in place and the one on show');
-  const by = i => ps.find(p => p.includes(`viewBox="${P.jigPieceBox(3, i).map(v => Math.round(v * 10) / 10).join(' ')}"`));
-  assert.deepEqual([stripes(by(0)), stripes(by(4)), stripes(by(8)), stripes(by(1))], [2, 0, 2, 1], 'a corner two, the middle none, an edge piece one');
-  assert.deepEqual([0, 4, 8, 1].map(i => (by(i).match(/class="jgflag"/g) || []).length), [1, 0, 1, 1], 'a flag on each border piece');
-  assert.ok(by(1).indexOf('class="jgeg"') < by(1).indexOf('class="jgpo"'), 'the stripe inside the outline (clipped with the picture), the flag over it');
-  assert.ok(by(1).indexOf('class="jgflag"') > by(1).indexOf('class="jgpo"'));
-  // a placement's flight and a piece dropping in at the end carry them too
-  const w = play(fixed('XXXXC.O..', 5, 'X'), 'X', { c: 5 });
-  const end = screen(w.mini, w.flash);
-  assert.equal((end.match(/class="jgflag"/g) || []).length, 8, 'every piece on the board but the middle one, the two from the pile too');
-  // the whole picture, looked at again: the picture alone
-  const look = screen(w.mini, null, { view: true });
-  assert.doesNotMatch(look, /jgeg|jgflag/); assert.doesNotMatch(V.miniature(m, false), /jgeg|jgflag/);
-}));
+test('Flat edge pieces: every piece is drawn with its sides on the picture\'s border cut straight, wherever it is drawn (the tray, in place, flying in, dropping in at the end, turned, the miniature); off, the classic cut', () => {
+  const sdOf = m => Math.abs(Math.floor(Number(m.seed))), outlines = html => [...html.matchAll(/<path class="jgpo" d="([^"]+)"/g)].map(t => t[1]);
+  const cutOf = (m, flat) => Array.from({ length: 9 }, (_, i) => P.jigPiecePath(sdOf(m), 3, i, flat));
+  const check = (html, m, flat, what) => { const want = new Set(cutOf(m, flat)), other = new Set(cutOf(m, !flat)); const os = outlines(html); assert.ok(os.length > 0, what); for (const d of os) { assert.ok(want.has(d), `${what}: ${flat ? 'flat' : 'classic'} cut`); if (d !== P.jigPiecePath(sdOf(m), 3, 4)) assert.ok(!other.has(d), what); } };
+  // off: the classic cut, nothing else of the option in the page
+  const m0 = fixed('X...C...O', 1, 'O');
+  check(screen(m0, null, { turn: 'O' }), m0, false, 'off');
+  withTune({ edges: 'on' }, () => {
+    const m = fixed('X...C...O', 1, 'O'), html = screen(m, null, { turn: 'O' }), ps = piecesOf(html);
+    assert.equal(ps.length, 4, 'the three in place and the one on show');
+    check(html, m, true, 'the tray and the board');
+    assert.doesNotMatch(html, /jgeg|jgek|jgflag/, 'the flat side is the tell: no stripe, no flag');
+    // the clip and the outline are one shape, so the picture is cut straight too
+    for (const p of ps) { const clip = p.match(/<clipPath id="[^"]+"><path d="([^"]+)"/)[1]; assert.ok(p.includes(`class="jgpo" d="${clip}"`)); }
+    // a placement's flight and the pile's pieces dropping in at the end
+    const w = play(fixed('XXXXC.O..', 5, 'X'), 'X', { c: 5 });
+    check(screen(w.mini, w.flash), w.mini, true, 'the end');
+    assert.equal(outlines(screen(w.mini, w.flash)).length, 9, 'every piece drops in flat-sided');
+    // the miniature's board is cut the same way
+    const mini = V.miniature(m, false), laid = [...mini.matchAll(/class="tjgp [^"]+" d="([^"]+)"/g)].map(t => t[1]);
+    assert.deepEqual(laid, [0, 4, 8].map(i => P.jigPiecePath(sdOf(m), 3, i, true)));
+  });
+  // turned (`rotate` on): the same flat-sided piece, turned as a whole, so its flat side turns with it
+  withTune({ edges: 'on', rotate: 'on' }, () => {
+    const d = play(E.newMini('jigsaw', E.makeRng('jgr1')), 'X', 'draw', E.makeRng('jgr-d')), html = screen(d.mini, d.flash);
+    assert.match(html, /class="jgrt" style="--jr:[123]"/);
+    check(html, d.mini, true, 'a turned piece');
+  });
+});
 
 test('Pieces drawn rotated: the piece comes out turned as it was drawn; on this phone\'s turn Rotate (or a tap on the piece) turns it a quarter turn clockwise on this phone alone, and the placement carries how it was left: right way up, it fits', async () => withTune({ rotate: 'on' }, async () => {
   const m0 = E.newMini('jigsaw', E.makeRng('jgr1')), d = play(m0, 'X', 'draw', E.makeRng('jgr-d')), rot = d.mini.rot;

@@ -17,7 +17,7 @@
 // even number of pieces, level: 4-4 of 8) it is a draw and the square resets. "Go again on success" on: a piece that
 // fits keeps the turn (the next piece is drawn and placed).
 // Two options, both off by default (the admin's; a square keeps what it was dealt with, so one dealt before them plays
-// on as it was). `edges` marks the pieces of the picture's outer border (the view alone: nothing here changes).
+// on as it was). `edges` cuts the picture's outer border straight (the view alone: nothing here changes).
 // `rotate`: the draw also draws how the piece is turned, by the same rng (`rot`: 1, 2 or 3 quarter turns clockwise,
 // never upright; public once drawn, like the piece, and null once it is placed or back in the pile); the player turns
 // it on their own phone (a draft) and the placement says how they left it, `{ c, r }` (r: 0 to 3 quarter turns
@@ -53,7 +53,7 @@ export const jigEdgesOn = mini => tune(mini).edges === 'on';
 export const jigRotOn = mini => tune(mini).rotate === 'on';
 export const jigRot = mini => (jigRotOn(mini) && jigOffer(mini) != null && Number.isInteger(mini.rot) && mini.rot >= 0 && mini.rot <= 3 ? mini.rot : 0);
 // The sides of cell i that lie on the picture's outer border, in the order top, right, bottom, left: a corner piece
-// two, a piece on an edge between the corners one, an inner piece none (the edge marks: the view's).
+// two, a piece on an edge between the corners one, an inner piece none (the sides `edges` cuts straight).
 export function jigBorder(n, i) {
   const r = Math.floor(i / n), c = i % n, out = [];
   if (r === 0) out.push('t'); if (c === n - 1) out.push('r'); if (r === n - 1) out.push('b'); if (c === 0) out.push('l');

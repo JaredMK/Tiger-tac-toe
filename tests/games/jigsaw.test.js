@@ -135,7 +135,7 @@ test('jigsaw: the settings: the grid\'s size and its centre piece (an even grid 
   const keys = M.TUNE.map(f => f.k);
   assert.deepEqual(keys, ['again', 'size', 'centre', 'edges', 'rotate', 'secs', 'aiEasy', 'aiNormal', 'aiHard', 'aiTurnEasy', 'aiTurnNormal', 'aiTurnHard']);
   for (const k of ['edges', 'rotate']) { const f = E.tuneFields('jigsaw').find(x => x.k === k); assert.deepEqual([f.def, f.opts], ['off', ['off', 'on']], `${k}: off by default`); }
-  assert.deepEqual(['edges', 'rotate'].map(k => E.tuneFields('jigsaw').find(x => x.k === k).label), ['Mark edge pieces', 'Pieces drawn rotated']);
+  assert.deepEqual(['edges', 'rotate'].map(k => E.tuneFields('jigsaw').find(x => x.k === k).label), ['Flat edge pieces', 'Pieces drawn rotated']);
   assert.ok(M.TUNE.every(f => ['Board', 'Rules', 'Timing', 'Computer'].includes(f.group)));
   const again = E.tuneFields('jigsaw').find(f => f.k === 'again'); assert.deepEqual([again.label, again.def, again.opts], ['Go again on success', 'off', ['off', 'on']]);
   let m = mini('s4', { size: 4 });
@@ -375,31 +375,37 @@ test('jigsaw: the edge cells by grid size: a corner piece has two sides on the p
     assert.deepEqual([k.filter(v => v === 2).length, k.filter(v => v === 1).length, k.filter(v => v === 0).length], [4, 4 * (n - 2), (n - 2) ** 2], `n ${n}: four corners, the edges between, the inside`);
     for (let i = 0; i < n * n; i++) { const r = Math.floor(i / n), c = i % n; assert.equal(k[i] > 0, r === 0 || c === 0 || r === n - 1 || c === n - 1, `n ${n}, cell ${i}`); }
   }
-  // the marks: a stripe for each border side (inside the piece's outline, following its knob or socket) and one flag, never for an inner piece
-  for (const n of [3, 4, 5]) for (let i = 0; i < n * n; i++) {
-    const sides = R.jigBorder(n, i), art = P.jigEdgeArt(77, n, i, sides);
-    if (!sides.length) { assert.equal(art, null); continue; }
-    const band = art.band.match(/<path class="jgeg" d="([^"]+)"/)[1];
-    assert.equal((band.match(/M/g) || []).length, sides.length, `n ${n}, cell ${i}: a stripe a border side`);
-    assert.match(band, /^(?:M[-0-9. ]+(?:C[-0-9. ]+){3})+$/);
-    assert.equal((art.flag.match(/class="jgfn"/g) || []).length, 1, 'one flag');
-    assert.doesNotMatch(art.band + art.flag, /NaN|undefined/);
-    assert.equal(art, P.jigEdgeArt(77, n, i, sides), 'pure');
+});
+
+test('jigsaw: Flat edge pieces: every side on the picture\'s outer border is a straight line, every inner side cut as ever and still shared point for point, so the puzzle has a straight outline; off, the cut is byte for byte as it was', () => {
+  const sizes = E.tuneFields('jigsaw').find(f => f.k === 'size'), ns = [];
+  for (let n = sizes.min; n <= sizes.max; n += sizes.step) ns.push(n);
+  assert.deepEqual(ns, [3, 4, 5], 'every grid size the admin allows');
+  // off: the very paths of before the option (a digest of every piece at four seeds and every size, taken before the change)
+  const all = [];
+  for (const n of [3, 4, 5]) for (const sd of [0, 5, 42, 123456789]) for (let i = 0; i < n * n; i++) { all.push(P.jigPiecePath(sd, n, i)); assert.equal(P.jigPiecePath(sd, n, i, false), all[all.length - 1]); }
+  assert.equal(require('node:crypto').createHash('sha256').update(all.join('|')).digest('hex'), '62fa66204491e3075e2dcd2484a7e113962c6f805c1e8514552fbd1d3f5dff8f', 'off: unchanged');
+  // a side's ten points: top (from 0, left to right), right (from 18, downwards), bottom (from 36, right to left), left (from 54, upwards)
+  const pts = (a, from) => { const out = []; for (let k = from; k < from + 20; k += 2) out.push([a[k], a[k + 1]]); return out; };
+  const SIDE = { t: 0, r: 18, b: 36, l: 54 };
+  for (const n of ns) for (const sd of [0, 5, 42, 123456789, 987]) {
+    const s = 300 / n, nums = (i, f) => P.jigPiecePath(sd, n, i, f).match(/-?[0-9.]+/g).map(Number);
+    for (let i = 0; i < n * n; i++) {
+      const d = P.jigPiecePath(sd, n, i, true), on = nums(i, true), off = nums(i, false), border = R.jigBorder(n, i), r = Math.floor(i / n), c = i % n;
+      assert.match(d, /^M[-0-9. ]+(?:C[-0-9. ]+){12}Z$/, 'a closed path of four sides, three curves each');
+      assert.doesNotMatch(d, /NaN|undefined/);
+      for (const [k, from] of Object.entries(SIDE)) {
+        const p = pts(on, from);
+        if (border.includes(k)) {                                    // on the border: every point (the controls too) on the cell's own side line, so the curve is that straight line
+          const [ax, at] = { t: [1, r * s], b: [1, (r + 1) * s], l: [0, c * s], r: [0, (c + 1) * s] }[k];
+          assert.ok(p.every(q => Math.abs(q[ax] - at) < 0.06), `n ${n}, seed ${sd}, piece ${i}: its ${k} side is flat`);
+        } else assert.deepEqual(p, pts(off, from), `n ${n}, seed ${sd}, piece ${i}: its inner ${k} side is cut as ever`);
+      }
+      if (c < n - 1) assert.deepEqual(pts(on, 18), pts(nums(i + 1, true), 54).reverse(), `n ${n}: pieces ${i} and ${i + 1} interlock`);
+      if (r < n - 1) assert.deepEqual(pts(on, 36).reverse(), pts(nums(i + n, true), 0), `n ${n}: pieces ${i} and ${i + n} interlock`);
+      for (let k = 0; k < on.length; k += 2) assert.ok(on[k] >= -0.06 && on[k] <= 300.06 && on[k + 1] >= -0.06 && on[k + 1] <= 300.06, `n ${n}, piece ${i}: nothing outside the sheet: a straight outline`);
+    }
   }
-  // the stripe runs along the side itself: the top side's stripe of the top left piece is the piece's own top side, point for point
-  const top = P.jigEdgeArt(42, 3, 0, ['t']).band.match(/class="jgeg" d="M([-0-9. ]+)((?:C[-0-9. ]+){3})"/), outline = P.jigPiecePath(42, 3, 0);
-  assert.ok(outline.startsWith(`M${top[1]}${top[2]}`), 'the top stripe follows the outline\'s top side');
-  // the flag lies inside its piece, whatever the cut: never over a socket (a neighbour's knob) at any seed or size
-  const poly = d => { const v = d.match(/-?[0-9.]+/g).map(Number), out = []; for (let k = 0; k + 7 < v.length; k += 6) for (let u = 0; u < 1; u += 1 / 24) { const q = j => (1 - u) ** 3 * v[k + j] + 3 * (1 - u) ** 2 * u * v[k + 2 + j] + 3 * (1 - u) * u * u * v[k + 4 + j] + u ** 3 * v[k + 6 + j]; out.push([q(0), q(1)]); } return out; };
-  const inside = (pg, [x, y]) => { let c = false; for (let a = 0, b = pg.length - 1; a < pg.length; b = a++) if ((pg[a][1] > y) !== (pg[b][1] > y) && x < ((pg[b][0] - pg[a][0]) * (y - pg[a][1])) / (pg[b][1] - pg[a][1]) + pg[a][0]) c = !c; return c; };
-  const gap = (pg, [x, y]) => Math.min(...pg.map(([a, b], k) => { const [c, d] = pg[(k + 1) % pg.length], L = (c - a) ** 2 + (d - b) ** 2, t = L ? Math.max(0, Math.min(1, ((x - a) * (c - a) + (y - b) * (d - b)) / L)) : 0; return Math.hypot(x - a - t * (c - a), y - b - t * (d - b)); }));
-  for (const n of [3, 4, 5]) for (let sd = 0; sd < 60; sd++) for (let i = 0; i < n * n; i++) {
-    const sides = R.jigBorder(n, i); if (!sides.length) continue;
-    const pg = poly(P.jigPiecePath(sd * 7919, n, i)), pts = P.jigEdgeArt(sd * 7919, n, i, sides).flag.match(/class="jgfh" d="([^"]+)"/)[1].match(/-?[0-9.]+ -?[0-9.]+/g).map(t => t.split(' ').map(Number));
-    for (const pt of pts) assert.ok(inside(pg, pt) && gap(pg, pt) > (300 / n) * 0.02, `n ${n}, seed ${sd * 7919}, piece ${i}: the flag's point ${pt} inside the piece`);
-  }
-  // the flag's corner: the picture's own corner where it can be, never the top left (a placed piece's mark is there)
-  assert.deepEqual([['t', 'l'], ['t', 'r'], ['r', 'b'], ['b', 'l'], ['t'], ['r'], ['b'], ['l']].map(P.jigFlagCorner), ['tr', 'tr', 'br', 'bl', 'tr', 'tr', 'br', 'bl']);
 });
 
 test('jigsaw: Pieces drawn rotated: the draw also draws how the piece is turned, by the move\'s rng (a quarter, half or three-quarter turn: never upright), public once drawn; it is the server\'s online', () => {
@@ -513,7 +519,7 @@ test('jigsaw: Pieces drawn rotated: the computer turns the piece too, the right 
   }
 });
 
-test('jigsaw: Mark edge pieces changes nothing in the rules: the same square, the same moves, the same results', () => {
+test('jigsaw: Flat edge pieces changes nothing in the rules: the same square, the same moves, the same results', () => {
   const a = mini('eg'), b = mini('eg', { edges: 'on' }), ra = lcg(21), rb = lcg(21);
   for (let k = 0; k < 40; k++) {
     const ma = E.randomLegalMove(a, 'X', ra), mb = E.randomLegalMove(b, 'X', rb);
