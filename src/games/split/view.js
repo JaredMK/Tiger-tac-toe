@@ -37,9 +37,13 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const shape = splitShape(mini, by, l ? l.n : null);
   const body = l ? cutSvg(shape, l, by, !!s) : `<polygon class="spshape ${by}" points="${pts(shape)}"/>`;
   const line = l ? `<p ${s ? lateAt('spline ' + (l.pts ? 'ok' : 'no'), SPLIT.say) : `class="spline ${l.pts ? 'ok' : 'no'}"`} role="status">${words(c, l)}</p>` : '<p class="spline"></p>';
+  // The scoring bands' key (the owner's ask, December 2026): one chip a band that scores, from the square's own settings;
+  // the band a cut just earned lights up in the cutter's colour as its figures land (SPLIT.say), and stays lit in review.
+  const hitBand = l && !l.miss && l.pts ? l.band : -1;
+  const key = c.bands.map((bd, i) => (bd[1] > 0 ? `<span ${i === hitBand ? (s ? lateAt('spk', SPLIT.say, 'hit late') : 'class="spk hit"') : 'class="spk"'}><b>±${bd[0]}%</b> = ${bd[1]} ${bd[1] === 1 ? 'pt' : 'pts'}</span>` : '')).join('');
   src = { mine, sq: state.zoom };
   return `<div class="g-sp pc-${by}" style="--tl:${SPLIT.line}ms;--tp:${SPLIT.part}ms;--ts:${SPLIT.say}ms"><div class="ctals two">${tal('X')}${tal('O')}</div>
-    <div class="spbox"><svg class="spsvg${mine ? ' live' : ''}" viewBox="0 0 100 100" data-sp="pad" role="img" aria-label="The shape to cut"><defs><pattern id="spgrid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0H0V10" fill="none" stroke="rgba(22,18,16,.09)" stroke-width=".6"/></pattern></defs><rect width="100" height="100" fill="url(#spgrid)"/>${body}<line class="spdraw ${turn}" data-sp="line" x1="0" y1="0" x2="0" y2="0"/></svg></div>${line}</div>`;
+    <div class="spbox"><svg class="spsvg${mine ? ' live' : ''}" viewBox="0 0 100 100" data-sp="pad" role="img" aria-label="The shape to cut"><defs><pattern id="spgrid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0H0V10" fill="none" stroke="rgba(22,18,16,.09)" stroke-width=".6"/></pattern></defs><rect width="100" height="100" fill="url(#spgrid)"/>${body}<line class="spdraw ${turn}" data-sp="line" x1="0" y1="0" x2="0" y2="0"/></svg></div><div class="splegend" aria-label="Scoring: how near half and half each cut must be">${key}</div>${line}</div>`;
 }
 // ---- the drag ----
 function at(e, pad) { const r = pad.getBoundingClientRect(); return [Math.round((e.clientX - r.left) / r.width * 1000) / 10, Math.round((e.clientY - r.top) / r.height * 1000) / 10]; }

@@ -6176,6 +6176,15 @@ button.gbp { cursor: pointer; touch-action: manipulation; }
 .sppct { font: 400 9px 'Luckiest Guy', 'Arial Black', sans-serif; fill: var(--ink); paint-order: stroke; stroke: #fff; stroke-width: 2.2px; stroke-linejoin: round; } .sppct.late { animation: appear .2s var(--tp) both; }
 .spline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .spline.ok { color: var(--green); } .spline.no { color: var(--muted); }
+/* The scoring bands' key under the mat (December 2026): a chip a band, the one a cut just earned lit in the cutter's colour
+   as its figures land (.hit.late, --t the rules' SPLIT.say). */
+.splegend { height: 24px; display: flex; justify-content: center; align-items: center; gap: 6px; }
+.spk { display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 8px; border: 2px solid var(--ink); border-radius: 999px; background: #fff; color: var(--ink); white-space: nowrap; font: 700 clamp(12px, 3.6vw, 14px)/18px 'Comic Neue', 'Patrick Hand', sans-serif; }
+.spk b { font-weight: 700; }
+.g-sp.pc-X .spk.hit { background: var(--x-soft); border-color: var(--x); }
+.g-sp.pc-O .spk.hit { background: var(--o-soft); border-color: #b8860b; }
+.spk.hit.late { animation: sphit .3s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }
+@keyframes sphit { from { background: #fff; border-color: var(--ink); transform: scale(1); } 60% { transform: scale(1.12); } to { transform: scale(1); } }
 .tspw.col .tpic { width: 46cqw; } .tsp { width: 100%; display: block; } .tspshape { fill: #ffb199; stroke: var(--ink); stroke-width: 4; stroke-linejoin: round; } .tspcut { stroke: var(--ink); stroke-width: 4; stroke-dasharray: 9 6; stroke-linecap: round; fill: none; }
 
 /* Mystery Face: tallies, what is known so far (a slot a feature), the grid of faces (each a button, its clue under it),
