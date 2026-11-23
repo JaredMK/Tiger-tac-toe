@@ -674,15 +674,18 @@ def('rrSqueal', 0.3, (c, d, t) => { sfxNoise(c, d, t, .26, { f: 2300, to: 1700, 
 // [/rally]
 //
 // [barrel] Barrel Launch: its sounds (names start `bl`)
-// The launch: a hollow wooden thump with a puff of air. The flight: a short rising whoosh. A catch: a woody clunk as the
-// player drops into the barrel above, with a bright pop. A miss: a falling slide whistle; then the bump back into the
-// barrel it came from. The top: a short rising trill.
-def('blFire', 0.22, (c, d, t) => { sfxTone(c, d, t, 150, .16, { to: 70, vol: .7, att: .002 }); sfxNoise(c, d, t, .12, { f: 900, to: 300, q: .8, vol: .4, att: .003 }); sfxTone(c, d, t, 420, .05, { to: 260, type: 'triangle', vol: .25, att: .001 }); }, { level: .5, vary: true });
-def('blWhoosh', 0.34, (c, d, t) => sfxNoise(c, d, t, .3, { f: 700, to: 2600, q: 1.3, vol: .26, att: .06 }), { level: .24 });
-def('blCatch', 0.3, (c, d, t) => { sfxTone(c, d, t, 230, .12, { to: 150, type: 'triangle', vol: .6, att: .001 }); sfxNoise(c, d, t, .04, { f: 1300, q: 1.2, vol: .4, att: .001 }); sfxTone(c, d, t + .06, 990, .14, { to: 1480, type: 'triangle', vol: .32, att: .002 }); }, { level: .5, vary: true });
-def('blMiss', 0.5, (c, d, t) => sfxTone(c, d, t, 1400, .46, { to: 380, type: 'sine', vol: .3, att: .02 }), { level: .3 });
-def('blBump', 0.2, (c, d, t) => { sfxTone(c, d, t, 120, .16, { to: 70, vol: .6, att: .001 }); sfxNoise(c, d, t, .05, { f: 500, filter: 'lowpass', vol: .45, att: .001 }); }, { level: .46 });
-def('blTop', 0.6, (c, d, t) => { [659, 880, 1109, 1319].forEach((f, i) => sfxTone(c, d, t + i * .07, f, i === 3 ? .3 : .1, { type: 'triangle', vol: .36, att: .002 })); }, { level: .46 });
+// The launch: a boom with a puff of air and its tail. The flight: a rising whoosh. A catch: a woody clunk as the
+// player drops into the barrel above and the barrel's spring under it; then a pop as the player peeks out. A shot that
+// clips the barrel on its way past: a knock. A miss: a falling slide whistle from the top of its flight; then the bump
+// back into the barrel it came from. The top: a rising trill with a shimmer.
+def('blFire', 0.3, (c, d, t) => { sfxTone(c, d, t, 170, .22, { to: 52, vol: .85, att: .002 }); sfxNoise(c, d, t, .16, { f: 1100, to: 260, q: .7, vol: .5, att: .002 }); sfxTone(c, d, t, 520, .06, { to: 240, type: 'triangle', vol: .3, att: .001 }); sfxNoise(c, d, t + .05, .2, { f: 500, to: 180, filter: 'lowpass', vol: .22, att: .03 }); }, { level: .52, vary: true });
+def('blWhoosh', 0.4, (c, d, t) => { sfxNoise(c, d, t, .36, { f: 600, to: 3000, q: 1.4, vol: .28, att: .08 }); sfxTone(c, d, t + .02, 420, .3, { to: 980, type: 'sine', vol: .08, att: .05 }); }, { level: .24 });
+def('blCatch', 0.34, (c, d, t) => { sfxTone(c, d, t, 210, .14, { to: 120, type: 'triangle', vol: .7, att: .001 }); sfxNoise(c, d, t, .05, { f: 1200, q: 1.1, vol: .45, att: .001 }); sfxTone(c, d, t + .05, 300, .24, { to: 520, type: 'sine', vol: .26, att: .01 }); sfxTone(c, d, t + .11, 440, .18, { to: 340, type: 'sine', vol: .16, att: .01 }); }, { level: .5, vary: true });
+def('blPeek', 0.14, (c, d, t) => { sfxTone(c, d, t, 620, .1, { to: 1180, type: 'triangle', vol: .42, att: .002 }); sfxNoise(c, d, t, .02, { f: 3000, q: 1.2, vol: .18, att: .001 }); }, { level: .34, vary: true });
+def('blClonk', 0.16, (c, d, t) => { sfxTone(c, d, t, 330, .09, { to: 210, type: 'triangle', vol: .6, att: .001 }); sfxNoise(c, d, t, .03, { f: 1700, q: 1.4, vol: .4, att: .001 }); }, { level: .44, vary: true });
+def('blMiss', 0.7, (c, d, t) => sfxTone(c, d, t, 1500, .66, { to: 330, type: 'sine', vol: .3, att: .03 }), { level: .3 });
+def('blBump', 0.24, (c, d, t) => { sfxTone(c, d, t, 130, .18, { to: 62, vol: .7, att: .001 }); sfxNoise(c, d, t, .06, { f: 480, filter: 'lowpass', vol: .5, att: .001 }); sfxTone(c, d, t + .09, 190, .1, { to: 150, type: 'triangle', vol: .2, att: .002 }); }, { level: .46 });
+def('blTop', 0.7, (c, d, t) => { [659, 880, 1109, 1319, 1760].forEach((f, i) => sfxTone(c, d, t + i * .07, f, i === 4 ? .34 : .1, { type: 'triangle', vol: .36, att: .002 })); sfxNoise(c, d, t + .28, .3, { f: 5200, q: 2, vol: .12, att: .02 }); }, { level: .46 });
 // [/barrel]
 //
 // A press a game takes itself, on pointerdown (Echo's pads, Bullseye, Bowling, the drags and the runs): the

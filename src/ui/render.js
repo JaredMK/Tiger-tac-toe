@@ -108,7 +108,7 @@ function renderNow() {
 // Boards kept across a re-render of the same screen: their cells take the new classes and labels, but
 // the elements stay, so only a cell that changed repaints (rebuilding the whole Hex board on a tap made
 // phones blank part of it for a frame) and a running animation runs on (the Find Match hop).
-const KEEP_BOARDS = ['.hexboard', '.searching .spinner', '.vsintro', '.hdr .tbar'];   // (the turn bar: its bounce runs on through re-renders)   // (the searching hop: re-rendered every few seconds, it would restart and hitch)
+const KEEP_BOARDS = ['.hexboard', '.searching .spinner', '.vsintro', '.hdr .tbar', '.g-brl'];   // (the turn bar: its bounce runs on through re-renders; Barrel Launch: its canvas stays through a redraw, never made anew mid-shot)   // (the searching hop: re-rendered every few seconds, it would restart and hitch)
 function sameShape(a, b) {
   if (a.tagName !== b.tagName || a.children.length !== b.children.length) return false;
   for (let k = 0; k < a.children.length; k++) if (!sameShape(a.children[k], b.children[k])) return false;
@@ -120,6 +120,7 @@ function sameChain(a, b, ra, rb) {
   return a === ra && b === rb;
 }
 function syncAttrs(a, b) {
+  if (a.hasAttribute('data-own')) return;                       // (an element its view's script sizes and moves itself, a kept scene's canvas: its attributes are that script's alone)
   for (const at of [...a.attributes]) if (!b.hasAttribute(at.name)) a.removeAttribute(at.name);
   for (const at of [...b.attributes]) if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
 }

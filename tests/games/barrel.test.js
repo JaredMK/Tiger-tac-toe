@@ -12,7 +12,7 @@ const JSONplain = v => { const s = JSON.stringify(v); assert.ok(!/null|undefined
 const deadOn = (m, p, after = 0) => { const c = R.barrelCfg(m), i = m.at[p]; return Math.round(A.barrelCross(m, c, i, R.barrelTarget(m, c, i).phi, m.c[p], after)); };
 
 test('barrel: Admin only, skill, real time, held out of Find Match; the deal: the same column for both, every barrel in reach, nothing hidden', () => {
-  assert.deepEqual([M.release, M.category, M.minVersion, M.realTime, M.placeholder], ['admin', 'skill', '1.32.0', true, false]);
+  assert.deepEqual([M.release, M.category, M.minVersion, M.realTime, M.placeholder], ['admin', 'skill', '1.33.0', true, false]);
   assert.ok(E.FIND_MATCH_HOLD.includes('barrel'), 'the server cannot time a finger');
   assert.deepEqual(E.tuneFields('barrel').map(f => f.k), ['top', 'win', 'period', 'ramp', 'rampPct', 'amp', 'gap', 'aiMs', 'aiMsHard', 'aiMsEasy']);
   assert.ok(E.tuneFields('barrel').every(f => ['Board', 'Rules', 'Timing', 'Computer'].includes(f.group)));
@@ -28,7 +28,7 @@ test('barrel: Admin only, skill, real time, held out of Find Match; the deal: th
 test('barrel: the swing is the angle wave of the column\'s clock, by barrel; the speed-up shortens the swing a barrel up, to half at most', () => {
   const m = E.newMini('barrel', E.makeRng('s')), c = R.barrelCfg(m);
   m.ph[0] = 0; assert.equal(R.barrelAim(m, c, 0, 0), 0); assert.ok(Math.abs(R.barrelAim(m, c, 0, c.period / 4) - c.amp) < 1e-9); assert.ok(Math.abs(R.barrelAim(m, c, 0, 3 * c.period / 4) + c.amp) < 1e-9);
-  assert.equal(R.barrelPeriod(c, 5), 1600, 'off by default');
+  assert.equal(R.barrelPeriod(c, 5), 1700, 'off by default');
   E.setTune('barrel', { ramp: 'on', rampPct: 10, period: 2000 });
   try { const r = E.newMini('barrel', E.makeRng('s')), rc = R.barrelCfg(r); assert.deepEqual([0, 1, 5, 30].map(i => Math.round(R.barrelPeriod(rc, i))), [2000, 1818, 1333, 1000]); } finally { E.setTune('barrel', null); }
 });
@@ -54,10 +54,10 @@ test('barrel: a shot dead on lands in the next barrel and fires again; one past 
 
 test('barrel: every setting: the catch window, the gap, the swing angle, barrels to the top', () => {
   const at = (tune, f) => { E.setTune('barrel', tune); try { return f(E.newMini('barrel', E.makeRng('w'))); } finally { E.setTune('barrel', null); } };
-  const judge = m => { const c = R.barrelCfg(m), g = R.barrelTarget(m, c, 0); return [3, 8, 20].map(d => R.barrelJudge(m, c, 0, g.phi + d).hit); };
+  const judge = m => { const c = R.barrelCfg(m), g = R.barrelTarget(m, c, 0); return [1.5, 8, 20].map(d => R.barrelJudge(m, c, 0, g.phi + d).hit); };
   assert.deepEqual(at({ win: 2 }, judge), [true, false, false]); assert.deepEqual(at({ win: 10 }, judge), [true, true, false]);
   assert.ok(at({ gap: 60 }, m => R.barrelTarget(m, R.barrelCfg(m), 0).dist) >= 60);
-  assert.ok(at({ amp: 15 }, m => m.xs.every((x, i) => !i || Math.abs(Math.atan2(x - m.xs[i - 1], 34) * 180 / Math.PI) <= 9.3)));
+  assert.ok(at({ amp: 15 }, m => m.xs.every((x, i) => !i || Math.abs(Math.atan2(x - m.xs[i - 1], 52) * 180 / Math.PI) <= 9.3)));
   assert.equal(at({ top: 3 }, m => m.top), 3);
 });
 

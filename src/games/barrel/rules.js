@@ -9,16 +9,19 @@
 // barrel's pivot (the barrel above's middle), and the player is in that barrel and fires again (`again`); else it
 // drops back into the barrel it came from and the turn ends. Reaching the top barrel takes the square. The clock runs
 // on by the shot's moment and its flight (BARREL.fly, and .land or .fall), so the next shot's barrel carries on its
-// swing where it was. With `ramp` on, each barrel up swings `rampPct` faster (to twice at most). Nothing hidden and
+// swing where it was: a column's clock never stops or steps, on the screen neither (view.js keeps one running clock a
+// column, through every shot and every redraw of the page). With `ramp` on, each barrel up swings `rampPct` faster (to twice at most). Nothing hidden and
 // nothing drawn by chance but the column. The tap's moment is the phone's word (the server cannot time a finger, as
 // with Key Drop's stops), so the game is held out of Find Match (core/games.js FIND_MATCH_HOLD).
 import { needRng } from '../../core/random.js';
 import { tune, tuneLive } from '../../core/tune.js';
 
 // colW: how far across a barrel may stand; reach: the most of the swing a next barrel may need (a share of amp);
-// ms of a move's picture: `pre` someone else's swing up to their tap, `fly` the shot to the next barrel's height,
-// `land` a catch (the barrel recoils, the camera climbs), `fall` a miss falling back, `hold` the result on show.
-export const BARREL = { colW: 30, reach: 0.6, maxT: 600000, pre: 900, fly: 420, land: 420, fall: 620, hold: 460 };
+// ms of a move's picture: `pre` someone else's swing up to their tap, `fly` the shot to the next barrel, `land` a
+// catch (the barrel dips and springs back, the player peeks out, the camera climbs: the next shot is ready as it
+// ends), `fall` a miss hanging at the top of its flight and tumbling back, `top` the win's celebration on the top
+// barrel. (November 2026, with the wider spacing: a longer flight and landing; no hold of its own after them.)
+export const BARREL = { colW: 30, reach: 0.6, maxT: 600000, pre: 800, fly: 440, land: 520, fall: 760, top: 900 };
 const r1 = v => Math.round(v * 10) / 10, r2 = v => Math.round(v * 100) / 100, r3 = v => Math.round(v * 1000) / 1000, z = v => (v === 0 ? 0 : v);
 const DEG = Math.PI / 180;
 export function barrelCfg(mini) {
@@ -70,7 +73,7 @@ export function randomMove(mini, p, rng, from, empties) {          // (the tests
   return { t: Math.floor(rng() * 3000) };
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) { flash.br = Object.assign({}, mini.last); }
-// A move's picture, from its start: someone else's swing up to their tap (BARREL.pre), then the shot's flight, its
-// catch (or its fall back), and the result's hold.
+// A move's picture, from its start: someone else's swing up to their tap (BARREL.pre), then the shot's flight and
+// its catch (or its fall back); the top barrel reached: its celebration too.
 export const barrelMs = (hit, own) => (own ? 0 : BARREL.pre) + BARREL.fly + (hit ? BARREL.land : BARREL.fall);
-export function flashMs(f, winLen, won) { return barrelMs(!!(f && f.br && f.br.hit)) + BARREL.hold + (won ? 500 : 0); }
+export function flashMs(f, winLen, won) { return barrelMs(!!(f && f.br && f.br.hit)) + (won ? BARREL.top : 0); }

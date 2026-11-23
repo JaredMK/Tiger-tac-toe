@@ -7009,18 +7009,22 @@ button.jgcell { cursor: pointer; touch-action: none; }
 
 
 /* [barrel] Barrel Launch */
-/* Barrel Launch (December 2026): the tallies, the scene (a canvas 100 by 125: the mover's column large, the other's beside it), the result's own line, the Fire button. */
+/* Barrel Launch (December 2026; the one scene of November 2026): the tallies, the scene (one canvas, 118 units across, its height from its box: the mover's column, the camera climbing with it), the result's own line, the Fire button. */
 .g-brl { width: min(var(--gw), 440px); height: min(var(--gh), 600px); display: flex; flex-direction: column; gap: 8px; }
 .g-brl > * { flex: none; }
 .g-brl .brlbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
 .brlfield { position: relative; width: 100cqw; height: min(100cqh, 150cqw); border: 3.5px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); box-sizing: border-box; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .brlcv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* the backdrop behind the canvas: the sky (a gradient five scenes tall, cream at the foot to a dark blue at the top) and two layers painted once (view.js backdrop); each is only ever moved by its transform as the camera climbs */
+.brlfield { background: #9fd3ee; isolation: isolate; }
+.brlsky, .brlbg { position: absolute; left: 0; top: 0; width: 100%; display: block; pointer-events: none; will-change: transform; transform: translate3d(0, 0, 0); }
+.brlsky { height: 500%; background: linear-gradient(to top, #fff0d0 0%, #ceeef8 13%, #92d2f3 34%, #5498de 58%, #284292 79%, #141c4e 100%); }
 .brlline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .brlline.ok { color: var(--green); } .brlline.no { color: var(--muted); }
 .g-brl .brlbtn { height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .g-brl .brlbtn svg { width: 24px; height: 24px; flex: none; }
 /* the miniature: two little columns of barrels, each player's mark at the height they have reached */
 .tbrlw .tpic { width: 38cqw; } .tbrl { width: 100%; display: block; }
-.tbrb { fill: #c27b3c; stroke: var(--ink); stroke-width: 1.8; } .tbrb.g { fill: #f2b51b; } .tbrh { stroke: #3b3f4a; stroke-width: 1.6; }
+.tbrb { fill: #c27b3c; stroke: var(--ink); stroke-width: 1.8; } .tbrb.g { fill: #2fb38a; } .tbrh { stroke: #3b3f4a; stroke-width: 1.6; }
 .tbrt { stroke: var(--ink); stroke-width: 1.8; } .tbrt.X { fill: var(--x); } .tbrt.O { fill: var(--o); }
 /* [/barrel] */

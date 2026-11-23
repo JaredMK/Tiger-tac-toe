@@ -2,7 +2,7 @@
 
 export const info = { name: 'Barrel Launch', hint: 'Tap to fire into the barrel above. First to the top wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.32.0';   // the oldest client version that has this game (core/client.js)
+export const minVersion = '1.33.0';   // the oldest client version that has this game (core/client.js)
 export const category = 'skill';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const placeholder = false;   // never on a new state's placeholder board (games/index.js PLACE_TYPES): the seeded deals stay as they were
 export const realTime = true;   // its move is one timed tap: replayed as it was made (core/timer.js moveRate)
@@ -15,13 +15,13 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 // speeds up higher up (and by how much), and the computer's timing.
 export const TUNE = [
   { k: 'top', label: 'Barrels to the top', def: 7, min: 3, max: 12, step: 1, group: 'Rules' },
-  { k: 'win', label: 'Catch window: how far from the next barrel\'s middle a shot still lands in it (units; a barrel is 14 across)', def: 4, min: 1.5, max: 10, step: 0.5, group: 'Rules' },
-  { k: 'period', label: 'Swing speed: ms for one swing there and back (less is faster)', def: 1600, min: 600, max: 4000, step: 50, group: 'Timing' },
+  { k: 'win', label: 'Catch window: how far from the next barrel\'s middle a shot still lands in it (units; a barrel is 15 across)', def: 6.5, min: 1.5, max: 12, step: 0.5, group: 'Rules' },
+  { k: 'period', label: 'Swing speed: ms for one swing there and back (less is faster)', def: 1700, min: 600, max: 4000, step: 50, group: 'Timing' },
   { k: 'ramp', label: 'The barrels swing faster higher up', def: 'off', opts: ['off', 'on'], group: 'Timing' },
   { k: 'rampPct', label: 'Faster for each barrel up while that is on (%)', def: 8, min: 1, max: 30, step: 1, group: 'Timing' },
   { k: 'amp', label: 'Swing angle: degrees each way from straight up', def: 40, min: 15, max: 70, step: 1, group: 'Board' },
-  { k: 'gap', label: 'Barrel gap: how far up the next barrel is (units)', def: 34, min: 22, max: 60, step: 1, group: 'Board' },
+  { k: 'gap', label: 'Barrel gap: how far up the next barrel is (units; a barrel is 19 long)', def: 52, min: 30, max: 80, step: 1, group: 'Board' },
   { k: 'aiMs', label: 'Normal computer: timing error (ms)', def: 60, min: 0, max: 400, step: 5, group: 'Computer' },
-  { k: 'aiMsHard', label: 'Hard computer: timing error (ms)', def: 40, min: 0, max: 400, step: 5, group: 'Computer' },
-  { k: 'aiMsEasy', label: 'Easy computer: timing error (ms)', def: 90, min: 0, max: 400, step: 5, group: 'Computer' },
+  { k: 'aiMsHard', label: 'Hard computer: timing error (ms)', def: 50, min: 0, max: 400, step: 5, group: 'Computer' },
+  { k: 'aiMsEasy', label: 'Easy computer: timing error (ms)', def: 95, min: 0, max: 400, step: 5, group: 'Computer' },
 ];
