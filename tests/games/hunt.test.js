@@ -326,3 +326,101 @@ test('hunt, race: the computer digs its own grid by its own clues alone and find
     assert.ok(performance.now() - t0 < 80, 'Hard keeps to its time');
   } finally { huntRace(false); }
 });
+
+// ================================ Hint difficulty (the admin's `hints`) ================================
+// rules.js HUNT_HINTS: each band's reach in steps by the setting, kept on the square (tune(mini)). 'normal' is the game as
+// it always was; 'hard' and 'harder' widen the bands.
+const R = E.rulesOf('hunt'), A = E.aiOf('hunt'), M = require('../../src/games/hunt/meta.js');
+const OLD_BAND = d => (d <= 0 ? 0 : d === 1 ? 1 : d <= 3 ? 2 : d <= 5 ? 3 : 4);   // the band before the setting existed
+const withHints = (hints, fn, more) => { E.setTune('hunt', Object.assign({ hints }, more)); try { return fn(); } finally { E.setTune('hunt', null); } };
+test('hunt, hints: the default is the game as it was: the same bands, the same square, the same clues, the same computer', () => {
+  const f = E.tuneFields('hunt').find(x => x.k === 'hints');
+  assert.deepEqual([f.def, f.opts, f.group], ['normal', ['normal', 'hard', 'harder'], 'Rules']);
+  assert.equal(E.tuneLive('hunt').hints, 'normal');
+  assert.deepEqual(R.HUNT_HINTS.normal, [1, 3, 5]);
+  assert.deepEqual(R.huntRanges('normal'), [{ k: 1, lo: 1, hi: 1 }, { k: 2, lo: 2, hi: 3 }, { k: 3, lo: 4, hi: 5 }, { k: 4, lo: 6, hi: null }]);
+  for (let d = 0; d <= 14; d++) { assert.equal(L.huntBand(d), OLD_BAND(d), `d ${d}`); assert.equal(L.huntBand(d, 'normal'), OLD_BAND(d)); assert.equal(L.huntBand(d, 'nonsense'), OLD_BAND(d)); }
+  const m = L.newMini('hunt', E.makeRng('hint-default'));
+  assert.deepEqual(Object.keys(m).sort(), ['dug', 'last', 'treasure', 'type'], 'the same square: no setting kept on it');
+  assert.equal(R.huntHints(m), 'normal');
+  for (const n of [4, 5, 6, 7, 8]) {                             // every grid size: each clue as it always was
+    const sq = { type: 'hunt', treasure: 0, dug: new Array(n * n).fill(null), last: null };
+    for (let t = 0; t < n * n; t++) { sq.treasure = t; for (let c = 0; c < n * n; c++) assert.equal(L.huntClue(sq, c), OLD_BAND(L.huntDist(t, c, n)), `${n}x${n} ${t}-${c}`); }
+  }
+  const before = { type: 'hunt', treasure: 14, dug: new Array(64).fill(null), last: null, tune: { n: 8, miss: 30 } };   // a square dealt before the setting, with other settings
+  assert.equal(R.huntHints(before), 'normal'); assert.equal(L.huntClue(before, 0), OLD_BAND(L.huntDist(14, 0, 8)));
+  for (const c of [0, 5, 35]) { const h = L.newMini('hunt', seq(pick(14, 36))); const st = matchWith(['hunt']); st.squares[0].mini = h; st.turn = 'X'; assert.equal(turn(st, 0, c).band, OLD_BAND(L.huntDist(14, c))); }
+  for (let k = 0; k < 8; k++) assert.ok([7, 10, 25, 28].includes(L.localBest(L.publicMini(L.newMini('hunt', lcg(k + 40))), 'X', lcg(k), {}, HARD).move), 'Hard opens from its book');
+  assert.equal(A.needs(L.publicMini(L.newMini('hunt', lcg(1))), 'X'), 1 + Math.log2(36) / 2.5, 'the same estimate');
+  const v = M.explainVars(E.tuneLive('hunt')), fill = s => s.replace(/\{(\w+)\}/g, (x, k) => v[k]);
+  assert.equal(fill(M.explainer.play), 'Dig a square. It tells you if the treasure is hot, warm, cool or cold. Steps count up, down, left and right only, not diagonally.');
+  assert.equal(fill(M.raceExplainer.play), 'Each of you has your own treasure on your own map. Dig a square: it tells you if your treasure is hot, warm, cool or cold. Steps count up, down, left and right only, not diagonally. You can watch the other player\'s digs.');
+  assert.equal(fill(M.scExplainer.play), 'Dig a square. It tells you if the treasure is hot, warm, cool or cold. Steps count up, down, left and right only, not diagonally. Both digs join the map when the round ends.');
+});
+// A clue at each distance from a corner treasure (cell 0 of 6x6): cells 1 to 5 along the top row, then down the right side.
+const AT = [[1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [11, 6], [17, 7], [23, 8], [29, 9], [35, 10]];
+const WIDE = { hard: [0, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4], harder: [0, 1, 1, 1, 2, 2, 2, 4, 4, 4, 4] };   // the band at 0 to 10 steps
+test('hunt, hints: hard and harder widen the bands: a clue at each distance gives its band, on the square, the move, the record and the cells still possible', () => {
+  assert.deepEqual(R.huntRanges('hard'), [{ k: 1, lo: 1, hi: 2 }, { k: 2, lo: 3, hi: 5 }, { k: 3, lo: 6, hi: 8 }, { k: 4, lo: 9, hi: null }]);
+  assert.deepEqual(R.huntRanges('harder'), [{ k: 1, lo: 1, hi: 3 }, { k: 2, lo: 4, hi: 6 }, { k: 4, lo: 7, hi: null }], 'no Cool');
+  for (const hints of ['hard', 'harder']) {
+    assert.deepEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(d => L.huntBand(d, hints)), WIDE[hints], hints);
+    const m = withHints(hints, () => L.newMini('hunt', seq(pick(0, 36))));
+    assert.deepEqual(m.tune, { hints }, 'the square keeps its setting'); assert.equal(m.treasure, 0); assert.equal(R.huntHints(m), hints);
+    for (const [c, d] of AT) assert.equal(L.huntClue(m, c), WIDE[hints][d], `${hints}: cell ${c}, ${d} steps`);
+    const st = matchWith(['hunt']); st.squares[0].mini = m;
+    for (const [c, d] of AT) { st.turn = 'X'; assert.equal(turn(st, 0, c).band, WIDE[hints][d], `${hints}: the move's band at ${d} steps`); }
+    const pm = L.publicMini(m);
+    assert.deepEqual(AT.map(([c]) => pm.clues[c]), AT.map(([, d]) => WIDE[hints][d]), 'the public view: the wide bands');
+    assert.deepEqual(pm.tune, { hints }, 'the setting rides the public view');
+    st.id = 'hh'; st.seq = 0; st.recent = [];
+    const rec = L.matchRecord(st), hid = rec.state.squares[0].mini;
+    assert.ok(!('treasure' in hid)); assert.deepEqual(AT.map(([c]) => hid.clues[c]), AT.map(([, d]) => WIDE[hints][d]), 'online too');
+    const cand = L.huntCandidates(L.publicMini(m));
+    assert.ok(cand.includes(0), 'the treasure is still possible'); assert.ok(cand.every(c => AT.every(([x, d]) => L.huntBand(L.huntDist(c, x), hints) === WIDE[hints][d])), 'every one fits every wide clue');
+    assert.equal(withHints('normal', () => L.huntClue(m, 3)), WIDE[hints][3], 'a square plays on by the setting it was dealt with');
+  }
+  assert.ok(!Array.from({ length: 15 }, (_, d) => L.huntBand(d, 'harder')).includes(3), 'harder has no Cool');
+});
+test('hunt, hints: Race and Super Chaos read the square\'s bands; the computer digs only cells the wide clues allow and finds the treasure at every level', () => {
+  for (const hints of ['hard', 'harder']) {
+    const m = withHints(hints, () => E.newMini('hunt', E.makeRng('hint-race-' + hints)), { mode: 'race' });
+    assert.equal(m.race, true); assert.deepEqual(m.tune, { hints, mode: 'race' });
+    for (let k = 0; k < 36; k++) { if (k === m.tg.X || m.side.X.dug.length > 6) continue; E.applyMove(m, 'X', k, anyRng()); }
+    for (const d of m.side.X.dug) assert.equal(d.k, L.huntBand(L.huntDist(m.tg.X, d.i), hints), `race: ${hints} band`);
+    const base = withHints(hints, () => L.newMini('hunt', seq(pick(0, 36)))), fx = JSON.parse(JSON.stringify(base)), fo = JSON.parse(JSON.stringify(base));
+    L.applyMove(fx, 'X', 2); L.applyMove(fo, 'O', 23);              // 2 steps and 8 steps from the treasure
+    assert.deepEqual(R.scJoint(base, { X: fx, O: fo }).scr.bands, { X: WIDE[hints][2], O: WIDE[hints][8] }, 'Super Chaos: both digs by the square\'s bands');
+    for (const mode of ['shared', 'race']) for (const level of ['normal', 'hard']) {
+      let total = 0;
+      for (let g = 0; g < 12; g++) {
+        const h = withHints(hints, () => E.newMini('hunt', E.makeRng(`hint-ai-${hints}-${mode}-${level}-${g}`)), { mode });
+        let n = 0, r;
+        do {
+          const pm = E.publicMini(h, 'X'), cand = L.huntCandidates(pm, 'X'), b = L.localBest(pm, 'X', lcg(g * 7 + n), {}, level === 'hard' ? HARD : {});
+          if (level === 'normal') assert.ok(cand.includes(b.move), `${hints} ${mode}: Normal digs a cell the wide clues allow`);
+          else assert.equal(b.q, cand.includes(b.move) ? 1 / cand.length : 0, `${hints} ${mode}: Hard's odds by the wide clues`);   // (Hard may dig outside them to split them, or wait: an open cell)
+          r = E.applyMove(h, 'X', b.move, anyRng()); assert.ok(r.ok, `${hints} ${mode} ${level}: an open cell`); n++;
+        } while (r.outcome !== 'win' && n < 36);
+        assert.equal(r.outcome, 'win', `${hints} ${mode} ${level}: found`); total += n;
+      }
+      assert.ok(total / 12 < 9, `${hints} ${mode} ${level}: ${(total / 12).toFixed(1)} digs on average`);
+    }
+    const book = { hard: [2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 25, 26, 27, 28, 32, 33], harder: [0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 14, 15, 17, 18, 20, 21, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 35] }[hints];
+    for (let k = 0; k < 6; k++) assert.ok(book.includes(L.localBest(L.publicMini(withHints(hints, () => L.newMini('hunt', lcg(k + 60)))), 'X', lcg(k), {}, HARD).move), `${hints}: Hard opens from its book`);
+    const fresh = L.publicMini(withHints(hints, () => L.newMini('hunt', lcg(1))));
+    assert.ok(A.needs(fresh, 'X') > A.needs(L.publicMini(L.newMini('hunt', lcg(1))), 'X'), `${hints}: more digs to go than normal`);
+  }
+  assert.ok(A.needs(L.publicMini(withHints('harder', () => L.newMini('hunt', lcg(1)))), 'X') > A.needs(L.publicMini(withHints('hard', () => L.newMini('hunt', lcg(1)))), 'X'), 'harder: more than hard');
+});
+test('hunt, hints: the explainer and the setting\'s label say the bands as the table has them', () => {
+  const f = E.tuneFields('hunt').find(x => x.k === 'hints');
+  assert.deepEqual(M.explainVars({ hints: 'normal' }), { bandWords: 'hot, warm, cool or cold', hintText: '' });
+  assert.deepEqual(M.explainVars({ hints: 'hard' }), { bandWords: 'hot, warm, cool or cold', hintText: ' Hot is 1 or 2 steps away, warm 3 to 5, cool 6 to 8, cold 9 or more.' });
+  assert.deepEqual(M.explainVars({ hints: 'harder' }), { bandWords: 'hot, warm or cold', hintText: ' Hot is 1 to 3 steps away, warm 4 to 6, cold 7 or more.' });
+  const NAME = [null, 'Hot', 'Warm', 'Cool', 'Cold'];
+  for (const h of f.opts) {
+    const said = R.huntRanges(h).map(r => `${NAME[r.k]} ${r.hi == null ? r.lo + '+' : r.hi === r.lo ? r.lo + ' step' : r.lo + '–' + r.hi}`).join(', ');
+    assert.ok(f.label.includes(`${h}: ${said}`), `the label says ${h}: ${said}`);
+  }
+});

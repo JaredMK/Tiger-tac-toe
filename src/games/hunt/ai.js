@@ -1,18 +1,25 @@
 // Treasure Hunt: the computer's play.
 import { randInt } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
-import { huntBand, huntCandidates, huntDist, huntGrid, huntSize } from './rules.js';
+import { huntBand, huntCandidates, huntDist, huntGrid, huntHints, huntSize } from './rules.js';
+
+// The Hint difficulty (rules.js HUNT_HINTS): every band the computer reads is the square's own (its clues, the cells
+// still possible, the splits it weighs), and wider bands tell less a dig: its estimate of the digs left (needs) takes a
+// dig's worth as this share of normal's (measured on the 6x6 grid, Normal's digs from the cells still possible:
+// tests/sim/hunt.sim.js fits it; normal is 1, so its estimate is as it always was).
+const HUNT_PACE = { normal: 1, hard: 0.8, harder: 0.7 };
+const paceOf = pm => HUNT_PACE[huntHints(pm)] || 1;
 
 // Race mode (core/race.js, `rv: 2`): the computer digs its own grid for its own treasure (its part, pm.side[me]); the
 // other grid is the other treasure's and tells it nothing. Normal: the splitter, as in Shared. Hard: the fewest digs
 // expected (huntSolo). Both grids are open, so each side's needs come from its own candidates, with no limit.
 export function needs(pm, p) {
-  const g = huntGrid(pm, p);
-  if (!g) { const n = huntSize(pm); return 1 + Math.log2(n * n) / 2.5; }   // (a part this copy has not got: a fresh grid)
-  const n = huntCandidates(pm, p).length; return n <= 1 ? 1 : 1 + Math.log2(n) / 2.5;
+  const g = huntGrid(pm, p), k = 2.5 * paceOf(pm);
+  if (!g) { const n = huntSize(pm); return 1 + Math.log2(n * n) / k; }   // (a part this copy has not got: a fresh grid)
+  const n = huntCandidates(pm, p).length; return n <= 1 ? 1 : 1 + Math.log2(n) / k;
 }
 export function best(pm, me, rng, style, ctx) {
-  const shared = !pm.race, cand = huntCandidates(pm, me), g = huntGrid(pm, me) || { n: huntSize(pm), dug: new Array(huntSize(pm) ** 2).fill(null) };
+  const shared = !pm.race, cand = huntCandidates(pm, me), g = huntGrid(pm, me) || { n: huntSize(pm), hints: huntHints(pm), dug: new Array(huntSize(pm) ** 2).fill(null) };
   if (!cand.length) { const open = g.dug.map((d, i) => (d ? -1 : i)).filter(i => i >= 0); return { move: open[0], q: 0, shared }; }
   if (cand.length === 1) return { move: cand[0], q: 1, shared };
   const miss = tune(pm).miss || 0;                               // (the admin's mistake rate: a dig anywhere it could be)
@@ -22,7 +29,7 @@ export function best(pm, me, rng, style, ctx) {
   const n = g.n;
   for (const c of cand) {
     const groups = new Map();
-    for (const x of cand) if (x !== c) { const k = huntBand(huntDist(c, x, n)); groups.set(k, (groups.get(k) || 0) + 1); }
+    for (const x of cand) if (x !== c) { const k = huntBand(huntDist(c, x, n), g.hints); groups.set(k, (groups.get(k) || 0) + 1); }
     let split = 0;
     for (const gr of groups.values()) split += gr * gr;
     if (split < bestSplit) { bestSplit = split; best = c; }
@@ -45,15 +52,22 @@ export function best(pm, me, rng, style, ctx) {
 // every dig is worth less than a half (a wait costs nothing even with an even count: the other side waiting back
 // only brings the same position round). A wait is reported with `after` (the same position: no gain on the board).
 const HUH = { exact: 14, work: 2.5e5, depth: 14, bits: 30, eps: 1e-9, margin: 0.004 };
-// The first dig of a fresh 6x6 grid, solved to the end (every dig weighed at every position, the waits counted): the
-// four cells one in from a corner are worth a half, every other cell 17 in 36 (the other side 19 in 36).
-const HUNT_OPEN = { 6: [7, 10, 25, 28] };
-const BANDS = {};                                               // per grid size: the band between any two cells
-function bandTable(n) {
-  if (BANDS[n]) return BANDS[n];
+// The first dig of a fresh 6x6 grid, solved to the end (every dig weighed at every position, the waits counted), by Hint
+// difficulty (rules.js HUNT_HINTS): normal, the four cells one in from a corner are worth a half, every other cell 17 in 36
+// (the other side 19 in 36); hard, every cell but the corners and the two beside each (those 17 in 36); harder, every
+// cell but the eight of the second ring between its corners (those 17 in 36).
+const HUNT_OPEN = {
+  normal: { 6: [7, 10, 25, 28] },
+  hard: { 6: [2, 3, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 25, 26, 27, 28, 32, 33] },
+  harder: { 6: [0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 14, 15, 17, 18, 20, 21, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 35] },
+};
+const BANDS = {};                                               // per grid size and Hint difficulty: the band between any two cells
+function bandTable(n, hints) {
+  const key = n + ':' + hints;
+  if (BANDS[key]) return BANDS[key];
   const nn = n * n, b = new Uint8Array(nn * nn);
-  for (let a = 0; a < nn; a++) for (let c = 0; c < nn; c++) b[a * nn + c] = huntBand(huntDist(a, c, n));
-  return (BANDS[n] = b);
+  for (let a = 0; a < nn; a++) for (let c = 0; c < nn; c++) b[a * nn + c] = huntBand(huntDist(a, c, n), hints);
+  return (BANDS[key] = b);
 }
 const bits = x => { let c = 0; while (x) { x &= x - 1; c++; } return c; };
 // The solver for one set of cells C (30 or fewer) with the open cells `open` (C among them), `t0` digs already made
@@ -103,12 +117,12 @@ function huntSolver(C, open, B, nn, budget, memo) {
   };
 }
 function huntHard(pm, cand, ctx, g, rng) {
-  const n = g.n, nn = n * n, B = bandTable(n);
+  const n = g.n, nn = n * n, B = bandTable(n, g.hints), book = (HUNT_OPEN[g.hints] || {})[n];
   const C = cand.slice().sort((a, b) => a - b), m0 = C.length;
   const open = []; for (let c = 0; c < nn; c++) if (!g.dug[c]) open.push(c);
   const budget = { until: ctx.until, nodes: 0, work: 0, cap: ctx.cap || HUH.work, exact: ctx.exact || HUH.exact, stop: false };
   let vals = null, waits = [];
-  if (m0 === nn && HUNT_OPEN[n] && !ctx.solve) { const o = HUNT_OPEN[n], move = o[randInt(rng, o.length)]; return { move, q: 1 / m0, shared: true }; }   // the first dig: solved (below)
+  if (m0 === nn && book && !ctx.solve) { const move = book[randInt(rng, book.length)]; return { move, q: 1 / m0, shared: true }; }   // the first dig: solved (below)
   if (m0 <= HUH.bits) {
     const sv = huntSolver(C, open, B, nn, budget, new Map());
     waits = sv.waits();
@@ -164,7 +178,7 @@ function huntHard(pm, cand, ctx, g, rng) {
 const HSO = { exact: 9, work: 1.5e5, depth: 6, margin: 0.03 };
 const hEst = m => (m <= 1 ? 1 : 1 + Math.log2(m) / 1.55);         // a set's digs, roughly (measured on the 6x6 grid against the exact values)
 function huntSolo(cand, ctx, g) {
-  const n = g.n, nn = n * n, B = bandTable(n), until = ctx.until, memo = new Map();
+  const n = g.n, nn = n * n, B = bandTable(n, g.hints), until = ctx.until, memo = new Map();
   const C = cand.slice().sort((a, b) => a - b);
   let nodes = 0, work = 0, stop = false;
   const groups = (S, gg) => { const gr = []; for (const c of S) if (c !== gg) { const k = B[gg * nn + c]; (gr[k] || (gr[k] = [])).push(c); } return gr.filter(x => x); };
@@ -205,11 +219,13 @@ function huntSolo(cand, ctx, g) {
   return { move, q: C.includes(move) ? 1 / C.length : 0, shared: false };
 }
 
-// The first dig of a fresh n x n grid, worked out to the end (slow: half a second for 6x6; `tests/sim/hunt-table.js`
-// prints it and checks HUNT_OPEN against it): [[cell, the first mover's chance]].
-export function huntFirstDigs(n) {
+// The first dig of a fresh n x n grid under a Hint difficulty (none: normal), worked out to the end (slow: half a second
+// for 6x6; `tests/sim/hunt-table.js` prints it and checks HUNT_OPEN against it): [[cell, the first mover's chance]].
+export function huntFirstDigs(n, hints) {
   const pm = { type: 'hunt', dug: new Array(n * n).fill(null), clues: new Array(n * n).fill(null) };
+  if (hints && hints !== 'normal') pm.tune = { hints };
   const g = huntGrid(pm, 'X'), r = huntHard(pm, huntCandidates(pm, 'X'), { until: null, solve: true, cap: Infinity, exact: HUH.bits }, g, () => 0);
   return r.vals || [];
 }
 export const HUNT_FIRST = HUNT_OPEN;
+export { HUNT_PACE };

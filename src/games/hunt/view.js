@@ -1,17 +1,25 @@
 // Treasure Hunt: the screen, the miniature, the move's words and sounds, and the inputs.
-import { HUNTT, huntClue, huntGrid, huntSize, huntTreasure } from './rules.js';
+import { HUNTT, huntClue, huntGrid, huntHints, huntRanges, huntSize, huntTreasure } from './rules.js';
 import { raceSide } from '../../core/race.js';
 import { N, mv } from '../../ui/app.js';
 import { raceBoards, raceMe, raceThem, raceThumb } from '../../ui/race.js';
 
-// Treasure hunt: a dug cell shows its band (Hot 1 step, Warm 2-3, Cool 4-5, Cold 6+), never the distance.
+// Treasure hunt: a dug cell shows its band (Hot 1 step, Warm 2-3, Cool 4-5, Cold 6+ at the default Hint difficulty;
+// wider at 'hard' and 'harder', the square's own: rules.js HUNT_HINTS), never the distance.
 // Race mode (core/race.js, `rv: 2`): a treasure each, both grids open (ui/race.js raceBoards): this phone's own grid large
 // (its digs against its own treasure, the controls), the other player's smaller under it, their digs in their bands, their
 // newest dig opening there as it lands (from the move's flash). A finished square reviewed shows both treasures.
-const BAND = [{ name: 'Found!', bg: '#ffd166', fg: '#1a1a1a' }, { name: 'Hot', bg: '#ff4d4d', fg: '#fff', steps: '1 step' }, { name: 'Warm', bg: '#ffb627', fg: '#1a1a1a', steps: '2–3 steps' },
-  { name: 'Cool', bg: '#4cc9c0', fg: '#1a1a1a', steps: '4–5 steps' }, { name: 'Cold', bg: '#3b6fd6', fg: '#fff', steps: '6+ steps' }];
-// The key under the grid: each band a pill in its colour, hottest first, with how many steps it means (always there: nothing moves).
-const HKEY = `<div class="hkey" aria-label="Key: ${BAND.slice(1).map(b => `${b.name} ${b.steps}`).join(', ')}">${BAND.slice(1).map((b, k) => `<span style="background:${b.bg};color:${b.fg}"><b>${b.name}</b>${k ? b.steps.replace(' steps', '') : b.steps}</span>`).join('')}</div>`;
+const BAND = [{ name: 'Found!', bg: '#ffd166', fg: '#1a1a1a' }, { name: 'Hot', bg: '#ff4d4d', fg: '#fff' }, { name: 'Warm', bg: '#ffb627', fg: '#1a1a1a' },
+  { name: 'Cool', bg: '#4cc9c0', fg: '#1a1a1a' }, { name: 'Cold', bg: '#3b6fd6', fg: '#fff' }];
+// The key under the grid: each band the square's Hint difficulty has, a pill in its colour, hottest first, with how many
+// steps it means (the first in full, "1 step", the rest its numbers alone, "2–3", "6+"; always there: nothing moves).
+const KEYS = {};
+const stepsOf = r => (r.hi == null ? `${r.lo}+` : r.hi === r.lo ? `${r.lo}` : `${r.lo}–${r.hi}`);
+function hkey(hints) {
+  if (KEYS[hints]) return KEYS[hints];
+  const rs = huntRanges(hints), say = r => `${stepsOf(r)} step${r.hi === 1 ? '' : 's'}`;
+  return (KEYS[hints] = `<div class="hkey" aria-label="Key: ${rs.map(r => `${BAND[r.k].name} ${say(r)}`).join(', ')}">${rs.map((r, k) => `<span style="background:${BAND[r.k].bg};color:${BAND[r.k].fg}"><b>${BAND[r.k].name}</b>${k ? stepsOf(r) : say(r)}</span>`).join('')}</div>`);
+}
 const GEM = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/></svg>';
 // The treasure dug up: a chest, its lid thrown back, a gem coming up out of it with three glints (the stylesheet opens it
 // from the dig's event: closed as it comes up out of the hole, then the lid, the gem, the glints; at rest it stands open).
@@ -64,7 +72,7 @@ function raceScreen(mini, view, locked, a) {
   const mine = `<div class="g-hunt hr2">${'<div class="hgrid" style="--hn:' + hn + '">'}${g.dug.map((dg, i) => {
       const k = dg ? g.clues[i] : -1;
       return digCell(i, hn, { dg, k, found: k === 0 || gem === i, open: opening === i, by: me, last: !view && part && part.last === i }, locked);
-    }).join('')}</div>${HKEY}</div>`;
+    }).join('')}</div>${hkey(huntHints(mini))}</div>`;
   const n = (raceSide(mini, them) || { dug: [] }).dug.length, say = k => `${k} dig${k === 1 ? '' : 's'}`;
   const note = a && a.by === them && n > 0 ? `<span class="tu" style="--u:${HUNTT.bloom}ms">${say(n - 1)}</span><span class="tf" style="--f:${HUNTT.bloom}ms">${say(n)}</span>` : say(n);   // (their dig now playing: the count changes as its band shows, in the note's own room)
   return raceBoards(mine, oppGrid(mini, them, a, view), note, { cls: 'hrb' });
@@ -76,7 +84,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const opens = i => anim === i || both.includes(i);
   const found = i => i === mini.treasure && (grid.dug[i] || view);
   const by = i => (grid.dug[i] === 'X' || grid.dug[i] === 'O' ? grid.dug[i] : null);   // (who dug the cell: public, the grid's own record)
-  g = `<div class="g-hunt"><div class="hgrid" style="--hn:${hn}">${grid.dug.map((dg, i) => digCell(i, hn, { dg, k: dg ? grid.clues[i] : -1, found: !!found(i), open: opens(i), by: by(i), dot: true, last: !view && mini.last === i }, locked)).join('')}</div>${HKEY}</div>`;   // the colour key under the grid, in every mode
+  g = `<div class="g-hunt"><div class="hgrid" style="--hn:${hn}">${grid.dug.map((dg, i) => digCell(i, hn, { dg, k: dg ? grid.clues[i] : -1, found: !!found(i), open: opens(i), by: by(i), dot: true, last: !view && mini.last === i }, locked)).join('')}</div>${hkey(grid.hints)}</div>`;   // the colour key under the grid, in every mode
 
   return g;
 }

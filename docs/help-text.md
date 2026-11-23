@@ -580,11 +580,11 @@ Win: First to reach the far edge.{evenText}
 
 ## Treasure Hunt [hunt]
 Category: More luck
-Play: Dig a square. It tells you if the treasure is hot, warm, cool or cold. Steps count up, down, left and right only, not diagonally.
+Play: Dig a square. It tells you if the treasure is {bandWords}. Steps count up, down, left and right only, not diagonally.{hintText}
 Win: Dig up the treasure.
-Super Chaos Play: Dig a square. It tells you if the treasure is hot, warm, cool or cold. Steps count up, down, left and right only, not diagonally. Both digs join the map when the round ends.
+Super Chaos Play: Dig a square. It tells you if the treasure is {bandWords}. Steps count up, down, left and right only, not diagonally.{hintText} Both digs join the map when the round ends.
 Super Chaos Win: Dig up the treasure.
-Race Play: Each of you has your own treasure on your own map. Dig a square: it tells you if your treasure is hot, warm, cool or cold. Steps count up, down, left and right only, not diagonally. You can watch the other player's digs.
+Race Play: Each of you has your own treasure on your own map. Dig a square: it tells you if your treasure is {bandWords}. Steps count up, down, left and right only, not diagonally.{hintText} You can watch the other player's digs.
 Race Win: Dig up your treasure first.
 
 ## Trivia [trivia]
