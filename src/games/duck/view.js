@@ -1,6 +1,6 @@
 // Hook-a-Duck: the screen, the miniature, the move's words and sounds, and the inputs.
 import { DUKT, duckCfg, duckShared, duckTimes, pondOf } from './rules.js';
-import { N, REDUCED, mv } from '../../ui/app.js';
+import { mv, N, NT, REDUCED } from '../../ui/app.js';
 import { cfAnchor, cfFrom } from '../../ui/cardfly.js';
 import { fx, fxAt, fxAttr } from '../../ui/fx.js';
 import { arcTally, gaugeBar, lateAt } from '../../ui/progress.js';
@@ -67,7 +67,7 @@ function pondView(mini, a, o) {
   const res = f ? `<p ${lateAt(rc(f), anim ? T.show : null)} role="status">${say(f)}</p>` : last ? `<p class="${rc(last)}">${say(last)}</p>` : `<p class="dukres">&nbsp;</p>`;
   return `<div class="g-duk pc-${by}"><div class="ctals">${tal('X')}${tal('O')}</div>
     <p class="duklab">Fishing: <b class="${by}">${N(by)}</b></p>
-    <div class="dukpond" aria-label="${left.length} ducks in the pond${shared ? '' : ` of ${N(by)}`}"><div class="dukwater"${fxAttr(fx.enter ? fx.enter.at : null, 'rt')}></div><div class="dukswim"${fxAttr(fx.enter ? fx.enter.at : null, 'rt')}>${ducks}</div><div class="dukair"${fxAttr(fx.enter ? fx.enter.at : null, 'rt')}>${air}</div></div>
+    <div class="dukpond" aria-label="${left.length} ducks in the pond${shared ? '' : ` of ${NT(by)}`}"><div class="dukwater"${fxAttr(fx.enter ? fx.enter.at : null, 'rt')}></div><div class="dukswim"${fxAttr(fx.enter ? fx.enter.at : null, 'rt')}>${ducks}</div><div class="dukair"${fxAttr(fx.enter ? fx.enter.at : null, 'rt')}>${air}</div></div>
     ${res}<div class="dukcatch" aria-label="Hooked so far">${chips}</div></div>`;   // (the result's line right under the pond, clear of a replay's Skip and the reactions' button in the corners below; the catches under it)
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {

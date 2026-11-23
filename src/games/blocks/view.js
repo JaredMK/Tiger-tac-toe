@@ -8,7 +8,7 @@ import { BLOCKS, blockCells, blockKind, blockRest, blockWide, blocksCfg } from '
 import { SND, ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { haptic } from '../../net/platform.js';
-import { N, state } from '../../ui/app.js';
+import { N, NT, state } from '../../ui/app.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
 import { pipRows, thumbArt } from '../../ui/thumbs.js';
@@ -58,7 +58,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const line = s ? `<p ${lateAt('bdline ' + (ok ? 'ok' : 'no'), after)} role="status">${txt}</p>` : `<p class="bdline ${ok ? 'ok' : 'no'}">${txt}</p>`;
   const left = mine ? (mini.run && mini.run.by === turn ? mini.run.left : c.pieces) : 0, nextK = mine ? blockKind(mini, turn, mini.k[turn] + 1) : null;
   const ctl = view ? '' : `<div class="bdctl"><span class="bdnx" aria-label="Next piece">${nextK != null && left > 1 ? pieceSvg(nextK) : ''}<small>${mine ? `${left} left` : ''}</small></span><button class="btn bdturn" data-act="bd-turn"${mine ? '' : ' disabled'} aria-label="Turn the piece"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12a7 7 0 1 1-2.500-5.360"/><path d="M19.500 3.500v4.200h-4.200"/></svg></button><button class="big ${turn} bddrop" data-act="bd-drop"${mine ? '' : ' disabled'}>${fin && fin.by === turn && mine ? 'Take it' : 'Drop'}</button></div>`;
-  return `<div class="g-bd pc-${by}"><div class="ctals">${tal('X')}${tal('O')}</div><div class="bdbox"><div class="bdgrid${s && s.over ? ' over' : ''}" style="--c:${cols};--r:${rows}" role="img" aria-label="${N(by)}'s board: ${mini.lines[by]} of ${c.lines} rows cleared"><div class="bdsky"></div><div class="bdwell"></div>${cells}${hov}${cols2}</div></div>${line}${ctl}</div>`;
+  return `<div class="g-bd pc-${by}"><div class="ctals">${tal('X')}${tal('O')}</div><div class="bdbox"><div class="bdgrid${s && s.over ? ' over' : ''}" style="--c:${cols};--r:${rows}" role="img" aria-label="${NT(by)}'s board: ${mini.lines[by]} of ${c.lines} rows cleared"><div class="bdsky"></div><div class="bdwell"></div>${cells}${hov}${cols2}</div></div>${line}${ctl}</div>`;
 }
 export function heldSub(mini, turn, f, a) { return f || !mini.run ? '' : `<b class="${turn}">${N(turn)}</b>: ${mini.run.left} piece${mini.run.left === 1 ? '' : 's'} left`; }
 // The miniature: both boards side by side (X's, then O's) as little grids of blocks, over each player's rows as pips.

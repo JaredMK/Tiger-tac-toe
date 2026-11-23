@@ -37,6 +37,7 @@ export let spotTimer = null, menuOpen = false, menuStep = 'main', menuNote = '';
 export let clockTimer = null;
 export const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const N = p => (cpuPlays(p) ? CPU_ICON : '') + esc(playerName(state, p));   // a player's display name, safe for innerHTML, with the computer icon for a computer
+export const NT = p => esc(playerName(state, p));   // the name as plain text, safe inside an attribute (an aria-label): never N there, whose computer icon's markup breaks the attribute and spills onto the page
 export const isYou = p => playerName(state, p) === 'You';                                 // the player with no name (Play Computer logged out): "Your turn", "You win", never "You's turn"
 export function cpuPlays(p) { return !state.online && !!state.cpu && state.cpu.includes(p); }
 // Whose phone this is: this side online, the person's side against the computer, none on a shared phone (a race square

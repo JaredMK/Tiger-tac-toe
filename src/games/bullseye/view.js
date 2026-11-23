@@ -7,7 +7,7 @@ import { FIREBASE_CONFIG, configured } from '../../net/connect.js';
 import { attemptMove } from '../../net/moves.js';
 import { haptic } from '../../net/platform.js';
 import { blocked, moveWait } from '../../net/room.js';
-import { N, REDUCED, app, cpuPlays, state, waitLine } from '../../ui/app.js';
+import { app, cpuPlays, N, NT, REDUCED, state, waitLine } from '../../ui/app.js';
 import { KEY } from '../../ui/config.js';
 import { fx, fxAt } from '../../ui/fx.js';
 import { arcTally, gaugeBar, lateAt } from '../../ui/progress.js';
@@ -71,7 +71,7 @@ function bullsTable(mini, a, o) {
   const step2 = (aim && aim.key === key && aim.stage >= 2) || pend;
   const label = A ? `<span class="bswap"><span class="tu" style="--u:${A.t1}ms">Stop</span><span class="tf" style="--f:${A.t1}ms">Throw!</span></span>` : step2 ? 'Throw!' : 'Stop';   // someone else's throw: the button as theirs read
   const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${g ? a.by : turn}" data-act="bulls"${mine ? '' : ' disabled'}>${label}</button></div>`;
-  return `<div class="g-arc${mine ? ' bl-live' : ''}"><div class="ctals">${tal('X')}${tal('O')}</div><div class="bulls${mine ? ' live' : ''}" data-bulls="area"><canvas class="bdcv" data-bulls="cv" aria-label="The dartboard: ${N('X')} ${mini.pts.X}, ${N('O')} ${mini.pts.O} of ${goal}"></canvas>${res}</div>${btn}</div>`;
+  return `<div class="g-arc${mine ? ' bl-live' : ''}"><div class="ctals">${tal('X')}${tal('O')}</div><div class="bulls${mine ? ' live' : ''}" data-bulls="area"><canvas class="bdcv" data-bulls="cv" aria-label="The dartboard: ${NT('X')} ${mini.pts.X}, ${NT('O')} ${mini.pts.O} of ${goal}"></canvas>${res}</div>${btn}</div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = bullsTable(mini, a, { view, locked, turn, zoom: state.zoom, done: !!d });

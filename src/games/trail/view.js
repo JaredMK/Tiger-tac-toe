@@ -9,7 +9,7 @@ import { TRAIL, trailCfg, trailFar, trailGrid, trailHead, trailMs, trailSteps } 
 import { SND, ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { haptic } from '../../net/platform.js';
-import { N, state } from '../../ui/app.js';
+import { N, NT, state } from '../../ui/app.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
 import { markSvgG, thumbArt } from '../../ui/thumbs.js';
@@ -39,10 +39,12 @@ function board(mini, o) {                                          // o: { tr (t
   for (const p of ['X', 'O']) {
     const cells = o.tr[p], f = o.fresh && o.fresh.p === p ? o.fresh : null, old = f ? cells.slice(0, f.from) : cells;
     if (old.length > 1) s += `<path class="tltrail ${p}" d="${line(n, old)}"/>`;
-    if (f) cells.slice(f.from).forEach((q, k) => { s += `<path ${lateAt('tltrail ' + p, f.t + k * TRAIL.step)} d="${line(n, [cells[f.from + k - 1], q])}"/>`; });
+    if (f) cells.slice(f.from).forEach((q, k) => { s += `<path ${lateAt('tltrail ' + p, f.t + k * TRAIL.step, 'tlin')} d="${line(n, [cells[f.from + k - 1], q])}"/>`; });
     const lateHead = f && f.t != null ? f.t + (cells.length - f.from) * TRAIL.step : null, [hx, hy] = xy(n, ...cells[cells.length - 1]);
-    if (f && f.from > 0 && f.t != null) { const [ox, oy] = xy(n, ...cells[f.from - 1]); s += `<g ${lateAt('tlhead was ' + p, lateHead, 'tlhide')} transform="translate(${ox} ${oy})"><circle r="3.800"/>${markSvgG(p, 2)}</g>`; }
-    s += `<g ${lateAt('tlhead ' + p + (o.by === p ? ' now' : ''), lateHead)} transform="translate(${hx} ${hy})"><circle r="3.800"/>${markSvgG(p, 2)}</g>`;
+    if (f && f.from > 0 && f.t != null) { const [ox, oy] = xy(n, ...cells[f.from - 1]); s += `<g transform="translate(${ox} ${oy})"><g ${lateAt('tlhead was ' + p, lateHead, 'tlhide')}><circle r="3.800"/>${markSvgG(p, 2)}</g></g>`; }
+    // (the head's place on its own outer group: its pop-in, the shared .appear, animates a CSS transform, which on the same
+    // element took the place of the translate and left the head, the mover's mark, in the board's top left corner)
+    s += `<g transform="translate(${hx} ${hy})"><g ${lateAt('tlhead ' + p + (o.by === p ? ' now' : ''), lateHead)}><circle r="3.800"/>${markSvgG(p, 2)}</g></g>`;
   }
   if (o.lined && o.lined.cells.length > 1) { const [gx, gy] = xy(n, ...o.lined.cells[o.lined.cells.length - 1]); s += `<path class="tltrail lined ${o.lined.p}" d="${line(n, o.lined.cells)}"/><circle class="tlghost ${o.lined.p}" cx="${gx}" cy="${gy}" r="2.800"/>`; }
   s += '</svg>';
@@ -67,7 +69,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const line = s ? `<p ${lateAt('tlline', end)} role="status">${txt}</p>` : `<p class="tlline">${txt}</p>`;
   const left = mine && draft ? c.cells - draft.m.length : 0;
   const ctl = view ? '' : `<div class="tlctl"><button class="btn tlundo" data-act="tl-undo"${mine && draft && draft.m ? '' : ' disabled'}>Undo</button><button class="big ${turn} tldone" data-act="tl-done"${claim || (mine && draft && draft.m) ? '' : ' disabled'}>${claim ? 'Take it' : mine && draft && !draft.m ? `${left} to go` : 'Done'}</button></div>`;
-  return `<div class="g-tl pc-${by}"><div class="ctals">${tal('X')}${tal('O')}</div><div class="tlbox"><div class="tlboard" role="img" aria-label="${N('X')} is ${far('X')} rows up, ${N('O')} ${far('O')} rows down, of ${mini.n - 1}">${board(mini, opt)}</div></div>${line}${ctl}</div>`;
+  return `<div class="g-tl pc-${by}"><div class="ctals">${tal('X')}${tal('O')}</div><div class="tlbox"><div class="tlboard" role="img" aria-label="${NT('X')} is ${far('X')} rows up, ${NT('O')} ${far('O')} rows down, of ${mini.n - 1}">${board(mini, opt)}</div></div>${line}${ctl}</div>`;
 }
 // The miniature: the board with both trails, beside each player's rows crossed as a bar.
 export function miniature(mini, final) {
