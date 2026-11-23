@@ -79,13 +79,17 @@ test('Mancala: a capture that takes the other side\'s last seeds: the mover\'s o
   assert.ok(bx.includes(`<i class="mcq a" style="--u:${T.count}ms"><b class="cnt" data-from="2" data-delay="${cap}" data-ms="${R.MANC.cap}">7</b></i>`));
 });
 
-test('Mancala: level banks: a draw, said with the count; no bank ringed', () => {
+test('Mancala: level banks: a draw, said with the count; no bank ringed', async () => {
   const { mini, flash, r } = played([0, 0, 0, 1], [1, 0, 0, 0], 3, 3, 'X', 3), T = R.mancTimes(flash.mc);
   assert.deepEqual([r.outcome, flash.kind, flash.mc.fin], ['draw', 'draw', { X: 4, O: 4 }]);
   const html = draw(mini, { a: flash, locked: true });
   assert.ok(html.includes(`<span class="mcl2 lvl" style="--t:${T.say}ms">Level 4–4: a draw</span>`));
   assert.ok(!/class="mcbank [XO][^"]*top/.test(html));
   assert.deepEqual(T.cms, { X: 1000, O: 1000 }, 'both count the whole time');
+  const { moveSounds } = await import('../../src/audio/sound.js'), { GAMES } = await import('../../src/games/index.js');
+  GAMES.mancala.view = V;   // (the page registers the views in main.js; here by hand)
+  const reset = moveSounds(flash).filter(x => x[0] === 'reset');
+  assert.deepEqual(reset.map(x => x[1]), [T.say], 'the square\'s reset sound with the verdict, never during the sowing');
 });
 
 test('Mancala: "You" wins in the first person; a square found already over (no deal makes one) counts up with no sowing', () => {

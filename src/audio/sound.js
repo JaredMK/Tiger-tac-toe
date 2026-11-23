@@ -677,7 +677,7 @@ export function moveSounds(f) {
   const lastAt = out.reduce((m, x) => Math.max(m, x[1] || 0), 0);   // the move's own last sound (its result): the won chime never comes before it (a replayed run, throw or aim plays its lead-in before its result: Dash's computer once chimed as its run began)
   if (won && (CASINO.includes(f.type) || game.ownLine)) add('won', Math.max(lastAt, game.wonAt ? game.wonAt(f, total) : total - 600));   // the card games and the wheel: the chime once the result shows (a view's own `wonAt`: Trivia and Odd One Out, whose mover's phone skips the reveal and the pause the others see)
   else if (won && f.type !== 'ttt' && f.type !== 'wordle' && f.type !== 'hangman') add('won', Math.max(Math.min(lastAt, total), Math.round(total * .5)));   // the game is won: a chime (the square's stamp, and a match's end, follow on the board)
-  if (f.kind === 'draw') add('reset', 420);                          // the square resets with a new mini-game
+  if (f.kind === 'draw') add('reset', game.drawAt ? game.drawAt(f, total) : 420);   // the square resets with a new mini-game (a view's own `drawAt`: Mancala Race's level sweep, said once the banks have counted)
   return out;
 }
 // The end of the match, as this phone sees it: a win fanfare, a loss sting, or the tie chord.

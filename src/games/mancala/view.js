@@ -147,6 +147,7 @@ export function miniature(mini, final) {
 export function moveText(f, who) { const l = f.mc; return !l || (l.end && !l.sw) ? `${who} had nothing to sow` : !l.path ? 'Out of seeds' : l.cap ? `${who} captured ${l.cap.n}` : `${who} sowed ${l.n}`; }
 // The square's won chime: at the verdict when the count decides it (else the usual moment, audio/sound.js).
 export const wonAt = (f, total) => (f.mc && f.mc.sw && f.mc.fin ? mancTimes(f.mc).say : total - 600);
+export const drawAt = f => (f.mc && f.mc.sw && f.mc.fin ? mancTimes(f.mc).say : 420);   // a level sweep's reset sound: with its verdict, never during the sowing (audio/sound.js moveSounds)
 // The seeds scooped up into the hand, then one marble-on-marble click for each seed dropped (its pitch a little
 // different each time, a touch brighter into a bank); a capture: a scoop at each pit, the seeds clicking into the
 // bank together, a chime. The sweep: a scoop at each pit it takes, the seeds clicking into their bank together; the
