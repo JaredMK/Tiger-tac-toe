@@ -123,7 +123,7 @@ function echoTap(el) {
 }
 const ECHO_MINI = `<div class="tepads">${[0, 1, 2, 3].map(k => `<i class="k${k}">${shape(k)}</i>`).join('')}</div>`;   // the console, small: the four pads on their plate
 export function miniature(mini, final) {   // the pads, and each player's levels passed as square pips
-  return thumbArt(ECHO_MINI, pipRows(mini.level, ECHO.lengths.length, true), '', `Echo: X at level ${mini.level.X}, O at ${mini.level.O} of ${ECHO.lengths.length}`);
+  return thumbArt(ECHO_MINI, pipRows(mini.level, ECHO.lengths.length, true), 'techow', `Echo: X at level ${mini.level.X}, O at ${mini.level.O} of ${ECHO.lengths.length}`);
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = echoTable(mini, a, { view, locked, turn, zoom: state.zoom }); return g;

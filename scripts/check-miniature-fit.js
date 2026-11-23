@@ -1,5 +1,6 @@
 // The main board's miniatures fit their spaces (npm run check:minifit, or node scripts/check-miniature-fit.js 375x667,430x932 [games] [shots]): every game
-// dealt into the nine spaces and played some way in (a few moves, then more: mid-game), and in each space every visible
+// dealt into the nine spaces (each game in three of them: one in every row and every column) and played some way in (a
+// few moves, then more: mid-game), and in each space every visible
 // part of the miniature (as painted: clipped by what clips it) is measured against
 //   - the space: inside the square's own box, kept clear of the # lines' band on its inner sides (the board's --lb),
 //   - the game's title (.lab .lnm): never under it.
@@ -10,7 +11,10 @@ const ROOT = path.join(__dirname, '..'), OUT = path.join(ROOT, '_shots', 'minifi
 const SIZES = (process.argv[2] || '360x640,375x667,430x932').split(',').map(v => v.split('x').map(Number));
 const ONLY = process.argv[3] && process.argv[3] !== 'shots' ? process.argv[3].split(',') : null, SHOTS = process.argv.includes('shots');
 const MOVES = [3, 9];                                              // mid-game: a few moves in, then more
-const ROTS = [0, 4];                                               // each game in two spaces of the board (a corner or side, then another), as the padding differs by place
+const ROTS = [0, 1, 2];                                            // each game in three spaces, one in every row and every column (the room differs by place: a column's width, a row's height, the board's edge)
+// The game in space s on turn k: the space's row and column each moved back k (a diagonal of the board, so every game
+// meets every row and every column), and a batch of fewer than nine games repeated to fill the board.
+const gameAt = (batch, s, k) => batch[(3 * ((Math.floor(s / 3) - k + 3) % 3) + ((s % 3) - k + 3) % 3) % batch.length];
 fs.mkdirSync(OUT, { recursive: true });
 const MIME = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
 const srv = http.createServer((req, res) => { let p = decodeURIComponent(new URL(req.url, 'http://x').pathname); if (p === '/') p = '/index.html'; let f = path.join(ROOT, p); if (p === '/matter.min.js') f = path.join(ROOT, 'node_modules', 'matter-js', 'build', 'matter.min.js'); fs.readFile(f, (e, b) => { if (e) { res.writeHead(404); res.end(); } else { res.writeHead(200, { 'content-type': MIME[path.extname(f)] || 'application/octet-stream' }); res.end(b); } }); });
@@ -31,11 +35,11 @@ const srv = http.createServer((req, res) => { let p = decodeURIComponent(new URL
     const bad = new Map();
     for (const rot of ROTS) for (const moves of MOVES) for (let k = 0; k < types.length; k += 9) {
       const batch = types.slice(k, k + 9);
-      await p.evaluate(async ([batch, moves, rot]) => {
-        const E = await import('/src/core/engine.js');
+      await p.evaluate(async ([batch, moves, rot, gameSrc]) => {
+        const E = await import('/src/core/engine.js'), gameAt = (0, eval)(gameSrc);
         state.spot = null; state.flash = null; state.lock = null; state.turn = 'X'; state.winner = null; state.screen = 'board'; state.zoom = null;
         state.squares.forEach((sq, i0) => {
-          const i = (i0 - rot + 9) % 9, t = batch[i % batch.length], r = E.makeRng(`fit-${t}-${moves}-${i}`); sq.owner = null; sq.mini = E.newMini(t, r);
+          const t = gameAt(batch, i0, rot), r = E.makeRng(`fit-${t}-${moves}-${i0}`); sq.owner = null; sq.mini = E.newMini(t, r);
           if (t === 'trivia') { try { triviaDeal(state, sq, r); } catch (e) { /* (no bank) */ } }
           for (let n = 0; n < moves; n++) {
             const pl = n % 2 ? 'O' : 'X'; let m = null;
@@ -50,7 +54,7 @@ const srv = http.createServer((req, res) => { let p = decodeURIComponent(new URL
           }
         });
         render();
-      }, [batch, moves, rot]);
+      }, [batch, moves, rot, gameAt.toString()]);
       await p.waitForTimeout(260);
       const res = await p.evaluate(() => {
         const R0 = e => e.getBoundingClientRect();
@@ -82,7 +86,7 @@ const srv = http.createServer((req, res) => { let p = decodeURIComponent(new URL
         return out;
       });
       let any = false;
-      res.forEach(r => { const j = (r.i - rot + 9) % 9, t = batch[j % batch.length]; if (j < batch.length && r.probs.length) { any = true; if (!bad.has(t)) bad.set(t, []); bad.get(t).push(`space ${r.i}, ${moves} moves: ${r.probs.join(' | ')}`); } });
+      res.forEach(r => { const t = gameAt(batch, r.i, rot); if (r.probs.length) { any = true; if (!bad.has(t)) bad.set(t, []); bad.get(t).push(`space ${r.i}, ${moves} moves: ${r.probs.join(' | ')}`); } });
       if (SHOTS || any) await p.screenshot({ path: path.join(OUT, `board-${W}-r${rot}-${moves}-${k / 9}.png`) });
     }
     const scroll = await p.evaluate(() => document.scrollingElement.scrollHeight > innerHeight + 1 || document.scrollingElement.scrollWidth > innerWidth + 1);

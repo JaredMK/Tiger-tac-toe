@@ -3416,9 +3416,9 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tart.tall .tpic { width: 30cqw; }
 /* Pips that always fit (November 2026, the board's fit check, scripts/check-miniature-fit.js): a row is its mark and --pb, the pips' room
    (pips and their gaps, split .76/.24), however many pips the game's settings ask for (Home Run Heroes, Target Practice, Glass Bridge,
-   Block Drop, Rock Paper Scissors: each one's picture P and --pb kept to P + 3cqw + the mark's 16px + --pb within the 92cqw of .tart). */
-.tart:is(.thrw, .ttpw, .tgbw, .tbdw, .trpsw) .tpip .tr { --pw: min(9cqw, calc(var(--pb, 40cqw) / var(--n, 3) * .76)); gap: min(2.6cqw, calc(var(--pb, 40cqw) / var(--n, 3) * .24)); }
-.tart:is(.thrw, .ttpw, .tgbw, .tbdw, .trpsw) .tpip i { border-width: min(1.3cqw, calc(var(--pw) * .2)); }
+   Block Drop, Rock Paper Scissors, Echo: each one's picture P and --pb kept to P + 3cqw + the mark's 16px + --pb within the 92cqw of .tart). */
+.tart:is(.thrw, .ttpw, .tgbw, .tbdw, .trpsw, .techow) .tpip .tr { --pw: min(9cqw, calc(var(--pb, 40cqw) / var(--n, 3) * .76)); gap: min(2.6cqw, calc(var(--pb, 40cqw) / var(--n, 3) * .24)); }
+.tart:is(.thrw, .ttpw, .tgbw, .tbdw, .trpsw, .techow) .tpip i { border-width: min(1.3cqw, calc(var(--pw) * .2)); }
 .ttok circle { stroke: var(--ink); stroke-width: 1.6; } .ttok.X circle { fill: var(--x); } .ttok.O circle { fill: var(--o); }
 .ttok text { fill: #fff; font-weight: 900; text-anchor: middle; font-family: Nunito, Arial, sans-serif; } .ttok.O text { fill: var(--ink); }
 .tfin .a { fill: var(--ink); } .tfin .b { fill: var(--paper); }
@@ -3445,6 +3445,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tcr .tpip { width: 84cqw; gap: 2.5cqw; } .tcr .tpip .tr { --pw: min(9cqw, calc(44cqw / var(--n, 3))); } .tcr .tpip i { width: var(--pw); height: var(--pw); border-width: 1.3cqw; }
 /* Echo: the four pads */
 .tepads { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5cqw; width: 34cqw; aspect-ratio: 1; padding: 2.4cqw; background: var(--ink); border-radius: 30%; }   /* Echo's console, small: the plate and its four pads, each its own colour, shape and corner */
+.tart.techow { --pb: 40cqw; } .techow .tpic, .techow .tepads { width: 30cqw; }   /* (its four square pips beside a smaller console: they ran past the board's right edge) */
 .tepads i { display: grid; place-items: center; min-width: 0; border-radius: 2.4cqw; } .tepads i svg { width: 46%; height: 46%; fill: #fff; stroke: rgba(22, 18, 16, .6); stroke-width: 2; overflow: visible; }
 .tepads i.k0 { background: var(--mc5); border-top-left-radius: 44%; } .tepads i.k1 { background: var(--green); border-top-right-radius: 44%; } .tepads i.k2 { background: var(--sea-2); border-bottom-left-radius: 44%; } .tepads i.k3 { background: var(--mc1); border-bottom-right-radius: 44%; }
 /* Odd One Out: a grid of one shade, one tile a little lighter (a fixed corner: the square's own odd tile is never shown) */
