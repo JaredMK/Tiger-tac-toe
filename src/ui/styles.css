@@ -6717,6 +6717,7 @@ button.gsc { cursor: pointer; touch-action: none; }
 .g-cs .cscnt > i { grid-area: 1 / 1; display: flex; align-items: baseline; justify-content: flex-end; gap: 4px; font-style: normal; }
 .g-cs .cscnt > i small { grid-area: auto; align-self: auto; min-width: 2.7em; font-size: 14px; }
 .g-cs .cscnt > i.was { animation: tuntil 1ms var(--t, 0ms) both; } .g-cs .cscnt > i.now { animation: tfrom 1ms var(--t, 0ms) both; }
+@media (prefers-reduced-motion: reduce) { .g-cs .cscnt > i.was { animation: tuntil 1ms var(--t, 0ms) both !important; } .g-cs .cscnt > i.now { animation: tfrom 1ms var(--t, 0ms) both !important; } }   /* (the count's turnover is a switch at its moment, not motion: kept, or both counts showed at once) */
 .tcs { width: 92cqw; } .tcs svg { width: 100%; height: auto; display: block; overflow: visible; }
 .tcss { fill: #d9d3c4; stroke: var(--ink); stroke-width: 2.6; } .tcsw { fill: #cb9257; stroke: var(--ink); stroke-width: 2.6; } .tcsg { fill: #9a6cf0; stroke: var(--ink); stroke-width: 2.6; stroke-linejoin: round; } .tcsl { stroke: var(--ink); stroke-width: 3; stroke-linecap: round; fill: none; }
 /* [/castle] */

@@ -1,7 +1,17 @@
 // Castle Smash: the screen, the miniature, the move's words and sounds, and this phone's drag.
 // One wide scene on a canvas (ui/stage.js): X's castle at the left and O's at the right, each with its catapult standing
-// before it and its banner behind it, under a sky with hills. A phone too narrow for the whole scene looks at the part
-// that matters: from the shooter's catapult to the castle it throws at (the camera slides across as the turn passes).
+// before it and its banner behind it, under a sky with hills. A phone too narrow for the whole scene aims from the part
+// that matters: from the shooter's catapult to the castle it throws at. THE CAMERA (a window on the scene, `cam`): a turn
+// opens on the wide shot of the whole battlefield (both castles with their crystals, both catapults), held a moment
+// (CST.wide), then eases into the shooter's aiming view (CST.zoom, the interface's cubic-bezier(.4, 0, .2, 1)). On this
+// phone's own turn that plays once a turn, as the square opens on it (keyed to the square and the shot: a redraw, or the
+// square opened again, never starts it again), its clock running once the board's zoom into the square has landed, in
+// the interface's time (Normal | Speed), and a touch on the square cuts it short: straight to the aiming view, the pull
+// from that very touch. Someone else's shot (the computer's, the other player's) opens its replay on it, inside the
+// move's own time (CST, and flashMs); this phone's own shot, already seen live, never shows it, and the wide shot is
+// where the camera waits while someone else's turn is still to come. Reduced motion, or a canvas wide enough to show the
+// whole scene as it aims, goes without it. Anything else the camera does (a turn passing in place, a practice match's
+// computer) it eases to (CSV.ease).
 // The rules keep a castle as its attacker sees it (sim.js: the shooter throws to the right), so everything of a shot
 // (the catapult, the boulder, the castle struck, the dust) is drawn in the shooter's own frame, turned round for O
 // (`frame`): x across, h up, in the scene's units.
@@ -11,15 +21,18 @@
 // knocked block's, the events for the dust, the splinters and the crystal's burst). Online this phone works the shot
 // out itself as it lets go (the same simulation on the castle as it has it) and plays that at once; the server's
 // record then carries on from the same moment, and its result is the one shown. Someone else's shot (the other
-// player's, the computer's) first draws the catapult back (CST.pull), then plays the same.
+// player's, the computer's) first shows the camera's intro, then draws the catapult back (CST.pull) and plays the same.
+import { durRate } from '../../core/timer.js';
 import { other } from '../../core/util.js';
 import { CS, CST, KINDS, K, castleArc, castleCfg, castleCore, castleLib, castleMove, castleShot, unpack } from './rules.js';
 import { SND, ownPress } from '../../audio/sound.js';
+import { mmIntro } from '../../net/matchmaking.js';
 import { attemptMove } from '../../net/moves.js';
 import { haptic } from '../../net/platform.js';
 import { blocked } from '../../net/room.js';
-import { app, state } from '../../ui/app.js';
-import { fxAt } from '../../ui/fx.js';
+import { REDUCED, app, state } from '../../ui/app.js';
+import { explainT } from '../../ui/explainer.js';
+import { fx, fxAt, zoomBusy } from '../../ui/fx.js';
 import { ownMove } from '../../ui/haptics.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
 import { runColours, runInputAt } from '../../ui/runner.js';
@@ -29,23 +42,28 @@ import { flashAnimating, skipFlash } from '../../ui/turns.js';
 
 export const ownLine = true;
 export const replay = { synth: () => [] };                         // the move is the fling: played from the flash
-// The picture's own numbers: the camera, the catapult (its axle's height, its arm from rest to full pull, in radians
-// from straight ahead), the drag (a full pull as a share of the scene's smaller side, the least pull that is a shot),
-// the dotted arc (steps of flight shown, a dot every `dot`), and how long each effect lasts (ms).
+// The picture's own numbers: the camera (scene units a pixel at the least, the narrowest aiming view, the margin round
+// the scene, how long it takes to settle wherever it moves but for the intro's zoom (ms), the ground line's share of the
+// height; the height the wide shot fits, the banners' tops and a margin; the least zoom worth an intro, a share of the
+// wide shot; `intro` null by the device (none with reduced motion), true or false to force it: the tests), the catapult
+// (its axle's height, its arm from rest to full pull, in radians from straight ahead), the drag (a full pull as a share
+// of the scene's smaller side, the least pull that is a shot), the dotted arc (steps of flight shown, a dot every
+// `dot`), and how long each effect lasts (ms).
 export const CSV = {
-  px: 1, win: 362, pad: 8, ease: 170, ground: 0.085,
+  px: 1, win: 362, pad: 8, ease: 170, ground: 0.085, tall: 132, minZoom: 0.06, intro: null,
   axle: 26, rest: Math.PI - 0.2, back: 0.58, over: 0.28,
   pull: 0.36, least: 12, arc: 27, dot: 3,
   puff: 380, chips: 560, burst: CST.burst, crack: 260, trail: 5,
 };
 const FR = 1000 * CS.sub / CS.hz, STEP = 1000 / CS.hz;            // a recorded frame, a step (ms)
+const PRE = CST.wide + CST.zoom;                                  // the intro: the wide shot held, the zoom into the aiming view (ms; someone else's shot, before its pull)
 const ARM = Math.hypot(CS.rel[0] - CS.cat, CS.rel[1] - CSV.axle), REL = Math.atan2(CS.rel[1] - CSV.axle, CS.rel[0] - CS.cat);   // the arm's length and its angle as the boulder leaves it
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const lerp = (a, b, u) => a + (b - a) * u;
 const COL = { stone: '#d9d3c4', stone2: '#c7c0af', stoneHi: '#ece8dc', wood: '#cb9257', wood2: '#a8713c', gem: '#9a6cf0', gemHi: '#cdb6ff', rock: '#8f877b', rockHi: '#aaa296', sky0: '#9fd3ee', sky1: '#e8f4e2', hill0: '#b5d795', hill1: '#93c57a', grass: '#7db862', dirt: '#b99561', dust: '#cfc3a8' };
 
-let src = null, pend = null, draft = null, cam = null, hooked = false, skipped = null;
-const DEC = new WeakMap(), LEAD = new WeakMap();
+let src = null, pend = null, draft = null, cam = null, hooked = false, skipped = null, seen = null;
+const DEC = new WeakMap(), PLAYS = new WeakMap(), INTROS = new Map();
 // A shot's recording, unpacked once: the boulder's place in each frame and each knocked block's poses.
 function decode(ph) {
   let d = DEC.get(ph);
@@ -64,14 +82,69 @@ export function poseAt(d, w, i, fr) {
   const n = t.v.length / 3, k = clamp(fr - t.f0, 0, n - 1), a = Math.floor(k), b = Math.min(n - 1, a + 1), u = k - a, v = t.v;
   return [lerp(v[a * 3], v[b * 3], u) / 2, lerp(v[a * 3 + 1], v[b * 3 + 1], u) / 2, lerp(v[a * 3 + 2], v[b * 3 + 2], u) / 50];
 }
-// How far this phone's own shot is ahead of its flash's clock (ms): it never shows the pull, and online it left the
-// catapult before the record came back. Worked out once, as the flash first plays.
-function leadOf(f) {
-  if (!f || !f.phys || !ownMove(f)) return 0;
-  let l = LEAD.get(f);
-  if (l == null) { l = CST.pull + (pend && pend.m.aim === f.phys.aim && pend.m.power === f.phys.power ? Math.max(0, performance.now() - pend.t0) : 0); LEAD.set(f, l); }
-  return l;
+// How a flash plays on this screen, worked out once as it first plays: `lead`, how far its picture is ahead of its
+// flash's clock (ms), and whether it opens on the camera's intro. This phone's own shot never shows the intro or the
+// pull (it was aimed here) and online left the catapult before the record came back; someone else's opens on the intro,
+// unless this screen goes without it (its picture then starts at the pull, and its flash ends as its picture does).
+function playOf(f) {
+  if (!f || !f.phys) return { lead: 0, intro: false };
+  let p = PLAYS.get(f);
+  if (!p) {
+    const own = ownMove(f), intro = !own && introOk() && zoomsHere();
+    p = { lead: own ? PRE + CST.pull + (pend && pend.m.aim === f.phys.aim && pend.m.power === f.phys.power ? Math.max(0, performance.now() - pend.t0) : 0) : intro ? 0 : PRE, intro };
+    PLAYS.set(f, p);
+  }
+  return p;
 }
+
+// ---------- the camera ----------
+// A view of the scene: a window on it in X's frame's units, its left edge `l` and its width `w`, drawn the canvas's W
+// pixels across with the ground line near the bottom (`groundY`, in pixels). The aiming view: from the shooter's catapult
+// to the castle it throws at, a pixel a unit or more (all of the scene where the canvas is that wide). The wide shot: the
+// whole battlefield, both castles with their crystals and banners and both catapults, fitted to the canvas.
+const groundY = H => Math.round(H - Math.max(22, H * CSV.ground));
+export function aimView(by, W) { const w = clamp(W / CSV.px, CSV.win, CS.w + 2 * CSV.pad); return { l: by === 'X' ? CS.w + CSV.pad - w : -CSV.pad, w }; }
+export function wideView(W, H) { const w = Math.max(CS.w + 2 * CSV.pad, W * CSV.tall / Math.max(1, groundY(H))); return { l: CS.w / 2 - w / 2, w }; }
+export const camZooms = (W, H) => 1 - aimView('X', W).w / wideView(W, H).w > CSV.minZoom;   // the two differ enough for an intro (a canvas as wide as the scene aims with all of it in view)
+// A view `u` of the way from one to another (0..1): the width by equal ratios (an even zoom), the left edge as far along
+// as the width (so an edge the two share stays put: the castle thrown at keeps to its side of the canvas).
+export function viewAt(a, b, u) {
+  const w = a.w * Math.pow(b.w / a.w, u), s = Math.abs(a.w - b.w) < 0.5 ? u : (a.w - w) / (a.w - b.w);
+  return { l: a.l + (b.l - a.l) * s, w };
+}
+// The interface's easing (ui/fx.js ZOOM.ease), cubic-bezier(.4, 0, .2, 1): the curve's x solved for u by halving.
+export function easeStd(u) {
+  if (!(u > 0)) return 0;
+  if (u >= 1) return 1;
+  let lo = 0, hi = 1, t = u;
+  for (let i = 0; i < 24; i++) { t = (lo + hi) / 2; if (3 * (1 - t) * (1 - t) * t * 0.4 + 3 * (1 - t) * t * t * 0.2 + t * t * t < u) lo = t; else hi = t; }
+  return 3 * (1 - t) * t * t + t * t * t;
+}
+// The intro `t` ms in (its own time): the wide shot held CST.wide, then the zoom over CST.zoom into the shooter's
+// aiming view (from `from`, where the camera was as the zoom began: the wide shot unless it was still on its way there).
+export function introView(by, W, H, t, from) {
+  const wide = wideView(W, H), aim = aimView(by, W);
+  return t < CST.wide ? wide : t < PRE ? viewAt(from || wide, aim, easeStd((t - CST.wide) / CST.zoom)) : aim;
+}
+const introOk = () => (CSV.intro != null ? CSV.intro : !REDUCED);
+// The canvas as this screen last drew it (else as it stands) wide enough to need no intro? (Unknown: a phone's.)
+function zoomsHere() {
+  let W = seen ? seen.W : 0, H = seen ? seen.H : 0;
+  if (!(W >= 2 && H >= 2)) { const cv = app && app.querySelector ? app.querySelector('canvas.cscv') : null; W = cv ? Number(cv.offsetWidth) || 0 : 0; H = cv ? Number(cv.offsetHeight) || 0 : 0; }
+  return !(W >= 2 && H >= 2) || camZooms(W, H);
+}
+// This phone's own turn: its intro, once a turn, as the square opens on it: keyed to the square and the shot (both
+// counts and the castles as they lie; the match's id online), so a redraw, or the square opened again the same turn,
+// never starts it again. Its clock (`t0`) starts once the board's zoom into the square has landed and nothing covers the
+// square (the side reveal, a "?" card); a touch on the square cuts it (`cut`).
+const castleSig = m => { let s = 0; for (const p of ['X', 'O']) for (const b of m.c[p]) s = (s * 31 + b[0] + b[1] * 7 + b[2] * 13 + b[3]) % 1000003; return s; };
+function introFor(mini) {
+  const key = `${state.id || ''}:${state.zoom}:${mini.n.X}:${mini.n.O}:${castleSig(mini)}`;
+  let r = INTROS.get(key);
+  if (!r) { r = { key, t0: null, cut: false }; INTROS.set(key, r); if (INTROS.size > 40) INTROS.delete(INTROS.keys().next().value); }
+  return r;
+}
+export const introNow = () => (src ? src.intro : null);          // (the tests and the browser checks: this phone's turn's intro as it stands)
 
 // ---------- the drag ----------
 // The pull so far as a shot: back and down from where the finger went down, for the side that is shooting.
@@ -86,7 +159,10 @@ function hook() {
   if (hooked || !app || typeof app.addEventListener !== 'function') return;
   hooked = true;
   app.addEventListener('pointerdown', e => {
-    if (state.screen !== 'mini' || draft || !runInputAt(e.target) || !e.target.closest || e.target.closest('button')) return;
+    if (state.screen !== 'mini' || draft || !runInputAt(e.target) || !e.target.closest) return;
+    const r = src && src.zoom === state.zoom ? src.intro : null;
+    if (r && !r.cut && e.target.closest('.g-cs')) { r.cut = true; if (cam) cam.snap = true; go(); }   // (a touch during the turn's intro: straight to the aiming view, and a drag goes on from this very touch)
+    if (e.target.closest('button')) return;
     const el = e.target.closest('.csfield.live');
     if (!el || !live()) return;
     draft = { id: e.pointerId, el, sq: state.zoom, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, creak: false };
@@ -235,18 +311,38 @@ function burst(c, P, x, h, u, px) {
 const go = stage('canvas.cscv', (c, W, H, now) => {
   if (!src) return false;
   const P = runColours(), { mini, a } = src;
+  seen = { W, H };
   if (pend && (now > pend.till || pend.sq !== src.zoom)) pend = null;
-  // the shot on show: the flash's, or this phone's own on its way to the server; T: ms into it (its pull first)
+  // the shot on show: the flash's, or this phone's own on its way to the server; T: ms into its picture (the intro, the
+  // pull, the swing, the recording: someone else's from the intro, this phone's own from the swing); tp: from the pull
   let ph = a ? a.phys : null, T = 0;
-  if (a) { const at = fxAt('move', a); T = at == null ? Infinity : now - at + leadOf(a); }
-  else if (pend) { ph = pend.ph || { by: pend.by, aim: pend.m.aim, power: pend.m.power, kind: 'fly', rec: null, ev: [], was: null, ms: 2500 }; T = now - pend.t0 + CST.pull; }
-  const by = ph ? ph.by : src.by, tg = other(by), tr = ph ? T - CST.pull - CST.swing : -1, fr = tr / FR;
+  if (a) { const at = fxAt('move', a); T = at == null ? Infinity : now - at + playOf(a).lead; }
+  else if (pend) { ph = pend.ph || { by: pend.by, aim: pend.m.aim, power: pend.m.power, kind: 'fly', rec: null, ev: [], was: null, ms: 2500 }; T = now - pend.t0 + PRE + CST.pull; }
+  const by = ph ? ph.by : src.by, tg = other(by), tp = T - PRE, tr = ph ? tp - CST.pull - CST.swing : -1, fr = tr / FR;
   const d = ph && ph.rec ? decode(ph) : null;
-  // the camera: the whole scene where it fits, else from the shooter's catapult to the castle it throws at
-  const winW = clamp(W / CSV.px, CSV.win, CS.w + 2 * CSV.pad), k = W / winW, gy = Math.round(H - Math.max(22, H * CSV.ground)), want = by === 'X' ? CS.w + CSV.pad - winW : -CSV.pad;
-  if (!cam || cam.sq !== src.zoom || cam.w !== W) cam = { x: want, t: now, sq: src.zoom, w: W };
-  else { cam.x += (want - cam.x) * Math.min(1, (now - cam.t) / CSV.ease); cam.t = now; if (Math.abs(want - cam.x) < 0.5) cam.x = want; }
-  const x0 = cam.x;
+  // the camera: the shooter's aiming view; the intro first (someone else's shot: in its picture; this phone's own turn:
+  // from the moment the square is in place, in the interface's time); the wide shot while someone else's turn is to come
+  const gy = groundY(H), aim = aimView(by, W), wide = wideView(W, H), zooms = camZooms(W, H);
+  let it = null, iid = null;                                        // an intro on show: how far into it (ms, its own time), and which
+  if (ph && a && playOf(a).intro) { it = T; iid = a; }
+  else if (!ph && src.intro) {
+    const r = src.intro;
+    if (r.t0 == null && !mmIntro && !explainT) r.t0 = now + zoomBusy();
+    it = r.cut || !introOk() || !zooms ? Infinity : r.t0 == null ? -1 : (now - r.t0) * durRate('ui'); iid = r;
+  }
+  const zooming = it != null && it >= CST.wide && it < PRE;
+  const goal = it != null ? (it < CST.wide ? wide : aim) : !ph && src.wait && introOk() && zooms ? wide : aim;
+  if (!cam || cam.sq !== src.zoom || cam.vis !== src.vis || cam.W !== W || cam.H !== H) cam = { l: goal.l, w: goal.w, t: now, sq: src.zoom, vis: src.vis, W, H, zid: null, zf: null, snap: false, fresh: true };   // (a square just opened, or the canvas resized: straight where it should be)
+  if (zooming) {                                                    // the intro's zoom: an exact curve, from where the camera was as it began
+    if (cam.zid !== iid) { cam.zid = iid; cam.zf = cam.fresh ? wide : { l: cam.l, w: cam.w }; }
+    const v = viewAt(cam.zf, aim, easeStd((it - CST.wide) / CST.zoom)); cam.l = v.l; cam.w = v.w;
+  } else {                                                          // anything else: eased there (at once with reduced motion, or a touch that cut the intro)
+    const u = REDUCED || cam.snap ? 1 : Math.min(1, (now - cam.t) / CSV.ease);
+    cam.l += (goal.l - cam.l) * u; cam.w += (goal.w - cam.w) * u;
+    if (Math.abs(goal.l - cam.l) < 0.3 && Math.abs(goal.w - cam.w) < 0.3) { cam.l = goal.l; cam.w = goal.w; }
+  }
+  cam.t = now; cam.snap = false; cam.fresh = false;
+  const x0 = cam.l, k = W / cam.w;
   // the sky, the hills, the ground
   const sky = c.createLinearGradient(0, 0, 0, gy); sky.addColorStop(0, COL.sky0); sky.addColorStop(1, COL.sky1); c.fillStyle = sky; c.fillRect(0, 0, W, gy);
   c.lineJoin = 'round'; c.strokeStyle = P.ink;
@@ -282,10 +378,10 @@ const go = stage('canvas.cscv', (c, W, H, now) => {
       // the catapult: at rest, drawn back by the drag or the pull, swinging, or thrown
       let th = CSV.rest, loaded = false, ring = false;
       const col = s === 'X' ? P.X : P.O;
-      if (shooting) {
+      if (shooting) {                                              // (the intro: at rest, loaded)
         const back = CSV.rest + CSV.back * ph.power;
-        if (T < CST.pull) { const u = clamp(T / (CST.pull * 0.8), 0, 1); th = lerp(CSV.rest, back, 1 - (1 - u) * (1 - u)); loaded = true; }
-        else if (tr < 0) { const u = clamp((T - CST.pull) / CST.swing, 0, 1); th = lerp(back, REL, u * u); loaded = true; }
+        if (tp < CST.pull) { const u = clamp(tp / (CST.pull * 0.8), 0, 1); th = lerp(CSV.rest, back, 1 - (1 - u) * (1 - u)); loaded = true; }
+        else if (tr < 0) { const u = clamp((tp - CST.pull) / CST.swing, 0, 1); th = lerp(back, REL, u * u); loaded = true; }
         else { const u = clamp(tr / 260, 0, 1); th = REL - CSV.over * Math.sin(u * Math.PI) * (1 - u * 0.5); }
       } else if (s === src.by && !ph && src.mine) {
         const m = draft && draft.sq === src.zoom ? pullOf(draft, s) : null;
@@ -322,10 +418,11 @@ const go = stage('canvas.cscv', (c, W, H, now) => {
       if (end && tr < (end.t * STEP) + CSV.chips) more = true;
     });
   }
-  if (ph && T < CST.pull + CST.swing + (ph.ms || 0) + CSV.burst) more = true;
-  // this phone's own shot is ahead of its flash by the pull it never shows: the flash ends as its picture does
-  if (a && src.own && skipped !== a && T >= CST.pull + CST.swing + (ph.ms || 0) + 60 && Number.isFinite(T) && flashAnimating()) { skipped = a; setTimeout(() => { if (state.flash === a) skipFlash(); }, 0); }
-  return more || !!draft || !!pend || cam.x !== want;
+  if (ph && T < PRE + CST.pull + CST.swing + (ph.ms || 0) + CSV.burst) more = true;
+  // a picture ahead of its flash's clock (this phone's own shot: the intro and the pull it never shows; someone else's
+  // without the intro): the flash ends as its picture does
+  if (a && playOf(a).lead > 0 && skipped !== a && T >= PRE + CST.pull + CST.swing + (ph.ms || 0) + 60 && Number.isFinite(T) && flashAnimating()) { skipped = a; setTimeout(() => { if (state.flash === a) skipFlash(); }, 0); }
+  return more || !!draft || !!pend || zooming || (it != null && it < PRE) || cam.l !== goal.l || cam.w !== goal.w;
 });
 
 // ---------- the screen ----------
@@ -335,15 +432,15 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   hook();
   const ph = a && a.phys ? a.phys : null, own = !!ph && ownMove(a), o = { view, locked, turn };
   const rest = !ph && (view || d) && mini.last ? mini.last : null, l = ph || rest;
-  const by = ph ? a.by : rest ? rest.by : turn, mine = !view && !locked && !ph && !d;
-  const lead = ph ? leadOf(a) : 0, t0 = ph ? CST.pull + CST.swing - lead : null, land = ph ? Math.max(0, t0 + ph.ms) : null;
+  const by = ph ? a.by : rest ? rest.by : turn, mine = !view && !locked && !ph && !d, myTurn = mine && !blocked();   // (myTurn: this phone's own turn, not someone else's replay showing the mover's screen)
+  const lead = ph ? playOf(a).lead : 0, t0 = ph ? PRE + CST.pull + CST.swing - lead : null, land = ph ? Math.max(0, t0 + ph.ms) : null;
   if (pend && ((ph && own) || pend.sq !== state.zoom)) pend = null;   // (the record has come back: the flash carries the shot on)
   const tal = p => {
     const n = mini.n[p], was = ph && a.by === p ? n - 1 : n, lab = v => `<span>${v}</span><small>${v === 1 ? 'shot' : 'shots'}</small>`;
     return arcTally(p, o, `<b class="dbig cscnt" aria-label="${n} shot${n === 1 ? '' : 's'}">${was !== n ? `<i class="was" style="--t:${Math.max(0, Math.round(t0))}ms">${lab(was)}</i><i class="now" style="--t:${Math.max(0, Math.round(t0))}ms">${lab(n)}</i>` : `<i>${lab(n)}</i>`}</b>`);
   };
   const line = ph ? `<p ${lateAt('csline ' + (good(ph) ? 'ok' : 'no'), land)} role="status">${words(ph)}</p>` : `<p class="csline${l ? (good(l) ? ' ok' : ' no') : ''}">${l ? words(l) : ''}</p>`;
-  src = { mini, a: ph ? a : null, by, own, mine, view: !!(view || d), zoom: state.zoom };
+  src = { mini, a: ph ? a : null, by, own, mine, view: !!(view || d), zoom: state.zoom, intro: myTurn ? introFor(mini) : null, wait: !ph && !view && !d && !myTurn, vis: fx.enter ? fx.enter.at : 0 };   // (vis: this visit to the square, the screen's entry; wait: someone else's turn, or this one's held up)
   go();
   const left = p => (castleCore(mini.c[p]) ? `${mini.c[p].length - 1} blocks and the crystal` : 'smashed');
   return `<div class="g-cs pc-${by}"><div class="ctals">${tal('X')}${tal('O')}</div><div class="csbox"><div class="csfield${mine ? ' live' : ''}"><canvas class="cscv" role="img" aria-label="Two castles and their catapults. X's castle: ${left('X')}. O's castle: ${left('O')}."></canvas></div></div>${line}</div>`;
@@ -362,13 +459,13 @@ export function moveText(f, who) {
   const l = f.phys;
   return !l ? `${who} flung a boulder` : l.core ? `${who} smashed the crystal` : l.kind === 'short' ? `${who}'s boulder fell short` : l.kind === 'long' ? `${who}'s boulder sailed past` : l.broke ? `${who} smashed a block` : l.off ? `${who} knocked a block out` : l.cracked ? `${who} cracked a stone` : l.moved ? `${who} shook the castle` : `${who} hit the castle`;
 }
-// The shot's sounds, each once from the simulation's events: the rope and the fling (someone else's: a shot made here
-// was heard as it was made), the whoosh of the flight, a knock for each of the boulder's hits by what it struck and how
-// hard, the blocks' own knocks, a crack, a break, the crystal's end, a dull thud for a dud.
+// The shot's sounds, each once from the simulation's events: the rope and the fling (someone else's, after the camera's
+// intro: a shot made here was heard as it was made), the whoosh of the flight, a knock for each of the boulder's hits by
+// what it struck and how hard, the blocks' own knocks, a crack, a break, the crystal's end, a dull thud for a dud.
 export function sounds(f, add, won, mini, last) {
   const ph = f.phys; if (!ph) return;
-  const own = ownMove(f), lead = leadOf(f), base = CST.pull + CST.swing - lead, put = (n, ms, rate) => { if (base + ms >= -30) add(n, Math.max(0, base + ms), rate); };
-  if (!own) { add('csPull', 0); add('csFling', CST.pull, 0.9 + ph.power * 0.25); }
+  const own = ownMove(f), lead = playOf(f).lead, base = PRE + CST.pull + CST.swing - lead, put = (n, ms, rate) => { if (base + ms >= -30) add(n, Math.max(0, base + ms), rate); };
+  if (!own) { add('csPull', PRE - lead); add('csFling', PRE + CST.pull - lead, 0.9 + ph.power * 0.25); }
   put('csWhoosh', 60, 0.85 + ph.power * 0.3);
   let knocks = 0, lastAt = -99;
   for (const e of ph.ev || []) {

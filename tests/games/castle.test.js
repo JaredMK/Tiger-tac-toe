@@ -184,7 +184,7 @@ test('castle: the move on the match: its flash carries the recording, the square
   assert.deepEqual(Object.keys(ph).sort(), ['aim', 'broke', 'by', 'core', 'cracked', 'ev', 'kind', 'moved', 'ms', 'n', 'off', 'power', 'rec', 'was']);
   assert.ok(ph.rec && typeof ph.rec.b === 'string' && Array.isArray(ph.rec.t) && Array.isArray(ph.was) && ph.was.length >= 12); assert.equal(ph.by, p);
   assert.ok(!('rec' in st.squares[4].mini.last) && !/"rec"/.test(JSON.stringify(st.squares)), 'no recording on the square');
-  assert.ok(E.playMs(f) >= R.CST.pull + R.CST.swing + ph.ms);
+  assert.ok(E.playMs(f) >= R.CST.wide + R.CST.zoom + R.CST.pull + R.CST.swing + ph.ms, 'the move\'s length: the camera\'s intro (someone else\'s shot opens on it), the pull, the swing, the recording');
   // online: two shots in a row; the entry before has let its recording go
   let rec = E.newOnlineMatch({ games: { castle: true } }, E.makeRng('on'), 'g1', 0);
   for (const t of E.TYPES) rec.state.games = ['castle'];

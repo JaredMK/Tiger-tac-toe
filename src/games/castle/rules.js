@@ -21,9 +21,11 @@ import { other } from '../../core/util.js';
 import { CS, castleAimAt, castleCore, castleDeal, castleLib, castleMove, castleShot } from './sim.js';
 export { CS, KINDS, K, castleMove, castleArc, castleAimAt, castleSpeed, castleShot, castleDeal, castleCore, castleShield, castleBox, castleLib, pack, unpack } from './sim.js';
 
-// The move's moments on the screen (ms; view.js): someone else's catapult is drawn back first (`pull`), the arm
+// The move's moments on the screen (ms; view.js): someone else's shot opens on the wide shot of the whole battlefield,
+// held (`wide`), and the camera eases into the shooter's view (`zoom`); their catapult is drawn back (`pull`), the arm
 // swings (`swing`) and the boulder leaves; the recording plays; the result is held (`hold`), a win a little longer.
-export const CST = { pull: 520, swing: 140, hold: 450, win: 700, burst: 620 };
+// (This phone's own shot was aimed here: its picture starts at the swing, view.js playOf.)
+export const CST = { wide: 550, zoom: 800, pull: 520, swing: 140, hold: 450, win: 700, burst: 620 };
 // A square's own numbers (meta.js TUNE): the top speed (units a tick), the boulder's and the stone's density (the
 // boulder weighs 1.5 and a brick 1 at 100%), the punches that break timber, crack stone and end the core, the hard
 // hits a stone takes, and the computer's hand by level.
@@ -68,5 +70,5 @@ export function moveFlash(m, p, range, bjFrom, mini, flash) {
 }
 export function flashMs(f, winLen, won) {
   const ph = f.phys;
-  return CST.pull + CST.swing + (ph ? ph.ms : 1500) + CST.hold + (won ? CST.win : 0);
+  return CST.pull + CST.swing + (ph ? CST.wide + CST.zoom + ph.ms : 1500) + CST.hold + (won ? CST.win : 0);
 }
