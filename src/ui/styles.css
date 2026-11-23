@@ -6200,6 +6200,19 @@ button.gbp { cursor: pointer; touch-action: manipulation; }
 .mzgo.rpress svg { box-shadow: none; translate: 0 3px; }
 .mzline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .mzline.ok { color: var(--green); } .mzline.no { color: var(--x); }
+.g-mz .mzen { height: 20px; display: flex; align-items: center; gap: 6px; padding: 0 6px; color: var(--ink); --ep: var(--x); }   /* the energy meter (a square with a limit): its own row, a bolt and a pip a square, flat: information */
+.g-mz .mzen.O { --ep: var(--o); }
+.mzbolt { flex: none; width: 17px; height: 20px; display: block; } .mzbolt svg { width: 100%; height: 100%; display: block; }
+.mzpips { flex: 1 1 0; min-width: 0; height: 15px; display: flex; gap: 3px; }
+.mzp { flex: 1 1 0; min-width: 0; max-width: 24px; border: 2px solid var(--ink); border-radius: 5px; background: var(--ep); box-sizing: border-box; }
+.mzp.e { background: #e4e7ef; border-color: #9aa1b5; }
+.mzp.sp { animation: mzspend .26s var(--t, 0ms) ease-out both; }   /* spent on this dash: full until the runner steps in, then a pop and empty */
+@keyframes mzspend { 0% { background: var(--ep); border-color: var(--ink); transform: none; } 35% { background: #fff; border-color: var(--ink); transform: scale(1.3, 1.15); } 100% { background: #e4e7ef; border-color: #9aa1b5; transform: none; } }
+.mzen.many .mzpips { gap: 1.5px; } .mzen.many .mzp { border-width: 1.5px; border-radius: 2px; }
+.mzen.out .mzpips, .mzen.out .mzbolt { animation: mzout .5s var(--t, 0ms) both; }   /* out of energy: the meter shakes and the bolt droops grey */
+.mzen.out .mzbolt path { animation: mzoutb .5s var(--t, 0ms) both; }
+@keyframes mzout { 0%, 100% { translate: 0 0; } 15% { translate: -4px 0; } 30% { translate: 4px 0; } 45% { translate: -3px 0; } 60% { translate: 2px 0; } 75% { translate: -1px 0; } }
+@keyframes mzoutb { from { fill: #ffd23f; } to { fill: #c6cad6; } }
 .mzmap { display: block; } .mzmap.sm { width: 30px; height: 30px; flex: none; }
 .mzmf { fill: #b9c0d6; stroke: var(--ink); stroke-width: .12; } .mzms { fill: var(--paper); } .mzmg { fill: #ffd23f; } .mzmt { fill: var(--x); stroke: var(--ink); stroke-width: .1; } .mzmt.O { fill: var(--o); } .mzmt.one { fill: #fff; }
 .tmz { display: flex; gap: 5cqw; align-items: flex-end; justify-content: center; width: 90cqw; } .tmz.one .mzmap { width: 58cqw; }

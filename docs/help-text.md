@@ -331,7 +331,7 @@ Win: First to {target} points.
 
 ## Maze Runner [maze]
 Category: More luck
-Play: Pick a way and your runner dashes until the path forks or ends. The maze shows only where a runner has been. Keep going until a dead end stops you: that ends your turn.{boardText}
+Play: Pick a way and your runner dashes until the path forks or ends. The maze shows only where a runner has been. Keep going until a dead end stops you: that ends your turn.{energyText}{boardText}
 Win: First to the flag wins.
 
 ## Mini Golf [golf]

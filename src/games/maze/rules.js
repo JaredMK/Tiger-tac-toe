@@ -14,12 +14,18 @@
 // same maze (the second runner would read the first one's map); 'shared': one maze, a runner each in it, what either
 // has seen on show for both; 'one': one maze and ONE runner both players move in turn (`one`), whoever's dash reaches
 // the flag takes the square.
+// Energy (November 2026, `v` 3): a turn has `cap` squares of energy (the setting `energy`, 0 none), one spent on every
+// cell the runner steps into (`en[p]`: spent so far this turn). A dash that would run past the last of it stops on the
+// cell where it runs out, mid-corridor or not, and the turn ends there (`end: 'tired'`); the next turn starts from that
+// cell with the energy full again. Whichever comes first ends the dash: a fork (with energy left: pick again), a dead
+// end, the flag (the last point of energy reaching it still wins) or the energy run out. A square dealt before (no
+// `cap`) plays with no limit.
 // A square dealt before December 2026's rework (no `v` 2: a w by w maze, the door in the bottom row's middle, the flag
 // in the top row's middle) plays on as it was dealt (`mazeGeo`).
 import { needRng, randInt } from '../../core/random.js';
 import { tuneLive } from '../../core/tune.js';
 
-export const MAZE = { step: 95, bonk: 340, flag: 500, tol: 0.5, tries: 40, trials: 24, pathTries: 30, beat: 160, cam: 320, reveal: 760, fade: 220, dance: 1040, hop1: 40, hop2: 300, spin: 560, pose: 820, rest: 240 };   // ms a cell of a dash, a dead end's bump, the flag's moment; the deal: how near the target turns, how many mazes timed, how many runs time one, how many mazes drawn for one long enough; the win (from the dash's landing on the flag): a beat (`beat`), the camera out to the whole maze (`cam`) as the fog lifts in a ripple out from the flag (`reveal`, each cell fading in over `fade`), then the winner's victory dance on the flag (`dance`: hops at `hop1`, `hop2`, a spin at `spin`, the pose at `pose` ms in), the pose held a moment (`rest`)
+export const MAZE = { tired: 560, step: 95, bonk: 340, flag: 500, tol: 0.5, tries: 40, trials: 24, pathTries: 30, beat: 160, cam: 320, reveal: 760, fade: 220, dance: 1040, hop1: 40, hop2: 300, spin: 560, pose: 820, rest: 240 };   // ms: out of energy (`tired`: the runner sags and puffs, the meter flashes), a cell of a dash, a dead end's bump, the flag's moment; the deal: how near the target turns, how many mazes timed, how many runs time one, how many mazes drawn for one long enough; the win (from the dash's landing on the flag): a beat (`beat`), the camera out to the whole maze (`cam`) as the fog lifts in a ripple out from the flag (`reveal`, each cell fading in over `fade`), then the winner's victory dance on the flag (`dance`: hops at `hop1`, `hop2`, a spin at `spin`, the pose at `pose` ms in), the pose held a moment (`rest`)
 export const DIRS = ['n', 'e', 's', 'w'], BIT = { n: 1, e: 2, s: 4, w: 8 }, BACK = { n: 's', e: 'w', s: 'n', w: 'e' };
 export const mazeStep = (w, cell, d) => (d === 'n' ? cell - w : d === 's' ? cell + w : d === 'e' ? cell + 1 : cell - 1);
 const count = m => (m & 1) + ((m >> 1) & 1) + ((m >> 2) & 1) + ((m >> 3) & 1);
@@ -81,10 +87,30 @@ export function mazeLive(seen, g, cell, d) {
   }
   return { live: live || toFlag, toFlag };
 }
+// How far, from `cell` the way `d`, to the nearest cell not yet seen (the steps, the unseen cell's included), through
+// the cells seen (Infinity: nothing left to find that way; `at` that cell); and how far to the flag, once the way to it
+// is seen.
+export function mazeReach(seen, g, cell, d) {
+  const stack = [[mazeStep(g.w, cell, d), BACK[d], 1]];
+  let near = Infinity, flag = Infinity, at = -1;
+  while (stack.length) {
+    const [c, from, k] = stack.pop();
+    if (c === g.flag) flag = k;
+    if (seen[c] < 0) { if (k < near) { near = k; at = c; } continue; }
+    for (const x of DIRS) if (x !== from && (seen[c] & BIT[x])) stack.push([mazeStep(g.w, c, x), BACK[x], k + 1]);
+  }
+  return { near, at, flag };
+}
+// The energy a side has left this turn (Infinity: no limit, a square without one or the setting at 0).
+export const mazeLeft = (mini, p) => (mini.cap ? Math.max(0, mini.cap - ((mini.en && mini.en[p]) || 0)) : Infinity);
 // The way a runner picks from what it has seen: the flag's way once known; else a way with something left to find,
 // one leading on (not back towards the start) while there is one. level: 'hard' takes the way that heads for the flag
-// when several lead on, 'easy' now and then any way at all; else at random among them.
-export function mazePick(seen, g, cell, rng, level) {
+// when several lead on, 'easy' now and then any way at all; else at random among them. With energy (`left` squares this
+// turn), Normal and Hard plan round it: a way whose next unseen cell can be reached with the energy left, so the turn is
+// spent finding something (Normal, with none: the way whose frontier is nearest, the runner stopping nearer it for the
+// next turn); Hard among them the way whose frontier lies nearest the flag (then the nearer frontier). Easy pays it no
+// mind.
+export function mazePick(seen, g, cell, rng, level, left = Infinity) {
   const ways = DIRS.filter(d => seen[cell] >= 0 && (seen[cell] & BIT[d]));
   const info = ways.map(d => Object.assign({ d }, mazeLive(seen, g, cell, d)));
   const flagWay = info.find(x => x.toFlag);
@@ -94,6 +120,16 @@ export function mazePick(seen, g, cell, rng, level) {
   let live = info.filter(x => x.live && x.d !== back);
   if (!live.length) live = info.filter(x => x.live);
   if (!live.length) return ways[Math.floor(rng() * ways.length)];
+  if (left < Infinity && level !== 'easy') {                    // energy: spend it on finding something
+    const R = new Map(live.map(x => [x.d, mazeReach(seen, g, cell, x.d)])), fd = c => Math.abs((c % g.w) - (g.flag % g.w)) + Math.abs(Math.floor(c / g.w) - Math.floor(g.flag / g.w));
+    const ok = live.filter(x => R.get(x.d).near <= left);
+    if (ok.length) live = ok; else if (level !== 'hard') { const m = Math.min(...live.map(x => R.get(x.d).near)); live = live.filter(x => R.get(x.d).near === m); }
+    if (level === 'hard' && live.length > 1) {
+      const sc = x => { const r = R.get(x.d); return r.at < 0 ? 1e9 : fd(r.at) * 100 + r.near; }, b = Math.min(...live.map(sc));
+      live = live.filter(x => sc(x) === b);
+    }
+    return live[Math.floor(rng() * live.length)].d;
+  }
   if (level === 'hard' && live.length > 1) {
     const fx = g.flag % g.w, fy = Math.floor(g.flag / g.w), dist = c => Math.abs((c % g.w) - fx) + Math.abs(Math.floor(c / g.w) - fy), best = Math.min(...live.map(x => dist(mazeStep(g.w, cell, x.d))));
     live = live.filter(x => dist(mazeStep(g.w, cell, x.d)) === best);
@@ -137,9 +173,9 @@ export function mazeDeal(g, o, rng) {
 }
 export function create(type, rng, opts) {
   const t = tuneLive(type), r = needRng(rng), g = mazeGeoOf(t.cols, t.rows), o = { branch: t.branch, minPath: t.minPath, turns: t.turns };
-  const mode = t.boards === 'shared' || t.boards === 'one' ? t.boards : 'separate', sep = mode === 'separate';
+  const mode = t.boards === 'shared' || t.boards === 'one' ? t.boards : 'separate', sep = mode === 'separate', cap = Math.max(0, Math.round(Number(t.energy) || 0));
   const blank = open => { const s = new Array(g.n).fill(-1); s[g.start] = open[g.start]; return s; };
-  const base = { type, v: 2, sep, one: mode === 'one', w: g.w, h: g.h, start: g.start, flag: g.flag, at: { X: g.start, O: g.start }, turns: { X: 0, O: 0 }, last: null };
+  const base = { type, v: 3, cap, en: { X: 0, O: 0 }, sep, one: mode === 'one', w: g.w, h: g.h, start: g.start, flag: g.flag, at: { X: g.start, O: g.start }, turns: { X: 0, O: 0 }, last: null };
   if (!sep) { const open = mazeDeal(g, o, r); return Object.assign(base, { open, seen: blank(open) }); }
   const open = { X: mazeDeal(g, o, r), O: mazeDeal(g, o, r) };
   return Object.assign(base, { open, seen: { X: blank(open.X), O: blank(open.O) } });
@@ -151,33 +187,43 @@ export function apply(mini, p, m, rng, idx) {
   if (!open) return { ok: false, reason: 'secret' };
   const from = mini.at[p], r = mazeRun(open, g, from, m);
   if (!r) return { ok: false, reason: 'wall' };
+  const v3 = 'cap' in mini, left = mazeLeft(mini, p);
+  if (r.path.length > left) { r.path = r.path.slice(0, left); r.end = 'tired'; }   // out of energy first: the runner stops where it ran out
+  else if (r.path.length === left && r.end === 'fork') r.end = 'tired';          // (at a fork with none left: the turn ends there too)
   const fresh = r.path.filter(c => seen[c] < 0);
   for (const c of r.path) seen[c] = open[c];
   const to = r.path[r.path.length - 1];
   if (mini.one) { mini.at.X = to; mini.at.O = to; } else mini.at[p] = to;    // (one runner: both players move it)
-  if (!mini.last || mini.last.by !== p || mini.last.end === 'dead') mini.turns[p]++;      // (a turn's first dash counts it)
+  if (v3 ? !mini.en[p] : !mini.last || mini.last.by !== p || mini.last.end === 'dead') mini.turns[p]++;      // (a turn's first dash counts it)
   mini.last = { by: p, d: m, from, path: r.path, end: r.end, fresh };
+  if (v3) {
+    mini.en[p === 'X' ? 'O' : 'X'] = 0;                           // (the other side's turn is over: its energy full again)
+    if (mini.cap) mini.last.left = left;                          // (the energy this dash set off with: the view's meter)
+    mini.en[p] = r.end === 'dead' || r.end === 'tired' ? 0 : mini.en[p] + r.path.length;   // the turn over: full again for the next
+  }
   if (r.end === 'flag') {                                         // the square is won: the whole maze (the winner's) is revealed, the cells still in fog listed for the view's ripple
     const rev = []; for (let c = 0; c < g.n; c++) if (seen[c] < 0) { seen[c] = open[c]; rev.push(c); }
     mini.last.rev = rev;
     return { ok: true, outcome: 'win', note: 'flag' };
   }
   if (r.end === 'dead') return { ok: true, outcome: 'continue', note: 'dead' };
+  if (r.end === 'tired') return { ok: true, outcome: 'continue', note: 'tired' };
   return { ok: true, outcome: 'continue', note: 'fork', again: true };
 }
-export function timeoutClose(mini, p) { return null; }             // (a dash owed is not taken: the runner waits where it stands)
+export function timeoutClose(mini, p) { if (mini && mini.en && mini.en[p]) mini.en[p] = 0; return null; }   // (a dash owed is not taken: the runner waits where it stands; its turn is over, so its energy is full again for the next)
 const cp = s => (Array.isArray(s) ? s.slice() : { X: s.X.slice(), O: s.O.slice() });
 export function publicView(mini) {                                // never the walls not yet seen
   const v = { type: 'maze', v: mini.v, sep: !!mini.sep, one: !!mini.one, w: mini.w, seen: cp(mini.seen), at: { X: mini.at.X, O: mini.at.O }, turns: { X: mini.turns.X, O: mini.turns.O }, last: mini.last ? JSON.parse(JSON.stringify(mini.last)) : null };
   if (mini.h) Object.assign(v, { h: mini.h, start: mini.start, flag: mini.flag });
+  if ('cap' in mini) Object.assign(v, { cap: mini.cap, en: { X: mini.en.X, O: mini.en.O } });
   return v;
 }
 export function secret(mini) { return mini.open ? { open: JSON.parse(JSON.stringify(mini.open)) } : null; }
 export function hide(m, k, st) { delete m.open; }
 export const mazeWays = (mini, p) => { const s = mazeSeen(mini, p)[mini.at[p]]; return DIRS.filter(d => s >= 0 && (s & BIT[d])); };
-export function randomMove(mini, p, rng, from, empties) { return mazePick(mazeSeen(mini, p), mazeGeo(mini), mini.at[p], needRng(rng), 'normal'); }   // (the tests' stand-in: a runner that gets there)
-export function moveFlash(m, p, range, bjFrom, mini, flash) { const l = mini.last; flash.mz = { from: l.from, path: l.path.slice(), end: l.end, fresh: l.fresh.slice() }; if (l.rev) flash.mz.rev = l.rev.slice(); }
-export const mazeMs = (n, end) => n * MAZE.step + (end === 'dead' ? MAZE.bonk : end === 'flag' ? mazeWinMs() : 60);
+export function randomMove(mini, p, rng, from, empties) { return mazePick(mazeSeen(mini, p), mazeGeo(mini), mini.at[p], needRng(rng), 'normal', mazeLeft(mini, p)); }   // (the tests' stand-in: a runner that gets there)
+export function moveFlash(m, p, range, bjFrom, mini, flash) { const l = mini.last; flash.mz = { from: l.from, path: l.path.slice(), end: l.end, fresh: l.fresh.slice() }; if (l.rev) flash.mz.rev = l.rev.slice(); if (l.left != null) { flash.mz.cap = mini.cap; flash.mz.left = l.left; } }
+export const mazeMs = (n, end) => n * MAZE.step + (end === 'dead' ? MAZE.bonk : end === 'flag' ? mazeWinMs() : end === 'tired' ? MAZE.tired : 60);
 // The win's moments, from the dash's landing on the flag: the reveal begins (`mazeRevealAt`), the dance begins
 // (`mazeDanceAt`), all of it over (`mazeWinMs`).
 export const mazeRevealAt = () => MAZE.beat;

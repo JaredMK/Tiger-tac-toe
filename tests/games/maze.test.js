@@ -15,11 +15,11 @@ function tree(open, w, h = w) {                                   // every cell 
 }
 
 test('maze: Admin only, luck; a maze is a tree over the whole grid (one path between any two cells), its walls hidden', () => {
-  assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'luck', '1.32.0']);
-  assert.deepEqual(E.tuneFields('maze').map(f => f.k), ['cols', 'rows', 'branch', 'minPath', 'turns', 'boards']);
+  assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'luck', '1.34.0']);
+  assert.deepEqual(E.tuneFields('maze').map(f => f.k), ['cols', 'rows', 'branch', 'minPath', 'turns', 'energy', 'boards']);
   for (let g = 0; g < 25; g++) {
     const m = E.newMini('maze', E.makeRng('t' + g));
-    assert.deepEqual([m.v, m.w, m.h, m.sep, m.one, m.start, m.flag, m.at.X, m.at.O], [2, 8, 10, true, false, 72, 7, 72, 72], 'a maze 8 wide and 10 tall, the door bottom left, the flag top right');
+    assert.deepEqual([m.v, m.cap, m.w, m.h, m.sep, m.one, m.start, m.flag, m.at.X, m.at.O], [3, 10, 8, 10, true, false, 72, 7, 72, 72], 'a maze 8 wide and 10 tall, the door bottom left, the flag top right');
     for (const p of ['X', 'O']) { assert.ok(tree(m.open[p], m.w, m.h)); assert.ok(R.mazePathLen(m.open[p], R.mazeGeo(m)) >= 22, 'no path to the flag shorter than the minimum'); assert.equal(m.seen[p].filter(v => v >= 0).length, 1, 'only the start is seen'); }
     assert.notDeepEqual(m.open.X, m.open.O, 'never the same maze: the second runner would read the first one\'s map');
     assert.ok(!('open' in E.publicMini(m))); const c = JSON.parse(JSON.stringify(m)); R.hide(c); assert.ok(!('open' in c)); assert.deepEqual(R.secret(m), { open: m.open });
@@ -49,7 +49,7 @@ test('maze: a dash runs the corridor round its bends to a fork (pick again), a d
   assert.equal(E.applyMove(hidden, 'X', R.mazeWays(hidden, 'X')[0], E.makeRng('x')).reason, 'secret');
   // a whole run of one side alone: turns counted per dead end, the flag reached
   const t = E.newMini('maze', E.makeRng('b')), rng = E.makeRng('run'); let won = false, dead = 0;
-  for (let k = 0; k < 300 && !won; k++) { const q = E.applyMove(t, 'O', E.randomLegalMove(t, 'O', rng), rng); if (q.note === 'dead') dead++; won = q.outcome === 'win'; }
+  for (let k = 0; k < 300 && !won; k++) { const q = E.applyMove(t, 'O', E.randomLegalMove(t, 'O', rng), rng); if (q.note === 'dead' || q.note === 'tired') dead++; won = q.outcome === 'win'; }
   assert.ok(won); assert.equal(t.at.O, R.mazeFlag(t)); assert.equal(t.turns.O, dead + 1);
 });
 
@@ -77,9 +77,11 @@ test('maze: the computer never re-enters a branch it has finished, and takes the
   const st = E.newMatch(E.makeRng('i'), { games: ['maze'] }), p = st.turn, q = st.squares[4].mini;
   const fork = R.DIRS.find(d => { const r = R.mazeRun(q.open[p], R.mazeGeo(q), q.at[p], d); return r && r.end === 'fork'; });
   if (fork) {
-    assert.ok(E.playMove(st, 4, fork, E.makeRng('e')).ok); assert.deepEqual(Object.keys(st.flash.mz).sort(), ['end', 'fresh', 'from', 'path']); E.endFlash(st);
+    assert.ok(E.playMove(st, 4, fork, E.makeRng('e')).ok); assert.deepEqual(Object.keys(st.flash.mz).sort(), ['cap', 'end', 'fresh', 'from', 'left', 'path']); E.endFlash(st);
     assert.equal(st.lock, 4); const at = q.at[p];
+    assert.ok(q.en[p] > 0, 'energy spent mid-turn');
     st.timer.deadline = 1; assert.ok(E.timeoutMove(st, E.makeRng('t')).ok); assert.notEqual(st.turn, p); assert.equal(q.at[p], at);
+    assert.equal(q.en[p], 0, 'the turn ran out: its energy full again for the next');
   }
   assert.equal(R.timeoutClose(q, p), null);
 });
@@ -141,4 +143,52 @@ test('maze: the win reveals the winner\'s whole maze (the cells still in fog lis
       assert.equal(G.n, seen.length);
     } finally { E.setTune('maze', null); }
   }
+});
+
+// A maze laid by hand: a corridor 14 cells long from the door (the bottom row east, then up the right side) to the flag,
+// with one fork part way (a side branch north at x 3 of the bottom row, two cells long).
+function corridor(cap) {
+  const w = 8, h = 8, n = 64, open = new Array(n).fill(0), link = (a, d) => { const b = R.mazeStep(w, a, d); open[a] |= R.BIT[d]; open[b] |= R.BIT[R.BACK[d]]; };
+  const start = (h - 1) * w; for (let x = 0; x < 7; x++) link(start + x, 'e'); for (let y = h - 1; y > 0; y--) link(y * w + 7, 'n');
+  link(start + 3, 'n'); link(start + 3 - w, 'n');
+  const seen = new Array(n).fill(-1); seen[start] = open[start];
+  return { type: 'maze', v: 3, cap, en: { X: 0, O: 0 }, sep: false, one: false, w, h, start, flag: 7, open, seen, at: { X: start, O: start }, turns: { X: 0, O: 0 }, last: null };
+}
+test('maze: energy: every cell costs one; out of it the runner stops where it is, even mid-corridor, the turn ends, and the next starts there full', () => {
+  const m = corridor(5), rng = E.makeRng('en');
+  let r = E.applyMove(m, 'X', 'e', rng);                         // 3 cells to the fork at x 3
+  assert.deepEqual([r.note, !!r.again, m.at.X, m.en.X, m.last.end, m.last.left], ['fork', true, 59, 3, 'fork', 5]);
+  r = E.applyMove(m, 'X', 'e', rng);                             // the corridor on: 2 left, so it stops 2 cells on, mid-corridor
+  assert.deepEqual([r.ok, r.outcome, r.note, !!r.again, m.at.X, m.en.X, m.last.end, m.last.path, m.last.left], [true, 'continue', 'tired', false, 61, 0, 'tired', [60, 61], 2]);
+  assert.equal(R.mazeSeen(m, 'X')[62], -1, 'nothing past where it stopped is seen');
+  assert.equal(m.turns.X, 1);
+  r = E.applyMove(m, 'X', 'e', rng);                             // the next turn: from there, full: 5 cells, round the bend
+  assert.deepEqual([r.note, m.at.X, m.last.path, m.turns.X, m.last.left, m.en.X], ['tired', 39, [62, 63, 55, 47, 39], 2, 5, 0]);
+  r = E.applyMove(m, 'X', 'n', rng);                             // 4 cells to the flag with 5 left: the flag
+  assert.deepEqual([r.outcome, m.at.X, m.turns.X], ['win', 7, 3]);
+  // the other side keeps its own energy; a move of one side ends the other's turn (full again)
+  const o = corridor(5); E.applyMove(o, 'X', 'e', rng); assert.equal(o.en.X, 3);
+  E.applyMove(o, 'O', 'e', rng); assert.deepEqual([o.en.X, o.en.O, o.at.O], [0, 3, 59]);
+  // the last point of energy reaching the flag still wins; reaching a fork with none left ends the turn there
+  const f = corridor(4); for (const c of [39, 31, 23, 15, 7]) f.seen[c] = -1; f.at.X = 39; f.seen[39] = f.open[39];
+  assert.equal(E.applyMove(f, 'X', 'n', rng).outcome, 'win');
+  const k = corridor(3); r = E.applyMove(k, 'X', 'e', rng); assert.deepEqual([r.note, !!r.again, k.at.X, k.en.X], ['tired', false, 59, 0]);
+  // no limit (the setting at 0) and a square dealt before energy (no cap): a dash runs to its end
+  const z = corridor(0); E.applyMove(z, 'X', 'e', rng); assert.equal(E.applyMove(z, 'X', 'e', rng).outcome, 'win');
+  const old = corridor(5); delete old.cap; delete old.en; old.v = 2; E.applyMove(old, 'X', 'e', rng); assert.equal(E.applyMove(old, 'X', 'e', rng).outcome, 'win');
+  assert.ok(!('cap' in R.publicView(old)) && !('en' in R.publicView(old)), 'its record keeps its old shape');
+  assert.deepEqual(JSON.parse(JSON.stringify(R.publicView(m))), R.publicView(m));
+});
+test('maze: energy: the computer spends it on finding something, never on a dash that can only stop in what it has seen', () => {
+  const m = corridor(10);                                        // the bottom row and the right side up to y 4 seen; the branch at the fork not
+  for (const c of [57, 58, 59, 60, 61, 62, 63, 55, 47, 39]) m.seen[c] = m.open[c];
+  m.at.X = 59; m.en.X = 8;                                       // 2 left: the branch north (1 step to the unknown) and the corridor east (8 steps)
+  for (const level of ['normal', 'hard']) for (let g = 0; g < 30; g++) assert.equal(E.localBest(E.publicMini(m, 'X'), 'X', E.makeRng(level + g), {}, { level }).move, 'n', level);
+  m.en.X = 0; const picks = new Set(); for (let g = 0; g < 40; g++) picks.add(E.localBest(E.publicMini(m, 'X'), 'X', E.makeRng('f' + g), {}, { level: 'normal' }).move);
+  assert.deepEqual([...picks].sort(), ['e', 'n'], 'with the energy for either, both ways');
+  const AI = require('../../src/games/maze/ai.js'); m.seen[31] = m.open[31]; m.seen[23] = m.open[23]; m.seen[15] = m.open[15]; m.seen[7] = m.open[7]; m.seen[51] = m.open[51]; m.seen[43] = m.open[43];
+  m.en.X = 0; assert.equal(AI.needs(E.publicMini(m, 'X'), 'X'), 2, 'the flag 11 steps on with 10 to spend: two turns');
+  m.en.X = 4; assert.equal(AI.needs(E.publicMini(m, 'X'), 'X'), 2, '6 to spend: this turn and the next');
+  m.at.X = 63; m.en.X = 0; assert.equal(AI.needs(E.publicMini(m, 'X'), 'X'), 1, '7 steps: this turn');
+  assert.equal(E.localBest(E.publicMini(m, 'X'), 'X', E.makeRng('q'), {}, { level: 'normal' }).move, 'n', 'the flag\'s way');
 });

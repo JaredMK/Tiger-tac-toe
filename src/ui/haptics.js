@@ -10,7 +10,7 @@ import { state } from './app.js';
 // The sounds that stand for a result landing, and for one going wrong (the games' view.js sounds, ui/physics.js,
 // ui/runner.js ...). The rest (the rolling, the ticks, the bounces on the way) are the move's motion: no buzz.
 export const RESULT_SOUNDS = new Set(['kyIn', 'thunk', 'thud', 'ballDrop', 'clink', 'knock', 'boom', 'sink', 'dartHit', 'dartBull', 'strike', 'ding', 'higher', 'lower', 'point', 'bank', 'boing', 'solve', 'pair', 'sparkle', 'band', 'diceWin', 'plop', 'splash', 'appleDrop', 'snkCrunch', 'swPop', 'domClick', 'bgBall', 'poolDrop', 'golfCup', 'golfLip', 'golfBoing', 'bowlHit', 'c4drop', 'tkFlip', 'distLock', 'dukBoot', 'gbTink', 'hrCrack', 'pjLand', 'twTurn', 'mcBank', 'wlWall', 'tpHit', 'htLand', 'tlWipe', 'bdDrop', 'bdClear', 'rrLap', 'fsSlice', 'tsIn', 'tsRim', 'sbClack', 'mbDrop', 'mbStop']);
-export const BAD_SOUNDS = new Set(['kyScrape', 'fsBoom', 'rtMiss', 'bust', 'crash', 'diceLose', 'buzz', 'dartMiss', 'birdChirp', 'spill', 'snkBonk', 'swBlast', 'snkGulp', 'poolScratch', 'bowlGutter', 'golfSplash', 'pgOink', 'gbSmash', 'mzBonk']);
+export const BAD_SOUNDS = new Set(['kyScrape', 'fsBoom', 'rtMiss', 'bust', 'crash', 'diceLose', 'buzz', 'dartMiss', 'birdChirp', 'spill', 'snkBonk', 'swBlast', 'snkGulp', 'poolScratch', 'bowlGutter', 'golfSplash', 'pgOink', 'gbSmash', 'mzBonk', 'mzTired']);
 // The six games of December 2026 (and Road Race's wheel): each game's result and bad sounds on its own two lines.
 for (const n of ['pnSplit', 'pnPerfect']) RESULT_SOUNDS.add(n);   // [pint] results
 for (const n of ['pnMiss']) BAD_SOUNDS.add(n);   // [pint] bad

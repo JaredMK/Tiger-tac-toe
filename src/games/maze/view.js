@@ -14,7 +14,11 @@
 // still in fog), then the winner's runner does its victory dance on the flag (two hops with its arms pumping, a spin, a
 // pose on a burst with sparkles: MAZE.dance), and stands there arms up from then on (a finished square's review shows the
 // maze whole with the winner on the flag). All of it timed from the move (rules.js MAZE, mazeRevealAt, mazeDanceAt).
-import { DIRS, MAZE, mazeDanceAt, mazeGeo, mazeRevealAt, mazeSeen, mazeStep, mazeWays } from './rules.js';
+// Energy (November 2026, a square with a `cap`): a meter under the maze, its own row (none at all for a square with no
+// limit, so nothing shifts within a square): a bolt and a pip a square in the colour of the player on the move, each
+// pip emptying as the runner steps into a square (timed from the move), live and in replays; out of it, the meter
+// shakes, the runner sags and puffs on the cell where it stopped, and "Out of energy!" fills the result line (MAZE.tired).
+import { DIRS, MAZE, mazeDanceAt, mazeGeo, mazeLeft, mazeRevealAt, mazeSeen, mazeStep, mazeWays } from './rules.js';
 import { N, REDUCED, mv } from '../../ui/app.js';
 import { fxAt } from '../../ui/fx.js';
 import { arcTally, lateAt } from '../../ui/progress.js';
@@ -52,7 +56,8 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const skip = s && s.rev ? new Set(s.rev) : null;                  // (the winner's map fills in once the move has played: the canvas shows the reveal)
   const tal = p => arcTally(p, o, mini.sep ? mapSvg(mini, [p], 'sm', s && a.by === p ? skip : null) : tok(p));
   const end = s ? s.path.length * MAZE.step : 0;
-  const say = s ? (s.end === 'dead' ? ['Dead end!', 'no'] : s.end === 'flag' ? ['The flag!', 'ok'] : null) : d && mini.last && mini.last.end === 'dead' ? ['Dead end!', 'no'] : null;
+  const SAY = { dead: ['Dead end!', 'no'], tired: ['Out of energy!', 'no'], flag: ['The flag!', 'ok'] };
+  const say = s ? SAY[s.end] || null : d && mini.last && (mini.last.end === 'dead' || mini.last.end === 'tired') ? SAY[mini.last.end] : null;
   const line = say ? `<p ${s ? lateAt('mzline ' + say[1], end) : `class="mzline ${say[1]}"`} role="status">${say[0]}</p>` : '<p class="mzline"></p>';
   // the arrows (never while a dash plays: they are placed where the runner stands once it has)
   const btns = s || view || locked || (mini.last && mini.last.end === 'flag') || (mini.sep && who !== turn) ? '' : mazeWays(mini, turn).map(dir => { const [bx, by] = xy(G.w, mazeStep(G.w, mini.at[turn], dir)); return `<button class="mzgo ${dir} ${turn}" data-act="move" ${mv(dir)} data-cx="${bx}" data-cy="${by}" aria-label="Dash ${WORDS[dir]}">${ARROW}</button>`; }).join('');
@@ -60,7 +65,22 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   if (!cam || cam.key !== key) cam = { key, fx: null, fy: null, z: 1 };
   src = { mini, a: s ? a : null, who };
   go();
-  return `<div class="g-mz pc-${who}${mini.sep ? ' sep' : ''}${mini.one ? ' one' : ''}"><div class="ctals">${tal('X')}${tal('O')}</div><div class="mzbox"><div class="mzsq"><canvas class="mzcv" aria-label="The maze"></canvas>${btns}</div></div>${line}</div>`;
+  return `<div class="g-mz pc-${who}${mini.sep ? ' sep' : ''}${mini.one ? ' one' : ''}"><div class="ctals">${tal('X')}${tal('O')}</div><div class="mzbox"><div class="mzsq"><canvas class="mzcv" aria-label="The maze"></canvas>${btns}</div></div>${meter(mini, s ? a.by : turn, s)}${line}</div>`;
+}
+const BOLT = '<svg viewBox="0 0 20 24" aria-hidden="true"><path d="M12 1 3 14h6l-2 9 10-14h-6l2-8z" fill="#ffd23f" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>';
+// The energy meter: the mover's energy this turn, a pip a square; during a dash (s, its flash: `left` the energy it set
+// off with) the pips it spends empty one by one as the runner steps into each square, the meter shaking once it is out.
+export function meter(mini, p, s) {
+  const cap = s ? s.cap : mini.cap;
+  if (!cap) return '';
+  const left = s ? s.left : Math.min(cap, mazeLeft(mini, p)), spent = s ? Math.min(left, s.path.length) : 0, now = left - spent;
+  let pips = '';
+  for (let i = 0; i < cap; i++) {
+    const j = left - 1 - i;                                         // (the step that spends this pip: the last pip first)
+    pips += i < now ? '<i class="mzp"></i>' : i < left ? `<i class="mzp e sp" style="--t:${Math.round((j + 0.35) * MAZE.step)}ms"></i>` : '<i class="mzp e"></i>';
+  }
+  const out = s && s.end === 'tired';
+  return `<div class="mzen ${p}${cap > 20 ? ' many' : ''}${out ? ' out' : ''}"${out ? ` style="--t:${Math.round(s.path.length * MAZE.step)}ms"` : ''} role="img" aria-label="Energy: ${now} of ${cap} squares"><i class="mzbolt">${BOLT}</i><span class="mzpips">${pips}</span></div>`;
 }
 const state0 = mini => `${mini.w}x${mini.h || mini.w}:${mini.start}:${mini.flag}`;
 export function heldSub(mini, turn, f, a) { return f ? '' : `<b class="${turn}">${N(turn)}</b> runs on`; }
@@ -138,12 +158,16 @@ const go = stage('canvas.mzcv', (c, W, H, now) => {
     const [x, y] = pos[p]; let bump = 0;
     if (win && (mini.one || p === (s ? a.by : mini.last.by)) && (!s || tw >= mazeDanceAt())) { dancer(c, W, H, X(x + 0.5), Y(y + 0.5), u, p, P, s && !REDUCED ? tw - mazeDanceAt() : Infinity); continue; }
     if (s && (a.by === p || mini.one) && s.end === 'dead' && k >= s.path.length) bump = Math.max(0, 1 - (t - s.path.length * MAZE.step) / MAZE.bonk);
+    const tq = s && (a.by === p || mini.one) && s.end === 'tired' && k >= s.path.length ? Math.min(1, (t - s.path.length * MAZE.step) / MAZE.tired) : -1;   // out of energy: the sag and the puffs
     const off = !mini.sep && !mini.one && mini.at.X === mini.at.O && !(s && a.by === p) ? (p === 'X' ? -0.16 : 0.16) : 0, cx = X(x + 0.5 + off) + (bump ? Math.sin(bump * 18) * u * 0.06 : 0), cy = Y(y + 0.5), r = u * 0.3;
     if (bump > 0) { c.save(); c.translate(cx, cy); c.fillStyle = '#ffd23f'; c.strokeStyle = P.ink; c.lineWidth = u * 0.03; c.beginPath(); for (let q = 0; q < 16; q++) { const rr = (q % 2 ? 0.34 : 0.56) * u * (1.2 - bump * 0.3), an = q * Math.PI / 8; c.lineTo(Math.cos(an) * rr, Math.sin(an) * rr); } c.closePath(); c.fill(); c.stroke(); c.restore(); }
-    c.fillStyle = p === 'O' ? P.O : P.X; c.strokeStyle = P.ink; c.lineWidth = u * 0.06; c.beginPath(); c.arc(cx, cy, r, 0, 7); c.fill(); c.stroke();
+    const sag = tq < 0 ? 0 : REDUCED ? 1 : ease(Math.min(1, tq * 3)) * (1 - 0.3 * seg(tq, 0.75, 1));
+    if (tq >= 0 && !REDUCED) puffs(c, cx, cy, r, tq, P);
+    c.save(); c.translate(cx, cy + r * 0.22 * sag); c.scale(1 + 0.14 * sag, 1 - 0.22 * sag);
+    c.fillStyle = p === 'O' ? P.O : P.X; c.strokeStyle = P.ink; c.lineWidth = u * 0.06; c.beginPath(); c.arc(0, 0, r, 0, 7); c.fill(); c.stroke();
     c.strokeStyle = p === 'O' ? P.ink : '#fff'; c.lineWidth = u * 0.08; c.beginPath();
-    if (p === 'X') { c.moveTo(cx - r * 0.42, cy - r * 0.42); c.lineTo(cx + r * 0.42, cy + r * 0.42); c.moveTo(cx + r * 0.42, cy - r * 0.42); c.lineTo(cx - r * 0.42, cy + r * 0.42); } else c.arc(cx, cy, r * 0.42, 0, 7);
-    c.stroke();
+    if (p === 'X') { c.moveTo(-r * 0.42, -r * 0.42); c.lineTo(r * 0.42, r * 0.42); c.moveTo(r * 0.42, -r * 0.42); c.lineTo(-r * 0.42, r * 0.42); } else c.arc(0, 0, r * 0.42, 0, 7);
+    c.stroke(); c.restore();
   }
   // the flag out of sight (the camera's window): a pointer at the box's edge towards it
   if (wb < 0.5 && (X(fx + 1) < 0 || X(fx) > W || Y(fy + 1) < 0 || Y(fy) > H)) {
@@ -160,9 +184,21 @@ const go = stage('canvas.mzcv', (c, W, H, now) => {
   if (box) {
     for (const b of box.querySelectorAll('.mzgo')) { b.style.left = `${(X(+b.dataset.cx + 0.5)).toFixed(1)}px`; b.style.top = `${(Y(+b.dataset.cy + 0.5)).toFixed(1)}px`; b.style.width = `${u.toFixed(1)}px`; b.style.visibility = 'visible'; }
   }
-  return moving || (!!s && t < land + (win ? mazeDanceAt() + MAZE.dance : Math.max(MAZE.bonk, MAZE.flag)) + 100);
+  return moving || (!!s && t < land + (win ? mazeDanceAt() + MAZE.dance : Math.max(MAZE.bonk, MAZE.flag, MAZE.tired)) + 100);
 });
 const ease = v => (v < 0.5 ? 2 * v * v : 1 - 2 * (1 - v) * (1 - v));
+// Out of energy (q 0 to 1 through MAZE.tired): three puffs of breath rising off the runner and fading, a drop of sweat.
+function puffs(c, cx, cy, r, q, P) {
+  c.save(); c.strokeStyle = P.ink; c.lineWidth = Math.max(1.5, r * 0.12);
+  for (let i = 0; i < 3; i++) {
+    const k = seg(q, i * 0.12, 0.6 + i * 0.12); if (k <= 0 || k >= 1) continue;
+    const px = cx + (i - 1) * r * 0.8 + (i - 1) * r * 0.6 * k, py = cy - r * (1.15 + 1.3 * k), pr = r * (0.3 + 0.32 * k);
+    c.globalAlpha = 1 - k; c.fillStyle = '#fff'; c.beginPath(); c.arc(px, py, pr, 0, 7); c.fill(); c.stroke();
+  }
+  const dk = seg(q, 0.1, 0.9);
+  if (dk > 0 && dk < 1) { const dx = cx + r * 0.95, dy = cy - r * 0.55 + r * 0.8 * dk; c.globalAlpha = 1 - dk * 0.6; c.fillStyle = '#7cc8ff'; c.beginPath(); c.moveTo(dx, dy - r * 0.32); c.quadraticCurveTo(dx + r * 0.2, dy, dx, dy + r * 0.08); c.quadraticCurveTo(dx - r * 0.2, dy, dx, dy - r * 0.32); c.fill(); c.stroke(); }
+  c.restore();
+}
 const seg = (d, a, b) => Math.max(0, Math.min(1, (d - a) / (b - a)));
 // The winner's victory dance, `d` ms into it (Infinity: its pose, kept): two hops (a squash, up with the arms pumping, a
 // squash on landing), a spin (the disc turning on its upright axis), then the pose: a little jump to arms up on a burst
@@ -215,7 +251,7 @@ export function miniature(mini, final) {
   if (!mini.sep) return `<div class="tmz one" aria-label="${lab}">${mapSvg(mini, mini.one ? ['X'] : ['X', 'O'])}</div>`;
   return `<div class="tmz" aria-label="${lab}">${['X', 'O'].map(p => `<div class="tmzc"><b class="${p}">${p}</b>${mapSvg(mini, [p])}</div>`).join('')}</div>`;
 }
-export function moveText(f, who) { const s = f.mz; return !s ? `${who} ran` : s.end === 'dead' ? `${who} ran into a dead end` : s.end === 'flag' ? `${who} reached the flag` : `${who} ran to a fork`; }
+export function moveText(f, who) { const s = f.mz; return !s ? `${who} ran` : s.end === 'dead' ? `${who} ran into a dead end` : s.end === 'tired' ? `${who} ran out of energy` : s.end === 'flag' ? `${who} reached the flag` : `${who} ran to a fork`; }
 // A patter of steps as the runner dashes (a tick a cell), then where it ends: a bump at a dead end, a chime at the flag,
 // a soft pop at a fork.
 export function sounds(f, add, won, mini, last) {
@@ -223,6 +259,7 @@ export function sounds(f, add, won, mini, last) {
   for (let k = 0; k < Math.min(12, s.path.length); k++) add('mzStep', Math.round(k * MAZE.step), 0.9 + (k % 2) * 0.12);
   const end = s.path.length * MAZE.step;
   if (s.end === 'dead') add('mzBonk', end);
+  else if (s.end === 'tired') add('mzTired', end);
   else if (s.end === 'flag') {                                     // the flag: a ding; the fog lifting (a rising shimmer); the dance's two hops and its spin; the won chime with its pose (wonAt)
     const D = end + mazeDanceAt();
     add('ding', end); add('mzReveal', end + mazeRevealAt());
