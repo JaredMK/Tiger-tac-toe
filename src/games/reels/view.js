@@ -52,11 +52,11 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   return `<div class="g-fr pc-${by}" style="--tj:${REELS.judge}ms"><div class="ctals two">${tal('X')}${tal('O')}</div>
     <div class="frcab"><div class="frwin">${reel(0)}${reel(1)}${reel(2)}${lines}</div>${pay}</div>${line}${spin}</div>`;
 }
-// The miniature: the machine's 3x3 window with the last spin's pictures, over each player's points as a bar.
+// The miniature: the machine's 3x3 window with the last spin's pictures, beside each player's points as a bar.
 export function miniature(mini, final) {
   const c = reelsCfg(mini), g = mini.v === 2 && mini.last ? mini.last.g : null;
   const art = `<div class="tfr">${Array.from({ length: 9 }, (_, i) => `<i>${reelSvg(g ? g[i] : [0, 1, 2, 2, 3, 0, 1, 0, 2][i])}</i>`).join('')}</div>`;
-  return thumbArt(art, barRows(mini.score, c.target), 'tfrw col', `Fruit Reels: X ${mini.score.X}, O ${mini.score.O} of ${c.target} points`);
+  return thumbArt(art, barRows(mini.score, c.target), 'tfrw', `Fruit Reels: X ${mini.score.X}, O ${mini.score.O} of ${c.target} points`);
 }
 export function moveText(f, who) {
   const s = f.rl3; if (!s || !s.wins) return `${who} spun`;

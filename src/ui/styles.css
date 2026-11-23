@@ -3414,6 +3414,11 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tart .tpip i { width: var(--pw); height: var(--pw); border-width: 1.3cqw; flex: none; }
 .tart .tpip i.psq { border-radius: 25%; }
 .tart.tall .tpic { width: 30cqw; }
+/* Pips that always fit (November 2026, the board's fit check, scripts/check-miniature-fit.js): a row is its mark and --pb, the pips' room
+   (pips and their gaps, split .76/.24), however many pips the game's settings ask for (Home Run Heroes, Target Practice, Glass Bridge,
+   Block Drop, Rock Paper Scissors: each one's picture P and --pb kept to P + 3cqw + the mark's 16px + --pb within the 92cqw of .tart). */
+.tart:is(.thrw, .ttpw, .tgbw, .tbdw, .trpsw) .tpip .tr { --pw: min(9cqw, calc(var(--pb, 40cqw) / var(--n, 3) * .76)); gap: min(2.6cqw, calc(var(--pb, 40cqw) / var(--n, 3) * .24)); }
+.tart:is(.thrw, .ttpw, .tgbw, .tbdw, .trpsw) .tpip i { border-width: min(1.3cqw, calc(var(--pw) * .2)); }
 .ttok circle { stroke: var(--ink); stroke-width: 1.6; } .ttok.X circle { fill: var(--x); } .ttok.O circle { fill: var(--o); }
 .ttok text { fill: #fff; font-weight: 900; text-anchor: middle; font-family: Nunito, Arial, sans-serif; } .ttok.O text { fill: var(--ink); }
 .tfin .a { fill: var(--ink); } .tfin .b { fill: var(--paper); }
@@ -5645,7 +5650,8 @@ button.bglg i { animation: bglring 1s ease-in-out infinite alternate; } button.b
 .rpsbtn:disabled { opacity: .5; box-shadow: 0 2px 0 var(--ink); transform: translateY(2px); }
 /* the miniature: the last throw face to face beside the wins */
 .trps { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5cqw; height: 100%; }
-.trpsh { display: grid; place-items: center; width: 34cqw; height: 41cqw; margin: -3cqw 0; }
+.tart.trpsw { --pb: 44cqw; } .trpsw .tpic { width: 28cqw; }
+.trpsh { display: grid; place-items: center; width: 27cqw; height: 33cqw; margin: -2.4cqw 0; }
 .trpsh .rpsv { width: 100%; height: 100%; overflow: visible; }
 .trpsh.h .rpsv { transform: rotate(180deg); }
 .trpsh.m.X .rpcf { fill: var(--x); } .trpsh.m.O .rpcf { fill: var(--o); }
@@ -6085,7 +6091,7 @@ button.gbp { cursor: pointer; touch-action: manipulation; }
 .gbline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .gbline.ok { color: var(--green); } .gbline.no { color: var(--x); }
 @media (prefers-reduced-motion: reduce) { .gbj.fallin { display: none; } }
-.tgbw .tpic { width: 46cqw; } .tgb { width: 100%; display: block; }
+.tart.tgbw { --pb: 42cqw; } .tgbw .tpic { width: 30cqw; } .tgb { width: 100%; display: block; }
 .tgbp { fill: #9fd6ec; stroke: var(--ink); stroke-width: 1; } 
 .tgbt { stroke: var(--ink); stroke-width: 1; fill: var(--x); } .tgbt.O { fill: var(--o); }
 /* A tally whose figures always take their own line under the name (many pips: the name keeps the whole width). */
@@ -6119,11 +6125,10 @@ button.gbp { cursor: pointer; touch-action: manipulation; }
 .frline.ok { color: var(--green); } .frline.no { color: var(--muted); }
 .g-fr .frspin { height: 58px; }
 @media (prefers-reduced-motion: reduce) { .frstrip { animation: none; } }
-.tfrw .tpic { width: 70cqw; } .tfr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1cqw; padding: 2.4cqw; border: 1.4cqw solid var(--ink); border-radius: 5cqw; background: #6a3fb8; }
+.tfrw .tpic { width: 46cqw; } .tfr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1cqw; padding: 2.4cqw; border: 1.4cqw solid var(--ink); border-radius: 5cqw; background: #6a3fb8; }
 .tfr i { display: grid; place-items: center; aspect-ratio: 1; border: 1.2cqw solid var(--ink); border-radius: 3cqw; background: #fff; } .tfr .frsym { width: 78%; }
 /* A miniature with its picture over its two score bars (the batch's score races). */
 .tart.col { flex-direction: column; gap: 4cqw; } .tart.col .tpip { flex: none; width: 80cqw; gap: 3cqw; }
-.tfrw.col .tpic { width: 74cqw; }
 .ctals.two .wtal { flex: 1 1 100%; } .ctals.two .wtal .wbar { flex: 1 1 0; width: auto; }
 
 /* Home Run Heroes: tallies, the ballpark (a canvas), the result line, Play ball / Swing. */
@@ -6134,7 +6139,7 @@ button.gbp { cursor: pointer; touch-action: manipulation; }
 .hrline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .hrline.ok { color: var(--green); } .hrline.no { color: var(--muted); }
 .g-hr .hrbtn { height: 58px; }
-.thrw .tpic { width: 40cqw; } .thr { width: 100%; display: block; }
+.tart.thrw { --pb: 40cqw; } .thrw .tpic { width: 32cqw; } .thr { width: 100%; display: block; }
 .thrg { fill: #58b254; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; } .thrw { stroke: #2e6b3a; stroke-width: 4; } .thrd { fill: #d9a86c; stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; } .thrm { fill: #c9925a; stroke: var(--ink); stroke-width: 1; }
 .thrb { fill: #fff; stroke: var(--ink); stroke-width: 1.6; } .thrs { stroke: #d6402b; stroke-width: 1; }
 
@@ -6389,7 +6394,7 @@ button.wlc { cursor: pointer; touch-action: manipulation; }
 .tpline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .tpline.ok { color: var(--green); } .tpline.no { color: var(--muted); }
 .g-tp .tpbtn { height: 56px; }
-.ttpw .tpic { width: 40cqw; } .ttp { width: 100%; display: block; } .ttpa { fill: #fff; stroke: var(--ink); stroke-width: 2; } .ttpb { fill: #3a3a4a; stroke: var(--ink); stroke-width: 2; } .ttpc { fill: var(--x); stroke: var(--ink); stroke-width: 1.4; } .ttpd { stroke: var(--ink); stroke-width: 3; stroke-linecap: round; } .ttpf { fill: var(--o); stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; }
+.tart.ttpw { --pb: 40cqw; } .ttpw .tpic { width: 32cqw; } .ttp { width: 100%; display: block; } .ttpa { fill: #fff; stroke: var(--ink); stroke-width: 2; } .ttpb { fill: #3a3a4a; stroke: var(--ink); stroke-width: 2; } .ttpc { fill: var(--x); stroke: var(--ink); stroke-width: 1.4; } .ttpd { stroke: var(--ink); stroke-width: 3; stroke-linecap: round; } .ttpf { fill: var(--o); stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; }
 
 /* Heads or Tails: tallies, the table with the two-sided coin (a 3-D toss), the result line, the two call buttons. */
 .g-ht { width: min(var(--gw), 440px); height: min(var(--gh), 540px); display: flex; flex-direction: column; gap: 8px; }
@@ -6536,7 +6541,7 @@ button.wlc { cursor: pointer; touch-action: manipulation; }
 .g-bd .bdturn { min-width: 0; height: 54px; padding: 0; display: grid; place-items: center; } .g-bd .bdturn svg { width: 28px; height: 28px; }
 .g-bd .bddrop { height: 54px; min-width: 0; }
 @media (prefers-reduced-motion: reduce) { .bdc.drop { animation: none; } .bdc.clr, .bdc.bust, .bdc.drop.clr, .bdc.drop.bust { animation: none; opacity: 0; } }
-.tbdw .tpic { width: 62cqw; } .tbd { width: 100%; display: block; } .tbdb { fill: #26324a; stroke: var(--ink); stroke-width: 1.2; } .tbdc { stroke: var(--ink); stroke-width: .5; fill: var(--bk); }
+.tart.tbdw { --pb: 32cqw; } .tbdw .tpic { width: 40cqw; } .tbdw .tpic svg { max-height: 58cqw; } .tbd { width: 100%; display: block; } .tbdb { fill: #26324a; stroke: var(--ink); stroke-width: 1.2; } .tbdc { stroke: var(--ink); stroke-width: .5; fill: var(--bk); }
 
 /* Number Shuffle: tallies (guesses made), the line (what is known, or the answer), the guess's slots, the digits,
    Clear and Guess, the guesses with their answers (a column each in a race, one list in Shared). */
