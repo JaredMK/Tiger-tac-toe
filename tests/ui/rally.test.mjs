@@ -1,8 +1,10 @@
-// Road Race's page (December 2026: the circuit from above and the steering wheel), rendered in Node with the browser's
-// names stubbed: the wheel under the circuit with GO on its hub only while an attempt may begin; someone else's
-// attempt said and counted only once it has been driven again; its sounds from the steering on its flash (the engine
-// all the way, the tyres at each hard lock, the crash or the lap at its end, never from this phone's own attempt);
-// the miniature the square's own circuit beside each player's laps.
+// Road Race's page (December 2026: the circuit from above and the steering wheel; v 3, a crash keeps the lap's
+// progress), rendered in Node with the browser's names stubbed: the wheel under the circuit with GO on its hub only
+// while an attempt may begin; this phone's attempt set off from where its player got to, driven by the page's own
+// frame steps and gone in as the engine drives it again; someone else's attempt said and counted only once it has
+// been driven again, from where they set off; its sounds from the steering on its flash (the engine all the way, the
+// tyres at each hard lock, the crash or the lap at its end, never from this phone's own attempt); the miniature the
+// square's own circuit, each player's car a dot where they got to, beside each player's laps.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -55,12 +57,56 @@ test('rally: someone else\'s attempt: said and counted once it has been driven; 
   assert.deepEqual(V.replay.synth(), [], 'a replay presses nothing: the attempt is driven again from the flash');
 });
 
-test('rally: the miniature: the square\'s own circuit, a car on its line, each player\'s laps', () => {
+test('rally: the car waits where its player got to; GO sets off from there, and the attempt goes in as the engine drives it again', () => {
+  const st = fresh('ui4'), mini = st.squares[4].mini, c = R.rallyCfg(mini), tr = R.rallyTrack(mini), n = tr.n;
+  Object.assign(state, { cpu: null, turn: 'X' }); mini.pos.X = Math.round(n * 0.37); mini.pos.O = Math.round(n * 0.6);
+  assert.match(draw(st, { turn: 'X' }), /data-act="rr-go"/);
+  V.actions['rr-go']();
+  const L = V.rallyLive(), from = mini.pos.X;
+  assert.ok(L, 'GO: an attempt under way'); assert.deepEqual([L.p, L.p0, L.S.i, L.S.cum, L.S.x, L.S.y], ['X', from, from, from, tr.x[from], tr.y[from]], 'set off where X got to, in the middle of the road');
+  const a = (from + 1) % n, b = (from + n - 1) % n, fx = tr.x[a] - tr.x[b], fy = tr.y[a] - tr.y[b];
+  assert.ok((L.S.hx * fx + L.S.hy * fy) / Math.hypot(fx, fy) > 0.99999, 'pointing along the road, the racing way');
+  // a finger on the wheel, frame by frame (16 ms): steering for the road ahead, then full lock off it
+  let t = L.t0 + R.RALLY.wait, f = 0; L.held = true;
+  for (; f < 600 && V.rallyLive(); f++) {
+    t += 16;
+    if (f < 160) { const q = (L.S.i + c.look) % n, dx = tr.x[q] - L.S.x, dy = tr.y[q] - L.S.y; L.aim = Math.max(-1, Math.min(1, 2 * (L.S.hx * dy - L.S.hy * dx) / (dx * dx + dy * dy) * c.speed / c.turn)); } else L.aim = 1;
+    V.rallyTick(t);
+  }
+  assert.equal(V.rallyLive(), null, 'the attempt is over and gone in'); assert.equal(L.res, 'crash'); assert.ok(L.log.length > 3, `the wheel was turned: ${L.log.length} changes`);
+  const q = v => Math.round(v * 100) / 100 + 0;
+  assert.deepEqual([mini.n.X, mini.last.by, mini.last.crash, mini.last.p0, mini.last.at], [1, 'X', true, from, [q(L.S.x), q(L.S.y), q(L.S.hx), q(L.S.hy)]], 'the engine drove it again from the same place, to the same place');
+  assert.deepEqual([mini.pos.X, mini.pos.O], [R.rallyKeep(tr, L.S.cum), Math.round(n * 0.6)]); assert.ok(mini.pos.X > from + 20, `on from ${from} to ${mini.pos.X}`);
+  // the next turn: the car waits at the place it left the road, and GO sets off from there
+  Object.assign(state, { flash: null, done: null, spot: null, turn: 'X' }); state.squares[4].mini = mini;
+  draw(st, { turn: 'X' }); V.actions['rr-go']();
+  const N = V.rallyLive(); assert.deepEqual([N.p0, N.S.x, N.S.y], [mini.pos.X, tr.x[mini.pos.X], tr.y[mini.pos.X]]);
+  for (let k = 0; k < 400 && V.rallyLive(); k++) { N.held = true; N.aim = -1; V.rallyTick(N.t0 + R.RALLY.wait + 16 * k); }
+});
+
+test('rally: someone else\'s attempt is driven again from where they set off, to where the engine had it end', () => {
+  const st = fresh('ui5'), mini = st.squares[4].mini, c = R.rallyCfg(mini), tr = R.rallyTrack(mini); st.turn = state.turn = 'O';
+  mini.pos.O = Math.round(tr.n * 0.5); const from = mini.pos.O, d = R.rallyDrive(c, tr, E.makeRng('h'), 3, from);
+  assert.ok(E.playMove(st, 4, { log: d.log, steps: d.steps }, E.makeRng('s')).ok); Object.assign(state, st, { cpu: 'O' });
+  const f = st.flash, P = V.rallyReplay(f.rr, mini), k = P.n;
+  assert.deepEqual([f.rr.p0, P.p0, P.pts[0], P.pts[1]], [from, from, tr.x[from], tr.y[from]], 'from their kept place');
+  assert.deepEqual([Math.round(P.pts[2 * k] * 100) / 100, Math.round(P.pts[2 * k + 1] * 100) / 100], f.rr.at.slice(0, 2), 'to the place the engine had it end');
+  assert.equal(P.end === 'crash', f.rr.crash); assert.equal(P.end === 'lap', f.rr.done);
+  const old = Object.assign({}, f.rr); delete old.p0; assert.deepEqual([V.rallyReplay(old, mini).pts[0], V.rallyReplay(old, mini).pts[1]], [tr.x[0], tr.y[0]], 'a flash from before: from the line');
+});
+
+test('rally: the miniature: the square\'s own circuit, each player\'s car where they got to, each player\'s laps', () => {
   const m = E.newMini('rally', E.makeRng('mini')), tr = R.rallyTrack(m); m.laps.X = 1;
   const html = V.miniature(m, false);
-  assert.match(html, /class="tart trcw" aria-label="Road Race: X 1, O 0 of 2 laps"/); assert.match(html, new RegExp(`<svg class="trc" viewBox="0 0 ${R.RALLY.W} ${R.RALLY.H}">`));
+  assert.match(html, /class="tart trcw" aria-label="Road Race: X 1, O 0 of 3 laps"/); assert.match(html, new RegExp(`<svg class="trc" viewBox="0 0 ${R.RALLY.W} ${R.RALLY.H}">`));
+  const dots = h => Object.fromEntries([...h.matchAll(/<circle class="trc([xo])" cx="([\d.-]+)" cy="([\d.-]+)" r="7"\/>/g)].map(g => [g[1], [Number(g[2]), Number(g[3])]]));
+  const at0 = dots(html), near = (p, i) => Math.hypot(p[0] - tr.x[i], p[1] - tr.y[i]);
+  assert.ok(near(at0.x, 0) < 4.5 && near(at0.o, 0) < 4.5 && Math.hypot(at0.x[0] - at0.o[0], at0.x[1] - at0.o[1]) > 8, 'both on the line, side by side');
+  m.pos.X = Math.round(tr.n * 0.25); m.pos.O = Math.round(tr.n * 0.7); const later = dots(V.miniature(m, false));
+  assert.ok(near(later.x, m.pos.X) < 4.5 && near(later.o, m.pos.O) < 4.5, 'each where they got to');
   const dp = html.match(/class="trct" d="([^"]+)"/)[1], pts = dp.slice(1, -1).split('L').map(s => s.split(' ').map(Number));
   assert.ok(pts.length > 30 && pts.every(([x, y]) => x > 0 && x < R.RALLY.W && y > 0 && y < R.RALLY.H)); assert.deepEqual(pts[0], [Math.round(tr.x[0] * 10) / 10, Math.round(tr.y[0] * 10) / 10]);
   assert.equal((html.match(/<i class=" on">/g) || []).length, 1); assert.doesNotMatch(html.replace(/aria-label="[^"]*"/, ''), />[^<]*\d[^<]*</, 'a picture and pips: no numbers');
   assert.notEqual(V.miniature(E.newMini('rally', E.makeRng('other')), false), V.miniature(E.newMini('rally', E.makeRng('mini')), false).replace(' on', ''), 'another square, another circuit');
+  const v2 = E.newMini('rally', E.makeRng('mini')); v2.v = 2; delete v2.pos; const d2 = dots(V.miniature(v2, false)); assert.ok(near(d2.x, 0) < 4.5 && near(d2.o, 0) < 4.5, 'a v 2 square: both always at the line');
 });

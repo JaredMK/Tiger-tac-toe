@@ -432,7 +432,7 @@ Win: Reach {target} first.
 
 ## Road Race [rally]
 Category: More skill
-Play: A turn is one lap attempt. Press GO and the car drives itself round the circuit: drag the steering wheel left and right to steer, and let go to straighten up. Leave the road and you crash: the attempt is over. Both players race the same circuit.
+Play: Press GO and the car drives itself round the circuit: drag the steering wheel left and right to steer, and let go to straighten up. Leave the road and you crash: your turn is over, and your next one starts from there. Both players race the same circuit.
 Win: First to finish {laps} laps.
 
 ## Roads [roads]

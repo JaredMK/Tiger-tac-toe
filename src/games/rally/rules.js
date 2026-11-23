@@ -1,13 +1,19 @@
 // Road Race: the rules (pure: no page, no clock; the server runs the same code).
 // December 2026, `v: 2`: a closed circuit seen from straight above and a steering wheel (a square dealt before, a
-// road winding up the screen followed by the finger, is dealt again as the record is read: `stale`).
+// road winding up the screen followed by the finger, is dealt again as the record is read: `stale`). `v: 3`: a crash
+// is no longer the lap's end: each player keeps where they got to (a square dealt as `v: 2` plays on as before, every
+// attempt from the line).
 // Each player their own laps. A square has ONE circuit for both players and every attempt (`rallyTrack`: from the
 // square's public seed and the settings, the same wherever it is worked out): a smooth closed loop in a frame of
-// `RALLY.W` by `RALLY.H`, a road of a fixed width round it, a start line. A move is one lap attempt on the mover's
-// phone: the car starts on the line and drives itself forward at a steady speed; the driver only turns the steering
+// `RALLY.W` by `RALLY.H`, a road of a fixed width round it, a start line. A move is one attempt on the mover's
+// phone: the car starts where that player got to (`mini.pos[p]`: the centre line's points of this lap already
+// covered, in order from the line; at first and after every lap, the line itself), set down on the centre line and
+// pointing along the road there, and drives itself forward at a steady speed; the driver only turns the steering
 // wheel, a whole number from -`RALLY.lock` (full left) to `RALLY.lock` (full right), and the car's heading turns at a
 // rate in proportion to it, relative to the car itself, as a real wheel. Off the road is a crash and the attempt is
-// over; round to the line again, the whole way in order, is a lap. First to `laps` laps takes the square.
+// over: the place it left the road is kept (`rallyKeep`), and the next attempt sets off from there. Round to the line
+// again, the whole way in order (across every attempt of the lap), is a lap; the next attempt then starts from the
+// line. First to `laps` laps takes the square.
 // The attempt is worked out in fixed steps (`RALLY.hz` a second) from its steering alone, so the move is the
 // steering, `{ log: [[step, wheel]...], steps }` (the wheel from that step on, noted only when it changes; steps: how
 // long it was driven), and the server drives it again (`rallyRun`) and takes its own result. Everything on that path
@@ -42,11 +48,14 @@ const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 export function rallyCfg(mini) {
   const t = tune(mini), L = RALLY.lock, num = (v, d) => (typeof v === 'number' && v > 0 ? v : d), speed = num(t.speed, 26), width = num(t.width, 12), turn = num(t.turn, 170) * PI / 180, rot = [];
   for (let w = -L; w <= L; w++) { const a = w / L * turn / RALLY.hz; rot.push([dsin(a), dcos(a)]); }   // (the heading's turn a step, for every notch of the wheel)
-  return { laps: num(t.laps, 2), speed, turn, half: width / 2, set: SETS[t.tracks] ? t.tracks : 'mixed', travel: num(t.travel, 20), v: speed / RALLY.hz, rot, lim: Math.max(0.5, width / 2 - RALLY.car),
+  return { laps: mini && mini.v === 2 && !(mini.tune && mini.tune.laps != null) ? 2 : num(t.laps, 3), speed, turn, half: width / 2, set: SETS[t.tracks] ? t.tracks : 'mixed', travel: num(t.travel, 20), v: speed / RALLY.hz, rot, lim: Math.max(0.5, width / 2 - RALLY.car),
     fwd: Math.ceil(speed / RALLY.hz / RALLY.sp) + 4, back: 3, look: Math.max(4, Math.round(speed * 0.28 / RALLY.sp)), ai: { easy: t.aiLapseEasy, normal: t.aiLapse, hard: t.aiLapseHard } };
 }
-export function create(type, rng) { return { type, v: 2, seed: Math.floor(needRng(rng)() * 1e9), laps: { X: 0, O: 0 }, n: { X: 0, O: 0 }, last: null }; }
-export const stale = mini => mini.v !== 2;                         // (a road up the screen from before: dealt again, core/records.js)
+export function create(type, rng) { return { type, v: 3, seed: Math.floor(needRng(rng)() * 1e9), laps: { X: 0, O: 0 }, pos: { X: 0, O: 0 }, n: { X: 0, O: 0 }, last: null }; }
+export const stale = mini => mini.v !== 2 && mini.v !== 3;         // (a road up the screen from before: dealt again, core/records.js; a v 2 square plays on)
+// Where p's next attempt sets off: the centre line's points of this lap p has covered, in order from the line (0: the
+// line; a v 2 square: always the line).
+export const rallyFrom = (mini, p) => (mini && mini.v === 3 && mini.pos && Number.isInteger(mini.pos[p]) ? mini.pos[p] : 0);
 
 // ---- the circuit ----
 // A loop round the frame's middle whose distance from it swings in and out by a few waves (so it never crosses
@@ -123,12 +132,16 @@ export function rallyTrack(mini) {
 // ---- the drive ----
 export const rallySteps = (c, tr) => Math.ceil(RALLY.over * tr.len / c.speed * RALLY.hz);
 export const rallyLogOk = (log, steps) => Array.isArray(log) && log.length <= RALLY.maxLog && Number.isInteger(steps) && steps >= 0 && steps <= 100000 && log.every((e, i) => Array.isArray(e) && e.length === 2 && Number.isInteger(e[0]) && e[0] >= 0 && (i === 0 || e[0] > log[i - 1][0]) && Number.isInteger(e[1]) && e[1] >= -RALLY.lock && e[1] <= RALLY.lock);
-// The car on the line, pointing down the road: { x, y, hx, hy (its heading, a unit vector), i (the centre line's
-// point nearest it), cum (points passed, in order: a lap is all of them), k (steps driven), end }.
-export function rallyStart(tr) {
-  const n = tr.n, dx = tr.x[1] - tr.x[n - 1], dy = tr.y[1] - tr.y[n - 1], d = Math.sqrt(dx * dx + dy * dy);
-  return { x: tr.x[0], y: tr.y[0], hx: dx / d, hy: dy / d, i: 0, cum: 0, k: 0, end: null };
+// The car set down `from` points round the lap (0: on the line), in the middle of the road and pointing along it
+// there (its neighbours' chord: the racing direction): { x, y, hx, hy (its heading, a unit vector), i (the centre
+// line's point nearest it), cum (points passed, in order, from the line: a lap is all of them), k (steps driven), end }.
+export function rallyStart(tr, from = 0) {
+  const n = tr.n, i = (from % n + n) % n, a = (i + 1) % n, b = (i + n - 1) % n, dx = tr.x[a] - tr.x[b], dy = tr.y[a] - tr.y[b], d = Math.sqrt(dx * dx + dy * dy);
+  return { x: tr.x[i], y: tr.y[i], hx: dx / d, hy: dy / d, i, cum: from, k: 0, end: null };
 }
+// What an attempt that came to no lap leaves for the next one: the points covered as it ended (where it left the
+// road, or stopped), never on or past the line (a crash on it waits just before it) and never a whole lap behind it.
+export function rallyKeep(tr, cum) { let v = cum >= tr.n ? tr.n - 1 : cum; while (v <= -tr.n) v += tr.n; return v + 0; }
 // One step with the wheel at `w`: the heading turns, the car moves on, its place along the road is found again (only
 // ever a little on from where it was: a car that cut across to another stretch has left the road) and judged.
 export function rallyStep(c, tr, S, w) {
@@ -141,24 +154,27 @@ export function rallyStep(c, tr, S, w) {
   return S.end;
 }
 export const rallyPct = (tr, S) => clamp(Math.round(100 * S.cum / tr.n), 0, S.end === 'lap' ? 100 : 99);
-// The attempt driven from its steering: { done, crash, step, pct, x, y, hx, hy }. `pick(S, w)` turns the wheel in
-// place of a log (the computer's hand).
-export function rallyRun(c, tr, log, steps, pick) {
-  const S = rallyStart(tr), max = Math.min(steps == null ? Infinity : steps, rallySteps(c, tr));
+// The attempt driven from its steering, setting off `from` points round the lap: { done, crash, step, pct, x, y, hx,
+// hy, cum }. `pick(S, w)` turns the wheel in place of a log (the computer's hand).
+export function rallyRun(c, tr, log, steps, pick, from = 0) {
+  const S = rallyStart(tr, from), max = Math.min(steps == null ? Infinity : steps, rallySteps(c, tr));
   let w = 0, li = 0;
   while (S.k < max && !S.end) {
     if (pick) w = pick(S, w); else while (li < log.length && log[li][0] <= S.k) w = log[li++][1];
     rallyStep(c, tr, S, w);
   }
-  return { done: S.end === 'lap', crash: S.end === 'crash', step: S.k, pct: rallyPct(tr, S), x: S.x, y: S.y, hx: S.hx, hy: S.hy };
+  return { done: S.end === 'lap', crash: S.end === 'crash', step: S.k, pct: rallyPct(tr, S), x: S.x, y: S.y, hx: S.hx, hy: S.hy, cum: S.cum };
 }
+// The server's (and every phone's) attempt: driven again from the mover's own starting point. `last` { by, done,
+// crash, pct (of the lap, from the line), from, to (laps), at: [x, y, hx, hy] where it ended, p0: where it set off }.
 export function apply(mini, p, m, rng, idx) {
-  if (mini.v !== 2) return { ok: false, reason: 'stale' };
+  if (mini.v !== 2 && mini.v !== 3) return { ok: false, reason: 'stale' };
   if (!m || typeof m !== 'object' || !rallyLogOk(m.log, m.steps)) return { ok: false, reason: 'bad' };
-  const c = rallyCfg(mini), run = rallyRun(c, rallyTrack(mini), m.log, m.steps), from = mini.laps[p], q = v => Math.round(v * 100) / 100 + 0;
+  const c = rallyCfg(mini), tr = rallyTrack(mini), p0 = rallyFrom(mini, p), run = rallyRun(c, tr, m.log, m.steps, null, p0), from = mini.laps[p], q = v => Math.round(v * 100) / 100 + 0;
   if (run.done) mini.laps[p]++;
   mini.n[p]++;
-  mini.last = { by: p, done: run.done, crash: run.crash, pct: run.pct, from, to: mini.laps[p], at: [q(run.x), q(run.y), q(run.hx), q(run.hy)] };
+  if (mini.v === 3) mini.pos[p] = run.done ? 0 : rallyKeep(tr, run.cum);   // (where the next attempt sets off: the line after a lap)
+  mini.last = { by: p, done: run.done, crash: run.crash, pct: run.pct, from, to: mini.laps[p], at: [q(run.x), q(run.y), q(run.hx), q(run.hy)], p0 };
   if (mini.laps[p] >= c.laps) return { ok: true, outcome: 'win', note: 'won' };
   return { ok: true, outcome: 'continue', note: run.done ? 'lap' : 'crash' };
 }
@@ -167,7 +183,7 @@ export function publicView(mini) { return JSON.parse(JSON.stringify(mini)); }
 // A hand on the wheel (the computer's, the tests'): it steers for a point of the centre line a little ahead (the
 // turn that would carry the car through it), turning the wheel no faster than a hand does (`RALLY`-notches a step);
 // `lapse` times a second on average it stops paying attention for a while and the wheel stays where it was.
-export function rallyDrive(c, tr, rng, lapse) {
+export function rallyDrive(c, tr, rng, lapse, from = 0) {
   const log = [], n = tr.n, L = RALLY.lock; let held = 0, last = 0;
   const run = rallyRun(c, tr, null, null, (S, w) => {
     let to = w;
@@ -178,10 +194,10 @@ export function rallyDrive(c, tr, rng, lapse) {
     }
     if (to !== last) { log.push([S.k, to]); last = to; }
     return to;
-  });
+  }, from);
   return { log, steps: run.step, run };
 }
-export function randomMove(mini, p, rng, from, empties) { const c = rallyCfg(mini), d = rallyDrive(c, rallyTrack(mini), needRng(rng), 1.5); return { log: d.log, steps: d.steps }; }
+export function randomMove(mini, p, rng, from, empties) { const c = rallyCfg(mini), d = rallyDrive(c, rallyTrack(mini), needRng(rng), 1.5, rallyFrom(mini, p)); return { log: d.log, steps: d.steps }; }
 // The flash carries the steering too: the other phone drives the attempt again from it and shows the car go round.
 export function moveFlash(m, p, range, bjFrom, mini, flash) { flash.rr = mini.last ? Object.assign(JSON.parse(JSON.stringify(mini.last)), { log: m && Array.isArray(m.log) ? m.log.map(e => [e[0], e[1]]) : [], steps: (m && m.steps) || 0 }) : null; }
 export const rallyShowMs = f => RALLY.pre + Math.round(((f && f.steps) || 0) * 1000 / RALLY.hz) + RALLY.end;   // someone else's attempt: the wait, the drive at its own speed, its ending

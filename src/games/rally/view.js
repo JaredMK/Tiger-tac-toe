@@ -2,17 +2,21 @@
 // The circuit is one canvas seen from straight above, the whole lap on it at once, never scrolling or zooming: the
 // still parts painted once into a kept layer (`circuitLayer`: mown grass, the road with its striped kerbs, the
 // chequered line, a pond, trees, a stand and tyre stacks, all placed from the circuit itself), and over it each
-// frame the way driven so far as a faint line, the car's short streak and the car in the mover's colour. Under it
-// the steering wheel (`.rrwheel`, an SVG turned by the frame loop; a mark at its top, a pointer over it). This phone's
-// attempt is live from GO, the wheel's hub (ui/round.js): after a moment's READY the car sets off by itself, and a
-// finger dragged left and right anywhere on the game turns the wheel (`travel` % of the game's width to full lock,
-// from wherever the wheel stood when it was taken); let go, it springs back to straight; the arrow keys turn it too.
-// The attempt is worked out in the rules' own steps from the wheel as it stood at each (rules.js rallyStep), noted
-// whenever it changes, and that steering is what is sent (the server drives it again). Off the road: CRASH! Round to
-// the line: LAP! Anyone else's attempt is driven again here from the steering on its flash, at the replay's speed:
-// their car round the circuit, the wheel turning as they turned it, to the place it left the road or to the line.
-// An attempt driven here was watched live: its own flash goes straight to its result.
-import { RALLY, rallyCfg, rallyLogOk, rallyShowMs, rallyStart, rallyStep, rallySteps, rallyTrack } from './rules.js';
+// frame this lap's road already covered (from the line to where the car set off: `covered`, faint in the driver's
+// colour), the way driven so far as a faint line, the car's short streak and the car in the mover's colour, and the
+// other player's car, faded and a little smaller, waiting where they got to (`rival`). Under it the steering wheel
+// (`.rrwheel`, an SVG turned by the frame loop; a mark at its top, a pointer over it). The car waits where this player
+// got to (rules.js rallyFrom: the line, or the place their last attempt left the road), in the middle of the road and
+// pointing along it. This phone's attempt is live from GO, the wheel's hub (ui/round.js): after a moment's READY the
+// car sets off by itself, and a finger dragged left and right anywhere on the game turns the wheel (`travel` % of the
+// game's width to full lock, from wherever the wheel stood when it was taken); let go, it springs back to straight;
+// the arrow keys turn it too. The attempt is worked out in the rules' own steps from the wheel as it stood at each
+// (rules.js rallyStep), noted whenever it changes, and that steering is what is sent (the server drives it again from
+// the same place). Off the road: CRASH! Round to the line: LAP! Anyone else's attempt is driven again here from the
+// steering on its flash, from where it set off (`p0`), at the replay's speed: their car round the circuit, the wheel
+// turning as they turned it, to the place it left the road or to the line. An attempt driven here was watched live:
+// its own flash goes straight to its result.
+import { RALLY, rallyCfg, rallyFrom, rallyLogOk, rallyShowMs, rallyStart, rallyStep, rallySteps, rallyTrack } from './rules.js';
 import { makeRng } from '../../core/random.js';
 import { SND, ownPress } from '../../audio/sound.js';
 import { haptic } from '../../net/platform.js';
@@ -29,15 +33,17 @@ import { flashAnimating, skipFlash } from '../../ui/turns.js';
 // (lockDeg: the wheel's drawing at full lock; spring: what is left of the wheel's angle one step after it is let
 // go; key: an arrow key's share of the lock a step; hard: the share of the lock at which the tyres squeal, no more
 // often than every `squeal` ms; trail: the car's streak, steps; purr: the engine's beat, ms; back: the wheel
-// straightening once a replayed attempt is over, ms)
-export const RRV = { lockDeg: 100, spring: 0.8, key: 0.1, hard: 0.75, squeal: 500, trail: 18, purr: 240, back: 220 };
+// straightening once a replayed attempt is over, ms; cover: the lap's road already covered, its opacity; ghost, small:
+// the other player's car, its opacity and size; near, side: within this many points of the car on the move, it waits
+// this far to its own side; clear: READY's room, frame units, before it leaves the middle of the frame)
+export const RRV = { lockDeg: 100, spring: 0.8, key: 0.1, hard: 0.75, squeal: 500, trail: 18, purr: 240, back: 220, cover: 0.55, ghost: 0.5, small: 0.82, near: 9, side: 4, clear: 24 };
 export const ownLine = true;
 export const replay = { synth: () => [] };                         // the move is an attempt's steering: it is driven again from the flash
 let src = null, hooked = false, skipped = null, wheelAt = 0, rep = null, layer = null, sent = null;   // (sent: the attempt just driven here, kept on show until the square has taken it: online, the server's answer)
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const round = makeRound('rally', {
   mine: () => !!src && src.mine,
-  begin: mini => { const tr = rallyTrack(mini), S = rallyStart(tr); return { c: rallyCfg(mini), tr, S, log: [], w: 0, a: 0, aim: 0, held: false, key: 0, over: null, res: null, path: [S.x, S.y], purr: -1, sqAt: -1e9 }; },
+  begin: (mini, p) => { const tr = rallyTrack(mini), S = rallyStart(tr, rallyFrom(mini, p)); return { c: rallyCfg(mini), tr, S, p0: S.cum, ready: readyAt(tr, S.i), log: [], w: 0, a: 0, aim: 0, held: false, key: 0, over: null, res: null, path: [S.x, S.y], purr: -1, sqAt: -1e9 }; },   // (from where this player got to: the rules' own start, rallyRun)
   step(L, ms) {
     if (L.over != null) return ms < L.over + RALLY.end;
     const due = Math.floor((ms - RALLY.wait) * RALLY.hz / 1000), max = rallySteps(L.c, L.tr);
@@ -56,7 +62,7 @@ const round = makeRound('rally', {
     const beat = Math.floor(ms / RRV.purr); if (beat !== L.purr && L.over == null && ms > RALLY.wait) { L.purr = beat; SND.play('rrPurr', { rate: 0.94 + (beat % 3) * 0.05 }); }
     return true;
   },
-  move: L => { sent = { zoom: L.sq, p: L.p, n: L.mini.n[L.p], at: [L.S.x, L.S.y, L.S.hx, L.S.hy], crash: L.res === 'crash', path: L.path }; return { log: L.log, steps: L.S.k }; },
+  move: L => { sent = { zoom: L.sq, p: L.p, n: L.mini.n[L.p], at: [L.S.x, L.S.y, L.S.hx, L.S.hy], crash: L.res === 'crash', path: L.path, p0: L.p0 }; return { log: L.log, steps: L.S.k }; },
   go: () => go(),
 });
 // The wheel for the step to come: where the hand has it, an arrow key turning it on, or springing back to straight.
@@ -150,8 +156,8 @@ function circuitLayer(tr, cw, ch, P) {
   layer = { key: tr.key, w: cw, h: ch, cv };
   return cv;
 }
-function car(c, x, y, ang, col, P) {                                // (drawn pointing along +x, then turned to its heading)
-  c.save(); c.translate(x, y); c.rotate(ang);
+function car(c, x, y, ang, col, P, k = 1) {                         // (drawn pointing along +x, then turned to its heading; k: its size)
+  c.save(); c.translate(x, y); c.rotate(ang); if (k !== 1) c.scale(k, k);
   c.fillStyle = 'rgba(22,18,16,.3)'; box(c, -2.6, -1.25, 6, 3.3, 1.1); c.fill();
   c.fillStyle = '#23232b'; for (const [a, b] of [[-2.3, -2.1], [0.9, -2.1], [-2.3, 1.35], [0.9, 1.35]]) c.fillRect(a, b, 1.45, 0.75);
   c.fillStyle = col; c.strokeStyle = P.ink; c.lineWidth = 0.45; box(c, -3, -1.65, 6, 3.3, 1.15); c.fill(); c.stroke();
@@ -176,14 +182,36 @@ function trace(c, pts, upto, tail, col) {
   for (let i = from; i + 3 < upto; i += 2) { c.globalAlpha = 0.55 * (i - from) / (upto - from); c.strokeStyle = col; c.lineWidth = 1.7; c.beginPath(); c.moveTo(pts[i], pts[i + 1]); c.lineTo(pts[i + 2], pts[i + 3]); c.stroke(); }
   c.globalAlpha = 1;
 }
-// Someone else's attempt, driven again from its steering (once for a flash): the car's place and heading and the
-// wheel at every step.
+// This lap's road already covered: the centre line from the line to `upto` points round, faint in the driver's colour.
+function covered(c, tr, upto, col) {
+  const end = Math.min(upto, tr.n - 1); if (!(end >= 2)) return;
+  c.save(); c.globalAlpha = RRV.cover; c.strokeStyle = col; c.lineWidth = 1.5; c.lineJoin = c.lineCap = 'round';
+  c.beginPath(); c.moveTo(tr.x[0], tr.y[0]); for (let i = 1; i <= end; i++) c.lineTo(tr.x[i], tr.y[i]); c.stroke(); c.restore();
+}
+// The other player's car, faded and a little smaller, waiting in the middle of the road where they got to; to their
+// own side of it (X's left, O's right) where the car on the move set off from nearly the same place, so both show.
+function rival(c, tr, mini, p, near, col, P) {
+  const S = rallyStart(tr, rallyFrom(mini, p)), n = tr.n, d = Math.abs(((S.i - (near % n + n) % n) % n + n) % n), s = Math.min(d, n - d) < RRV.near ? (p === 'X' ? 1 : -1) * Math.min(RRV.side, tr.half - 1.5) : 0;   // (never past the kerb on a narrow road)
+  c.save(); c.globalAlpha = RRV.ghost; car(c, S.x + S.hy * s, S.y - S.hx * s, Math.atan2(S.hy, S.hx), col, P, RRV.small); c.restore();
+}
+// Where READY goes: the middle of the frame, unless the car or the road just ahead of it would be under it; then the
+// clearest of a few places on the grass.
+const SPOTS = [[50, 55], [50, 30], [50, 80], [30, 55], [70, 55], [28, 28], [72, 28], [28, 82], [72, 82]];
+function readyAt(tr, i0) {
+  const pts = []; for (let k = 0; k <= 48; k += 4) { const q = (i0 + k) % tr.n; pts.push([tr.x[q], tr.y[q]]); }
+  const clear = ([x, y]) => pts.reduce((m, [a, b]) => Math.min(m, Math.hypot(a - x, b - y)), Infinity);
+  let best = SPOTS[0], bd = clear(best); if (bd >= RRV.clear) return best;
+  for (const sp of SPOTS) { const d = clear(sp); if (d > bd) { bd = d; best = sp; } }
+  return best;
+}
+// Someone else's attempt, driven again from its steering, from where it set off (once for a flash): the car's place
+// and heading and the wheel at every step.
 function replayOf(f, mini) {
   if (rep && rep.f === f) return rep;
-  const c = rallyCfg(mini), tr = rallyTrack(mini), S = rallyStart(tr), ok = rallyLogOk(f.log, f.steps), log = ok ? f.log : [], n = ok ? Math.min(f.steps, rallySteps(c, tr)) : 0, pts = [S.x, S.y], hd = [S.hx, S.hy], ws = [0];
+  const c = rallyCfg(mini), tr = rallyTrack(mini), p0 = Number.isInteger(f.p0) ? f.p0 : 0, S = rallyStart(tr, p0), ok = rallyLogOk(f.log, f.steps), log = ok ? f.log : [], n = ok ? Math.min(f.steps, rallySteps(c, tr)) : 0, pts = [S.x, S.y], hd = [S.hx, S.hy], ws = [0];
   let w = 0, li = 0;
   while (S.k < n && !S.end) { while (li < log.length && log[li][0] <= S.k) w = log[li++][1]; rallyStep(c, tr, S, w); pts.push(S.x, S.y); hd.push(S.hx, S.hy); ws.push(w); }
-  return rep = { f, tr, n: S.k, pts, hd, ws, end: S.end };
+  return rep = { f, tr, n: S.k, pts, hd, ws, end: S.end, p0 };
 }
 function setWheel(fr) {
   wheelAt = fr;
@@ -197,17 +225,22 @@ const go = stage('canvas.rrcv', (c, W, H, now) => {
   c.clearRect(0, 0, W, H); c.drawImage(circuitLayer(tr, cv.width, cv.height, P), 0, 0, W, H);
   c.save(); c.scale(W / RALLY.W, H / RALLY.H);
   let more = false, wheel = 0;
-  const ang = (hx, hy) => Math.atan2(hy, hx);
+  const ang = (hx, hy) => Math.atan2(hy, hx), mini = src.mini, other = p => (p === 'X' ? 'O' : 'X');
+  const own = sent && sent.zoom === src.zoom && sent.p === src.by && mini.n[sent.p] === sent.n && src.wait ? sent : null;   // (this phone's attempt, on its way to the server)
+  const R = !L && src.a ? replayOf(src.a.rr, mini) : null, who = L ? L.p : src.by;
+  const p0 = L ? L.p0 : R ? R.p0 : own ? own.p0 : rallyFrom(mini, who);   // where the car on the move set off (or waits)
+  covered(c, tr, p0, col(who));
+  rival(c, tr, mini, other(who), p0, col(other(who)), P);
   if (L) {
     const ms = now - L.t0, S = L.S, k = L.over != null ? (ms - L.over) / RALLY.end : 0;
     trace(c, L.path, L.path.length, RRV.trail / 2, col(L.p));
     car(c, S.x, S.y, ang(S.hx, S.hy) + (L.res === 'crash' ? k * 5 : 0), col(L.p), P);
-    if (ms < RALLY.wait) burst(c, RALLY.W / 2, RALLY.H / 2, 1, 17, '#fff', P, 'READY');
+    if (ms < RALLY.wait) burst(c, L.ready[0], L.ready[1], 1, 17, '#fff', P, 'READY');
     if (L.res === 'lap') burst(c, RALLY.W / 2, RALLY.H / 2, k, 19, '#ffd23f', P, 'LAP!');
     else if (L.res === 'crash') burst(c, ...beside(S.x, S.y), k, 14, '#ff8a75', P, 'CRASH!');
     wheel = L.a; more = true;
-  } else if (src.a) {                                             // someone else's attempt, from its flash
-    const f = src.a.rr, at = fxAt('move', src.a), t = at == null ? Infinity : now - at, R = replayOf(f, src.mini), run = R.n * 1000 / RALLY.hz;
+  } else if (R) {                                                 // someone else's attempt, from its flash
+    const f = src.a.rr, at = fxAt('move', src.a), t = at == null ? Infinity : now - at, run = R.n * 1000 / RALLY.hz;
     const k = clamp(Math.floor((t - RALLY.pre) * RALLY.hz / 1000), 0, R.n), te = t - RALLY.pre - run, e = clamp(te / RALLY.end, 0, 1);
     trace(c, R.pts, 2 * (k + 1), RRV.trail, col(src.by));
     car(c, R.pts[2 * k], R.pts[2 * k + 1], ang(R.hd[2 * k], R.hd[2 * k + 1]) + (R.end === 'crash' ? e * 5 : 0), col(src.by), P);
@@ -218,10 +251,10 @@ const go = stage('canvas.rrcv', (c, W, H, now) => {
   } else if (src.rest && src.rest.at) {                           // a result left on show: the car where it ended
     const [x, y, hx, hy] = src.rest.at;
     car(c, x, y, ang(hx, hy) + (src.rest.crash ? 0.9 : 0), col(src.by), P);
-  } else if (sent && sent.zoom === src.zoom && sent.p === src.by && src.mini.n[sent.p] === sent.n && src.wait) {   // this phone's attempt, on its way to the server: as it ended
-    trace(c, sent.path, sent.path.length, 0, col(sent.p));
-    car(c, sent.at[0], sent.at[1], ang(sent.at[2], sent.at[3]) + (sent.crash ? 0.9 : 0), col(sent.p), P);
-  } else { const S = rallyStart(tr); car(c, S.x, S.y, ang(S.hx, S.hy), col(src.by), P); }
+  } else if (own) {                                               // this phone's attempt, on its way to the server: as it ended
+    trace(c, own.path, own.path.length, 0, col(own.p));
+    car(c, own.at[0], own.at[1], ang(own.at[2], own.at[3]) + (own.crash ? 0.9 : 0), col(own.p), P);
+  } else { const S = rallyStart(tr, p0); car(c, S.x, S.y, ang(S.hx, S.hy), col(src.by), P); }   // waiting where this player got to: in the middle of the road, pointing along it
   c.restore();
   setWheel(wheel);
   return more;
@@ -242,12 +275,15 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   go();
   return `<div class="g-rr pc-${by}"><div class="ctals${c.laps > 5 ? ' two' : ''}">${tal('X')}${tal('O')}</div><div class="rrbox"><div class="rrfield${on ? ' live' : ''}"><canvas class="rrcv" aria-label="The circuit"></canvas></div></div>${line}<div class="rrstrip${on ? ' live' : ''}"><i class="rrptr" aria-hidden="true"></i><div class="rrwh"><div class="rrwheel" style="transform:rotate(${(wheelAt * RRV.lockDeg).toFixed(1)}deg)">${WHEEL}</div>${hub}</div></div></div>`;
 }
-// The miniature: the square's own circuit from above, tiny, with a car on its line, beside each player's laps as pips.
+// The miniature: the square's own circuit from above, tiny, with its line, and each player's car as a dot in their
+// colour where they got to on this lap (X to the left of the road's middle, O to the right, so two on one spot both
+// show), beside each player's laps as pips.
 export function miniature(mini, final) {
-  const c = rallyCfg(mini), tr = rallyTrack(mini), q = v => Math.round(v * 10) / 10, S = rallyStart(tr);
+  const c = rallyCfg(mini), tr = rallyTrack(mini), q = v => Math.round(v * 10) / 10 + 0, S = rallyStart(tr);
   let dp = ''; for (let i = 0; i < tr.n; i += 6) dp += `${i ? 'L' : 'M'}${q(tr.x[i])} ${q(tr.y[i])}`;
-  const deg = Math.round(Math.atan2(S.hy, S.hx) * 180 / Math.PI), w = q(2 * tr.half + 1);
-  const art = `<svg class="trc" viewBox="0 0 ${RALLY.W} ${RALLY.H}"><rect class="trcg" x="1.500" y="1.500" width="${RALLY.W - 3}" height="${RALLY.H - 3}" rx="12"/><path class="trck" d="${dp}Z" stroke-width="${q(w + 5)}"/><path class="trct" d="${dp}Z" stroke-width="${w}"/><g transform="translate(${q(S.x)} ${q(S.y)}) rotate(${deg})"><path class="trcl" d="M0 ${-q(w / 2)}V${q(w / 2)}"/><rect class="trcc" x="-8" y="-5" width="16" height="10" rx="3.500"/></g></svg>`;
+  const deg = Math.round(Math.atan2(S.hy, S.hx) * 180 / Math.PI) + 0, w = q(2 * tr.half + 1);
+  const dot = p => { const D = rallyStart(tr, rallyFrom(mini, p)), s = (p === 'X' ? 1 : -1) * 4.2; return `<circle class="trc${p === 'X' ? 'x' : 'o'}" cx="${q(D.x + D.hy * s)}" cy="${q(D.y - D.hx * s)}" r="7"/>`; };
+  const art = `<svg class="trc" viewBox="0 0 ${RALLY.W} ${RALLY.H}"><rect class="trcg" x="1.500" y="1.500" width="${RALLY.W - 3}" height="${RALLY.H - 3}" rx="12"/><path class="trck" d="${dp}Z" stroke-width="${q(w + 5)}"/><path class="trct" d="${dp}Z" stroke-width="${w}"/><g transform="translate(${q(S.x)} ${q(S.y)}) rotate(${deg})"><path class="trcl" d="M0 ${-q(w / 2)}V${q(w / 2)}"/></g>${dot('X')}${dot('O')}</svg>`;
   return thumbArt(art, pipRows(mini.laps, c.laps), 'trcw', `Road Race: X ${mini.laps.X}, O ${mini.laps.O} of ${c.laps} laps`);
 }
 export function moveText(f, who) { const s = f.rr; return !s ? `${who} drove` : s.done ? `${who} finished a lap` : s.crash ? `${who} crashed at ${s.pct}%` : `${who} stopped at ${s.pct}%`; }
@@ -261,3 +297,5 @@ export function sounds(f, add, won, mini, last) {
   if (s.done || s.crash) add(s.done ? 'rrLap' : 'crash', RALLY.pre + run);
 }
 export const rallyLive = () => round.live;                         // (the attempt under way on this phone: for the browser checks)
+export const rallyTick = now => round.tick(now);                  // (its frame step at a moment: for the tests, where no frame loop runs)
+export const rallyReplay = (f, mini) => replayOf(f, mini);         // (someone else's attempt as it is driven again here: for the tests)
