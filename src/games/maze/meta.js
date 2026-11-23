@@ -2,7 +2,7 @@
 
 export const info = { name: 'Maze Runner', hint: 'Dash through a hidden maze. A dead end ends your turn. First out wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.27.0';   // the oldest client version that has this game (core/client.js)
+export const minVersion = '1.32.0';   // (1.32.0: the win reveals the whole maze, last.rev; 1.27.0 before) the oldest client version that has this game (core/client.js)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const placeholder = false;   // never on a new state's placeholder board (games/index.js PLACE_TYPES): the seeded deals stay as they were
 export const explainer = { name: 'Maze Runner', play: 'Pick a way and your runner dashes until the path forks or ends. The maze shows only where a runner has been. Keep going until a dead end stops you: that ends your turn.{boardText}', win: 'First to the flag wins.' };

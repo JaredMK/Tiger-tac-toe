@@ -15,7 +15,7 @@ function tree(open, w, h = w) {                                   // every cell 
 }
 
 test('maze: Admin only, luck; a maze is a tree over the whole grid (one path between any two cells), its walls hidden', () => {
-  assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'luck', '1.27.0']);
+  assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'luck', '1.32.0']);
   assert.deepEqual(E.tuneFields('maze').map(f => f.k), ['cols', 'rows', 'branch', 'minPath', 'turns', 'boards']);
   for (let g = 0; g < 25; g++) {
     const m = E.newMini('maze', E.makeRng('t' + g));
