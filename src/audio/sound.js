@@ -625,8 +625,9 @@ def('jgTurn', 0.08, (c, d, t) => { sfxNoise(c, d, t, .014, { f: 2600, q: 2.4, vo
 // [/jigsaw]
 //
 // [hive] Letter Hive: its sounds (names start `hv`)
-// (the burst's start, a rising pair; a letter's cell pressed, a soft wooden tock played higher as the word grows; a letter taken back; the outer letters shuffled, a quick rustle; a word accepted, a rising chime; a full-hive word, a climbing flourish with a sparkle; a word refused, a soft low buzz; the time up, a falling pair; a word landing in someone else's list, a pop)
+// (Go!, a rising pair; a letter dealt into the hive, a light high tick (one a cell, each a little higher); a letter's cell pressed, a soft wooden tock played higher as the word grows; a letter taken back; the outer letters shuffled, a quick rustle; a word accepted, a rising chime; a full-hive word, a climbing flourish with a sparkle; a word refused, a soft low buzz; the time up, a falling pair; a word landing in someone else's list, a pop)
 def('hvGo', 0.24, (c, d, t) => { sfxTone(c, d, t, 587, .08, { type: 'triangle', vol: .36 }); sfxTone(c, d, t + .09, 880, .13, { type: 'triangle', vol: .36 }); }, { level: .4 });
+def('hvDeal', 0.06, (c, d, t) => { sfxNoise(c, d, t, .01, { f: 3400, q: 2, vol: .14, att: .001 }); sfxTone(c, d, t, 700, .04, { to: 560, type: 'triangle', vol: .3, att: .001 }); }, { level: .28 });
 def('hvKey', 0.07, (c, d, t) => { sfxNoise(c, d, t, .012, { f: 2400, q: 2, vol: .22, att: .001 }); sfxTone(c, d, t, 430, .055, { to: 330, type: 'triangle', vol: .42, att: .001 }); }, { level: .36 });
 def('hvDel', 0.07, (c, d, t) => sfxTone(c, d, t, 250, .055, { to: 180, type: 'triangle', vol: .38, att: .001 }), { level: .3 });
 def('hvShuf', 0.2, (c, d, t) => { [0, .045, .09].forEach((o, i) => sfxNoise(c, d, t + o, .05, { f: 1500 + i * 500, q: 1.4, vol: .28, att: .003 })); }, { level: .34 });

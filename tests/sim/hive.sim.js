@@ -1,14 +1,17 @@
 'use strict';
 // Simulations: Letter Hive (slow, never part of npm test: `npm run sim -- hive`). The computer against itself, 500
 // squares at Normal with the batch's asserts (3 to 6 turns each, mean and median; the first mover 45 to 60%; no
-// square won in a first burst), then by setting and by level. The computer's words a burst stand in for a person's:
-// Normal finds 1 to 4 words, mostly short everyday ones: about 7 points in a first burst and 8 to 9 over a square
-// (as the short words go it is left with longer ones). A person's first bursts are likely worth more than that (three
-// to five words, two of them of five letters or more: 10 to 15 points) and their later ones less, as the words that
-// come to mind go. Real play decides the target.
-// What it shows: Hard against Hard runs short (about 3 bursts each, 12 to 14 points a burst) and the first to move
-// wins about 61% of those: its bursts vary less. Normal's range of 1 to 4 words (not 2 to 4) is what keeps the first
-// mover under 60%: with 2 to 4 it was 60 to 63% at any target.
+// square won in a first burst), then by setting and by level. A turn is Go! (new letters, drawn then: 23 November
+// 2026) and its burst. The computer's words a burst stand in for a person's: Normal finds 1 to 4 words, mostly short
+// everyday ones: about 7 points a burst, and with new letters every turn that holds all square long (with one set of
+// letters a burst was worth 7 at first and 8 to 9 later, as the short words went). A person's bursts are likely worth
+// more than that (three to five words, two of them of five letters or more: 10 to 15 points), and new letters every
+// turn keep them from tailing off. Real play decides the target.
+// What it shows (the defaults, target 40, December 2026's figures in brackets): Normal v Normal 5.5 turns each, median
+// 5.5 (4.6, 4.5), the first mover 58.5% over 4,000 squares (56.7%): every turn now adds about the same, which favours
+// the first to move; 35 points 4.8 turns, 59%; 45 6.2, 58%; 50 6.9, 57.5%. Normal's range of 1 to 4 words (not 2 to 4)
+// is what keeps the first mover under 60%. Hard against Hard runs shorter and its bursts vary less (the first mover
+// gains); Easy against Easy longer.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const E = require('../engine.js');
@@ -25,14 +28,24 @@ test('hive: 500 squares at Normal: the first mover and the turns each (the defau
 test('hive: no square is won in a first burst at Normal, few in a second; what a burst is worth by level', () => {
   const N = 4000, by = { 1: 0, 2: 0 }; let done = 0;
   for (let g = 0; g < N; g++) {
-    const rng = E.makeRng('hive-first:' + g), m = E.newMini('hive', rng), n = { X: 0, O: 0 }; let p = 'X';
-    for (let k = 0; k < 400; k++) { n[p]++; const r = E.applyMove(m, p, E.localBest(E.publicMini(m, p), p, rng, {}, { level: 'normal', until: null }).move, rng); if (r.outcome !== 'continue') { done++; const t = n[r.winner || p]; if (t <= 2) by[t]++; break; } p = p === 'X' ? 'O' : 'X'; }
+    const rng = E.makeRng('hive-first:' + g), m = E.newMini('hive', rng), n = { X: 0, O: 0 }; let p = 'X', starts = true;
+    for (let k = 0; k < 800; k++) {
+      if (starts) n[p]++;
+      const r = E.applyMove(m, p, E.localBest(E.publicMini(m, p), p, rng, {}, { level: 'normal', until: null }).move, rng);
+      assert.ok(r.ok);
+      if (r.outcome !== 'continue') { done++; const t = n[r.winner || p]; if (t <= 2) by[t]++; break; }
+      starts = !r.again; if (!r.again) p = p === 'X' ? 'O' : 'X';
+    }
   }
   console.log(`  won in the winner's first burst: ${by[1]} of ${done}; in the second: ${by[2]} (${(100 * by[2] / done).toFixed(2)}%)`);
   assert.equal(by[1], 0); assert.ok(by[2] / done < 0.03);
   for (const level of ['easy', 'normal', 'hard']) {
     let pts = 0, words = 0, plain = 0; const K = 4000;
-    for (let k = 0; k < K; k++) { const rng = E.makeRng(`hive-burst:${level}:${k}`), m = E.newMini('hive', rng), pz = R.hivePuzzle(m.pz); E.applyMove(m, 'X', E.localBest(E.publicMini(m, 'X'), 'X', rng, {}, { level, until: null }).move, rng); pts += m.last.to; words += m.last.w.length; plain += m.last.w.filter(w => pz.plain.has(w)).length; }
+    for (let k = 0; k < K; k++) {
+      const rng = E.makeRng(`hive-burst:${level}:${k}`), m = E.newMini('hive', rng), best = () => E.localBest(E.publicMini(m, 'X'), 'X', rng, {}, { level, until: null }).move;
+      E.applyMove(m, 'X', best(), rng); const pz = R.hivePuzzle(m.pz); E.applyMove(m, 'X', best(), rng);   // (Go!, then its burst)
+      pts += m.last.to; words += m.last.w.length; plain += m.last.w.filter(w => pz.plain.has(w)).length;
+    }
     console.log(`  a first burst at ${level}: ${(words / K).toFixed(2)} words, ${(pts / K).toFixed(2)} points, ${(100 * plain / words).toFixed(0)}% everyday words`);
   }
 });

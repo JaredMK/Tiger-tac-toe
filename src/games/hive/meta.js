@@ -1,14 +1,14 @@
 // Letter Hive: its names, its "?" explainer, its icon, its release default and its settings.
 import { AGAIN_TUNE } from '../../core/tune.js';
 
-export const info = { name: 'Letter Hive', hint: 'Make words from the seven letters, always with the centre one. First to the target wins' };
+export const info = { name: 'Letter Hive', hint: 'New letters every turn: make words with them, always with the centre one. First to the target wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.30.0';   // the oldest client version that has this game (core/client.js)
+export const minVersion = '1.31.0';   // (1.31.0: new letters every turn, drawn at Go!, v 2) the oldest client version that has this game (core/client.js)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const placeholder = false;   // never on a new state's placeholder board (games/index.js PLACE_TYPES): the seeded deals stay as they were
 export const realTime = true;   // its move is a timed burst (core/timer.js moveRate)
 export const turnSecs = 60;   // an online turn's seconds here: the burst and the time to begin it (core/timer.js turnSecs)
-export const explainer = { name: 'Letter Hive', play: 'A turn is a burst of {secs} seconds. Tap the letters to make words of 4 letters or more, always with the centre letter; a letter can be used again. A 4-letter word scores {four}, a longer word its length, and a word with all seven letters {bonus} more. A word found is gone for both players.{goAgain}', win: 'First to {target} points.' };
+export const explainer = { name: 'Letter Hive', play: 'Each turn deals seven new letters, hidden until you tap Go!, then a burst of {secs} seconds. Tap the letters to make words of 4 letters or more, always with the centre letter; a letter can be used again. A 4-letter word scores {four}, a longer word its length, and a word with all seven letters {bonus} more. A word either player has already found scores nothing.{goAgain}', win: 'First to {target} points.' };
 // {goAgain} in the explainer: the text below while "Go again on success" is on (AGAIN_TUNE), the other while off (ui/explainer.js fillTune).
 export const goAgainText = { on: ' All seven letters in a word? Go again.', off: '' };
 // The icon: a little hive of three cells, a letter's strokes in the middle one.
@@ -18,10 +18,12 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 // the words it finds in a burst by level (never more than a person could enter in the time) and its lean to short
 // words (how likely a word is beside one a letter shorter: 100 no lean, 50 half as likely a letter) and to everyday
 // ones (the puzzles mark them: how likely an unusual word is beside one), with Hard's chance of going for a
-// full-hive word. Tuned by tests/sim/hive.sim.js (December 2026): 40 points with Normal's 1 to 4 words a burst: 4.6
-// bursts each (median 4.5), the winner's 4.9, the first mover 56.7% over 4,000 squares (35 points: 4.1, 57%; 45: 5.1,
-// 56%; Normal at 2 to 4 words: 3.9, 60.5%); Hard against Hard 3.05 bursts, 61%. The target tops out at 50: every
-// puzzle holds 4 times that in points (scripts/make-hive-puzzles.js TOTAL).
+// full-hive word. Tuned by tests/sim/hive.sim.js (23 November 2026, new letters every turn, drawn at Go!): 40 points
+// with Normal's 1 to 4 words a burst: 5.5 bursts each (median 5.5), the winner's 5.8, the first mover 58.5% over 4,000
+// squares (35 points: 4.8, 59%; 45: 6.2, 58%; 50: 6.9, 57.5%). Every burst now has fresh letters, so none is worth more
+// for the words the other player has left: a Normal burst is worth about 7 points all square long (with one set of
+// letters, 7 at first and 8 to 9 later). The target tops out at 50: every puzzle holds 4 times that in points
+// (scripts/make-hive-puzzles.js TOTAL), so a burst on new letters never runs short.
 export const TUNE = [
   AGAIN_TUNE,
   { k: 'secs', label: 'Burst length (s)', def: 20, min: 8, max: 45, step: 1, group: 'Timing' },

@@ -294,7 +294,7 @@ Win: Reach 1,000 m first.
 
 ## Letter Hive [hive]
 Category: More brain
-Play: A turn is a burst of {secs} seconds. Tap the letters to make words of 4 letters or more, always with the centre letter; a letter can be used again. A 4-letter word scores {four}, a longer word its length, and a word with all seven letters {bonus} more. A word found is gone for both players.{goAgain}
+Play: Each turn deals seven new letters, hidden until you tap Go!, then a burst of {secs} seconds. Tap the letters to make words of 4 letters or more, always with the centre letter; a letter can be used again. A 4-letter word scores {four}, a longer word its length, and a word with all seven letters {bonus} more. A word either player has already found scores nothing.{goAgain}
 Win: First to {target} points.
 
 ## Little Wheel [rl]

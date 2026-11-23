@@ -6881,14 +6881,25 @@ button.jgcell { cursor: pointer; touch-action: none; }
 .hvline.ok { color: var(--green); } .hvline.no { color: var(--muted); }
 .hvline.full { font: 400 19px/26px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .03em; color: var(--sea); }
 .hvline.pop { animation: hvpop .22s cubic-bezier(.3, 1.6, .5, 1); }
+.hvline.wait { color: var(--ink); font-size: 30px; letter-spacing: .12em; animation: hvwait 1s ease-in-out infinite; }   /* (this phone's Go! with the server: its letters come with the record) */
+@keyframes hvwait { 50% { opacity: .35; } }
 @keyframes hvpop { from { transform: scale(.6); opacity: .3; } }
 .hvbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
 .hvhive { width: min(100cqw, 92cqh); height: auto; display: block; overflow: visible; touch-action: none; -webkit-user-select: none; user-select: none; }
 .hvc .hvsh { fill: var(--ink); stroke: var(--ink); stroke-width: 3.2; stroke-linejoin: round; }
 .hvc .hvhx { fill: var(--card); stroke: var(--ink); stroke-width: 3.2; stroke-linejoin: round; }
 .hvc.mid .hvhx { fill: var(--sea); }
-.hvc text { font: 400 30px 'Luckiest Guy', 'Arial Black', sans-serif; text-anchor: middle; fill: var(--ink); pointer-events: none; }
+.hvc text { font: 400 30px 'Luckiest Guy', 'Arial Black', sans-serif; text-anchor: middle; fill: var(--ink); pointer-events: none; transform-box: fill-box; transform-origin: center; }
 .hvc.mid text { fill: #fff; }
+.hvc .hvback { fill: rgba(22, 18, 16, .07); stroke: rgba(22, 18, 16, .16); stroke-width: 1.6; stroke-linejoin: round; }   /* (a cell's tile back: the hive before Go!, its letters still to be drawn) */
+.hvc.mid .hvback { fill: rgba(255, 255, 255, .18); stroke: rgba(255, 255, 255, .34); }
+/* Go!: the letters come in, the centre first, each cell at its moment (--d ms, rules.js hiveDealAt; HIVE.pop .24s): the tile back goes, the letter pops on, the cell bobs (reduced motion: the letters at once) */
+.hvhive.deal .hvback { opacity: 0; animation: hvbackout .12s calc(var(--d) * 1ms) linear backwards; }
+@keyframes hvbackout { from { opacity: 1; } }
+.hvhive.deal .hvc text { animation: hvdeal .24s calc(var(--d) * 1ms) cubic-bezier(.3, 1.6, .5, 1) backwards; }
+@keyframes hvdeal { from { opacity: 0; transform: scale(.3); } }
+.hvhive.deal .hvc .hvtop { animation: hvdealtop .24s calc(var(--d) * 1ms) cubic-bezier(.3, 0, .4, 1); }
+@keyframes hvdealtop { 40% { transform: translateY(-5px) scale(1.05); } }
 .hvhive.on .hvc { cursor: pointer; }
 .hvc .hvtop { transition: transform .05s; }
 .hvhive.on .hvc.dn .hvtop { transform: translateY(4px); }
@@ -6908,6 +6919,7 @@ button.jgcell { cursor: pointer; touch-action: none; }
 .thv { width: 100%; height: auto; display: block; overflow: visible; }
 .thvc { fill: var(--card); stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; } .thvc.mid { fill: var(--sea); }
 .thvl { font: 400 18.6px 'Luckiest Guy', 'Arial Black', sans-serif; text-anchor: middle; fill: var(--ink); } .thvl.mid { fill: #fff; }
+.thvb { fill: rgba(22, 18, 16, .08); stroke: none; } .thvb.mid { fill: rgba(255, 255, 255, .22); }   /* (before any burst: the cells blank, their tile backs) */
 /* [/hive] */
 
 /* [rally] Road Race */
