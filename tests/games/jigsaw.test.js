@@ -133,7 +133,9 @@ test('jigsaw: more than half of the pieces takes the square at once; level with 
 
 test('jigsaw: the settings: the grid\'s size and its centre piece (an even grid has none), the piece timer, the computer\'s shares; "Go again on success" is off by default', () => {
   const keys = M.TUNE.map(f => f.k);
-  assert.deepEqual(keys, ['again', 'size', 'centre', 'secs', 'aiEasy', 'aiNormal', 'aiHard']);
+  assert.deepEqual(keys, ['again', 'size', 'centre', 'edges', 'rotate', 'secs', 'aiEasy', 'aiNormal', 'aiHard', 'aiTurnEasy', 'aiTurnNormal', 'aiTurnHard']);
+  for (const k of ['edges', 'rotate']) { const f = E.tuneFields('jigsaw').find(x => x.k === k); assert.deepEqual([f.def, f.opts], ['off', ['off', 'on']], `${k}: off by default`); }
+  assert.deepEqual(['edges', 'rotate'].map(k => E.tuneFields('jigsaw').find(x => x.k === k).label), ['Mark edge pieces', 'Pieces drawn rotated']);
   assert.ok(M.TUNE.every(f => ['Board', 'Rules', 'Timing', 'Computer'].includes(f.group)));
   const again = E.tuneFields('jigsaw').find(f => f.k === 'again'); assert.deepEqual([again.label, again.def, again.opts], ['Go again on success', 'off', ['off', 'on']]);
   let m = mini('s4', { size: 4 });
@@ -337,6 +339,191 @@ test('jigsaw: random play: a few hundred squares all end, in a win or a draw, wi
     assert.ok(end); if (end.outcome === 'win') { wins++; assert.equal(Math.max(m.got.X, m.got.O), 5); } else { draws++; assert.deepEqual(m.got, { X: 4, O: 4 }); }
   }
   assert.ok(wins > 0 && draws > 0);
+});
+
+// ---- the two options (both off by default) ----
+const ROT = { rotate: 'on' };
+test('jigsaw: both options off (the defaults): the square, its moves and its record are as they were: no turn drawn, { c } alone, nothing new in the state, the flash or the public view', () => {
+  E.setTune('jigsaw', null);
+  try {
+    const m = E.newMini('jigsaw', E.makeRng('off'));
+    assert.deepEqual(Object.keys(m).sort(), ['by', 'got', 'k', 'last', 'n', 'offer', 'placed', 'seed', 'type'], 'no tune kept, no new field');
+    assert.deepEqual([R.jigEdgesOn(m), R.jigRotOn(m), R.jigRot(m)], [false, false, 0]);
+    const a = E.newMini('jigsaw', E.makeRng('off')), rng = lcg(5);
+    assert.deepEqual(draw(m, 'X', rng), { ok: true, outcome: 'continue', note: 'draw', again: true });
+    assert.equal('rot' in m, false, 'no turn drawn');
+    assert.equal('rot' in E.publicMini(m), false);
+    for (const bad of [{ c: m.offer, r: 0 }, { c: m.offer, r: 1 }, { r: 0 }]) assert.equal(E.applyMove(m, 'X', bad, lcg(1)).ok, false, `${JSON.stringify(bad)}: a placement is { c } alone`);
+    // the same rng's draws as before the options existed: the same piece comes out, and the stand-in and the computer move as before
+    draw(a, 'X', lcg(5)); assert.equal(a.offer, m.offer);
+    const mv = E.randomLegalMove(m, 'X', lcg(9)); assert.deepEqual(Object.keys(mv), ['c']);
+    const b = A.best(E.publicMini(m), 'X', lcg(3), {}, { level: 'normal' }).move; assert.deepEqual(Object.keys(b), ['c']);
+    const st = E.newMatch(E.makeRng('off-m'), { games: ['ttt', 'jigsaw'] });
+    st.squares[0] = { owner: null, mini: m }; st.turn = 'X'; st.lock = 0;
+    assert.ok(E.playMove(st, 0, { c: m.offer }, E.makeRng('x')).ok);
+    assert.deepEqual(Object.keys(st.flash.jig).sort(), ['at', 'by', 'c', 'end', 'fill', 'got', 'ok', 'placed', 'was']);
+    assert.deepEqual(Object.keys(m.last).sort(), ['at', 'by', 'c', 'end', 'ok', 'was']);
+    assert.equal(R.jigTimes(st.flash.jig).pre, 0); assert.equal(R.jigTimes(st.flash.jig).land, R.JIG.fly);
+  } finally { E.setTune('jigsaw', ON); }
+});
+
+test('jigsaw: the edge cells by grid size: a corner piece has two sides on the picture\'s border, a piece between the corners one, an inner piece none', () => {
+  assert.deepEqual(R.jigBorder(3, 0), ['t', 'l']); assert.deepEqual(R.jigBorder(3, 2), ['t', 'r']); assert.deepEqual(R.jigBorder(3, 6), ['b', 'l']); assert.deepEqual(R.jigBorder(3, 8), ['r', 'b']);
+  assert.deepEqual([R.jigBorder(3, 1), R.jigBorder(3, 3), R.jigBorder(3, 5), R.jigBorder(3, 7), R.jigBorder(3, 4)], [['t'], ['l'], ['r'], ['b'], []]);
+  for (const n of [3, 4, 5]) {
+    const k = Array.from({ length: n * n }, (_, i) => R.jigBorder(n, i).length);
+    assert.deepEqual([k.filter(v => v === 2).length, k.filter(v => v === 1).length, k.filter(v => v === 0).length], [4, 4 * (n - 2), (n - 2) ** 2], `n ${n}: four corners, the edges between, the inside`);
+    for (let i = 0; i < n * n; i++) { const r = Math.floor(i / n), c = i % n; assert.equal(k[i] > 0, r === 0 || c === 0 || r === n - 1 || c === n - 1, `n ${n}, cell ${i}`); }
+  }
+  // the marks: a stripe for each border side (inside the piece's outline, following its knob or socket) and one flag, never for an inner piece
+  for (const n of [3, 4, 5]) for (let i = 0; i < n * n; i++) {
+    const sides = R.jigBorder(n, i), art = P.jigEdgeArt(77, n, i, sides);
+    if (!sides.length) { assert.equal(art, null); continue; }
+    const band = art.band.match(/<path class="jgeg" d="([^"]+)"/)[1];
+    assert.equal((band.match(/M/g) || []).length, sides.length, `n ${n}, cell ${i}: a stripe a border side`);
+    assert.match(band, /^(?:M[-0-9. ]+(?:C[-0-9. ]+){3})+$/);
+    assert.equal((art.flag.match(/class="jgfn"/g) || []).length, 1, 'one flag');
+    assert.doesNotMatch(art.band + art.flag, /NaN|undefined/);
+    assert.equal(art, P.jigEdgeArt(77, n, i, sides), 'pure');
+  }
+  // the stripe runs along the side itself: the top side's stripe of the top left piece is the piece's own top side, point for point
+  const top = P.jigEdgeArt(42, 3, 0, ['t']).band.match(/class="jgeg" d="M([-0-9. ]+)((?:C[-0-9. ]+){3})"/), outline = P.jigPiecePath(42, 3, 0);
+  assert.ok(outline.startsWith(`M${top[1]}${top[2]}`), 'the top stripe follows the outline\'s top side');
+  // the flag lies inside its piece, whatever the cut: never over a socket (a neighbour's knob) at any seed or size
+  const poly = d => { const v = d.match(/-?[0-9.]+/g).map(Number), out = []; for (let k = 0; k + 7 < v.length; k += 6) for (let u = 0; u < 1; u += 1 / 24) { const q = j => (1 - u) ** 3 * v[k + j] + 3 * (1 - u) ** 2 * u * v[k + 2 + j] + 3 * (1 - u) * u * u * v[k + 4 + j] + u ** 3 * v[k + 6 + j]; out.push([q(0), q(1)]); } return out; };
+  const inside = (pg, [x, y]) => { let c = false; for (let a = 0, b = pg.length - 1; a < pg.length; b = a++) if ((pg[a][1] > y) !== (pg[b][1] > y) && x < ((pg[b][0] - pg[a][0]) * (y - pg[a][1])) / (pg[b][1] - pg[a][1]) + pg[a][0]) c = !c; return c; };
+  const gap = (pg, [x, y]) => Math.min(...pg.map(([a, b], k) => { const [c, d] = pg[(k + 1) % pg.length], L = (c - a) ** 2 + (d - b) ** 2, t = L ? Math.max(0, Math.min(1, ((x - a) * (c - a) + (y - b) * (d - b)) / L)) : 0; return Math.hypot(x - a - t * (c - a), y - b - t * (d - b)); }));
+  for (const n of [3, 4, 5]) for (let sd = 0; sd < 60; sd++) for (let i = 0; i < n * n; i++) {
+    const sides = R.jigBorder(n, i); if (!sides.length) continue;
+    const pg = poly(P.jigPiecePath(sd * 7919, n, i)), pts = P.jigEdgeArt(sd * 7919, n, i, sides).flag.match(/class="jgfh" d="([^"]+)"/)[1].match(/-?[0-9.]+ -?[0-9.]+/g).map(t => t.split(' ').map(Number));
+    for (const pt of pts) assert.ok(inside(pg, pt) && gap(pg, pt) > (300 / n) * 0.02, `n ${n}, seed ${sd * 7919}, piece ${i}: the flag's point ${pt} inside the piece`);
+  }
+  // the flag's corner: the picture's own corner where it can be, never the top left (a placed piece's mark is there)
+  assert.deepEqual([['t', 'l'], ['t', 'r'], ['r', 'b'], ['b', 'l'], ['t'], ['r'], ['b'], ['l']].map(P.jigFlagCorner), ['tr', 'tr', 'br', 'bl', 'tr', 'tr', 'br', 'bl']);
+});
+
+test('jigsaw: Pieces drawn rotated: the draw also draws how the piece is turned, by the move\'s rng (a quarter, half or three-quarter turn: never upright), public once drawn; it is the server\'s online', () => {
+  const m = mini('rot', ROT);
+  assert.equal(R.jigRotOn(m), true); assert.equal(R.jigRot(m), 0, 'nothing on show');
+  assert.equal(E.publicMini(m).rot, null);
+  draw(m, 'X', lcg(4));
+  assert.ok([1, 2, 3].includes(m.rot), `turned: ${m.rot}`); assert.equal(R.jigRot(m), m.rot);
+  assert.equal(E.publicMini(m).rot, m.rot, 'public once drawn, like the piece');
+  // every turn but upright comes up, as often as the other two, and the piece's cell is drawn as without the option
+  const seen = { 1: 0, 2: 0, 3: 0 };
+  for (let k = 0; k < 600; k++) {
+    const x = mini('r', ROT), y = mini('r');
+    draw(x, 'O', E.makeRng('rd' + k)); draw(y, 'O', E.makeRng('rd' + k));
+    assert.equal(x.offer, y.offer, 'the same piece by the same rng'); seen[x.rot]++;
+  }
+  assert.ok(Object.values(seen).every(v => v > 150), JSON.stringify(seen));
+  // the same rng, the same turn (the server's draw, made once)
+  const a = mini('s', ROT), b = mini('s', ROT); draw(a, 'X', E.makeRng('srv')); draw(b, 'X', E.makeRng('srv')); assert.deepEqual([a.offer, a.rot], [b.offer, b.rot]);
+  // the flash of a draw carries it, for the other phone and a replay
+  const st = E.newMatch(E.makeRng('rot-f'), { games: ['ttt', 'jigsaw'] });
+  st.squares[0] = { owner: null, mini: mini('rf', ROT) }; st.turn = 'X'; st.lock = 0;
+  assert.ok(E.playMove(st, 0, 'draw', E.makeRng('d')).ok);
+  assert.deepEqual(st.flash.jig, { draw: true, by: 'X', c: st.squares[0].mini.offer, k: 1, rot: st.squares[0].mini.rot });
+});
+
+test('jigsaw: Pieces drawn rotated: a placement is { c, r } exactly (r 0 to 3 quarter turns clockwise, as the player left it); it fits only in its own cell the right way up; its own cell turned any other way is a wrong placement', () => {
+  const at = (placed, offer, rot, by) => { const m = fixed(placed, offer, by || 'X', ROT); m.rot = rot; return m; };
+  let m = at('....C....', 3, 2);
+  for (const bad of [{ c: 3 }, { c: 3, r: 4 }, { c: 3, r: -1 }, { c: 3, r: 1.5 }, { c: 3, r: '0' }, { c: 3, r: null }, { c: 3, r: 0, x: 1 }, { r: 0 }, { c: 4, r: 0 }, { c: 9, r: 0 }, [3, 0], 'auto', 'draw']) assert.equal(E.applyMove(m, 'X', bad, lcg(1)).ok, false, `refused: ${JSON.stringify(bad)}`);
+  assert.deepEqual([m.offer, m.rot], [3, 2], 'a refused move changes nothing');
+  // right cell, upright: it locks in
+  assert.deepEqual(E.applyMove(m, 'X', { c: 3, r: 0 }, lcg(1)), { ok: true, outcome: 'continue', note: 'fits' });
+  assert.deepEqual([m.placed, m.got, m.offer, m.rot], ['...XC....', { X: 1, O: 0 }, null, null]);
+  assert.deepEqual(m.last, { by: 'X', c: 3, at: 3, ok: true, was: { X: 0, O: 0 }, end: null, r: 0, rot: 2 });
+  // right cell, turned wrong: no point, the piece back in the pile, as a wrong cell is; the note says why
+  for (const r of [1, 2, 3]) {
+    m = at('....C....', 5, 3, 'O');
+    const before = JSON.parse(JSON.stringify(m));
+    assert.deepEqual(E.applyMove(m, 'O', { c: 5, r }, lcg(1)), { ok: true, outcome: 'continue', note: 'turn' });
+    assert.deepEqual([m.placed, m.got, m.offer, m.by, m.rot, m.k], [before.placed, before.got, null, null, null, before.k]);
+    assert.deepEqual(m.last, { by: 'O', c: 5, at: 5, ok: false, was: { X: 0, O: 0 }, end: null, r, rot: 3 });
+    assert.ok(R.jigEdge(m).includes(5), 'and it can come up again');
+  }
+  // the order of the keys is nobody's business; a -0 never reaches the record
+  m = at('....C....', 1, 1); assert.equal(E.applyMove(m, 'X', { r: -0, c: 1 }, lcg(1)).note, 'fits'); assert.ok(Object.is(m.last.r, 0));
+  // a wrong cell is wrong whichever way it is turned
+  m = at('....C....', 1, 1); assert.equal(E.applyMove(m, 'X', { c: 7, r: 0 }, lcg(1)).note, 'wrong'); assert.deepEqual([m.last.at, m.last.r, m.last.ok], [7, 0, false]);
+  // out of time: the piece back, as it was drawn
+  m = at('....C....', 1, 2); assert.equal(E.applyMove(m, 'X', 'out', lcg(1)).note, 'out'); assert.deepEqual([m.last.at, m.last.r, m.last.rot, m.rot], [-1, 2, 2, null]);
+  // the turn shown before a placement travels (someone else's): from how it was drawn to how it was placed, clockwise
+  assert.deepEqual([[1, 0], [2, 0], [3, 0], [3, 1], [2, 2], [1, 3]].map(([rot, r]) => R.jigTurns({ at: 4, rot, r })), [3, 2, 1, 2, 0, 2]);
+  assert.equal(R.jigTurns({ at: -1, rot: 2, r: 2 }), 0); assert.equal(R.jigTurns({ at: 3 }), 0, 'none without the option');
+  const T = R.jigTimes({ at: 3, c: 3, ok: true, rot: 1, r: 0, was: { X: 0, O: 0 } }), U = R.jigTimes({ at: 3, c: 3, ok: true, rot: 1, r: 0, was: { X: 0, O: 0 } }, true);
+  assert.deepEqual([T.pre, T.land, U.pre, U.land], [3 * R.JIG.turn, 3 * R.JIG.turn + R.JIG.fly, 0, R.JIG.fly], 'this phone\'s own goes at once');
+  assert.equal(R.flashMs({ jig: { at: 3, c: 3, ok: true, rot: 1, r: 0, was: { X: 0, O: 0 } } }), T.end, 'the move\'s time holds the longer one');
+  // a whole square through the match: every flash carries the turns, the state stays plain
+  const st = E.newMatch(E.makeRng('rot-m'), { games: ['ttt', 'jigsaw'] });
+  st.squares[0] = { owner: null, mini: mini('rm', ROT) }; st.turn = 'X'; st.lock = 0;
+  assert.ok(E.playMove(st, 0, 'draw', E.makeRng('d1')).ok); E.endFlash(st);
+  const q = st.squares[0].mini, rot = q.rot, c = q.offer;
+  assert.ok(E.playMove(st, 0, { c, r: rot }, E.makeRng('p1')).ok);
+  assert.deepEqual(st.flash.jig, { by: 'X', c, at: c, ok: false, was: { X: 0, O: 0 }, got: { X: 0, O: 0 }, end: null, placed: '....C....', fill: 0, r: rot, rot });
+  assert.equal(st.flash.note, 'turn');
+  assert.deepEqual(JSON.parse(JSON.stringify(st)), st, 'plain');
+});
+
+test('jigsaw: Pieces drawn rotated online: the draw\'s turn is the server\'s, in the record for both phones; { c, r } goes in as it is and the record round-trips', () => {
+  E.setTune('jigsaw', Object.assign({}, ON, ROT));
+  try {
+    const T = 1e12, games = Object.fromEntries(E.TYPES.map(g => [g, g === 'jigsaw']));
+    let rec = E.newOnlineMatch({ names: { X: 'A', O: 'B' }, games, timer: 30 }, lcg(3), 'jg-rot');
+    const p = rec.state.turn;
+    let r = E.applyOnlineMove(rec, p, 2, 'draw', E.makeRng('srv'), T); assert.ok(r.ok, r.reason); rec = r.rec;
+    let back = E.parseMatch(JSON.parse(JSON.stringify(E.packMatch(rec)))), sq = back.state.squares[2].mini;
+    assert.ok([1, 2, 3].includes(sq.rot), 'the turn drawn is in the record'); assert.equal(E.publicMini(sq).rot, sq.rot);
+    assert.equal(E.onlineCheck(sq, p, { c: sq.offer, r: 0 }, T, T - 5000), null);
+    assert.equal(E.applyOnlineMove(rec, p, 2, { c: sq.offer }, E.makeRng('srv2'), T + 1000).ok, false, '{ c } alone is refused with the option on');
+    r = E.applyOnlineMove(rec, p, 2, { c: sq.offer, r: 0 }, E.makeRng('srv2'), T + 2000); assert.ok(r.ok, r.reason); rec = r.rec;
+    back = E.parseMatch(JSON.parse(JSON.stringify(E.packMatch(rec)))); sq = back.state.squares[2].mini;
+    assert.deepEqual([R.jigOffer(sq), R.jigRot(sq), sq.got[p], back.state.turn], [null, 0, 1, other(p)]);
+    // a placement turned is the same whatever the server's rng: a phone can still show it at once
+    const a = fixed('....C....', 3, 'X', ROT), b = fixed('....C....', 3, 'X', ROT); a.rot = b.rot = 2;
+    E.applyMove(a, 'X', { c: 3, r: 1 }, E.makeRng('one')); E.applyMove(b, 'X', { c: 3, r: 1 }, E.makeRng('two')); assert.deepEqual(a, b);
+  } finally { E.setTune('jigsaw', ON); }
+});
+
+test('jigsaw: Pieces drawn rotated: the computer turns the piece too, the right way up about as often as its level says; a wrong turn is a wrong placement; every move legal; every square ends', () => {
+  assert.equal(A.jigTurnChance(mini('t0'), 'easy'), 1, 'without the option there is nothing to turn');
+  const share = level => {
+    let ok = 0; const N = 3000;
+    for (let k = 0; k < N; k++) { const x = fixed('XO.XC....', 2, 'O', ROT); x.rot = 1 + (k % 3); const mv = A.best(E.publicMini(x, 'O'), 'O', E.makeRng(level + k), {}, { level }).move; assert.deepEqual(Object.keys(mv).sort(), ['c', 'r']); assert.ok(mv.r >= 0 && mv.r <= 3); if (mv.r === 0) ok++; }
+    return ok / N;
+  };
+  const e = share('easy'), nm = share('normal'), h = share('hard');
+  assert.ok(Math.abs(e - 0.75) < 0.04 && Math.abs(nm - 0.9) < 0.03 && Math.abs(h - 0.97) < 0.02, `easy ${e}, normal ${nm}, hard ${h}`);
+  // q: a turn that may take the square counts the turn's chance too
+  const last = fixed('XXXXC.O..', 5, 'X', ROT); last.rot = 1;
+  const qa = A.best(E.publicMini(last), 'X', () => 0, {}, { level: 'normal' }).q, qb = A.best(E.publicMini(fixed('XXXXC.O..', 5, 'X')), 'X', () => 0, {}, { level: 'normal' }).q;
+  assert.ok(Math.abs(qa - qb * 0.9) < 1e-9, `${qa} ${qb}`);
+  assert.ok(A.needs(E.publicMini(fixed('X...C....', null, null, ROT)), 'X') > A.needs(E.publicMini(fixed('X...C....')), 'X'), 'further off with a piece to turn as well');
+  for (const t of [ROT, Object.assign({ size: 4 }, ROT), Object.assign({ again: 'on' }, ROT), Object.assign({ edges: 'on' }, ROT)]) for (const level of ['easy', 'normal', 'hard']) for (let g = 0; g < 20; g++) {
+    const rng = E.makeRng(`jg-rai:${level}:${g}:${JSON.stringify(t)}`), x = mini('rai' + g, t); let p = 'X', done = false;
+    for (let k = 0; k < 3000 && !done; k++) {
+      const b = A.best(E.publicMini(x, p), p, rng, {}, { level, until: null });
+      const r = E.applyMove(x, p, b.move, rng);
+      assert.ok(r.ok, `${level}: ${JSON.stringify(b.move)} refused (${r.reason})`);
+      if (r.outcome !== 'continue') done = true; else if (!r.again) p = other(p);
+    }
+    assert.ok(done, 'the square ended');
+  }
+});
+
+test('jigsaw: Mark edge pieces changes nothing in the rules: the same square, the same moves, the same results', () => {
+  const a = mini('eg'), b = mini('eg', { edges: 'on' }), ra = lcg(21), rb = lcg(21);
+  for (let k = 0; k < 40; k++) {
+    const ma = E.randomLegalMove(a, 'X', ra), mb = E.randomLegalMove(b, 'X', rb);
+    assert.deepEqual(ma, mb);
+    if (ma == null) break;
+    const x = E.applyMove(a, 'X', ma, ra), y = E.applyMove(b, 'X', mb, rb);
+    assert.deepEqual(x, y);
+    if (x.outcome !== 'continue') break;
+  }
+  assert.deepEqual(Object.assign({}, a, { tune: undefined }), Object.assign({}, b, { tune: undefined }));
 });
 
 test('jigsaw: not dealt in Super Chaos', () => {

@@ -407,7 +407,7 @@ Win: Sink all your balls on the table first. Sink the black ball and you lose. B
 
 ## Puzzle Build [jigsaw]
 Category: More brain
-Play: You both build one picture puzzle. Draw a piece: it fits next to a piece on the board. Tap its place, or drag it there, within {secs} seconds. Right: it locks in and scores you a point. Wrong or too slow: it goes back in the pile.{goAgain}
+Play: You both build one picture puzzle. Draw a piece: it fits next to a piece on the board.{rotText} Tap its place, or drag it there, within {secs} seconds. Right: it locks in and scores you a point. Wrong or too slow: it goes back in the pile.{edgeText}{goAgain}
 Win: Place more than half of the pieces.
 
 ## Rhythm Tap [rhythm]

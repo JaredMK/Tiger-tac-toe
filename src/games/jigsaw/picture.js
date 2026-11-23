@@ -358,3 +358,34 @@ export function jigPiecePath(seed, n, i) {
 }
 // A piece's box on the sheet with room for its knobs: [x, y, width, height] (a square, the same for every piece of a grid).
 export function jigPieceBox(n, i) { const s = PIC.size / n, m = s * 0.26; return [(i % n) * s - m, Math.floor(i / n) * s - m, s + 2 * m, s + 2 * m]; }
+
+// ---------- the edge marks (the `edges` setting) ----------
+// A piece on the picture's outer border carries a bold stripe along each of its sides that lie on the border (inside
+// its outline, following the side's knob or socket, an ink line on its inner edge) and a little pennant flag in one of
+// its corners. Drawn in the piece's own place on the sheet, so they turn with it. `sides`: the piece's border sides,
+// 't', 'r', 'b', 'l' (rules.js jigBorder). The flag's corner: the picture's own corner where the piece has one, else one
+// beside its border side, never the top left (where a placed piece carries its layer's mark): the top right, then the
+// bottom right, then the bottom left. A corner's square a third of the side across is the piece's own whatever its cut
+// (a knob or socket stays within the middle third of its side), so the flag never runs over a neighbour's knob.
+export const EDGE = { band: 0.18, ink: 0.035 };                    // the stripe's width (centred on the outline: half of it shows), its inner ink line (shares of a piece's side)
+export function jigFlagCorner(sides) {
+  const has = k => (sides.includes(k) ? 1 : 0), score = { tr: has('t') + has('r'), br: has('b') + has('r'), bl: has('b') + has('l') };
+  return ['tr', 'br', 'bl'].reduce((a, k) => (score[k] > score[a] ? k : a), 'tr');
+}
+const FLAG = { tr: [0.88, 0.04, -1], br: [0.88, 0.68, -1], bl: [0.12, 0.68, 1] };   // the pole's top (shares of the piece's side, from its top left) and the way the pennant flies (inwards): pole 0.28 long, pennant 0.2 by 0.17, inside the corner's square
+const edgeMemo = new Map();
+export function jigEdgeArt(seed, n, i, sides) {
+  if (!sides || !sides.length) return null;
+  const key = `${seedOf(seed)}:${n}:${i}:${sides.join('')}`;
+  if (edgeMemo.has(key)) return edgeMemo.get(key);
+  const cut = jigCut(seed, n), s = PIC.size / n, r = Math.floor(i / n), c = i % n, x = c * s, y = r * s;
+  const side = { t: () => sidePts(cut.H[r][c], s, x, y, 1, 0, 0, 1), r: () => sidePts(cut.V[r][c + 1], s, x + s, y, 0, 1, 1, 0), b: () => sidePts(cut.H[r + 1][c], s, x, y + s, 1, 0, 0, 1), l: () => sidePts(cut.V[r][c], s, x, y, 0, 1, 1, 0) };
+  const d = sides.filter(k => side[k]).map(k => { const p = side[k](); return `M${at(...p[0])}${fwd(p)}`; }).join('');
+  const band = `<path class="jgek" d="${d}" stroke-width="${r1(s * (EDGE.band + 2 * EDGE.ink))}"/><path class="jgeg" d="${d}" stroke-width="${r1(s * EDGE.band)}"/>`;
+  const [px, py, dx] = FLAG[jigFlagCorner(sides)], P = (u, v) => at(x + u * s, y + v * s);
+  const pole = `M${P(px, py)}L${P(px, py + 0.28)}`, pen = `M${P(px, py)}L${P(px + dx * 0.2, py + 0.085)}L${P(px, py + 0.17)}Z`;
+  const flag = `<g class="jgflag"><path class="jgfh" d="${pole}${pen}"/><path class="jgfp" d="${pole}"/><path class="jgfn" d="${pen}"/><path class="jgfs" d="M${P(px + dx * 0.04, py + 0.045)}L${P(px + dx * 0.12, py + 0.078)}"/></g>`;
+  if (edgeMemo.size > 200) edgeMemo.clear();
+  edgeMemo.set(key, { band, flag });
+  return edgeMemo.get(key);
+}

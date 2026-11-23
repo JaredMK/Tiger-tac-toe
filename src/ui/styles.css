@@ -6817,8 +6817,24 @@ button.jgcell { cursor: pointer; touch-action: none; }
 @keyframes jgdrain { 0% { transform: scaleY(1); background: #4e9d3a; } 55% { background: #4e9d3a; } 80% { background: #f08a1e; } 100% { transform: scaleY(0); background: #f08a1e; } }
 .jgline { margin: 0; height: 26px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; color: var(--muted); }
 .jgline.wait { font: 700 15px/28px 'Comic Neue', 'Comic Sans MS', sans-serif; letter-spacing: 0; }
-.jgline.ok { color: var(--green); } .jgline.no, .jgline.out { color: #b0472f; } .jgline b { font: inherit; }
-@media (prefers-reduced-motion: reduce) { .jgpw.ok, .jgpw.fill, .jgwhole.late, .jgboard.aim .jgcell.open::before { animation: none; } }
+.jgline.ok { color: var(--green); } .jgline.no, .jgline.out, .jgline.askew { color: #b0472f; } .jgline b { font: inherit; }
+/* the edge marks (`edges` on: picture.js jigEdgeArt): a violet stripe inside each side on the picture's border, an ink
+   line on its inner edge, and a pennant flag in a corner (never the players' red or yellow) */
+.jgek { fill: none; stroke: var(--ink); stroke-linejoin: round; } .jgeg { fill: none; stroke: #7448e0; stroke-linejoin: round; }
+.jgflag path { stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.jgfh { fill: #fff; stroke: #fff; stroke-width: 4px; } .jgfp { fill: none; stroke: var(--ink); stroke-width: 2.6px; } .jgfn { fill: #7448e0; stroke: var(--ink); stroke-width: 2px; } .jgfs { fill: none; stroke: #d9ccff; stroke-width: 1.6px; }
+/* the turned pieces (`rotate` on): a piece turned --jr quarter turns about its middle; someone else's turning on the
+   tray a quarter at a time (.jgq, JIG.turn 190 ms each, from the move) and gone as it leaves for the cell; Rotate beside
+   the piece on show, its room always kept */
+.jgrt, .jgq { display: block; width: 100%; height: 100%; } .jgrt { transform: rotate(calc(var(--jr, 0) * 90deg)); }
+.jgq { animation: jgq .19s var(--t, 0ms) cubic-bezier(.3, 1.35, .5, 1) both; }
+@keyframes jgq { from { transform: none; } to { transform: rotate(90deg); } }
+.jgpw.turn { animation: jggone 1ms var(--b, 0ms) both; }
+.jgstage.rot { grid-template-columns: minmax(0, 1fr) auto; column-gap: 4px; } .jgstage.rot > .jgslot { grid-column: 1; }
+.g-jig .jgrot { grid-column: 2; position: relative; z-index: 3; width: 48px; height: 48px; margin: 0 2px 0 0; padding: 0; display: grid; place-items: center; border: 3px solid var(--ink); border-radius: 50%; background: #fff; color: var(--ink); box-shadow: 0 3px 0 var(--ink); -webkit-tap-highlight-color: transparent; }
+.g-jig .jgrot svg { width: 26px; height: 26px; display: block; overflow: visible; }
+.g-jig .jgrot:active:not(:disabled) { translate: 0 3px; box-shadow: none; } .g-jig .jgrot.off { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) { .jgpw.ok, .jgpw.fill, .jgwhole.late, .jgboard.aim .jgcell.open::before { animation: none; } .jgq { animation: none; transform: rotate(90deg); } .jgpw.turn { display: none; } }   /* (nothing flies then: the piece is in its cell at once) */
 /* the miniature: the board cut as the puzzle is, a piece in place tinted by whoever laid it */
 .tart.tjgw { gap: 2cqw; width: 94cqw; } .tart.tjgw .tpic { width: 42cqw; flex: none; } .tart.tjgw .tpip { width: auto; flex: 1; min-width: 0; }
 .tart.tjgw .tpip .tr { --pw: min(7.4cqw, calc(33cqw / var(--n, 5))); gap: 1.2cqw; } .tart.tjgw .tpip .tr i:not(.nb) { width: var(--pw); height: var(--pw); border-width: 1.2cqw; flex: none; }

@@ -133,3 +133,97 @@ test('a seed that is not a number never reaches the markup', () => {
   const html = screen(m) + V.miniature(m, false);
   assert.doesNotMatch(html, /onerror|<img/); assert.match(html, /<g id="jgs0">/);
 });
+
+// ---- the two options (both off by default) ----
+const withTune = (t, fn) => { E.setTune('jigsaw', Object.assign({ centre: 'on' }, t)); try { return fn(); } finally { E.setTune('jigsaw', { centre: 'on' }); } };
+const piecesOf = html => html.match(/<svg class="jgp"[\s\S]*?<\/svg>/g) || [];
+const stripes = svg => { const m = svg.match(/<path class="jgeg" d="([^"]+)"/); return m ? (m[1].match(/M/g) || []).length : 0; };
+// The square as a real match on this phone (so its own controls go through the page's own flow: attemptMove, playMove).
+async function liveMatch(mini, turn = 'X') {
+  Object.assign(state, E.newMatch(E.makeRng('jg-live'), { games: ['ttt', 'jigsaw'] }));
+  state.squares[0] = { owner: null, mini }; state.zoom = 0; state.screen = 'mini'; state.online = null; state.cpu = null; state.turn = turn; state.flash = null; state.done = null; state.lock = 0; state.spot = null;
+}
+const own = (turn = 'X') => { const sq = state.squares[0]; return V.screen(sq, state.flash, null, sq.mini, false, !!state.flash, state.flash, null, false, () => -1, false, turn, ''); };
+
+test('with both options off nothing of them is in the page: no stripes, no flag, no turned piece, no Rotate', () => {
+  const d = play(E.newMini('jigsaw', E.makeRng('off')), 'X', 'draw', E.makeRng('jgv-d'));
+  for (const html of [screen(d.mini, d.flash), screen(d.mini, null), screen(d.mini, null, { locked: true })]) assert.doesNotMatch(html, /jgeg|jgek|jgflag|jgrt|jgq|jgrot|jgstage rot/);
+});
+
+test('Mark edge pieces: a piece on the picture\'s border carries a stripe along each of its border sides and a flag, wherever it is drawn (the tray, in place); an inner piece none; never in the whole picture or the miniature', () => withTune({ edges: 'on' }, () => {
+  const m = fixed('X...C...O', 1, 'O');
+  const html = screen(m, null, { turn: 'O' }), ps = piecesOf(html);
+  assert.equal(ps.length, 4, 'the three in place and the one on show');
+  const by = i => ps.find(p => p.includes(`viewBox="${P.jigPieceBox(3, i).map(v => Math.round(v * 10) / 10).join(' ')}"`));
+  assert.deepEqual([stripes(by(0)), stripes(by(4)), stripes(by(8)), stripes(by(1))], [2, 0, 2, 1], 'a corner two, the middle none, an edge piece one');
+  assert.deepEqual([0, 4, 8, 1].map(i => (by(i).match(/class="jgflag"/g) || []).length), [1, 0, 1, 1], 'a flag on each border piece');
+  assert.ok(by(1).indexOf('class="jgeg"') < by(1).indexOf('class="jgpo"'), 'the stripe inside the outline (clipped with the picture), the flag over it');
+  assert.ok(by(1).indexOf('class="jgflag"') > by(1).indexOf('class="jgpo"'));
+  // a placement's flight and a piece dropping in at the end carry them too
+  const w = play(fixed('XXXXC.O..', 5, 'X'), 'X', { c: 5 });
+  const end = screen(w.mini, w.flash);
+  assert.equal((end.match(/class="jgflag"/g) || []).length, 8, 'every piece on the board but the middle one, the two from the pile too');
+  // the whole picture, looked at again: the picture alone
+  const look = screen(w.mini, null, { view: true });
+  assert.doesNotMatch(look, /jgeg|jgflag/); assert.doesNotMatch(V.miniature(m, false), /jgeg|jgflag/);
+}));
+
+test('Pieces drawn rotated: the piece comes out turned as it was drawn; on this phone\'s turn Rotate (or a tap on the piece) turns it a quarter turn clockwise on this phone alone, and the placement carries how it was left: right way up, it fits', async () => withTune({ rotate: 'on' }, async () => {
+  const m0 = E.newMini('jigsaw', E.makeRng('jgr1')), d = play(m0, 'X', 'draw', E.makeRng('jgr-d')), rot = d.mini.rot;
+  assert.ok([1, 2, 3].includes(rot));
+  let html = screen(d.mini, d.flash);
+  assert.match(html, new RegExp(`data-cf="jgpile" data-cfat="0" data-cfd="420"><span class="jgrt" style="--jr:${rot}">`), 'it slides out of the pile turned');
+  assert.match(html, /<div class="jgstage rot">/); assert.match(html, /<button class="jgrot off" data-act="jig-rot" aria-label="Rotate the piece" disabled>/, 'nothing to turn while it comes out');
+  // someone else's piece on show: as it was drawn, and no Rotate here
+  html = screen(d.mini, null, { locked: true });
+  assert.match(html, new RegExp(`<span class="jgrt" style="--jr:${rot}">`)); assert.match(html, /jgrot off/);
+  // this phone's own: Rotate live; each press a quarter turn, written on the page (the next drawing shows the draft)
+  await liveMatch(d.mini);
+  html = own();
+  assert.match(html, /<button class="jgrot" data-act="jig-rot" aria-label="Rotate the piece">/);
+  assert.match(html, new RegExp(`class="jgslot live"><i class="jgbx" data-anchor="jgoffer"></i><span class="jgpw"><span class="jgfl"><span class="jgrt" style="--jr:${rot}">`));
+  for (let k = 1; k <= 4; k++) { V.actions['jig-rot'](); assert.match(own(), new RegExp(`<span class="jgrt" style="--jr:${(rot + k) % 4}">`), `after ${k} presses`); }
+  assert.equal(d.mini.rot, rot, 'the square is untouched: the turn is this phone\'s draft');
+  while (!own().includes('--jr:0"')) V.actions['jig-rot']();
+  V.actions['jig-cell']({ dataset: { c: String(d.mini.offer) } });
+  const sq = state.squares[0].mini;
+  assert.deepEqual([sq.last.at, sq.last.r, sq.last.rot, sq.last.ok, state.flash.note], [sq.last.c, 0, rot, true, 'fits'], 'placed upright in its own cell: it fits');
+  // this phone's own placement goes at once: no turning first, the flight from the move's start
+  html = own();
+  assert.doesNotMatch(html, /jgpw turn|class="jgq"/); assert.match(html, /<span class="jgpw ok" style="--t:360ms"><span class="jgfl"(?: data-cf="jgoffer" data-cfat="0" data-cfd="360")?>/);
+  const heard = []; V.sounds(state.flash, (n, at) => heard.push([n, at])); assert.deepEqual(heard.filter(([n]) => n === 'jgTurn'), [], 'no turning to hear');
+  const pre = R.jigTimes(state.flash.jig).pre;
+  assert.equal(pre, ((4 - rot) % 4) * R.JIG.turn, 'the move\'s time keeps the other phone\'s turning');
+  assert.equal(V.hold(state.flash), Math.max(0, 600 - pre), 'and this phone\'s hold gives it back');
+}));
+
+test('Pieces drawn rotated: someone else\'s placement first turns their piece on the tray from how it was drawn to how they placed it, a quarter at a time with a click each, then it travels; their own cell turned wrong lands turned, shakes and goes back: "Turn it"', () => withTune({ rotate: 'on' }, () => {
+  const at = (rot, by) => { const m = fixed('....C....', 3, by || 'X'); m.rot = rot; return m; };
+  const ok = play(at(1), 'X', { c: 3, r: 0 }), T = R.jigTimes(ok.flash.jig);
+  assert.deepEqual([ok.flash.jig.rot, ok.flash.jig.r, T.pre], [1, 0, 3 * R.JIG.turn]);
+  let html = screen(ok.mini, ok.flash);
+  assert.match(html, new RegExp(`<span class="jgpw turn" style="--b:${T.pre}ms"><span class="jgfl"><span class="jgrt" style="--jr:1"><span class="jgq" style="--t:0ms"><span class="jgq" style="--t:190ms"><span class="jgq" style="--t:380ms"><svg class="jgp"`), 'three quarter turns from a quarter turn: upright');
+  assert.match(html, new RegExp(`<span class="jgpw ok" style="--t:${T.land}ms"><span class="jgfl" data-cf="jgoffer" data-cfat="${T.pre}" data-cfd="360">`), 'then it travels, upright');
+  assert.match(html, new RegExp(`<p class="jgline ok appear" style="--t:${T.land}ms" role="status">Fits!</p>`));
+  const heard = []; V.sounds(ok.flash, (n, t) => heard.push([n, t]));
+  assert.deepEqual(heard.slice(0, 5), [['jgTurn', 0], ['jgTurn', 190], ['jgTurn', 380], ['jgSlide', T.pre], ['jgSnap', T.land]], 'a click a quarter turn, then the slide and the click in');
+  assert.ok(R.flashMs(ok.flash) >= T.land + R.JIG.snap, 'all inside the move'); assert.equal(V.hold(ok.flash), null, 'the usual hold after it');
+  // left as it was drawn: nothing to turn, it travels at once
+  const left = play(at(2), 'X', { c: 3, r: 2 });
+  assert.equal(R.jigTimes(left.flash.jig).pre, 0); assert.doesNotMatch(screen(left.mini, left.flash), /jgpw turn/);
+  // its own cell, turned the wrong way: it lands turned, shakes, goes back; the line says why
+  const no = play(at(3, 'O'), 'O', { c: 3, r: 1 }), U = R.jigTimes(no.flash.jig);
+  assert.equal(no.flash.note, 'turn'); assert.equal(U.pre, 2 * R.JIG.turn);
+  html = screen(no.mini, no.flash, { turn: 'O' });
+  assert.match(html, new RegExp(`data-anchor="jgcell:3"></i><span class="jgpw no" style="--t:${U.land}ms;--b:${U.back}ms"><span class="jgfl" data-cf="jgoffer" data-cfat="${U.pre}" data-cfd="360"><span class="jgrt" style="--jr:1">`), 'to its own cell, turned');
+  assert.match(html, new RegExp(`<span class="jgpw home"><span class="jgfl" data-cf="jgcell:3" data-cfat="${U.back}" data-cfgo="" data-cfd="380"><span class="jgrt" style="--jr:1">`), 'and back to the pile as it was');
+  assert.match(html, />Turn it<\/p>/); assert.doesNotMatch(html, /jgcell on by/, 'nothing laid');
+  assert.equal(V.moveText(no.flash, 'A'), 'A had the piece turned wrong');
+  // its result held once the move has played (the square's own last move): the same words
+  assert.match(V.screen({ owner: null, mini: no.mini }, null, { kind: 'move' }, no.mini, false, true, null, null, false, () => -1, false, 'O', ''), /<p class="jgline askew">Turn it<\/p>/);
+  // out of time: it wobbles on the tray as it was drawn, and goes back
+  const out = play(at(2), 'X', 'out');
+  assert.match(screen(out.mini, out.flash), /<span class="jgpw slow" style="--b:\d+ms"><span class="jgfl"><span class="jgrt" style="--jr:2">/);
+  // a replay presses nothing for a placement, turned or not: it plays from the move
+  assert.deepEqual(V.replay.synth({ c: 3, r: 0 }), []); assert.deepEqual(V.replay.synth('draw'), [[0, 'jig-draw', null]]);
+}));

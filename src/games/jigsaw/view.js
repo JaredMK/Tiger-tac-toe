@@ -11,14 +11,23 @@
 // own winning moment; the claim is the board's). Someone else's turn plays from its two moves: Draw a piece pressed
 // and the piece coming out, then that piece travelling to the cell they chose and what came of it (replay.synth).
 // What animates comes from the move being played (a: its flash), never from the square's last result.
-import { JIG, JIG_DRAW, JIG_OUT, jigCells, jigEnd, jigGot, jigLeft, jigNeed, jigOffer, jigSize, jigTimes } from './rules.js';
-import { PIC, jigPicture, jigPieceBox, jigPiecePath } from './picture.js';
+// The two options (both off by default; off, all of this is as it was). `edges`: a piece of the picture's border shows
+// a bold stripe along each of its border sides and a little flag (picture.js jigEdgeArt), wherever it is drawn: on the
+// tray, dragged, flying, in place. `rotate`: the piece on show is drawn turned as it was drawn (rules.js `rot`); on
+// this phone's own turn Rotate beside it, or a tap on the piece, turns it a quarter turn clockwise (a draft, written
+// straight onto the page: no redraw), and dragged it keeps its turn; the placement carries how it was left, { c, r }.
+// Someone else's placement first turns their piece on the tray from how it was drawn to how they placed it, a quarter
+// turn at a time with a click each (rules.js jigTimes `pre`), then it travels; this phone's own goes at once. Its own
+// cell turned the wrong way is a wrong placement: it lands turned, shakes and goes back ("Turn it").
+import { JIG, JIG_DRAW, JIG_OUT, jigBorder, jigCells, jigEdgesOn, jigEnd, jigGot, jigLeft, jigNeed, jigOffer, jigRot, jigRotOn, jigSize, jigTimes, jigTurns } from './rules.js';
+import { PIC, jigEdgeArt, jigPicture, jigPieceBox, jigPiecePath } from './picture.js';
+import { dur } from '../../core/timer.js';
 import { tune } from '../../core/tune.js';
 import { SND, ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { haptic } from '../../net/platform.js';
 import { blocked } from '../../net/room.js';
-import { N, app, state, waitLine } from '../../ui/app.js';
+import { FLASH_MS, N, REDUCED, app, isYou, state, waitLine } from '../../ui/app.js';
 import { cfAnchor, cfFrom } from '../../ui/cardfly.js';
 import { fxAttr } from '../../ui/fx.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
@@ -27,17 +36,29 @@ import { markSvgG, pipRows, thumbArt } from '../../ui/thumbs.js';
 import { barRows, ptsTally } from '../../ui/tok.js';
 
 export const ownLine = true;
-export const hold = f => (f.jig && f.jig.draw ? 0 : null);          // the draw: the piece can be placed the moment it is on the tray
+// The draw: the piece can be placed the moment it is on the tray. This phone's own placement with `rotate` on goes at once,
+// without the turning the move's time keeps for someone else's (rules.js jigTimes `pre`): its hold gives that back.
+export const hold = f => {
+  const s = f.jig;
+  if (s && s.draw) return 0;
+  const pre = s && ownOf(s, f.by) ? jigTimes(s).pre : 0;
+  return pre ? Math.max(0, (FLASH_MS[f.kind] || 800) - pre) : null;
+};
 export const replay = { synth: move => (move === JIG_DRAW ? [[0, 'jig-draw', null]] : []) };   // the committed steps only: Draw a piece pressed; the placement plays from the move
 const seedOf = mini => (Number.isFinite(Number(mini && mini.seed)) ? Math.abs(Math.floor(Number(mini.seed))) : 0);   // (digits alone ever reach the markup)
 
 // ---- the pieces ----
 // A piece of the picture: the sheet clipped to the piece's outline (the sheet itself is drawn once a screen, in the
-// defs at its top, and used here), its outline in ink, and a white flash over it for the moment it clicks in.
-function pieceSvg(sd, n, i) {
-  const b = jigPieceBox(n, i).map(v => Math.round(v * 10) / 10), d = jigPiecePath(sd, n, i), id = `jgc${sd}-${n}-${i}`;
-  return `<svg class="jgp" viewBox="${b.join(' ')}" aria-hidden="true"><clipPath id="${id}"><path d="${d}"/></clipPath><g clip-path="url(#${id})"><use href="#jgs${sd}"/></g><path class="jgpo" d="${d}"/><path class="jgpf" d="${d}"/></svg>`;
+// defs at its top, and used here), its outline in ink, and a white flash over it for the moment it clicks in; with
+// `edges` on (eg), a border piece's stripes inside its outline and its flag over it.
+function pieceSvg(sd, n, i, eg) {
+  const b = jigPieceBox(n, i).map(v => Math.round(v * 10) / 10), d = jigPiecePath(sd, n, i), id = `jgc${sd}-${n}-${i}`, mk = eg ? jigEdgeArt(sd, n, i, jigBorder(n, i)) : null;
+  return `<svg class="jgp" viewBox="${b.join(' ')}" aria-hidden="true"><clipPath id="${id}"><path d="${d}"/></clipPath><g clip-path="url(#${id})"><use href="#jgs${sd}"/>${mk ? mk.band : ''}</g><path class="jgpo" d="${d}"/>${mk ? mk.flag : ''}<path class="jgpf" d="${d}"/></svg>`;
 }
+// A piece turned r quarter turns clockwise (`rotate` on; its box is square about the cell's middle, so it turns in place);
+// `quarters` more of them playing one after another from the move (someone else's piece turning on the tray).
+const turnedTo = (r, inner, quarters) => { let x = inner; for (let j = (quarters || 0) - 1; j >= 0; j--) x = `<span class="jgq" style="--t:${j * JIG.turn}ms">${x}</span>`; return `<span class="jgrt" style="--jr:${r}">${x}</span>`; };
+const ROT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.5 12.5a7.5 7.5 0 1 1-2.6-5.7"/><path d="M19.6 3.6v4.6H15"/></svg>';
 const sheet = sd => `<svg class="jgdefs" width="0" height="0" aria-hidden="true"><defs><g id="jgs${sd}">${jigPicture(sd)}</g></defs></svg>`;
 const badge = v => `<i class="jgby ${v}"><svg viewBox="-10 -10 20 20">${markSvgG(v, 5.4)}</svg></i>`;
 // The pile: a little heap of blank pieces (no picture on them: the pile gives nothing away) and how many are left.
@@ -47,9 +68,15 @@ const heap = n => `<svg class="jgheap" viewBox="-6 -4 46 46" aria-hidden="true">
 // ---- this phone's piece timer (real time, from the moment the piece is on the tray; a reload carries it on) ----
 const JIG_KEY = 'ttt-jig-piece';
 let clock = null;                                                   // { id, sq, at (Date.now() when the piece showed), secs, timer, ticks }
-let pend = null;                                                    // this phone's placement on its way: { sq, k, c, by, drop }
+let pend = null;                                                    // this phone's placement on its way: { sq, k, c, by, drop, r }
+let rdraft = null;                                                  // this phone's own turn of the piece on show (`rotate` on, a draft: the placement carries it): { id, r }
 let drag = null, hooked = false;
-const idOf = (sq, p, mini) => `${state.online ? state.online.matchId || state.online.game || state.online.code || 'on' : state.id || 'local'}:${seedOf(mini)}:${sq}:${p}:${mini.k | 0}:${jigOffer(mini)}`;   // (the square's own seed in it: a piece of another square, or another match, never takes this one's clock)
+const idOf = (sq, p, mini, c = jigOffer(mini)) => `${state.online ? state.online.matchId || state.online.game || state.online.code || 'on' : state.id || 'local'}:${seedOf(mini)}:${sq}:${p}:${mini.k | 0}:${c}`;   // (the square's own seed in it: a piece of another square, or another match, never takes this one's clock)
+function turnOf(sq, p, mini) {                                      // the draft turn of the piece on show here: kept while it is the same piece, else as it was drawn
+  const id = idOf(sq, p, mini);
+  if (!rdraft || rdraft.id !== id) rdraft = { id, r: jigRot(mini) };
+  return rdraft;
+}
 function clockStop() { if (clock) { clearTimeout(clock.timer); for (const t of clock.ticks || []) clearTimeout(t); } clock = null; }
 function clockArm() {
   if (!clock || typeof setTimeout !== 'function') return;
@@ -92,14 +119,30 @@ function drawAct() {
 }
 function place(c, drop) {
   const m = live(); if (!m || jigOffer(m) == null || !(c >= 0) || jigCells(m)[c] !== '.') return false;
-  pend = { sq: state.zoom, k: m.k | 0, c, by: state.turn, drop: !!drop };
+  const rotOn = jigRotOn(m), r = rotOn ? turnOf(state.zoom, state.turn, m).r : 0;
+  pend = { sq: state.zoom, k: m.k | 0, c, by: state.turn, drop: !!drop, r };
   haptic('tap');
-  attemptMove({ c });
+  attemptMove(rotOn ? { c, r } : { c });
   return true;
+}
+// Rotate (`rotate` on, this phone's own piece on show): a quarter turn clockwise, written straight onto the page (no
+// redraw: a redraw draws it as the draft has it), its click and a light buzz from the press itself.
+function rotAct() {
+  const m = live(); if (!m || !jigRotOn(m) || jigOffer(m) == null || pend || (drag && drag.moved)) return;
+  const d = turnOf(state.zoom, state.turn, m), from = d.r;
+  d.r = (from + 1) % 4;
+  const el = app && typeof app.querySelector === 'function' ? app.querySelector('.jgslot .jgrt') : null;
+  if (el) {
+    try { for (const an of el.getAnimations ? el.getAnimations() : []) an.finish(); } catch (e) { /* (none running) */ }
+    el.style.setProperty('--jr', String(d.r));
+    if (!REDUCED && typeof el.animate === 'function') try { el.animate([{ transform: `rotate(${from * 90}deg)` }, { transform: `rotate(${from * 90 + 90}deg)` }], { duration: dur(JIG.rot, 'ui'), easing: 'cubic-bezier(.3, 1.35, .5, 1)' }); } catch (e) { /* (no Web Animations: it is simply turned) */ }
+  }
+  SND.play('jgTurn'); haptic('tap');
 }
 export const actions = {
   'jig-draw': () => { ownPress(); drawAct(); },
   'jig-cell': el => { ownPress(); place(Number(el.dataset.c), false); },
+  'jig-rot': () => { ownPress(); rotAct(); },
 };
 // The drag: the piece on the tray follows the finger (written straight onto the page: no redraw), the cell under it
 // lights, and letting go over an empty cell places it there; anywhere else it goes back to the tray.
@@ -111,6 +154,7 @@ function dragEnd(e, cancel) {
   const c = !cancel && over ? Number(over.dataset.c) : -1;
   if (c >= 0 && dr.moved && place(c, true)) return;
   if (el) { el.classList.remove('drag'); el.style.transform = ''; }
+  if (!dr.moved && !cancel && e) rotAct();                          // a tap on the piece (no drag): it turns, with `rotate` on (rotAct checks)
 }
 function hook() {
   if (hooked || !app || typeof app.addEventListener !== 'function') return;
@@ -141,21 +185,28 @@ function hook() {
 }
 
 // ---- the screen ----
-const WORDS = { ok: 'Fits!', no: 'Not there', out: 'Too slow' };
-const kindOf = l => (l.ok ? 'ok' : l.at < 0 ? 'out' : 'no');
+const WORDS = { ok: 'Fits!', no: 'Not there', out: 'Too slow', askew: 'Turn it' };
+const kindOf = l => (l.ok ? 'ok' : l.at < 0 ? 'out' : l.at === l.c && l.r ? 'askew' : 'no');   // ('askew': its own cell, turned the wrong way: `rotate` on; never 'turn', the turn bar's class)
+// A placement this phone made (its piece already turned as its player left it: no turning first), and how its piece
+// shows: as placed, or, out of time, as this phone's player had it turned (else as it was drawn).
+const ownOf = (s, by) => !!(s && pend && pend.c === s.at && pend.by === by);
+const shownTurn = (s, mini) => (s.at < 0 && rdraft && rdraft.id === idOf(state.zoom, s.by, mini, s.c) ? rdraft.r : s.r | 0);
+const asPlaced = (r, svg) => (r ? turnedTo(r, svg) : svg);         // (a piece left turned; upright, as ever)
 export function heldSub(mini, turn, f, a) {                         // the header's line while the turn is held to the square
   if (a && a.jig) return '';
-  return jigOffer(mini) != null ? `<b class="${turn}">${N(turn)}</b>'s piece` : `<b class="${turn}">${N(turn)}</b> draws again`;
+  return jigOffer(mini) != null ? (isYou(turn) ? `<b class="${turn}">Your</b> piece` : `<b class="${turn}">${N(turn)}</b>'s piece`) : `<b class="${turn}">${N(turn)}</b> ${isYou(turn) ? 'draw' : 'draws'} again`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   hook();
-  const n = jigSize(mini), sd = seedOf(mini), cells = jigCells(mini), need = jigNeed(mini), got = jigGot(mini), o = { view, locked, turn };
-  const fb = a && a.jig ? a.jig : null, s = fb && !fb.draw ? fb : null, dr = fb && fb.draw ? fb : null, T = s ? jigTimes(s) : null;   // the move playing: a placement (s) or a draw (dr)
+  const n = jigSize(mini), sd = seedOf(mini), cells = jigCells(mini), need = jigNeed(mini), got = jigGot(mini), o = { view, locked, turn }, eg = jigEdgesOn(mini), rotOn = jigRotOn(mini);
+  const P = i => pieceSvg(sd, n, i, eg);                            // (a piece, with its edge marks when they are on)
+  const fb = a && a.jig ? a.jig : null, s = fb && !fb.draw ? fb : null, dr = fb && fb.draw ? fb : null;   // the move playing: a placement (s) or a draw (dr)
   const offer = dr ? dr.c : jigOffer(mini), ended = jigEnd(mini), here = !!(state.squares && state.squares[state.zoom] && state.squares[state.zoom].mini === mini && state.screen === 'mini');
   const mine = here && !view && !locked && !fb && !d && !rep;        // this phone's step to make
   const placing = mine && offer != null;                            // ...the piece on show to place
   if (pend && (pend.sq !== state.zoom || pend.k !== (mini.k | 0) || (!fb && (offer == null || !blocked())))) pend = null;
-  const own = !!(s && pend && pend.c === s.at && pend.by === a.by), dropped = own && pend.drop;   // this phone's own placement playing; one dropped there by hand (no flight: it is there)
+  const own = ownOf(s, s && a.by), dropped = own && pend.drop;      // this phone's own placement playing; one dropped there by hand (no flight: it is there)
+  const T = s ? jigTimes(s, own) : null;                            // (someone else's, with `rotate` on: their piece turns on the tray first, T.pre)
   const ck = placing ? clockFor(state.zoom, turn, mini) : null;
   if (!placing && !(here && pend) && clock && here) clockStop();
   // the tallies: each player's pieces as pips to the number that takes the square (a number on a big grid)
@@ -170,13 +221,13 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
     const box = `<i class="jgbx"${cfAnchor('jgcell:' + i)}></i>`;
     if (whole && !s) return `<div class="jgcell on">${box}</div>`;   // the whole picture lies over the grid: no piece is drawn under it
     if (v !== '.') {
-      const fresh = s && s.ok && s.c === i, fly = fresh && !dropped ? cfFrom('jgoffer', 0, { d: JIG.fly }) : '';
-      return `<div class="jgcell on${v === 'C' ? '' : ' by' + v}">${box}<span class="jgpw${fresh ? ' ok' : ''}"${fresh ? ` style="--t:${T.land}ms"` : ''}><span class="jgfl"${fly}>${pieceSvg(sd, n, i)}</span></span>${v === 'C' ? '' : fresh ? `<span ${lateAt('jgbd', T.land)}>${badge(v)}</span>` : `<span class="jgbd">${badge(v)}</span>`}</div>`;
+      const fresh = s && s.ok && s.c === i, fly = fresh && !dropped ? cfFrom('jgoffer', T.pre, { d: JIG.fly }) : '';
+      return `<div class="jgcell on${v === 'C' ? '' : ' by' + v}">${box}<span class="jgpw${fresh ? ' ok' : ''}"${fresh ? ` style="--t:${T.land}ms"` : ''}><span class="jgfl"${fly}>${P(i)}</span></span>${v === 'C' ? '' : fresh ? `<span ${lateAt('jgbd', T.land)}>${badge(v)}</span>` : `<span class="jgbd">${badge(v)}</span>`}</div>`;
     }
-    const miss = s && !s.ok && s.at === i ? `<span class="jgpw no" style="--t:${T.land}ms;--b:${T.back}ms"><span class="jgfl"${dropped ? '' : cfFrom('jgoffer', 0, { d: JIG.fly })}>${pieceSvg(sd, n, s.c)}</span></span>` : '';
-    const hover = !fb && pend && pend.c === i && offer != null ? `<span class="jgpw wait"><span class="jgfl">${pieceSvg(sd, n, offer)}</span></span>` : '';
+    const miss = s && !s.ok && s.at === i ? `<span class="jgpw no" style="--t:${T.land}ms;--b:${T.back}ms"><span class="jgfl"${dropped ? '' : cfFrom('jgoffer', T.pre, { d: JIG.fly })}>${asPlaced(s.r | 0, P(s.c))}</span></span>` : '';   // (a wrong one lands as it was turned)
+    const hover = !fb && pend && pend.c === i && offer != null ? `<span class="jgpw wait"><span class="jgfl">${asPlaced(pend.r | 0, P(offer))}</span></span>` : '';
     if (hover) pend.drop = true;                                    // (shown in its cell while the answer is on its way: it does not fly there again)
-    const fill = fillFrom != null ? `<span class="jgpw fill" style="--t:${fillFrom + (fills++) * JIG.fill}ms"><span class="jgfl">${pieceSvg(sd, n, i)}</span></span>` : '';   // the square decided: the pile's pieces drop in
+    const fill = fillFrom != null ? `<span class="jgpw fill" style="--t:${fillFrom + (fills++) * JIG.fill}ms"><span class="jgfl">${P(i)}</span></span>` : '';   // the square decided: the pile's pieces drop in
     const label = `Row ${Math.floor(i / n) + 1}, column ${(i % n) + 1}`;
     return placing && !pend ? `<button class="jgcell open" data-act="jig-cell" data-c="${i}" aria-label="${label}">${box}</button>` : `<div class="jgcell${fill ? ' on' : ''}" aria-label="${label}">${box}${miss}${hover}${fill}</div>`;
   };
@@ -189,15 +240,17 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const count = s && !s.ok ? `<b class="jgleft cnt" data-from="${pileN - 1}" data-delay="${T.home}" data-ms="1" aria-label="${pileN} pieces in the pile">${pileN}</b>`   // (a piece on its way back counts once it is home)
     : s && s.end ? `<b class="jgleft cnt" data-from="${pileN}" data-to="0" data-delay="${T.fill}" data-ms="${Math.max(1, (s.fill || 0) * JIG.fill)}" aria-label="No pieces in the pile">0</b>`
     : `<b class="jgleft" aria-label="${pileN} pieces in the pile">${pileN}</b>`;
-  const homing = s && !s.ok ? `<span class="jgpw home"><span class="jgfl"${cfFrom(s.at < 0 ? 'jgoffer' : 'jgcell:' + s.at, T.back, { go: true, d: JIG.back })}>${pieceSvg(sd, n, s.c)}</span></span>` : '';
+  const homing = s && !s.ok ? `<span class="jgpw home"><span class="jgfl"${cfFrom(s.at < 0 ? 'jgoffer' : 'jgcell:' + s.at, T.back, { go: true, d: JIG.back })}>${rotOn ? asPlaced(shownTurn(s, mini), P(s.c)) : P(s.c)}</span></span>` : '';
   const pile = `<div class="jgpile${whole && !s ? ' gone' : ''}${s && s.end ? ' empties' : ''}"${s && s.end ? ` style="--t:${T.fill + (s.fill || 0) * JIG.fill}ms"` : ''}><span class="jgpl">${heap(s && !s.ok ? pileN - 1 : pileN)}<i class="jgbx"${cfAnchor('jgpile')}></i>${homing}</span>${count}</div>`;
-  const shown = dr ? `<span class="jgpw"><span class="jgfl"${cfFrom('jgpile', 0, { d: JIG.out })}>${pieceSvg(sd, n, dr.c)}</span></span>`
-    : s && s.at < 0 ? `<span class="jgpw slow" style="--b:${T.back}ms"><span class="jgfl">${pieceSvg(sd, n, s.c)}</span></span>`
-    : !fb && offer != null && !pend && !view ? `<span class="jgpw"><span class="jgfl">${pieceSvg(sd, n, offer)}</span></span>` : '';
-  const canDraw = mine && offer == null && !ended, showDraw = !view && !fb && offer == null && !ended && !d;
+  const shown = dr ? `<span class="jgpw"><span class="jgfl"${cfFrom('jgpile', 0, { d: JIG.out })}>${rotOn ? turnedTo(dr.rot | 0, P(dr.c)) : P(dr.c)}</span></span>`   // (it comes out turned as it was drawn)
+    : s && s.at < 0 ? `<span class="jgpw slow" style="--b:${T.back}ms"><span class="jgfl">${rotOn ? turnedTo(shownTurn(s, mini), P(s.c)) : P(s.c)}</span></span>`
+    : s && T.pre ? `<span class="jgpw turn" style="--b:${T.pre}ms"><span class="jgfl">${turnedTo(s.rot | 0, P(s.c), jigTurns(s))}</span></span>`   // (someone else's: their piece turns as they left it, a quarter at a time, and goes as it leaves for the cell)
+    : !fb && offer != null && !pend && !view ? `<span class="jgpw"><span class="jgfl">${rotOn ? turnedTo(placing ? turnOf(state.zoom, turn, mini).r : jigRot(mini), P(offer)) : P(offer)}</span></span>` : '';   // (this phone's own: as its player has turned it; someone else's as it was drawn)
+  const canDraw = mine && offer == null && !ended, showDraw = !view && !fb && offer == null && !ended && !d, canRot = rotOn && placing && !pend;
   const btn = showDraw ? `<button class="big ${turn} jgdraw" data-act="jig-draw"${canDraw || (rep && !locked) ? '' : ' disabled'}>Draw a piece</button>` : '';
+  const rotBtn = rotOn ? `<button class="jgrot${canRot ? '' : ' off'}" data-act="jig-rot" aria-label="Rotate the piece"${canRot ? '' : ' disabled'}>${ROT_ICON}</button>` : '';   // (its room always kept: shown only while this phone has a piece to turn)
   const bar = ck ? `<div class="jgtime on"${fxAttr(performance.now() - (Date.now() - ck.at), 'rt')} style="--d:${ck.secs * 1000}ms" role="timer" aria-label="${ck.secs} seconds to place the piece"><i></i></div>` : '<div class="jgtime"></div>';
-  const tray = `<div class="jgtray">${pile}<div class="jgstage"><span class="jgslot${placing && !pend ? ' live' : ''}"><i class="jgbx"${cfAnchor('jgoffer')}></i>${shown}</span>${btn}</div>${bar}</div>`;   // (the bar's room is always kept)
+  const tray = `<div class="jgtray">${pile}<div class="jgstage${rotOn ? ' rot' : ''}"><span class="jgslot${placing && !pend ? ' live' : ''}"><i class="jgbx"${cfAnchor('jgoffer')}></i>${shown}</span>${btn}${rotBtn}</div>${bar}</div>`;   // (the bar's room is always kept)
   // the line: the verdict, timed to the piece's landing; else who is awaited
   const l = s || ((view || d) && mini.last ? mini.last : null), k = l ? kindOf(l) : '';
   const line = s ? `<p ${lateAt('jgline ' + k, T.land)} role="status">${WORDS[k]}</p>` : l && !view ? `<p class="jgline ${k}">${WORDS[k]}</p>` : `<p class="jgline wait">${view || fb ? '' : locked && !d ? waitLine(turn) : ''}</p>`;
@@ -207,21 +260,23 @@ export function moveText(f, who) {
   const s = f.jig;
   if (!s) return `${who} played`;
   if (s.draw) return `${who} drew a piece`;
-  return s.ok ? `${who} fitted a piece` : s.at < 0 ? `${who} was too slow` : `${who} missed the place`;
+  return s.ok ? `${who} fitted a piece` : s.at < 0 ? `${who} was too slow` : s.at === s.c && s.r ? `${who} had the piece turned wrong` : `${who} missed the place`;
 }
-// A draw: the piece scrapes out of the pile and pats down on the tray. A placement: the piece slides over (not one
-// this phone dropped there by hand), then clicks in with a little chime, or knocks twice and slides back to the pile;
-// out of time, a falling pair of notes and the slide back. The square decided: each piece left ticks in, a note higher
-// each time, and the picture comes whole with a shimmer.
+// A draw: the piece scrapes out of the pile and pats down on the tray. A placement: someone else's piece turning first
+// clicks at each quarter turn (`rotate` on); the piece slides over (not one this phone dropped there by hand), then
+// clicks in with a little chime, or knocks twice and slides back to the pile; out of time, a falling pair of notes and
+// the slide back. The square decided: each piece left ticks in, a note higher each time, and the picture comes whole
+// with a shimmer.
 export function sounds(f, add, won, mini, last) {
   const s = f.jig; if (!s) return;
   if (s.draw) { add('jgDraw', 0); add('jgSet', JIG.out - 40); return; }
-  const T = jigTimes(s), dropped = !!(pend && pend.drop && pend.c === s.at && pend.by === f.by);
-  if (s.at < 0) add('jgSlow', 0); else if (!dropped) add('jgSlide', 0);
+  const own = ownOf(s, f.by), T = jigTimes(s, own), dropped = own && pend.drop;
+  for (let j = 0, k = own ? 0 : jigTurns(s); j < k; j++) add('jgTurn', j * JIG.turn);
+  if (s.at < 0) add('jgSlow', 0); else if (!dropped) add('jgSlide', T.pre);
   if (s.ok) { add('jgSnap', T.land); add('jgShine', T.land + 70); } else { if (s.at >= 0) add('jgNope', T.land); add('jgSlide', T.back, 0.82); }
   if (s.end) { for (let k = 0; k < (s.fill || 0); k++) add('jgSet', T.fill + k * JIG.fill, 1.1 + k * 0.07); add('jgWhole', T.whole); }
 }
-export const wonAt = (f, total) => (f.jig && f.jig.end ? jigTimes(f.jig).whole + 180 : total - 600);   // the square's chime as the picture comes whole
+export const wonAt = (f, total) => (f.jig && f.jig.end ? jigTimes(f.jig, ownOf(f.jig, f.by)).whole + 180 : total - 600);   // the square's chime as the picture comes whole
 // The miniature: the board as it stands, cut as the puzzle is cut: a piece in place is tinted by whoever laid it (the
 // centre piece, laid by nobody, plain), an empty cell a dashed slot; beside it each player's pieces as pips to the
 // number that takes the square. Public information only: the picture itself is never drawn here.

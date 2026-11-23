@@ -36,6 +36,14 @@ test('jigsaw: the defaults, 500 squares at Normal (nine pieces, the centre not i
   assert.ok(r.each >= 3 && r.each <= 6 && r.eachMed >= 3 && r.eachMed <= 6);
   assert.ok(r.first > 0.54 && r.first < 0.66, `first mover ${(100 * r.first).toFixed(1)}%`);
 });
+// "Pieces drawn rotated" (`rotate`, off by default): every piece comes out turned and fits only the right way up; the
+// computer turns it right aiTurnNormal 90% of the time at Normal (Easy 75%, Hard 97%), so fewer pieces fit and the
+// squares run longer. For information only: the defaults are not tuned for it (the option is off by default).
+test('jigsaw: 500 squares at Normal with the pieces drawn rotated (`rotate` on, the defaults otherwise): every square ends (for information)', () => {
+  const r = duel('jigsaw', 'normal', 'normal', 500, { rotate: 'on' });
+  console.log(line('Normal v Normal, pieces drawn rotated', r));
+  assert.equal(r.open, 0, 'every square ends'); assert.equal(r.draws, 0, 'nine pieces: never a draw');
+});
 test('jigsaw: by level, setting and grid', () => {
   const T = (label, t, a = 'normal', b = 'normal') => console.log(line(label, duel('jigsaw', a, b, 3000, t)));
   T('Normal v Normal (the defaults), 3,000 squares', null); T('centre on (the first rule), Normal, 3,000 squares', { centre: 'on' });
@@ -44,4 +52,5 @@ test('jigsaw: by level, setting and grid', () => {
   for (const a of [50, 60, 65, 70, 80, 85]) T(`Normal right ${a}% of the time`, { aiNormal: a });
   T('Go again on, Normal', { again: 'on' }); T('Go again on, Hard v Hard', { again: 'on' }, 'hard', 'hard'); T('Go again on, Easy v Easy', { again: 'on' }, 'easy', 'easy'); T('Go again on, centre off, Normal', { again: 'on', centre: 'off' });
   T('4 by 4 (16 pieces, none in place), Normal', { size: 4 }); T('5 by 5 (24 pieces), Normal', { size: 5 }); T('5 by 5, centre off (25 pieces), Normal', { size: 5, centre: 'off' });
+  T('pieces drawn rotated, Normal, 3,000 squares', { rotate: 'on' }); T('pieces drawn rotated, Hard v Hard', { rotate: 'on' }, 'hard', 'hard'); T('pieces drawn rotated, Easy v Easy', { rotate: 'on' }, 'easy', 'easy'); T('pieces drawn rotated, centre on, Normal', { rotate: 'on', centre: 'on' });
 });

@@ -610,7 +610,7 @@ def('tnOut', 0.42, (c, d, t) => { sfxNoise(c, d, t, .4, { f: 1500, to: 320, q: 1
 // A piece scraping out of the pile; pressed flat on the tray (and each piece dropping in at the end); lifted for a drag;
 // sliding over the board; the click as it locks in and the little chime after it; the double knock of a piece that does
 // not fit; the timer's last three seconds ticking (this phone's own piece alone); the two falling notes of the timer run
-// out; the shimmer as the picture comes whole.
+// out; the shimmer as the picture comes whole; the click of a quarter turn (Rotate, or someone else's piece turning).
 def('jgDraw', 0.24, (c, d, t) => { sfxNoise(c, d, t, .2, { f: 900, to: 2600, q: 1.1, vol: .34, att: .02 }); sfxTone(c, d, t + .12, 420, .09, { to: 620, type: 'triangle', vol: .22 }); }, { level: .34 });
 def('jgSet', 0.09, (c, d, t) => { sfxTone(c, d, t, 300, .06, { to: 180, type: 'triangle', vol: .5, att: .001 }); sfxNoise(c, d, t, .02, { f: 1500, q: 1.2, vol: .3, att: .001 }); }, { level: .36, vary: true });
 def('jgLift', 0.08, (c, d, t) => { sfxTone(c, d, t, 520, .06, { to: 760, type: 'triangle', vol: .32 }); }, { level: .28 });
@@ -621,6 +621,7 @@ def('jgNope', 0.24, (c, d, t) => { for (const k of [0, .11]) { sfxTone(c, d, t +
 def('jgSlow', 0.4, (c, d, t) => { sfxTone(c, d, t, 440, .16, { to: 392, type: 'triangle', vol: .42 }); sfxTone(c, d, t + .18, 330, .2, { to: 262, type: 'triangle', vol: .42 }); }, { level: .38 });
 def('jgTick', 0.06, (c, d, t) => { sfxTone(c, d, t, 880, .04, { type: 'square', vol: .16, att: .001 }); sfxNoise(c, d, t, .012, { f: 2800, q: 3, vol: .3, att: .001 }); }, { level: .28 });
 def('jgWhole', 0.7, (c, d, t) => { [523, 659, 784, 1047].forEach((f, k) => sfxTone(c, d, t + k * .07, f, .42 - k * .05, { type: 'triangle', vol: .3, att: .004 })); sfxNoise(c, d, t + .1, .5, { f: 5200, to: 7800, q: 3, vol: .12, att: .1 }); }, { level: .42 });
+def('jgTurn', 0.08, (c, d, t) => { sfxNoise(c, d, t, .014, { f: 2600, q: 2.4, vol: .5, att: .001 }); sfxTone(c, d, t, 660, .045, { to: 520, type: 'triangle', vol: .32, att: .001 }); sfxNoise(c, d, t + .028, .012, { f: 1800, q: 2, vol: .28, att: .001 }); }, { level: .3, vary: true });
 // [/jigsaw]
 //
 // [hive] Letter Hive: its sounds (names start `hv`)
