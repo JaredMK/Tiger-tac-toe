@@ -312,7 +312,7 @@ Win: Hold {setText} and a pair after you take a tile.
 ## Mancala Race [mancala]
 Category: More brain
 Play: Pick one of your pits. Its seeds are sown one by one round the board: along your side, into your bank, then along the other side.{extraText}{captureText}
-Win: First to bank {target} seeds wins. Nothing left to sow on your turn: whoever has banked more takes the square.
+Win: First to bank {target} seeds wins. When a side runs out of seeds, each player banks the seeds left on their side and the bigger bank wins. Level: a draw.
 
 ## Marble Toss [marble]
 Category: More skill

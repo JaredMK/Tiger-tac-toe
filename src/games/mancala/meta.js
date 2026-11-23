@@ -2,10 +2,10 @@
 
 export const info = { name: 'Mancala Race', hint: 'Sow seeds round the board into your bank. First to bank enough wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.24.0';   // the oldest client version that has this game (core/client.js)
+export const minVersion = '1.30.0';   // (1.30.0: the end by an empty side, the sweep, v 2) the oldest client version that has this game (core/client.js)
 export const category = 'brain';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const placeholder = false;   // never on a new state's placeholder board (games/index.js PLACE_TYPES): the seeded deals stay as they were
-export const explainer = { name: 'Mancala Race', play: 'Pick one of your pits. Its seeds are sown one by one round the board: along your side, into your bank, then along the other side.{extraText}{captureText}', win: 'First to bank {target} seeds wins. Nothing left to sow on your turn: whoever has banked more takes the square.' };
+export const explainer = { name: 'Mancala Race', play: 'Pick one of your pits. Its seeds are sown one by one round the board: along your side, into your bank, then along the other side.{extraText}{captureText}', win: 'First to bank {target} seeds wins. When a side runs out of seeds, each player banks the seeds left on their side and the bigger bank wins. Level: a draw.' };
 export const explainVars = v => ({ extraText: v.extra === 'off' ? '' : ' Last seed in your bank: go again.', captureText: v.capture === 'off' ? '' : ' Last seed in an empty pit of yours: bank it with the seeds opposite.' });
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="6"/><circle cx="8" cy="12" r="1.900"/><circle cx="12.700" cy="12" r="1.900"/><path d="M17.500 9.500v5"/></svg>';
 // Its settings (the admin's Games page; core/tune.js): the pits a side, the seeds each starts with, the seeds to bank,

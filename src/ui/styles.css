@@ -6347,18 +6347,27 @@ button.mcp { cursor: pointer; touch-action: manipulation; }
 .mcp.src { animation: mcsrc .2s both; } @keyframes mcsrc { 50% { transform: scale(.94); } }
 .mcbank { flex: 0 0 40px; padding: 0 44px 0 0; background: #5d3a1c; } .mcbank.X { box-shadow: inset 0 3px 0 rgba(22, 18, 16, .35), inset 0 0 0 3px var(--x); } .mcbank.O { box-shadow: inset 0 3px 0 rgba(22, 18, 16, .35), inset 0 0 0 3px var(--o); }
 .mcbank.gain { animation: mcgain .3s var(--t) both; } @keyframes mcgain { 50% { transform: scale(1.04); } }
+.mcbank.X { --g: var(--x); } .mcbank.O { --g: var(--o); }
+.mcbank.top { animation: mctop .5s var(--w, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; } .mcbank.gain.top { animation: mcgain .3s var(--t) both, mctop .5s var(--w, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }   /* the end by an empty side: the bank that wins the count, ringed in its colour with the verdict (--w) */
+@keyframes mctop { from { box-shadow: inset 0 3px 0 rgba(22, 18, 16, .35), inset 0 0 0 3px var(--g), 0 0 0 0 #fff, 0 0 0 0 var(--g); } 45% { scale: 1.06; } to { box-shadow: inset 0 3px 0 rgba(22, 18, 16, .35), inset 0 0 0 3px var(--g), 0 0 0 3px #fff, 0 0 0 6px var(--g); } }
 .mcpeb { position: absolute; left: 4px; right: 32px; top: 2px; bottom: 2px; } .mcp.O .mcpeb { left: 32px; right: 4px; } .mcbank .mcpeb { right: 46px; left: 8px; }
 .mcs { position: absolute; width: 11px; height: 11px; margin: -5.500px 0 0 -5.500px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #cfe8f5 55%, #8fbad6); border: 1.5px solid var(--ink); font-style: normal; }
 .mcs:nth-child(3n) { background: radial-gradient(circle at 35% 30%, #fff, #ffe3a6 55%, #e3b55b); } .mcs:nth-child(3n+1) { background: radial-gradient(circle at 35% 30%, #fff, #d7f0c4 55%, #9fcc7c); }
-.mcs.gone { animation: tuntil 1ms var(--u) both; }
+.mcs.gone { animation: tuntil 1ms var(--u) both; } .mcs.appear.gone { animation: appearin .3s var(--t, 0ms) ease-out both, tuntil 1ms var(--u) both; }   /* (sown into a pit, then swept out of it) */
+.mcn.out { animation: tuntil 1ms var(--u, 0ms) both; }   /* a swept pit's number, gone as the hand takes its seeds */
 .mcboard { position: relative; }
-.mchand { position: absolute; left: 0; top: 0; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, rgba(255, 236, 205, .95), rgba(232, 196, 150, .9)); border: 2.5px solid var(--ink); box-shadow: 0 5px 0 rgba(22, 18, 16, .35); pointer-events: none; z-index: 3; }   /* Mancala's hand: the seeds lifted and carried, moved by the view's own animation (carry) */
+.mchand { position: absolute; left: 0; top: 0; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, rgba(255, 236, 205, .95), rgba(232, 196, 150, .9)); border: 2.5px solid var(--ink); box-shadow: 0 5px 0 rgba(22, 18, 16, .35); pointer-events: none; z-index: 3; opacity: 0; }   /* Mancala's hand: the seeds lifted and carried, moved by the view's own animation (carry; unseen without it); the sweep's, .mcsw, in the colour of the side whose seeds it takes */
 .mchand.X { box-shadow: 0 5px 0 rgba(22, 18, 16, .35), 0 0 0 3px var(--x); } .mchand.O { box-shadow: 0 5px 0 rgba(22, 18, 16, .35), 0 0 0 3px var(--o); }
 .mchand .mcs { width: 12px; height: 12px; margin: -6px 0 0 -6px; } .mchand .mcj { position: absolute; width: 0; height: 0; animation: tfrom 1ms var(--t) both; } .mchand .mcj > .mcs { left: 0; top: 0; }
 .mcn { position: absolute; right: 7px; top: 50%; translate: 0 -50%; min-width: 20px; text-align: center; font: 400 18px/1 'Luckiest Guy', 'Arial Black', sans-serif; color: #fff; text-shadow: 0 1.500px 0 var(--ink); }
-.mcp.O .mcn { right: auto; left: 7px; } .mcbank .mcn { right: 12px; font-size: 22px; }
+.mcp.O .mcn { right: auto; left: 7px; } .mcbank .mcn { right: 12px; font-size: 22px; display: grid; }
+.mcq { grid-area: 1 / 1; font-style: normal; } .mcq.a { animation: tuntil 1ms var(--u, 0ms) both; } .mcq.b { animation: tfrom 1ms var(--t, 0ms) both, mctally var(--d, .4s) var(--t, 0ms) linear both; }   /* a bank's number as the move left it, then the count from 0 (--t), swelling while it counts (--d) */
+@keyframes mctally { from { scale: .4; } 14% { scale: 1.32; } 82% { scale: 1.32; } to { scale: 1; } }
 .mcline { margin: 0; height: 44px; display: grid; place-items: center; text-align: center; white-space: nowrap; font: 400 20px/26px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .mcline.ok { color: var(--green); } .mcline .mcend { min-height: 44px; padding: 4px 16px 0; font-size: 16px; }
+.mcline.sw > span { grid-area: 1 / 1; max-width: 100%; } .mcl1 { animation: appearin .3s var(--t, 0ms) ease-out both, tuntil 1ms var(--u, 0ms) both; } .mcl1.ok { color: var(--green); } .mcl2 { animation: appearin .34s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }   /* the end by an empty side: why it ends, then the verdict (--t) */
+.mcline b.hn { display: inline-block; max-width: 7.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; padding-right: .12em; }
+@media (prefers-reduced-motion: reduce) { .mchand, .g-mc .mcs.gone, .g-mc .mcn.out, .mcq.a, .mcl1 { display: none; } .mcbank.top { box-shadow: inset 0 3px 0 rgba(22, 18, 16, .35), inset 0 0 0 3px var(--g), 0 0 0 3px #fff, 0 0 0 6px var(--g); } }   /* (what only an animation takes away, or brings: the end shown at once, the winner's bank ringed) */
 .tmcw .tpic { width: 26cqw; } .tmc { width: 100%; display: block; } .tmcb { fill: #b98352; stroke: var(--ink); stroke-width: 2; } .tmck { fill: #5d3a1c; stroke: var(--x); stroke-width: 1.4; } .tmck.O { stroke: var(--o); } .tmcp { fill: #7a4f2a; stroke: var(--ink); stroke-width: 1; } .tmcp.on { fill: #cfe8f5; }
 
 /* Wall Race: tallies (the walls each has left), the board (squares with a gap between them for the walls), the line.
