@@ -37,7 +37,7 @@ const srv = http.createServer((req, res) => { let p = decodeURIComponent(new URL
       const batch = types.slice(k, k + 9);
       await p.evaluate(async ([batch, moves, rot, gameSrc]) => {
         const E = await import('/src/core/engine.js'), gameAt = (0, eval)(gameSrc);
-        state.spot = null; state.flash = null; state.lock = null; state.turn = 'X'; state.winner = null; state.screen = 'board'; state.zoom = null;
+        state.spot = null; state.flash = null; state.lock = null; state.turn = state.cpu === 'X' ? 'O' : 'X';   /* (the player's turn: the computer's would start its move, its square's caption under the measuring) */ state.winner = null; state.screen = 'board'; state.zoom = null;
         state.squares.forEach((sq, i0) => {
           const t = gameAt(batch, i0, rot), r = E.makeRng(`fit-${t}-${moves}-${i0}`); sq.owner = null; sq.mini = E.newMini(t, r);
           if (t === 'trivia') { try { triviaDeal(state, sq, r); } catch (e) { /* (no bank) */ } }

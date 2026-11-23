@@ -29,7 +29,7 @@ const srv = http.createServer((req, res) => { let p = decodeURIComponent(new URL
     await p.evaluate(async ([batch, race]) => {
       const E = await import('/src/core/engine.js');
       if (race) for (const t of E.RACE_TYPES) E.setTune(t, { mode: 'race' });
-      state.spot = null; state.flash = null; state.lock = null; state.turn = 'X'; state.winner = null; state.screen = 'board';
+      state.spot = null; state.flash = null; state.lock = null; state.turn = state.cpu === 'X' ? 'O' : 'X';   /* (the player's turn: the computer's would start its move, its square's caption under the measuring) */ state.winner = null; state.screen = 'board';
       state.squares.forEach((sq, i) => {
         const t = batch[i % batch.length]; const r = E.makeRng('mt-' + t); sq.owner = null; sq.mini = E.newMini(t, r);
         for (let n = 0; n < 4; n++) { try { const p = n % 2 ? 'O' : 'X'; const m = E.randomLegalMove(sq.mini, p, r); if (m == null) break; const res = E.applyMove(sq.mini, p, m, r); if (res && res.outcome && res.outcome !== 'continue' && res.outcome !== 'again') { break; } } catch (e) { break; } }
