@@ -6150,6 +6150,8 @@ button.gbp { cursor: pointer; touch-action: manipulation; }
 .mzgo svg { width: 62%; height: 62%; padding: 9%; box-sizing: border-box; border-radius: 50%; background: #fff; border: 2.5px solid var(--ink); box-shadow: 0 3px 0 var(--ink); }
 .mzgo.e svg { transform: rotate(90deg); } .mzgo.s svg { transform: rotate(180deg); } .mzgo.w svg { transform: rotate(-90deg); }
 .mzgo:active svg { box-shadow: none; translate: 0 3px; }
+.mzgo.rpress, .mzgo.rpress:disabled { transform: translate(-50%, -50%) !important; filter: none; box-shadow: none !important; }   /* the computer's or the other player's pick: a normal press of that arrow (the shared .rpress scale took the place of the centring translate and the arrow slid off down and to the right) */
+.mzgo.rpress svg { box-shadow: none; translate: 0 3px; }
 .mzline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
 .mzline.ok { color: var(--green); } .mzline.no { color: var(--x); }
 .mzmap { display: block; } .mzmap.sm { width: 30px; height: 30px; flex: none; }
