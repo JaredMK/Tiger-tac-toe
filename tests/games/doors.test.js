@@ -8,17 +8,18 @@ const M = require('../../src/games/doors/meta.js');
 
 const wrong = (m, r) => (m.good[r] + 1) % m.d[r];
 
-test('doors: Admin only, luck, 1.33.0; the deal: floors of doors, one way down each, hidden; plain JSON', () => {
-  assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder], ['admin', 'luck', '1.33.0', false]);
-  assert.deepEqual(E.tuneFields('doors').map(f => f.k), ['floors', 'doors', 'towers', 'again']);
-  assert.deepEqual(E.tuneFields('doors').map(f => f.group), ['Board', 'Board', 'Rules', 'Rules']);
+test('doors: Admin only, luck, 1.35.0; the deal: floors of doors, one way down each, hidden; plain JSON', () => {
+  assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder], ['admin', 'luck', '1.35.0', false]);
+  assert.deepEqual(E.tuneFields('doors').map(f => f.k), ['floors', 'doors', 'towers', 'again', 'forget', 'forgetHard', 'forgetEasy']);
+  assert.deepEqual(E.tuneFields('doors').map(f => f.group), ['Board', 'Board', 'Rules', 'Rules', 'Computer', 'Computer', 'Computer']);
+  assert.deepEqual(['forget', 'forgetHard', 'forgetEasy'].map(k => E.tuneFields('doors').find(f => f.k === k).def), [10, 0, 40]);
   const D = E.tuneFields('doors').find(f => f.k === 'doors'); assert.deepEqual([D.def, D.min, D.max], [4, 3, 6]);
   for (const set of [null, { floors: 8, doors: 6 }, { towers: 'shared' }, { floors: 1, doors: 3 }, { doors: 5 }]) {
     E.setTune('doors', set);
     try {
       for (let g = 0; g < 40; g++) {
         const m = E.newMini('doors', E.makeRng('d' + g));
-        assert.equal(m.v, 2); assert.equal(m.d.length, m.f); m.d.forEach((k, r) => { assert.equal(k, (set && set.doors) || 4); assert.ok(m.good[r] >= 0 && m.good[r] < k); });
+        assert.equal(m.v, 3); assert.equal(m.d.length, m.f); m.d.forEach((k, r) => { assert.equal(k, (set && set.doors) || 4); assert.ok(m.good[r] >= 0 && m.good[r] < k); });
         assert.equal(m.sep, !set || set.towers !== 'shared');
         assert.deepEqual(JSON.parse(JSON.stringify(m)), m);
         const pub = E.publicMini(m); assert.ok(!('good' in pub) && !('link' in pub), 'never public'); assert.ok(!/good|link/.test(JSON.stringify(pub)));
@@ -94,8 +95,8 @@ test('doors: a whole square played at random: a dead end always sends its runner
   }
 });
 
-test('doors: a dead end is marked, sends the runner out of its linked door and ends the turn; it cannot be tried again; a square from before the links plays on', () => {
-  const m = E.newMini('doors', E.makeRng('a')), w = wrong(m, 0);
+test('doors: v 2: a dead end is marked, sends the runner out of its linked door and ends the turn; it cannot be tried again; a square from before the links plays on', () => {
+  const m = E.newMini('doors', E.makeRng('a')), w = wrong(m, 0); m.v = 2;   // (a square dealt before v 3 keeps its rule)
   for (let k = 0; k < 20; k++) {
     const t = JSON.parse(JSON.stringify(m)), r = E.applyMove(t, 'X', w, E.makeRng('x' + k));
     assert.deepEqual([r.ok, r.outcome, r.note, !!r.again, t.at.X, t.tried.X[0][w], t.tried.O[0][w]], [true, 'continue', 'dead', false, 0, 1, 0]);
@@ -141,20 +142,20 @@ test('doors: the way down drops a floor and ends the turn (Go again on success: 
   }
 });
 
-test('doors: identical towers in the race; a shared tower marks every door for both', () => {
+test('doors: identical towers in the race; a shared tower marks every door for both (v 2: refused for both)', () => {
   const m = E.newMini('doors', E.makeRng('s'));
   assert.ok(Array.isArray(m.good) && m.good.length === m.f, 'one layout: the same way down in both towers');
   E.setTune('doors', { towers: 'shared' });
   try {
-    const t = E.newMini('doors', E.makeRng('s')), w = wrong(t, 0);
+    const t = E.newMini('doors', E.makeRng('s')), w = wrong(t, 0); t.v = 2;
     E.applyMove(t, 'X', w, E.makeRng('x'));
     assert.equal(t.tried[0][w], 1); assert.equal(E.applyMove(t, 'O', w, E.makeRng('x')).reason, 'tried', 'marked for both');
     E.applyMove(t, 'O', t.good[0], E.makeRng('x')); assert.deepEqual(R.doorsKnown(t, 'X', 0)[t.good[0]], 2);
   } finally { E.setTune('doors', null); }
 });
 
-test('doors: the computer takes a known way down, never a dead end; Normal and Hard read the other tower, Easy its own', () => {
-  const m = E.newMini('doors', E.makeRng('c')), g = m.good[0], w = wrong(m, 0);
+test('doors: v 2: the computer takes a known way down, never a dead end; Normal and Hard read the other tower, Easy its own', () => {
+  const m = E.newMini('doors', E.makeRng('c')), g = m.good[0], w = wrong(m, 0); m.v = 2;
   m.tried.O[0][g] = 2;                                          // O found the way down on its tower
   for (const level of ['normal', 'hard']) for (let k = 0; k < 10; k++) assert.equal(E.localBest(E.publicMini(m), 'X', E.makeRng(level + k), {}, { level }).move, g);
   let other = 0; for (let k = 0; k < 40; k++) if (E.localBest(E.publicMini(m), 'X', E.makeRng('e' + k), {}, { level: 'easy' }).move !== g) other++;
@@ -163,7 +164,7 @@ test('doors: the computer takes a known way down, never a dead end; Normal and H
   for (const level of ['easy', 'normal', 'hard']) for (let k = 0; k < 20; k++) assert.notEqual(E.localBest(E.publicMini(m), 'X', E.makeRng(level + k), {}, { level }).move, w);
   assert.equal(R.timeoutClose(m, 'X'), null);
   // a door a runner came out of is a dead end to anyone who thinks about it: Normal and Hard leave it, Easy does not think
-  const t = E.newMini('doors', E.makeRng('c2')), w2 = wrong(t, 0);
+  const t = E.newMini('doors', E.makeRng('c2')), w2 = wrong(t, 0); t.v = 2;
   E.applyMove(t, 'O', w2, E.makeRng('x')); const out = t.last.out, left = [0, 1, 2, 3].filter(i => i !== w2 && i !== out);
   for (const level of ['normal', 'hard']) for (let k = 0; k < 30; k++) assert.ok(left.includes(E.localBest(E.publicMini(t), 'X', E.makeRng(level + k), {}, { level }).move), 'one of the two doors still in doubt');
   let easyOut = 0; for (let k = 0; k < 60; k++) if (E.localBest(E.publicMini(t), 'X', E.makeRng('e' + k), {}, { level: 'easy' }).move === out) easyOut++;
@@ -203,4 +204,52 @@ test('doors: online: the record keeps the ways down off the public state, every 
     assert.ok(mv.entries[0].dd && typeof mv.entries[0].dd.down === 'boolean');
   }
   assert.equal(E.applyOnlineMove(rec, rec.state.turn, 0, 'auto', E.makeRng('a')).ok, false, 'no automatic move from a phone');
+});
+
+// No memory aids (v 3, November 2026): nothing is marked on screen, so nothing tried is refused either.
+test('doors: v 3: a door tried before can be picked again: a dead end sends its runner out of the same linked door, no progress, the turn ends; both tower modes', () => {
+  for (const towers of ['separate', 'shared']) {
+    E.setTune('doors', { towers });
+    try {
+      for (let g = 0; g < 30; g++) {
+        const m = E.newMini('doors', E.makeRng(towers + g)), w = wrong(m, 0), out = m.link[0][w];
+        assert.equal(m.v, 3); assert.ok(R.doorsOpenAll(m));
+        const r1 = E.applyMove(m, 'X', w, E.makeRng('a' + g)); assert.deepEqual([r1.ok, r1.note, m.last.out, m.at.X], [true, 'dead', out, 0]);
+        assert.deepEqual(R.doorsMoves(m, 'X'), [0, 1, 2, 3], 'every door of the floor, the one tried too');
+        const r2 = E.applyMove(m, 'X', w, E.makeRng('b' + g));
+        assert.deepEqual([r2.ok, r2.outcome, r2.note, !!r2.again, m.last.out, m.at.X, m.pos.X], [true, 'continue', 'dead', false, out, 0, R.doorX(4, out)], 'the same fixed exit again, no progress');
+        assert.equal(R.doorsTried(m, 'X')[0][w], 1, 'still on the record');
+        const r3 = E.applyMove(m, 'O', w, E.makeRng('c' + g)); assert.ok(r3.ok); assert.equal(m.last.out, out, 'the other player too');
+        E.applyMove(m, 'X', m.good[0], E.makeRng('d')); assert.equal(m.at.X, 1);
+        if (towers === 'shared') { const r4 = E.applyMove(m, 'O', m.good[0], E.makeRng('e')); assert.ok(r4.ok); assert.equal(m.at.O, 1, 'a way down another took is a door like any other'); }
+      }
+    } finally { E.setTune('doors', null); }
+  }
+  const t = E.newMini('doors', E.makeRng('rand')); let won = false;   // a square played at random to its end
+  for (let k = 0; k < 200 && !won; k++) won = E.applyMove(t, 'X', E.randomLegalMove(t, 'X', E.makeRng('r' + k)), E.makeRng('s' + k)).outcome === 'win';
+  assert.ok(won);
+});
+
+test('doors: v 3: the computer remembers by level: Hard everything it saw, Normal most, Easy much less; never the way down unseen', () => {
+  const m = E.newMini('doors', E.makeRng('mem')), g = m.good[0], dead = [0, 1, 2, 3].filter(i => i !== g);
+  const pick = (pm, level, n, seed) => { const c = {}; for (let k = 0; k < n; k++) { const v = E.localBest(E.publicMini(pm), 'X', E.makeRng(seed + level + k), {}, { level }).move; c[v] = (c[v] || 0) + 1; } return c; };
+  // O found the way down on its tower (separate towers: on show)
+  const a = JSON.parse(JSON.stringify(m)); E.applyMove(a, 'O', g, E.makeRng('o'));
+  const took = lv => (pick(a, lv, 400, 'w')[g] || 0) / 400;
+  assert.equal(took('hard'), 1, 'Hard never forgets a way down it saw');
+  assert.ok(took('normal') > 0.9 && took('normal') < 1, `Normal mostly remembers it: ${took('normal')}`);
+  assert.ok(took('easy') < 0.75 && took('easy') > 0.4, `Easy often forgets it: ${took('easy')}`);
+  // X tried a dead end itself: Hard never tries it again; Normal now and then; Easy often
+  const b = JSON.parse(JSON.stringify(m)), w = dead[0]; E.applyMove(b, 'X', w, E.makeRng('x')); const out = b.last.out;
+  const again = lv => { const c = pick(b, lv, 600, 'd'); return ((c[w] || 0) + (c[out] || 0)) / 600; };
+  assert.equal(again('hard'), 0);
+  assert.ok(again('normal') > 0 && again('normal') < 0.12, `Normal: ${again('normal')}`);
+  assert.ok(again('easy') > again('normal') + 0.1, `Easy: ${again('easy')}`);
+  // nothing seen: no level knows the way down (a uniform pick among all four)
+  for (const lv of ['easy', 'normal', 'hard']) { const c = pick(m, lv, 800, 'u'); assert.ok((c[g] || 0) / 800 > 0.18 && (c[g] || 0) / 800 < 0.32, `${lv}: ${c[g]}`); }
+  // the settings: forgetting off everywhere makes every level as Hard; 100% forgets everything
+  E.setTune('doors', { forget: 0, forgetEasy: 0 });
+  try { const c = E.newMini('doors', E.makeRng('mem')); E.applyMove(c, 'O', c.good[0], E.makeRng('o')); for (const lv of ['easy', 'normal']) assert.equal(pick(c, lv, 100, 'z')[c.good[0]], 100); } finally { E.setTune('doors', null); }
+  E.setTune('doors', { forgetHard: 100 });
+  try { const c = E.newMini('doors', E.makeRng('mem')); E.applyMove(c, 'O', c.good[0], E.makeRng('o')); const n = pick(c, 'hard', 400, 'y')[c.good[0]] || 0; assert.ok(n < 160, `${n}`); } finally { E.setTune('doors', null); }
 });

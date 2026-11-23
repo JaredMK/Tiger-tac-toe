@@ -6,6 +6,10 @@
 // players'), and the ground floor at the bottom with the way out. The still parts are painted once into a layer
 // (towerLayer) and the doors that have changed into sprites (doorSprite); a frame draws the sky, the layer(s), those
 // doors, what is known of the links (a dotted arrow from a dead end to the door it comes out of) and whatever moves.
+// No memory aids (v 3, November 2026; `doorsOpenAll`): nothing of that is drawn. A move plays (the walk, the door, where
+// the runner comes out or the drop) and once it has played every door is drawn exactly as it was dealt: no planks, no
+// dimming, no green way down, no link arrows, no door left ajar, nothing in the tallies' maps or the miniature but the
+// runners. Each door keeps its own design: that is how a player remembers. (A square from before keeps its marks.)
 // The camera (DOORSV, rules.js DOORS): a turn opens on the whole tower(s), roof to ground with both runners, held
 // DOORS.wide, then eased over DOORS.zoom into the mover's floor (introView). On this phone's own turn it plays once a
 // turn as the square opens (introFor), in the interface's time; a touch cuts it short (the doors take taps only once
@@ -19,7 +23,7 @@
 // burst, the trapdoor under it gives way and the runner drops through the floor (the camera following), landing with a
 // squash, dust and sparkles; on the ground the way out swings open and the runner dances under confetti.
 import { durRate, moveRate } from '../../core/timer.js';
-import { DOORS, doorX, doorsCont, doorsDeadMs, doorsDownMs, doorsExits, doorsIn, doorsMoves, doorsPre, doorsSayAt } from './rules.js';
+import { DOORS, doorX, doorsCont, doorsDeadMs, doorsDownMs, doorsExits, doorsIn, doorsMoves, doorsOpenAll, doorsPre, doorsSayAt } from './rules.js';
 import { mmIntro } from '../../net/matchmaking.js';
 import { blocked } from '../../net/room.js';
 import { N, REDUCED, app, mv, state } from '../../ui/app.js';
@@ -288,6 +292,20 @@ function doorSprite(n, w, st, open, scale) {
   return s;
 }
 
+// How floor r's doors of a tower (`tw`: 'X', 'O' or 'S' the shared one) stand when no move plays on them: `st` the mark
+// drawn (0 none, 1 boarded, 2 the way down open and lit) and `open` (a door a runner came out of stands ajar). No
+// memory aids (v 3): every door as dealt, shut and unmarked, whatever has been tried.
+export function doorsRest(mini, tw, r) {
+  const k = mini.d[r];
+  if (doorsOpenAll(mini)) return Array.from({ length: k }, () => ({ st: 0, open: 0 }));
+  const tr = tw === 'S' || !mini.sep ? mini.tried : mini.tried[tw], ex = doorsExits(mini, r);
+  return Array.from({ length: k }, (_, i) => { const st = tr[r][i] || 0; return { st, open: st === 2 ? 1 : !st && ex[i] ? 0.1 : 0 }; });
+}
+// Whether the links tried are drawn (the dotted arrows): never without memory aids.
+export const doorsLinksShown = mini => !doorsOpenAll(mini);
+// A tower map's door blocks (the tallies', the miniature's): the mark each shows, none without memory aids.
+export const doorsMapMarks = (mini, p, r) => (doorsOpenAll(mini) ? new Array(mini.d[r]).fill(0) : ((mini.sep ? mini.tried[p] : mini.tried)[r] || []).map(v => v || 0));
+
 // ---------- the drawing: the tower's still parts ----------
 function bricks(c, x, y, w, h, teeth) {                           // a wall of bricks (teeth: -1 or 1, the side its cut edge is on)
   c.fillStyle = '#c9a27c'; c.fillRect(x, y, w, h);
@@ -466,7 +484,7 @@ function links(c, mini, r, skip) {
 
 const go = stage('canvas.ddcv', (c, W, H, now) => {
   if (!src) return false;
-  const { mini, a } = src, C = runColours(), F = mini.f, dpr = c.getTransform().a || 1;
+  const { mini, a } = src, C = runColours(), F = mini.f, dpr = c.getTransform().a || 1, blind = doorsOpenAll(mini);
   seen = { W, H };
   if (pend && (now > pend.till || pend.sq !== src.zoom || a)) pend = null;
   // the move on show: T ms into its picture (the intro, then the move: someone else's from the intro, this phone's own
@@ -518,23 +536,29 @@ const go = stage('canvas.ddcv', (c, W, H, now) => {
     if (Math.abs(k * dpr - L.scale) < 1e-4) c.drawImage(L.cv, Math.round(left * dpr) / dpr, Math.round(Y(L.y0) * dpr) / dpr, L.cv.width / dpr, L.cv.height / dpr);   // (the close view: a pixel for a pixel)
     else c.drawImage(L.cv, left, Y(L.y0), L.w * k, L.h * k);
     c.save(); c.translate(X(ox), Y(0)); c.scale(k, k);
-    const mover = !!s && (tw === 'S' || by === tw), tr = tw === 'S' ? mini.tried : mini.tried[tw], y0v = (0 - Y(0)) / k, y1v = (H - Y(0)) / k;
+    const mover = !!s && (tw === 'S' || by === tw), y0v = (0 - Y(0)) / k, y1v = (H - Y(0)) / k;
     if (tw === 'S') { pennant(c, C, 'X', -V.roof - V.top + 3.4, 1); pennant(c, C, 'O', -V.roof - V.top + 3.4, -1); } else pennant(c, C, tw, -V.roof - V.top + 3.4, tw === 'X' ? 1 : -1);
     for (let r = 0; r < F; r++) {
       if ((r + 1) * V.fh < y0v || r * V.fh - 4 > y1v) continue;
-      const kk = mini.d[r], w = doorW(kk), look = doorsLook(mini, r), fy = floorY(r), ex = doorsExits(mini, r), act = mover && s.r === r;
+      const kk = mini.d[r], w = doorW(kk), look = doorsLook(mini, r), fy = floorY(r), act = mover && s.r === r;
       const tap = src.myTurn && !a && !pend && (tw === 'S' || tw === src.turn) && mini.at[src.turn] === r && settled && (it == null || it >= PRE);
+      const rest = doorsRest(mini, tw, r);
       for (let i = 0; i < kk; i++) {
-        let st = tr[r][i] || 0, open = st === 2 ? 1 : 0, o = null;
+        let st = rest[i].st, open = rest[i].open, o = null;
         const x = doorX(kk, i);
-        if (act && i === s.i && a) { const m = pose.mark; o = { st: m ? st : 0, open: s.down && m ? Math.max(pose.open, 0.2) : pose.open, board: s.down ? 1 : pose.board, glow: pose.glow }; if (!s.down && m && pose.board <= 0) o.st = 0; }
+        if (blind) {                                                // (no memory aids: a door shows only the move playing; once it has played, every door is as dealt)
+          if (act && a && tm < total && i === s.i) {
+            const tL = doorsIn() + DOORS.dark + DOORS.beat + DOORS.drop, back = s.down ? 1 - clamp01((tm - tL) / DOORS.land) : 1;   // (the way down shuts again as the runner lands below)
+            o = s.down ? { st: pose.mark ? 2 : 0, open: (pose.mark ? Math.max(pose.open, 0.2) : pose.open) * back, glow: pose.glow * back } : { st: 0, open: pose.open };
+          } else if (act && a && tm < total && !s.down && i === s.out) o = { st: 0, open: pose.openOut };
+        } else if (act && i === s.i && a) { const m = pose.mark; o = { st: m ? st : 0, open: s.down && m ? Math.max(pose.open, 0.2) : pose.open, board: s.down ? 1 : pose.board, glow: pose.glow }; if (!s.down && m && pose.board <= 0) o.st = 0; }
         else if (act && !s.down && i === s.out && a) o = { st, open: Math.max(pose.openOut, st === 2 ? 1 : 0, pose.mark && tm >= total ? 0.1 : 0) };
-        else if (!st && ex[i] && !(act && a && !pose.mark && mini.seen && mini.seen[r][s.i] === i)) open = 0.1;   // (a door a runner came out of stands ajar)
+        else if (open && !st && act && a && !pose.mark && mini.seen && mini.seen[r][s.i] === i) open = 0;   // (the linked door not ajar yet: nobody has come out of it in this move so far)
         if (o) { c.save(); if (i === s.i && pose.shake) c.translate(pose.shake * 0.7, 0); drawDoor(c, look.doors[i], x, fy, w, o); c.restore(); }
         else if (st || open) { const sp = doorSprite(look.doors[i], w, st, open, L.cv.width / L.w); c.drawImage(sp.cv, x - w / 2 - sp.m, fy - V.dh - sp.m, sp.sw, sp.sh); }
         if (tap && st !== 1) { const d = DES[look.doors[i]], g = Math.min(3.2, (V.tw / kk - w) / 2 - 0.5); topPath(c, d.top, x - w / 2 - g, fy - V.dh - g, w + 2 * g, V.dh + g); c.strokeStyle = INK; c.lineWidth = 2.6; c.lineJoin = 'round'; c.stroke(); c.strokeStyle = src.turn === 'O' ? C.O : C.X; c.lineWidth = 1.5; c.stroke(); }   // (a door this phone can tap: ringed in its player's colour)
       }
-      links(c, mini, r, act && a && !pose.mark ? s.i : -1);
+      if (doorsLinksShown(mini)) links(c, mini, r, act && a && !pose.mark ? s.i : -1);
       if (act && s.down && pose.hatch > 0.01) {                    // the trapdoor under the way down, giving way
         const hw = w * 0.56, hx = s.ix, hy = fy, g = Math.min(1.12, pose.hatch);
         c.fillStyle = DARK; c.fillRect(hx - hw, hy, hw * 2, V.slab); c.strokeStyle = INK; c.lineWidth = 0.7; c.strokeRect(hx - hw, hy, hw * 2, V.slab);
@@ -563,7 +587,7 @@ const go = stage('canvas.ddcv', (c, W, H, now) => {
       }
       if (pose.dizzy > 0.05) for (let q = 0; q < 3; q++) { const an = now / 190 + q * 2.09; star(c, pose.x + Math.cos(an) * V.rr * 1.25, fy - V.leg - V.rr * 2.25 + Math.sin(an) * 1.6, 2.1 * pose.dizzy, an, '#fff'); }
       if (pose.dust >= 0 && pose.dust < 1) { puffs(c, pose.x, fy, pose.dust, 9); if (s.down) for (let q = 0; q < 5; q++) { const an = -Math.PI / 2 + (q - 2) * 0.5, d = 8 + 16 * pose.dust; star(c, pose.x + Math.cos(an) * d, fy - V.leg - V.rr + Math.sin(an) * d, 2.6 * (1 - pose.dust * 0.7), pose.dust * 3 + q, q % 2 ? '#bff0c8' : '#fff'); } }
-      if (!s.down && pose.board > 0.3 && pose.board < 1) puffs(c, dx, dy - V.dh * (pose.board < 0.62 ? 0.7 : 0.3), clamp01((pose.board < 0.62 ? pose.board - 0.3 : pose.board - 0.62) / 0.3), 5);
+      if (!blind && !s.down && pose.board > 0.3 && pose.board < 1) puffs(c, dx, dy - V.dh * (pose.board < 0.62 ? 0.7 : 0.3), clamp01((pose.board < 0.62 ? pose.board - 0.3 : pose.board - 0.62) / 0.3), 5);
     }
     c.restore();
   }
@@ -587,11 +611,11 @@ const go = stage('canvas.ddcv', (c, W, H, now) => {
 // A little map of a tower (a tally's, the miniature's): a row a floor, a block a door coloured by its mark, the
 // runners as dots, the ground under it.
 function mapSvg(mini, p, cls, all) {
-  const tr = mini.sep ? mini.tried[p] : mini.tried, F = mini.f, who = all ? ['X', 'O'] : [p], RH = 3, R0 = 2.2, G = R0 + F * RH;
+  const F = mini.f, who = all ? ['X', 'O'] : [p], RH = 3, R0 = 2.2, G = R0 + F * RH;
   let out = `<path class="ddmr" d="M-.2 ${R0}L5 .2L10.2 ${R0}Z"/><rect class="ddmf" x="0" y="${R0}" width="10" height="${F * RH + 1.6}"/>`;
   for (let r = 0; r < F; r++) {
-    const k = mini.d[r], w = 9 / k;
-    for (let i = 0; i < k; i++) out += `<rect class="ddmd s${tr[r][i] || 0}" x="${(0.5 + i * w + w * 0.14).toFixed(2)}" y="${(R0 + r * RH + 0.5).toFixed(2)}" width="${(w * 0.72).toFixed(2)}" height="2.3" rx=".35"/>`;
+    const k = mini.d[r], w = 9 / k, mk = doorsMapMarks(mini, p, r);
+    for (let i = 0; i < k; i++) out += `<rect class="ddmd s${mk[i]}" x="${(0.5 + i * w + w * 0.14).toFixed(2)}" y="${(R0 + r * RH + 0.5).toFixed(2)}" width="${(w * 0.72).toFixed(2)}" height="2.3" rx=".35"/>`;
   }
   out += `<rect class="ddmg" x="0" y="${G}" width="10" height="1.6"/>`;
   who.forEach((q, n) => { const fl = Math.min(F, mini.at[q]), y = fl >= F ? G + 0.4 : R0 + fl * RH + 1.9, x = 0.5 + 9 * mini.pos[q] / 100 + (all && mini.at.X === mini.at.O && Math.abs(mini.pos.X - mini.pos.O) < 20 ? (n ? 0.9 : -0.9) : 0); out += tokSvg(q, x.toFixed(2), y.toFixed(2), 1.2); });
@@ -632,7 +656,7 @@ export function sounds(f, add, won, mini, last) {
   for (let k = 0; k < 3; k++) put('ddStep', 30 + k * (T.walk - 60) / 3, 0.92 + (k % 2) * 0.14);
   put('ddCreak', T.walk); put('ddStep', T.walk + T.open + T.step * 0.4, 0.8); put('ddDark', doorsIn());
   const tD = doorsIn() + T.dark;
-  if (!s.down) { put('ddBang', tD); put('ddTumble', tD + T.out * 0.6); put('ddBonk', tD + T.out + T.pop * 0.74); put('ddNail', tD + T.out + T.pop + T.board * 0.3); put('ddNail', tD + T.out + T.pop + T.board * 0.62, 1.12); return; }
+  if (!s.down) { put('ddBang', tD); put('ddTumble', tD + T.out * 0.6); put('ddBonk', tD + T.out + T.pop * 0.74); if (!(mini && doorsOpenAll(mini))) { put('ddNail', tD + T.out + T.pop + T.board * 0.3); put('ddNail', tD + T.out + T.pop + T.board * 0.62, 1.12); } return; }
   put('ddAha', tD); put('ddHatch', tD + T.beat); put('ddFall', tD + T.beat + T.drop * 0.14); put('ddLand', tD + T.beat + T.drop); put('ddRise', tD + T.beat + T.drop + 60);
   if (won) { const tW = doorsDownMs(); put('ding', tW); put('ddHop', tW + T.win * 0.04, 1); put('ddHop', tW + T.win * 0.34, 1.2); put('sparkle', tW + T.win * 0.66); }
 }

@@ -202,9 +202,9 @@ Lineup card: Match a tile to either end of the line, or draw. Empty your hand fi
 
 ## Door Drop [doors]
 Category: More luck
-Play: Start on the top floor and pick a door. One door on each floor drops you to the floor below. The rest are dead ends: you come out of another dead end on the same floor, and the door you tried stays marked. Doors always lead to the same place.{towerText}{goAgain}
+Play: Start on the top floor and pick a door. One door on each floor drops you to the floor below. The rest are dead ends: you come out of another dead end on the same floor. Doors always lead to the same place. Nothing is marked: every door looks the same, tried or not, so remember where you went.{towerText}{goAgain}
 Win: First to the ground floor wins.
-Lineup card: Pick a door on each floor: one drops you down, the rest are dead ends. First to the ground wins.
+Lineup card: Pick a door on each floor: one drops you down. Nothing is marked, so remember! First to the ground wins.
 
 ## Echo [echo]
 Category: More brain

@@ -1,5 +1,5 @@
 // Door Drop's screen (games/doors/view.js), rendered in Node with the browser's names stubbed: the tower's canvas,
-// the door buttons for the mover's floor (never the boarded ones, never while a move plays), the result line at its
+// the door buttons for the mover's floor (every door from v 3; never the boarded ones of a square from before; never while a move plays), no memory aids (v 3: a floor drawn as dealt after tries), the result line at its
 // moment, the tallies (a map of each player's tower in the race, pips on a shared tower), the miniature (a picture with
 // each player's floors, public alone), the move's sounds each at its moment, the runner's pose through a move, the
 // doors' designs, and the camera: the wide shot of the whole tower(s), the intro (held, then eased into the mover's
@@ -47,8 +47,10 @@ test('Door Drop: the screen: a canvas, a door button for each door of the mover\
   assert.ok(!/undefined|NaN/.test(g));
   m.tried.X[0][wrong(m, 0)] = 1;
   g = game(renderMini(state.squares[4]));
-  assert.equal((g.match(/class="ddgo X"/g) || []).length, m.d[0] - 1, 'a boarded-up door is no button');
-  assert.ok(!g.includes(`data-m="${wrong(m, 0)}"`));
+  assert.equal((g.match(/class="ddgo X"/g) || []).length, m.d[0], 'no memory aids (v 3): a door tried is a button like the rest');
+  m.v = 2; g = game(renderMini(state.squares[4]));
+  assert.equal((g.match(/class="ddgo X"/g) || []).length, m.d[0] - 1, 'a square from before: a boarded-up door is no button');
+  assert.ok(!g.includes(`data-m="${wrong(m, 0)}"`)); m.v = 3;
   state.turn = 'O';
   assert.ok(!game(renderMini(state.squares[4])).includes('ddgo'), 'the computer\'s turn: no buttons');
   match({ towers: 'shared' });
@@ -67,7 +69,7 @@ test('Door Drop: this phone\'s own move: a dead end and a way down: no buttons w
   assert.ok(g.includes(`<p class="ddline no appear" style="--t:${Math.round(R.doorsSayAt(f.dd))}ms" role="status">Dead end!</p>`), 'the words as the runner lands, the walk begun at once');
   assert.equal(E.playMs(f), PRE + R.doorsDeadMs(), 'the move\'s length counts the intro (someone else\'s move opens on it)');
   assert.deepEqual(dd(f), [['ddStep', 30], ['ddStep', Math.round(30 + (D.walk - 60) / 3)], ['ddStep', Math.round(30 + 2 * (D.walk - 60) / 3)], ['ddCreak', D.walk], ['ddStep', Math.round(D.walk + D.open + D.step * 0.4)], ['ddDark', R.doorsIn()],
-    ['ddBang', tD], ['ddTumble', Math.round(tD + D.out * 0.6)], ['ddBonk', Math.round(tD + D.out + D.pop * 0.74)], ['ddNail', Math.round(tD + D.out + D.pop + D.board * 0.3)], ['ddNail', Math.round(tD + D.out + D.pop + D.board * 0.62)]]);
+    ['ddBang', tD], ['ddTumble', Math.round(tD + D.out * 0.6)], ['ddBonk', Math.round(tD + D.out + D.pop * 0.74)]], 'no planks nailed on (v 3: nothing marked)');
   m = match();
   assert.ok(E.playMove(state, 4, m.good[0], E.makeRng('g')).ok);
   f = state.flash; startFx('move', f);
@@ -91,7 +93,7 @@ test('Door Drop: someone else\'s move opens on the camera\'s intro (its sounds a
     let g = game(renderMini(state.squares[4]));
     assert.ok(g.includes(`style="--t:${Math.round(PRE + R.doorsSayAt(f.dd))}ms" role="status">Dead end!</p>`), 'the words after the intro');
     let got = dd(f);
-    assert.deepEqual(got[0], ['ddStep', PRE + 30], 'the first step after the intro'); assert.deepEqual(got[got.length - 1], ['ddNail', Math.round(PRE + tD + D.out + D.pop + D.board * 0.62)]);
+    assert.deepEqual(got[0], ['ddStep', PRE + 30], 'the first step after the intro'); assert.deepEqual(got[got.length - 1], ['ddBonk', Math.round(PRE + tD + D.out + D.pop * 0.74)]);
     assert.ok(got.every(x => x[1] >= PRE && x[1] <= E.playMs(f)), 'every sound after the intro, inside the move');
     V.DOORSV.intro = false;                                       // (reduced motion: no intro: the picture starts at the walk)
     m = match(null, 'O');
@@ -217,8 +219,33 @@ test('Door Drop: the miniature: a picture of the tower(s) with each player\'s fl
   m.at.X = 1; m.tried.X[0][m.good[0]] = 2; m.tried.O[0][wrong(m, 0)] = 1;
   const h = V.miniature(m);
   assert.ok(h.includes('class="tart tddw"') && (h.match(/<svg class="ddmap/g) || []).length === 2);
-  assert.ok(h.includes('ddmd s2') && h.includes('ddmd s1'));
+  assert.ok(!/ddmd s[12]/.test(h), 'no memory aids: every door block the same');
+  m.v = 2; const h2 = V.miniature(m); m.v = 3;
+  assert.ok(h2.includes('ddmd s2') && h2.includes('ddmd s1'), 'a square from before keeps its marks');
   assert.equal((h.match(/class="tr X"[^>]*>.*?<\/div>/)[0].match(/ on/g) || []).length, 1);
   assert.ok(!/good|link|undefined|NaN/.test(h));
+  E.setTune('doors', null);
+});
+
+test('Door Drop: no memory aids (v 3): after tries, a floor is drawn exactly as dealt: the same doors, maps and buttons as before, apart from the runner', () => {
+  for (const tune of [null, { towers: 'shared' }]) {
+    const m = match(tune), r0 = 0, before = [0, 1, 2].map(r => JSON.stringify(V.doorsRest(m, m.sep ? 'X' : 'S', r)));
+    const strip = h => // (the runners' places and floors gone down apart)
+       game(h).replace(/<g class="ttok[\s\S]*?<\/g>/g, '').replace(/<span class="pips"[\s\S]*?<\/span>/g, '').replace(/aria-label="[^"]*"/g, '').replace(/<b class="[^"]*">[^<]*<\/b>/g, '');
+    const html0 = strip(renderMini(state.squares[4]));
+    for (const p of ['X', 'O']) { const w = wrong(m, r0); E.applyMove(m, p, w, E.makeRng('t' + p)); E.applyMove(m, p, (w + 1) % 4 === m.good[r0] ? (w + 2) % 4 : (w + 1) % 4, E.makeRng('u' + p)); }
+    E.applyMove(m, 'O', m.good[0], E.makeRng('down'));            // a way down found, a floor above the other runner
+    state.turn = 'X'; Object.assign(state, { flash: null, done: null });
+    assert.ok(m.tried[m.sep ? 'X' : 0] && JSON.stringify(m.tried).includes('1') && JSON.stringify(m.tried).includes('2'), 'the record keeps what was tried');
+    for (const tw of m.sep ? ['X', 'O'] : ['S']) [0, 1, 2].forEach(r => { assert.equal(JSON.stringify(V.doorsRest(m, tw, r)), before[r], 'every door as dealt'); assert.ok(V.doorsRest(m, tw, r).every(d => d.st === 0 && d.open === 0)); });
+    assert.equal(V.doorsLinksShown(m), false, 'no link arrows');
+    for (const p of ['X', 'O']) [0, 1, 2].forEach(r => assert.deepEqual(V.doorsMapMarks(m, p, r), [0, 0, 0, 0]));
+    const html1 = strip(renderMini(state.squares[4]));
+    assert.equal((html1.match(/class="ddgo X"/g) || []).length, 4, 'every door a button');
+    assert.equal(html1.replace(/style="[^"]*"/g, ''), html0.replace(/style="[^"]*"/g, ''), 'the same markup but for the runners');
+    assert.ok(!/ddmd s[12]/.test(V.miniature(m)));
+    const old = JSON.parse(JSON.stringify(m)); old.v = 2;            // a square from before: its marks
+    assert.ok(V.doorsRest(old, old.sep ? 'X' : 'S', 0).some(d => d.st === 1) && V.doorsLinksShown(old) && V.doorsMapMarks(old, 'X', 0).includes(1));
+  }
   E.setTune('doors', null);
 });

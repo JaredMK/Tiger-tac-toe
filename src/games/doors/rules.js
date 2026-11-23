@@ -10,7 +10,11 @@
 // hundredths of the tower's width). A dead end is marked (1), the runner comes out of the door it is linked to and the
 // turn ends; the way down is marked (2), the player drops to the floor below and the turn ends too (with "Go again on
 // success" on, the player picks again). The first to drop out of the last floor onto the ground wins. A door already
-// marked a dead end cannot be tried again (the door a runner came out of can: nobody has gone in at it).
+// marked a dead end cannot be tried again in a square dealt before v 3 (the door a runner came out of can: nobody has
+// gone in at it). From v 3 (November 2026: no memory aids) nothing is marked on screen, so nothing is refused either:
+// a door tried before can be tried again, a dead end sending its runner out of the same linked door again (no
+// progress, the turn ends as before). The marks (`tried`, `seen`) are still kept in the record (public: every move is),
+// for the computer's memory and the stats; the view never draws them.
 // Separate towers (the default, the race): a tower each, both built the same (the same way down and the same links on
 // every floor), each with its own marks. Every move is public (the record, the replays), so the other tower's marks
 // are on show: a player can follow the other's way down. Shared: one tower with both runners, every door either has
@@ -50,15 +54,17 @@ export function create(type, rng) {
   const d = new Array(t.floors).fill(k), good = d.map(n => randInt(r, n)), link = d.map((n, i) => doorsLinks(n, good[i], r));
   const sep = t.towers !== 'shared', blank = () => d.map(n => new Array(n).fill(0));
   // (`look`: what the picture is drawn from, the doors' designs and the rooms': drawn apart from the ways down)
-  return { type, v: 2, sep, f: t.floors, d, good, link, seen: d.map(n => new Array(n).fill(-1)), look: randInt(r, 100000), tried: sep ? { X: blank(), O: blank() } : blank(), at: { X: 0, O: 0 }, pos: { X: 50, O: 50 }, last: null };
+  return { type, v: 3, sep, f: t.floors, d, good, link, seen: d.map(n => new Array(n).fill(-1)), look: randInt(r, 100000), tried: sep ? { X: blank(), O: blank() } : blank(), at: { X: 0, O: 0 }, pos: { X: 50, O: 50 }, last: null };
 }
 // Where a door stands across the tower (in hundredths of its width: the runners' places, `pos`, are kept so).
 export const doorX = (k, i) => Math.round((100 * (i + 0.5)) / k);
+// A square without memory aids (v 3): every door can be picked, tried or not, and nothing tried is drawn.
+export const doorsOpenAll = mini => (mini.v || 1) >= 3;
 export const doorsTried = (mini, p) => (mini.sep ? mini.tried[p] : mini.tried);
 export function apply(mini, p, m, rng, idx) {
   const r = mini.at[p], tr = doorsTried(mini, p);
   if (r >= mini.f || !idx(mini.d[r])) return { ok: false, reason: 'bad' };
-  if (tr[r][m] === 1) return { ok: false, reason: 'tried' };
+  if (tr[r][m] === 1 && !doorsOpenAll(mini)) return { ok: false, reason: 'tried' };   // (v 3: any door, tried or not)
   if (!mini.good || mini.good[r] == null) return { ok: false, reason: 'secret' };
   const from = mini.pos[p];
   const c = doorsCont(mini, p);
@@ -91,8 +97,8 @@ export function publicView(mini) {                                // never the w
 }
 export function secret(mini) { return mini.good ? (mini.link ? { good: mini.good.slice(), link: mini.link.map(r => r.slice()) } : { good: mini.good.slice() }) : null; }
 export function hide(m, k, st) { delete m.good; delete m.link; }
-// The doors p may try: those of their floor not marked a dead end.
-export function doorsMoves(mini, p) { const r = mini.at[p], t = doorsTried(mini, p)[r]; return t ? t.map((v, i) => (v === 1 ? -1 : i)).filter(i => i >= 0) : []; }
+// The doors p may try: every door of their floor (v 3), else those not marked a dead end.
+export function doorsMoves(mini, p) { const r = mini.at[p], t = doorsTried(mini, p)[r]; return t ? t.map((v, i) => (v === 1 && !doorsOpenAll(mini) ? -1 : i)).filter(i => i >= 0) : []; }
 // What a player can see of floor r: their own marks, and (separate towers, built the same) the other tower's.
 export function doorsKnown(mini, p, r) {
   const own = (doorsTried(mini, p)[r] || []).slice();
