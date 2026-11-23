@@ -116,3 +116,29 @@ test('maze: a square dealt before the rework (no h: a square maze, the door and 
   assert.ok(won); assert.equal(m.at.X, 3);
   assert.ok(!('h' in R.publicView(m)), 'its record keeps its old shape');
 });
+
+test('maze: the win reveals the winner\'s whole maze (the cells still in fog listed for the ripple), and the flash covers the reveal and the dance', () => {
+  for (const boards of ['separate', 'shared', 'one']) {
+    E.setTune('maze', { boards });
+    try {
+      const m = E.newMini('maze', E.makeRng('w' + boards)), rng = E.makeRng('wr' + boards); let won = null, p = 'X', before = null;
+      for (let k = 0; k < 600 && !won; k++) {
+        const s = R.mazeSeen(m, p); before = s.slice();
+        const r = E.applyMove(m, p, R.randomMove(m, p, rng), rng);
+        if (r.outcome === 'win') won = p; else if (!r.again) p = p === 'X' ? 'O' : 'X';
+      }
+      assert.ok(won, boards);
+      const seen = R.mazeSeen(m, won), open = m.sep ? m.open[won] : m.open, G = R.mazeGeo(m);
+      assert.deepEqual(seen, open, 'every cell of the winner\'s maze is seen');
+      const rev = before.map((v, c) => (v < 0 && !m.last.path.includes(c) ? c : -1)).filter(c => c >= 0);
+      assert.deepEqual(m.last.rev, rev, 'rev: the cells the reveal lifts the fog off');
+      if (m.sep) { const other = won === 'X' ? 'O' : 'X'; assert.ok(m.seen[other].some(v => v < 0), 'the other maze is left as it was'); }
+      const f = { type: 'maze', by: won }; R.moveFlash(null, won, null, null, m, f);
+      assert.deepEqual(f.mz.rev, rev);
+      assert.equal(R.flashMs(f), m.last.path.length * R.MAZE.step + R.mazeWinMs(), 'the flash covers the reveal and the dance');
+      assert.ok(R.mazeWinMs() >= R.mazeDanceAt() + R.MAZE.dance && R.mazeDanceAt() > R.mazeRevealAt() + R.MAZE.reveal);
+      const v = R.publicView(m); assert.ok(!('open' in v)); assert.deepEqual(v.last.rev, rev); assert.deepEqual(JSON.parse(JSON.stringify(v)), v);
+      assert.equal(G.n, seen.length);
+    } finally { E.setTune('maze', null); }
+  }
+});

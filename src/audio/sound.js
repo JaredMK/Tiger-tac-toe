@@ -298,6 +298,11 @@ def('hrMitt', 0.14, (c, d, t) => { sfxTone(c, d, t, 170, .1, { to: 90, type: 'tr
 // Maze Runner: a running step (a soft tap) and the bump of a dead end (a dull knock and a wobble down).
 def('mzStep', 0.06, (c, d, t) => { sfxTone(c, d, t, 520, .04, { to: 380, type: 'triangle', vol: .28 }); sfxNoise(c, d, t, .012, { f: 2200, q: 1.5, vol: .12 }); }, { level: .3 });
 def('mzBonk', 0.34, (c, d, t) => { sfxTone(c, d, t, 200, .12, { to: 110, type: 'triangle', vol: .55 }); sfxNoise(c, d, t, .04, { f: 700, filter: 'lowpass', vol: .4 }); sfxTone(c, d, t + .1, 330, .2, { to: 180, type: 'sine', vol: .25 }); }, { level: .44 });
+// Maze Runner's win: the fog lifting off the whole maze (an airy sweep rising under a run of soft chimes), each hop of
+// the victory dance (a springy pip) and its spin (a quick whirl up).
+def('mzReveal', 0.9, (c, d, t) => { sfxNoise(c, d, t, .8, { f: 900, to: 5200, q: 1.2, vol: .16, att: .25 }); [784, 988, 1175, 1568].forEach((f, k) => sfxTone(c, d, t + .1 + k * .16, f, .3, { vol: .14, att: .01 })); }, { level: .36 });
+def('mzHop', 0.16, (c, d, t) => { sfxTone(c, d, t, 470, .12, { to: 1040, type: 'triangle', vol: .4, att: .006 }); sfxTone(c, d, t + .01, 940, .08, { to: 1800, vol: .1, att: .006 }); }, { level: .34, vary: true });
+def('mzSpin', 0.3, (c, d, t) => { sfxTone(c, d, t, 560, .26, { to: 1900, vol: .24, att: .03 }); sfxNoise(c, d, t, .24, { f: 2000, to: 5600, q: 1.4, vol: .12, att: .04 }); }, { level: .36 });
 // Shape Split: the blade across the shape (a quick bright slice).
 def('spSlice', 0.22, (c, d, t) => { sfxNoise(c, d, t, .18, { f: 2200, to: 6200, q: 1.6, vol: .36, att: .01 }); sfxTone(c, d, t + .02, 1500, .12, { to: 2600, vol: .12 }); }, { level: .38 });
 // Mystery Face: a feature that matches (a bright blip) and one that does not (a dull one).

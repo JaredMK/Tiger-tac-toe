@@ -5,7 +5,8 @@
 // start). A move is a way out of the runner's cell ('n', 'e', 's', 'w'): the runner dashes along the corridor, round
 // its bends, until it comes to a fork, a dead end or the flag. Every cell it passes is seen from then on (`seen[cell]`:
 // its open sides; -1 not yet). A fork: the same player picks again (`again`). A dead end ends the turn there (the next
-// turn starts by running back). The flag wins.
+// turn starts by running back). The flag wins, and the winner's whole maze is revealed (`seen` filled in; `last.rev` the
+// cells still in fog, which the view lifts in a ripple out from the flag).
 // The deal (`mazeDeal`): a maze grown by `branch` % random picks (many short branches and dead ends) against the rest
 // newest-first (longer corridors), and kept only if the one path from the door to the flag is at least `minPath` cells
 // long; of those, the one nearest `turns`, the average turns a runner alone takes (MAZE.trials runs of `mazeSolo`).
@@ -18,7 +19,7 @@
 import { needRng, randInt } from '../../core/random.js';
 import { tuneLive } from '../../core/tune.js';
 
-export const MAZE = { step: 95, bonk: 340, flag: 500, tol: 0.5, tries: 40, trials: 24, pathTries: 30 };   // ms a cell of a dash, a dead end's bump, the flag's moment; the deal: how near the target turns, how many mazes timed, how many runs time one, how many mazes drawn for one long enough
+export const MAZE = { step: 95, bonk: 340, flag: 500, tol: 0.5, tries: 40, trials: 24, pathTries: 30, beat: 160, cam: 320, reveal: 760, fade: 220, dance: 1040, hop1: 40, hop2: 300, spin: 560, pose: 820, rest: 240 };   // ms a cell of a dash, a dead end's bump, the flag's moment; the deal: how near the target turns, how many mazes timed, how many runs time one, how many mazes drawn for one long enough; the win (from the dash's landing on the flag): a beat (`beat`), the camera out to the whole maze (`cam`) as the fog lifts in a ripple out from the flag (`reveal`, each cell fading in over `fade`), then the winner's victory dance on the flag (`dance`: hops at `hop1`, `hop2`, a spin at `spin`, the pose at `pose` ms in), the pose held a moment (`rest`)
 export const DIRS = ['n', 'e', 's', 'w'], BIT = { n: 1, e: 2, s: 4, w: 8 }, BACK = { n: 's', e: 'w', s: 'n', w: 'e' };
 export const mazeStep = (w, cell, d) => (d === 'n' ? cell - w : d === 's' ? cell + w : d === 'e' ? cell + 1 : cell - 1);
 const count = m => (m & 1) + ((m >> 1) & 1) + ((m >> 2) & 1) + ((m >> 3) & 1);
@@ -156,7 +157,11 @@ export function apply(mini, p, m, rng, idx) {
   if (mini.one) { mini.at.X = to; mini.at.O = to; } else mini.at[p] = to;    // (one runner: both players move it)
   if (!mini.last || mini.last.by !== p || mini.last.end === 'dead') mini.turns[p]++;      // (a turn's first dash counts it)
   mini.last = { by: p, d: m, from, path: r.path, end: r.end, fresh };
-  if (r.end === 'flag') return { ok: true, outcome: 'win', note: 'flag' };
+  if (r.end === 'flag') {                                         // the square is won: the whole maze (the winner's) is revealed, the cells still in fog listed for the view's ripple
+    const rev = []; for (let c = 0; c < g.n; c++) if (seen[c] < 0) { seen[c] = open[c]; rev.push(c); }
+    mini.last.rev = rev;
+    return { ok: true, outcome: 'win', note: 'flag' };
+  }
   if (r.end === 'dead') return { ok: true, outcome: 'continue', note: 'dead' };
   return { ok: true, outcome: 'continue', note: 'fork', again: true };
 }
@@ -171,6 +176,11 @@ export function secret(mini) { return mini.open ? { open: JSON.parse(JSON.string
 export function hide(m, k, st) { delete m.open; }
 export const mazeWays = (mini, p) => { const s = mazeSeen(mini, p)[mini.at[p]]; return DIRS.filter(d => s >= 0 && (s & BIT[d])); };
 export function randomMove(mini, p, rng, from, empties) { return mazePick(mazeSeen(mini, p), mazeGeo(mini), mini.at[p], needRng(rng), 'normal'); }   // (the tests' stand-in: a runner that gets there)
-export function moveFlash(m, p, range, bjFrom, mini, flash) { const l = mini.last; flash.mz = { from: l.from, path: l.path.slice(), end: l.end, fresh: l.fresh.slice() }; }
-export const mazeMs = (n, end) => n * MAZE.step + (end === 'dead' ? MAZE.bonk : end === 'flag' ? MAZE.flag : 60);
+export function moveFlash(m, p, range, bjFrom, mini, flash) { const l = mini.last; flash.mz = { from: l.from, path: l.path.slice(), end: l.end, fresh: l.fresh.slice() }; if (l.rev) flash.mz.rev = l.rev.slice(); }
+export const mazeMs = (n, end) => n * MAZE.step + (end === 'dead' ? MAZE.bonk : end === 'flag' ? mazeWinMs() : 60);
+// The win's moments, from the dash's landing on the flag: the reveal begins (`mazeRevealAt`), the dance begins
+// (`mazeDanceAt`), all of it over (`mazeWinMs`).
+export const mazeRevealAt = () => MAZE.beat;
+export const mazeDanceAt = () => MAZE.beat + MAZE.reveal + MAZE.fade;
+export const mazeWinMs = () => mazeDanceAt() + MAZE.dance + MAZE.rest;
 export function flashMs(f, winLen, won) { return f.mz ? mazeMs(f.mz.path.length, f.mz.end) : 300; }
