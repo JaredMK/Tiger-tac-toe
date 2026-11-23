@@ -648,6 +648,18 @@ def('hvEnd', 0.34, (c, d, t) => { sfxTone(c, d, t, 660, .11, { type: 'triangle',
 def('hvLand', 0.12, (c, d, t) => { sfxTone(c, d, t, 620, .09, { to: 880, type: 'sine', vol: .42, att: .002 }); sfxNoise(c, d, t, .012, { f: 3000, q: 2, vol: .14, att: .001 }); }, { level: .38 });
 // [/hive]
 //
+// [doors] Door Drop: its sounds (names start `dd`)
+// Footsteps on boards to the door; the door's creak (a rising squeal over a wooden knock); a low rumble while the
+// runner is in the dark; a dead end's bonk (a comic bump as the runner tumbles out); the way down's falling whistle;
+// the landing's thump a floor below.
+def('ddStep', 0.08, (c, d, t) => { sfxNoise(c, d, t, .04, { f: 700, q: 1.4, vol: .4, att: .002 }); sfxTone(c, d, t, 160, .05, { to: 110, type: 'triangle', vol: .25 }); }, { level: .3, vary: true });
+def('ddCreak', 0.36, (c, d, t) => { sfxTone(c, d, t, 380, .3, { to: 620, type: 'sawtooth', vol: .12, att: .04 }); sfxNoise(c, d, t, .3, { f: 1500, to: 2300, q: 9, vol: .2, att: .05 }); sfxTone(c, d, t, 140, .05, { to: 90, type: 'triangle', vol: .3 }); }, { level: .34 });
+def('ddDark', 0.4, (c, d, t) => { sfxNoise(c, d, t, .38, { f: 260, to: 140, filter: 'lowpass', vol: .5, att: .06 }); sfxTone(c, d, t + .05, 70, .3, { to: 55, vol: .3, att: .05 }); }, { level: .32 });
+def('ddBonk', 0.3, (c, d, t) => { sfxTone(c, d, t, 520, .22, { to: 170, type: 'triangle', vol: .55, att: .002 }); sfxNoise(c, d, t, .04, { f: 1200, q: 1, vol: .35, att: .001 }); }, { level: .46 });
+def('ddFall', 0.55, (c, d, t) => { sfxTone(c, d, t, 1400, .5, { to: 380, vol: .3, att: .03 }); sfxNoise(c, d, t, .45, { f: 1800, to: 600, q: 1.2, vol: .12, att: .1 }); }, { level: .36 });
+def('ddLand', 0.22, (c, d, t) => { sfxTone(c, d, t, 120, .2, { to: 60, vol: .7 }); sfxNoise(c, d, t, .08, { f: 400, filter: 'lowpass', vol: .5, att: .002 }); }, { level: .5 });
+// [/doors]
+//
 // [rally] Road Race: its sounds (names start `rr`)
 def('rrSqueal', 0.3, (c, d, t) => { sfxNoise(c, d, t, .26, { f: 2300, to: 1700, q: 9, vol: .5, att: .02 }); sfxTone(c, d, t, 1480, .24, { to: 1260, type: 'sawtooth', vol: .1, att: .03 }); }, { level: .3 });   // tyres at a hard lock: a narrow band of noise sliding down, a thin whine under it
 // [/rally]

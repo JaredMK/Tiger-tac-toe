@@ -116,6 +116,7 @@ import * as tanksR from './tanks/rules.js'; import * as tanksA from './tanks/ai.
 import * as jigsawR from './jigsaw/rules.js'; import * as jigsawA from './jigsaw/ai.js'; import * as jigsawM from './jigsaw/meta.js'; add('jigsaw', jigsawR, jigsawA, jigsawM);
 import * as hiveR from './hive/rules.js'; import * as hiveA from './hive/ai.js'; import * as hiveM from './hive/meta.js'; add('hive', hiveR, hiveA, hiveM);
 import * as barrelR from './barrel/rules.js'; import * as barrelA from './barrel/ai.js'; import * as barrelM from './barrel/meta.js'; add('barrel', barrelR, barrelA, barrelM);
+import * as doorsR from './doors/rules.js'; import * as doorsA from './doors/ai.js'; import * as doorsM from './doors/meta.js'; add('doors', doorsR, doorsA, doorsM);
 import * as clashR from './clash/rules.js'; import * as clashA from './clash/ai.js'; import * as clashM from './clash/meta.js'; add('clash', clashR, clashA, clashM);
 import * as diceR from './dice/rules.js'; import * as diceA from './dice/ai.js'; import * as diceM from './dice/meta.js'; add('dice', diceR, diceA, diceM);
 import * as hexapawnR from './hexapawn/rules.js'; import * as hexapawnA from './hexapawn/ai.js'; import * as hexapawnM from './hexapawn/meta.js'; add('hexapawn', hexapawnR, hexapawnA, hexapawnM);

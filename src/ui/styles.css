@@ -6956,6 +6956,26 @@ button.jgcell { cursor: pointer; touch-action: none; }
 .thvl { font: 400 18.6px 'Luckiest Guy', 'Arial Black', sans-serif; text-anchor: middle; fill: var(--ink); } .thvl.mid { fill: #fff; }
 .thvb { fill: rgba(22, 18, 16, .08); stroke: none; } .thvb.mid { fill: rgba(255, 255, 255, .22); }   /* (before any burst: the cells blank, their tile backs) */
 /* [/hive] */
+/* [doors] Door Drop */
+.g-dd { width: min(var(--gw), 440px); height: min(var(--gh), 640px); display: flex; flex-direction: column; gap: 8px; }
+.g-dd > * { flex: none; }
+.g-dd .ddbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.ddsq { position: relative; width: 100cqw; height: 100cqh; border: 3.5px solid var(--ink); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); touch-action: none; background: #9fd3f0; }
+.ddcv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.ddgo { position: absolute; visibility: hidden; padding: 0; margin: 0; border: 3px dashed currentColor; border-bottom: 0; border-radius: 10px 10px 0 0; background: none; cursor: pointer; touch-action: manipulation; color: var(--x); }
+.ddgo.O { color: #b8860b; }
+.ddgo:active { background: rgba(255, 255, 255, .28); }
+.ddgo.rpress, .ddgo.rpress:disabled { transform: none !important; filter: none; box-shadow: none !important; background: rgba(255, 255, 255, .28); }   /* the computer's or the other player's pick: the door lit, never moved off its place */
+.ddline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.ddline.ok { color: var(--green); } .ddline.no { color: var(--x); }
+.ddmap { display: block; } .ddmap.sm { width: 34px; height: auto; flex: none; }
+.ddmf { fill: #f3dfc1; stroke: var(--ink); stroke-width: .25; } .ddmd { fill: #b9773e; stroke: var(--ink); stroke-width: .12; } .ddmd.s1 { fill: #c9c2b3; } .ddmd.s1 { stroke: var(--x); stroke-width: .3; } .ddmd.s2 { fill: var(--green); } .ddmg { fill: #8bbf6a; stroke: var(--ink); stroke-width: .2; } .ddmr { fill: #c0533a; stroke: var(--ink); stroke-width: .3; stroke-linejoin: round; }
+.ddmap .ttok circle { stroke: var(--ink); stroke-width: .25; }
+.tart.tddw { --pb: 42cqw; } .tart.tddw .tpic { width: 34cqw; display: flex; justify-content: center; } .tart.tddw .tpic .tdd1 .ddmap { width: 24cqw; } .tdd2 { display: flex; gap: 1.5cqw; align-items: flex-end; } .tart.tddw .tpic .tdd2 .ddmap { width: 17cqw; }
+.tart.tddw .tpip .tr { --pw: min(9cqw, calc(var(--pb, 40cqw) / var(--n, 3) * .76)); gap: min(2.6cqw, calc(var(--pb, 40cqw) / var(--n, 3) * .24)); }
+.tart.tddw .tpip i { border-width: min(1.3cqw, calc(var(--pw) * .2)); }
+/* [/doors] */
+
 
 /* [rally] Road Race */
 /* (December 2026: the circuit from above over the steering wheel; these follow, and so stand over, the game's first

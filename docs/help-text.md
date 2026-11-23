@@ -176,6 +176,11 @@ Category: More brain
 Play: A random tile starts the line. Put down a tile that matches either end of it. Nothing fits? Draw one from the pile, or pass when it is empty.
 Win: Empty your hand first. If the game blocks, the fewest pips in hand wins.
 
+## Door Drop [doors]
+Category: More luck
+Play: Start on the top floor and pick a door. One door on each floor drops you to the floor below. The rest are dead ends: you pop out of another door, and that door stays marked.{towerText}{goAgain}
+Win: First to the ground floor wins.
+
 ## Echo [echo]
 Category: More brain
 Play: Watch the pattern once, then tap it back.

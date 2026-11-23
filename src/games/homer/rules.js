@@ -47,7 +47,7 @@ export function publicView(mini) {
   return { type: 'homer', seed: mini.seed, hr: { X: mini.hr.X, O: mini.hr.O }, ab: { X: mini.ab.X, O: mini.ab.O }, last: mini.last ? JSON.parse(JSON.stringify(mini.last)) : null };
 }
 export function randomMove(mini, p, rng, from, empties) {        // (the tests' stand-in: swings up to a tenth of a second off)
-  const c = homerCfg(mini); return { s: Array.from({ length: c.pitches }, () => Math.round((needRng(rng)() * 2 - 1) * 100)) };
+  const c = homerCfg(mini); return { s: Array.from({ length: c.pitches }, () => Math.round((needRng(rng)() * 2 - 1) * 100) || 0) };   // (|| 0: never -0 in the state)
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) { flash.hr = JSON.parse(JSON.stringify(mini.last)); flash.hr.pitches = homerPitches(mini, p, mini.last.n).slice(0, mini.last.s.length); }
 // The at-bat as played (its pitches up to the last one thrown), then a moment on its result.
