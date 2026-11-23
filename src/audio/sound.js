@@ -280,6 +280,11 @@ def('gbJump', 0.2, (c, d, t) => { sfxNoise(c, d, t, .16, { f: 600, to: 2000, q: 
 def('gbTink', 0.3, (c, d, t) => { sfxTone(c, d, t, 2100, .22, { to: 1900, vol: .4 }); sfxTone(c, d, t, 3150, .14, { vol: .16 }); sfxNoise(c, d, t, .015, { f: 5000, q: 2, vol: .25 }); }, { level: .4, vary: true });
 def('gbCrack', 0.26, (c, d, t) => { for (let k = 0; k < 5; k++) sfxNoise(c, d, t + k * .045 + (k % 2) * .012, .02, { f: 3600 + k * 500, q: 3, vol: .34 + k * .05, att: .001 }); }, { level: .42 });
 def('gbSmash', 0.5, (c, d, t) => { sfxNoise(c, d, t, .32, { f: 5200, to: 2400, q: .8, vol: .5, att: .002 }); for (let k = 0; k < 5; k++) sfxTone(c, d, t + .03 + k * .05, 2900 - k * 330, .16, { to: 2300 - k * 300, vol: .16 }); }, { level: .46 });
+// The winner's finish: landing on the far bank (a soft thump on solid ground), each hop of the victory dance (a springy
+// rising pip), its twirl (a quick whistle whirling up over a shimmer); the square's won chime rings with its pose.
+def('gbLand', 0.2, (c, d, t) => { sfxTone(c, d, t, 190, .14, { to: 105, type: 'triangle', vol: .5, att: .003 }); sfxNoise(c, d, t, .06, { f: 520, filter: 'lowpass', vol: .32, att: .002 }); }, { level: .4 });
+def('gbHop', 0.16, (c, d, t) => { sfxTone(c, d, t, 430, .12, { to: 960, type: 'triangle', vol: .4, att: .006 }); sfxTone(c, d, t + .01, 860, .08, { to: 1700, vol: .1, att: .006 }); }, { level: .34, vary: true });
+def('gbTwirl', 0.32, (c, d, t) => { sfxTone(c, d, t, 620, .28, { to: 1980, vol: .26, att: .03 }); sfxTone(c, d, t + .04, 1240, .22, { to: 3200, vol: .08, att: .03 }); sfxNoise(c, d, t, .26, { f: 2200, to: 6000, q: 1.4, vol: .12, att: .04 }); }, { level: .36 });
 // Fruit Reels: the reels' whirr (quick soft ticks, slowing) and a reel stopping (a clack).
 def('frSpin', 1.1, (c, d, t) => { let at = 0; for (let k = 0; k < 22; k++) { sfxNoise(c, d, t + at, .018, { f: 1500 + (k % 3) * 300, q: 2, vol: .22, att: .001 }); at += .03 + k * .0028; } }, { level: .32 });
 def('frStop', 0.14, (c, d, t) => { sfxTone(c, d, t, 190, .1, { to: 120, type: 'triangle', vol: .5 }); sfxNoise(c, d, t, .03, { f: 2400, q: 1.4, vol: .35, att: .001 }); }, { level: .42 });

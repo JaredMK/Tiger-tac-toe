@@ -11,7 +11,7 @@
 import { needRng, randInt, shuffle } from '../../core/random.js';
 import { tuneLive } from '../../core/tune.js';
 
-export const BRIDGE = { hop: 520, crouch: 0.22, crack: 240, drop: 420, back: 320, land: 140 };   // a move's moments (ms): the jump (a crouch, the leap, the landing: `crouch` its share of `hop`); a break: the crack, the fall, back to the start
+export const BRIDGE = { hop: 520, crouch: 0.22, crack: 240, drop: 420, back: 320, land: 140, off: 180, dance: 1000, hop1: 60, hop2: 320, twirl: 580, pose: 840, rest: 220 };   // a move's moments (ms): the jump (a crouch, the leap, the landing: `crouch` its share of `hop`); a break: the crack, the fall, back to the start; the win (the hop onto the last row): a beat on that glass (`off`), the leap off onto the far bank (a `hop`), the victory dance there (`dance`: its two hops, its twirl and its pose at `hop1`, `hop2`, `twirl`, `pose` ms in; styles.css gbdance), the pose held a moment (`rest`)
 const lay = (n, b, r) => n.map((k, i) => shuffle(Array.from({ length: k }, (_, j) => j), r).slice(0, b[i]).sort());
 export function create(type, rng) {
   const t = tuneLive(type), r = needRng(rng), lo = Math.min(t.pmin, t.pmax), hi = Math.max(t.pmin, t.pmax), blo = Math.min(t.bmin, t.bmax), bhi = Math.max(t.bmin, t.bmax);
@@ -50,4 +50,8 @@ export function bridgeMoves(mini, p) { const r = mini.at[p] + 1, s = bridgeSeen(
 export function randomMove(mini, p, rng, from, empties) { return from(bridgeMoves(mini, p)); }
 export function moveFlash(m, p, range, bjFrom, mini, flash) { const l = mini.last; flash.gb = { r: l.r, i: l.i, fall: !!l.fall, from: l.from }; }
 export const bridgeMs = fall => (fall ? BRIDGE.hop + BRIDGE.crack + BRIDGE.drop + BRIDGE.back : BRIDGE.hop + BRIDGE.land);
-export function flashMs(f, winLen, won) { return bridgeMs(f.gb && f.gb.fall) + (won ? 500 : 0); }
+// The winning hop (look and feel only: the square is won on landing on the last row, as ever): it lands there, the player
+// leaps off onto the far bank (`bridgeBankAt`: the landing) and dances, and the frame's result comes once the dance is over.
+export const bridgeBankAt = () => 2 * BRIDGE.hop + BRIDGE.off;
+export const bridgeWinMs = () => bridgeBankAt() + BRIDGE.dance + BRIDGE.rest;
+export function flashMs(f, winLen, won) { return won && f.gb && !f.gb.fall ? bridgeWinMs() : bridgeMs(f.gb && f.gb.fall) + (won ? 500 : 0); }

@@ -2,7 +2,7 @@
 
 export const info = { name: 'Glass Bridge', hint: 'Hop from row to row. Some glass breaks. First across wins' };
 export const release = 'admin';   // the default (the admin's dashboard can change it)
-export const minVersion = '1.29.0';   // (1.29.0: a fall sends the player back to the start) the oldest client version that has this game (core/client.js)
+export const minVersion = '1.31.0';   // (1.31.0: the winner's leap onto the far bank and its dance, a won hop's flashMs; 1.29.0: a fall sends the player back to the start) the oldest client version that has this game (core/client.js)
 export const category = 'luck';   // the game's kind, shown in its "?" explainer: 'luck', 'skill' or 'brain'
 export const placeholder = false;   // never on a new state's placeholder board (games/index.js PLACE_TYPES): the seeded deals stay as they were
 export const explainer = { name: 'Glass Bridge', play: 'Hop to a platform in the next row. Safe glass holds and you hop again. Weak glass breaks for good: your turn ends and you go back to the start.', win: 'First across wins.' };

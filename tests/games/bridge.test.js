@@ -10,7 +10,7 @@ const idx = m => max => Number.isInteger(m) && m >= 0 && m < max;
 const safeOf = (m, p, r) => { const bad = m.sep ? m.bad[p][r] : m.bad[r]; return Array.from({ length: m.n[r] }, (_, i) => i).find(i => !bad.includes(i)); };
 
 test('bridge: Admin only, luck; the deal: rows of platforms, every row with a safe one, the weak ones hidden', () => {
-  assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'luck', '1.29.0']);
+  assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'luck', '1.31.0']);
   assert.deepEqual(E.tuneFields('bridge').map(f => f.k), ['rows', 'pmin', 'pmax', 'bmin', 'bmax', 'boards']);
   for (const set of [null, { pmin: 2, pmax: 3, bmin: 0, bmax: 2, rows: 9 }, { boards: 'separate' }]) {
     E.setTune('bridge', set);

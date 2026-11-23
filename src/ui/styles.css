@@ -6058,8 +6058,9 @@ button.dukd:active .dukf, .dukd.rpress .dukf { scale: .88; }
 /* A player's token (ui/tok.js): a disc in their colour with the drawn mark. */
 .ntok { display: grid; place-items: center; width: var(--tk, 26px); aspect-ratio: 1; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--x); box-shadow: 0 2px 0 var(--ink); font-style: normal; flex: none; }
 .ntok.O { background: var(--o); } .ntok svg { width: 74%; height: 74%; display: block; overflow: visible; } .ntok .tmk { stroke: #fff; } .ntok.O .tmk { stroke: var(--ink); }
-/* Glass Bridge: tallies, the bridge (rows bottom to top, the far bank's flag over them), the result line. Times: --hop,
-   --crk (the crack), --bk (back on the old row), --dr (the fall's length): the rules' BRIDGE, set on .g-gb. */
+/* Glass Bridge: tallies, the bridge (rows bottom to top, the far bank with its finish line and flag over them), the
+   result line. Times: --hop, --crk (the crack), --bk (back on the old row), --dr (the fall's length), --dc (the winner
+   lands on the far bank: the dance starts), --dn (the dance's length): the rules' BRIDGE, set on .g-gb. */
 .g-gb { width: min(var(--gw), 440px); height: min(var(--gh), 560px); display: flex; flex-direction: column; gap: 8px; }
 .g-gb > * { flex: none; }
 .g-gb .gbwrap { flex: 1 1 0; min-height: 0; display: flex; justify-content: center; gap: 14px; }
@@ -6068,8 +6069,46 @@ button.dukd:active .dukf, .dukd.rpress .dukf { scale: .88; }
 .gbwho { position: absolute; left: 50%; top: 2px; transform: translateX(-50%); z-index: 2; font: 400 16px/1 'Bangers', 'Arial Black', sans-serif; }
 .gbend { flex: 0 0 9%; min-height: 24px; display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 -12px; background: var(--panel-2); border-top: 3px solid var(--ink); }
 .g-gb.sep .gbend { margin: 0 -6px; }
-.gbend.far { border-top: 0; border-bottom: 3px solid var(--ink); background: repeating-conic-gradient(var(--ink) 0 25%, #fff 0 50%) 0 0 / 16px 16px; }
-.gbflag { display: none; }
+/* The far bank: solid ground past a checkered finish line along the bridge's end, a flag planted in it; the winner lands
+   on it, standing just past the line (from the start of the square: nothing moves when they arrive). */
+.gbend.far { position: relative; flex: 0 0 auto; height: clamp(46px, 15cqh, 70px); align-items: flex-end; padding-bottom: 13px; border-top: 0; border-bottom: 3px solid var(--ink); background: linear-gradient(var(--ink), var(--ink)) left bottom 10px / 100% 2px no-repeat, repeating-conic-gradient(var(--ink) 0 25%, #fff 0 50%) left bottom / 10px 10px repeat-x, radial-gradient(rgba(22, 18, 16, .13) 1.1px, transparent 1.6px) 0 0 / 8px 8px, var(--panel-2); }
+.gbflag { position: absolute; right: 6%; bottom: 5px; height: calc(100% - 12px); aspect-ratio: 24 / 40; overflow: visible; pointer-events: none; }
+.gbflag .gbfk { fill: #fff; } .gbflag .gbfc { fill: var(--ink); } .gbflag .gbfo { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; }
+.gbflag .gbpole { stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; } .gbflag .gbknob { fill: var(--gold); stroke: var(--ink); stroke-width: 1.1; }
+/* The winner on the far bank: their token with arms up behind it (a hand in their colour). Its victory dance, from the
+   landing (--dc) for --dn, mirrors the rules' BRIDGE moments: a hop at 6% (hop1) and 32% (hop2), the twirl at 58%
+   (twirl), the pose at 84% (pose); the arms pump with the hops; sparkles burst at the pose. Its final frame is the pose
+   it keeps (and with reduced motion, all there is: on the bank, arms up). */
+.gbwin { position: relative; display: inline-grid; place-items: center; transform-origin: 50% 100%; }
+.gbwin > .ntok { position: relative; z-index: 1; }
+.gbarm { position: absolute; z-index: 0; bottom: 40%; width: calc(var(--tk) * .52); height: calc(var(--tk) * .66); line-height: 0; }
+.gbarm svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.gbarm.l { right: 72%; transform-origin: 100% 100%; transform: rotate(-6deg); }
+.gbarm.r { left: 72%; transform-origin: 0 100%; transform: rotate(6deg); } .gbarm.r svg { transform: scaleX(-1); }
+.gbarml { fill: none; stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; }
+.gbhand { fill: var(--x); stroke: var(--ink); stroke-width: 1.3; } .gbwin.O .gbhand { fill: var(--o); }
+.gbsp { position: absolute; z-index: 2; left: 50%; top: 50%; width: calc(var(--tk) * 2.3); height: calc(var(--tk) * 2.3); margin: calc(var(--tk) * -1.25) 0 0 calc(var(--tk) * -1.15); fill: var(--gold); stroke: var(--ink); stroke-width: 1; stroke-linejoin: round; opacity: 0; pointer-events: none; }
+.gbwin.dance { animation: gbdance var(--dn) var(--dc) linear both; }
+.gbwin.dance .gbarm.l { animation: gbarml var(--dn) var(--dc) ease-in-out both; } .gbwin.dance .gbarm.r { animation: gbarmr var(--dn) var(--dc) ease-in-out both; }
+.gbwin.dance .gbsp { animation: gbspark calc(var(--dn) * .34) calc(var(--dc) + var(--dn) * .84) ease-out both; }
+@keyframes gbdance {
+  0% { transform: translateY(0) rotateY(0deg) scale(1, 1); }
+  6% { transform: translateY(5%) rotateY(0deg) scale(1.14, .82); animation-timing-function: cubic-bezier(.2, .7, .4, 1); }
+  17% { transform: translateY(-50%) rotateY(0deg) scale(.92, 1.1); animation-timing-function: cubic-bezier(.6, 0, .8, .4); }
+  28% { transform: translateY(4%) rotateY(0deg) scale(1.14, .84); animation-timing-function: ease-out; }
+  32% { transform: translateY(5%) rotateY(0deg) scale(1.14, .82); animation-timing-function: cubic-bezier(.2, .7, .4, 1); }
+  43% { transform: translateY(-50%) rotateY(0deg) scale(.92, 1.1); animation-timing-function: cubic-bezier(.6, 0, .8, .4); }
+  54% { transform: translateY(4%) rotateY(0deg) scale(1.14, .84); animation-timing-function: ease-out; }
+  58% { transform: translateY(0) rotateY(0deg) scale(1, 1); animation-timing-function: ease-in-out; }
+  70% { transform: translateY(-16%) rotateY(180deg) scale(1, 1.04); animation-timing-function: ease-in-out; }
+  82% { transform: translateY(0) rotateY(360deg) scale(1, 1); }
+  84% { transform: translateY(3%) rotateY(360deg) scale(1.1, .88); animation-timing-function: cubic-bezier(.2, .7, .4, 1); }
+  92% { transform: translateY(-10%) rotateY(360deg) scale(.94, 1.1); }
+  100% { transform: translateY(0) rotateY(360deg) scale(1, 1); }
+}
+@keyframes gbarml { 0% { transform: scale(0) rotate(40deg); } 6% { transform: scale(1) rotate(-32deg); } 17% { transform: scale(1) rotate(8deg); } 28% { transform: scale(1) rotate(-32deg); } 43% { transform: scale(1) rotate(8deg); } 54% { transform: scale(1) rotate(-32deg); } 70% { transform: scale(1) rotate(-14deg); } 84% { transform: scale(1) rotate(-36deg); } 92% { transform: scale(1) rotate(6deg); } 100% { transform: scale(1) rotate(-6deg); } }
+@keyframes gbarmr { 0% { transform: scale(0) rotate(-40deg); } 6% { transform: scale(1) rotate(32deg); } 17% { transform: scale(1) rotate(-8deg); } 28% { transform: scale(1) rotate(32deg); } 43% { transform: scale(1) rotate(-8deg); } 54% { transform: scale(1) rotate(32deg); } 70% { transform: scale(1) rotate(14deg); } 84% { transform: scale(1) rotate(36deg); } 92% { transform: scale(1) rotate(-6deg); } 100% { transform: scale(1) rotate(6deg); } }
+@keyframes gbspark { 0% { opacity: 0; transform: scale(.45) rotate(-18deg); } 22% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; transform: scale(1.15) rotate(8deg); } }
 .gbrow { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 7px; }
 .gbp { position: relative; min-width: 0; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; gap: 3px; border: 2.5px solid var(--ink); border-radius: 8px 6px 9px 7px; background: linear-gradient(135deg, rgba(255, 255, 255, .85) 0 18%, rgba(255, 255, 255, .25) 18% 30%, rgba(255, 255, 255, .6) 30% 36%, rgba(255, 255, 255, .15) 36%), #7ec8e6; font: inherit; color: inherit; }
 button.gbp { cursor: pointer; touch-action: manipulation; }
