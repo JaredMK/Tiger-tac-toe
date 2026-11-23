@@ -650,14 +650,23 @@ def('hvLand', 0.12, (c, d, t) => { sfxTone(c, d, t, 620, .09, { to: 880, type: '
 //
 // [doors] Door Drop: its sounds (names start `dd`)
 // Footsteps on boards to the door; the door's creak (a rising squeal over a wooden knock); a low rumble while the
-// runner is in the dark; a dead end's bonk (a comic bump as the runner tumbles out); the way down's falling whistle;
-// the landing's thump a floor below.
+// runner is in the dark. A dead end: the linked door banging open (a wooden slam with a rattle), the tumble's whistle
+// (up and over), the bonk as the runner lands (a comic bump), a nail driven home for each plank. The way down: a
+// bright chord as the doorway lights, the trapdoor's clunk as it gives way, the falling whistle, the landing's thump
+// a floor below and a rising run after it; the winner's hop on the ground floor.
 def('ddStep', 0.08, (c, d, t) => { sfxNoise(c, d, t, .04, { f: 700, q: 1.4, vol: .4, att: .002 }); sfxTone(c, d, t, 160, .05, { to: 110, type: 'triangle', vol: .25 }); }, { level: .3, vary: true });
 def('ddCreak', 0.36, (c, d, t) => { sfxTone(c, d, t, 380, .3, { to: 620, type: 'sawtooth', vol: .12, att: .04 }); sfxNoise(c, d, t, .3, { f: 1500, to: 2300, q: 9, vol: .2, att: .05 }); sfxTone(c, d, t, 140, .05, { to: 90, type: 'triangle', vol: .3 }); }, { level: .34 });
 def('ddDark', 0.4, (c, d, t) => { sfxNoise(c, d, t, .38, { f: 260, to: 140, filter: 'lowpass', vol: .5, att: .06 }); sfxTone(c, d, t + .05, 70, .3, { to: 55, vol: .3, att: .05 }); }, { level: .32 });
+def('ddBang', 0.26, (c, d, t) => { sfxNoise(c, d, t, .07, { f: 900, q: .8, vol: .6, att: .001 }); sfxTone(c, d, t, 210, .16, { to: 80, type: 'triangle', vol: .6, att: .002 }); sfxNoise(c, d, t + .07, .12, { f: 2400, q: 4, vol: .16, att: .01 }); }, { level: .48 });
+def('ddTumble', 0.36, (c, d, t) => { sfxTone(c, d, t, 520, .17, { to: 1250, vol: .26, att: .02 }); sfxTone(c, d, t + .17, 1250, .17, { to: 420, vol: .26, att: .01 }); sfxNoise(c, d, t, .3, { f: 1600, to: 3400, q: 1.2, vol: .08, att: .05 }); }, { level: .34 });
 def('ddBonk', 0.3, (c, d, t) => { sfxTone(c, d, t, 520, .22, { to: 170, type: 'triangle', vol: .55, att: .002 }); sfxNoise(c, d, t, .04, { f: 1200, q: 1, vol: .35, att: .001 }); }, { level: .46 });
+def('ddNail', 0.1, (c, d, t) => { sfxNoise(c, d, t, .025, { f: 3000, q: 1.6, vol: .5, att: .001 }); sfxTone(c, d, t, 330, .07, { to: 210, type: 'square', vol: .22, att: .001 }); sfxTone(c, d, t, 1900, .03, { type: 'triangle', vol: .2, att: .001 }); }, { level: .4, vary: true });
+def('ddAha', 0.42, (c, d, t) => { [523, 659, 784].forEach((f, i) => sfxTone(c, d, t + i * .03, f, .34, { type: 'triangle', vol: .3, att: .004 })); sfxTone(c, d, t + .09, 1568, .26, { vol: .16, att: .004 }); sfxNoise(c, d, t, .05, { f: 5200, q: 1.5, vol: .14, att: .002 }); }, { level: .46 });
+def('ddHatch', 0.2, (c, d, t) => { sfxNoise(c, d, t, .05, { f: 500, filter: 'lowpass', vol: .6, att: .001 }); sfxTone(c, d, t, 150, .13, { to: 70, type: 'triangle', vol: .55, att: .002 }); sfxTone(c, d, t + .03, 900, .05, { to: 500, type: 'square', vol: .1, att: .002 }); }, { level: .44 });
 def('ddFall', 0.55, (c, d, t) => { sfxTone(c, d, t, 1400, .5, { to: 380, vol: .3, att: .03 }); sfxNoise(c, d, t, .45, { f: 1800, to: 600, q: 1.2, vol: .12, att: .1 }); }, { level: .36 });
 def('ddLand', 0.22, (c, d, t) => { sfxTone(c, d, t, 120, .2, { to: 60, vol: .7 }); sfxNoise(c, d, t, .08, { f: 400, filter: 'lowpass', vol: .5, att: .002 }); }, { level: .5 });
+def('ddRise', 0.44, (c, d, t) => { [392, 523, 659, 784, 1047].forEach((f, i) => sfxTone(c, d, t + i * .055, f, i === 4 ? .2 : .09, { type: 'triangle', vol: .34, att: .003 })); sfxTone(c, d, t + .22, 2093, .2, { vol: .12, att: .004 }); }, { level: .44 });
+def('ddHop', 0.16, (c, d, t) => { sfxTone(c, d, t, 430, .12, { to: 960, type: 'triangle', vol: .4, att: .006 }); sfxTone(c, d, t + .01, 860, .08, { to: 1700, vol: .1, att: .006 }); }, { level: .34, vary: true });
 // [/doors]
 //
 // [rally] Road Race: its sounds (names start `rr`)

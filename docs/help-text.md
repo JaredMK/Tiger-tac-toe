@@ -178,7 +178,7 @@ Win: Empty your hand first. If the game blocks, the fewest pips in hand wins.
 
 ## Door Drop [doors]
 Category: More luck
-Play: Start on the top floor and pick a door. One door on each floor drops you to the floor below. The rest are dead ends: you pop out of another door, and that door stays marked.{towerText}{goAgain}
+Play: Start on the top floor and pick a door. One door on each floor drops you to the floor below. The rest are dead ends: you come out of another dead end on the same floor, and the door you tried stays marked. Doors always lead to the same place.{towerText}{goAgain}
 Win: First to the ground floor wins.
 
 ## Echo [echo]

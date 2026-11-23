@@ -1,21 +1,30 @@
 // Door Drop: the computer's play. Nothing tells the way down from a dead end until a door is tried, so there is no
-// real choice among doors nobody has tried: every level picks one of them at random. What a person can see is the
-// difference: a way down someone has found on this floor is taken at once, and doors known to be dead ends are left.
-// Shared: one tower, every mark is everyone's, so every level plays alike. Separate (the race): the two towers are
-// built the same and every move is on show, so Normal and Hard read the other tower's marks too (its way down, its
-// dead ends) exactly as a person looking at it could; Easy keeps to its own tower's marks.
-import { doorsKnown, doorsMoves, doorsTried } from './rules.js';
+// real choice among doors nothing is known of: every level picks one of them at random. What a person can see is the
+// difference: a way down someone has found on this floor is taken at once, doors known to be dead ends are left, and
+// so is a door a runner has come out of (a dead end only ever leads to another dead end, and the links never change:
+// that door is one too, though nobody has gone in at it).
+// Shared: one tower, every mark is everyone's. Separate (the race): the two towers are built the same and every move
+// is on show, so Normal and Hard read the other tower's marks too (its way down, its dead ends) exactly as a person
+// looking at it could; Easy keeps to its own tower's marks and does not think about where a runner came out.
+import { doorsExits, doorsKnown, doorsMoves, doorsTried } from './rules.js';
 import { goAgain } from '../../core/tune.js';
 
-const seenBy = (pm, p, r, level) => (level === 'easy' ? (doorsTried(pm, p)[r] || []).slice() : doorsKnown(pm, p, r));
-// The picks a floor still takes: 1 with its way known, else the expected tries among the doors left (the way down
-// equally likely behind any of them: (k + 1) / 2).
-const floorPicks = row => (row.includes(2) ? 1 : (row.filter(v => v !== 1).length + 1) / 2);
+// Floor r as a level sees it: 2 the way down, 1 a dead end (tried, or known by the door a runner came out of), 0 open.
+function seenBy(pm, p, r, level) {
+  if (level === 'easy') return (doorsTried(pm, p)[r] || []).slice();
+  const row = doorsKnown(pm, p, r), ex = doorsExits(pm, r);
+  return row.map((v, i) => v || (ex[i] ? 1 : 0));
+}
+// The picks a floor still takes: 1 with its way known, else the expected tries among the n doors left (the way down
+// equally likely behind any of them). With the links a miss shows a second dead end, the door the runner comes out
+// of: e(n) = 1 + (n - 1) / n * e(n - 2); a square from before them: (n + 1) / 2.
+const tries = (n, links) => (n <= 1 ? 1 : !links ? (n + 1) / 2 : 1 + ((n - 1) / n) * tries(Math.max(1, n - 2), true));
+const floorPicks = (row, links) => (row.includes(2) ? 1 : tries(row.filter(v => v !== 1).length, links));
 // The turns a side still needs: a pick a turn (with Go again on, a way down keeps the turn, so a turn is a run of
 // picks ending at a dead end).
 export function needs(pm, p) {
   let picks = 0, dead = 0;
-  for (let r = pm.at[p]; r < pm.f; r++) { const row = doorsKnown(pm, p, r); picks += floorPicks(row); if (!row.includes(2)) dead += floorPicks(row) - 1; }
+  for (let r = pm.at[p]; r < pm.f; r++) { const row = seenBy(pm, p, r, 'normal'), n = floorPicks(row, !!pm.seen); picks += n; dead += n - 1; }
   return Math.max(1, goAgain(pm) ? 1 + dead : picks);
 }
 export function best(pm, me, rng, style, ctx) {
