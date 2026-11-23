@@ -27,7 +27,10 @@ export const replay = { synth: () => [] };                         // the move i
 let live = null;                                                   // this phone's at-bat under way: { sq, p, c, pitches, plan, s: [], res: [], t0, hr }
 let src = null;                                                    // what the canvas shows now (set by screen)
 let skipped = null, hooked = false;
-const WORD = { hr: 'Home run!', hit: 'Just a hit', miss: 'Strike!', take: 'No swing' };
+const WORD = { hr: 'Home run!', hit: 'Good timing', take: 'No swing' };
+// A pitch's word (November 2026, the owner's ask): a swing that is not a home run says why: a hit was good timing,
+// a miss was too early or too late (dt: ms from the perfect moment, below zero early).
+export const homerWord = (res, dt) => (res === 'miss' ? (dt != null && dt < 0 ? 'Too early' : 'Too late') : WORD[res]);
 
 // ---- this phone's at-bat ----
 function start() {
@@ -141,7 +144,7 @@ function draw(c, W, H, o, t) {
   // the lamps over the wall: one a pitch (gold a home run, white a hit, dark a miss), and the word of the pitch just judged
   const n = o.pitches ? o.pitches.length : 0, lw = 7 * u;
   for (let k = 0; k < n; k++) { const r0 = o.res[k], x = W / 2 + (k - (n - 1) / 2) * lw * 1.5, y = wallY + 1.1 * u; c.fillStyle = r0 === 'hr' ? '#ffd23f' : r0 === 'hit' ? '#fff' : r0 ? '#3a3a3a' : 'rgba(255,255,255,.28)'; c.strokeStyle = P.ink; c.lineWidth = 0.7 * u; c.beginPath(); c.arc(x, y, 2.4 * u, 0, 7); c.fill(); c.stroke(); }
-  if (q && res && t < q.e) { const since = t - (dt != null && dt !== undefined ? q.c + Math.max(0, dt) : q.c + HOMER.late), k = clamp01(since / 140); c.save(); c.translate(W / 2, H * 0.62); c.scale(0.6 + 0.4 * k, 0.6 + 0.4 * k); c.rotate(-0.06); c.font = `400 ${Math.round(11 * u)}px Bangers, "Arial Black", sans-serif`; c.textAlign = 'center'; c.lineJoin = 'round'; c.lineWidth = 2.2 * u; c.strokeStyle = P.ink; c.fillStyle = res === 'hr' ? '#ffd23f' : res === 'hit' ? '#fff' : '#ff8a75'; c.strokeText(WORD[res].toUpperCase(), 0, 0); c.fillText(WORD[res].toUpperCase(), 0, 0); c.restore(); }
+  if (q && res && t < q.e) { const since = t - (dt != null && dt !== undefined ? q.c + Math.max(0, dt) : q.c + HOMER.late), k = clamp01(since / 140); c.save(); c.translate(W / 2, H * 0.62); c.scale(0.6 + 0.4 * k, 0.6 + 0.4 * k); c.rotate(-0.06); c.font = `400 ${Math.round(11 * u)}px Bangers, "Arial Black", sans-serif`; c.textAlign = 'center'; c.lineJoin = 'round'; c.lineWidth = 2.2 * u; c.strokeStyle = P.ink; c.fillStyle = res === 'hr' ? '#ffd23f' : res === 'hit' ? '#fff' : '#ff8a75'; const wd = homerWord(res, dt).toUpperCase(); c.strokeText(wd, 0, 0); c.fillText(wd, 0, 0); c.restore(); }
   return more;
 }
 function burst(c, x, y, u, v, P) {                               // a home run's star burst as the ball clears the wall
