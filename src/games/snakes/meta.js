@@ -14,3 +14,7 @@ export const TUNE = [
   { k: 'die', label: 'Die faces (highest roll)', def: 6, min: 3, max: 6, step: 1, group: 'Rules' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V3M10 21V3M4 7.5h6M4 12h6M4 16.5h6"/><path d="M14.5 21c4.5-.6 5-3.6 2.4-5.6s-2.6-4.8.4-6.2 3.4-2.6 2.6-5.2"/><circle cx="19.6" cy="3.8" r="1.4" fill="currentColor" stroke="none"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/snakes): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Roll and climb. Ladders lift you up, snakes slide you down. Reach the top first.';
+export const luckSkill = 1;
+export const format = 'race';

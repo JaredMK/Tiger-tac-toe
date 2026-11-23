@@ -426,6 +426,24 @@
     },
     "config": {
       ".read": true,
+      "lineup": {
+        "$type": {
+          ".write": "auth != null && auth.token.admin === true",
+          ".validate": "$type.matches(/^[a-z0-9]{2,16}$/) && newData.hasChildren()",
+          "blurb": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 120"
+          },
+          "luckSkill": {
+            ".validate": "newData.isNumber() && (newData.val() === 1 || newData.val() === 2 || newData.val() === 3 || newData.val() === 4 || newData.val() === 5)"
+          },
+          "format": {
+            ".validate": "newData.isString() && (newData.val() === 'race' || newData.val() === 'shared')"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      },
       "bulls": {
         ".write": "auth != null && auth.token.admin === true",
         "board": {

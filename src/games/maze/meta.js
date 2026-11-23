@@ -22,3 +22,7 @@ export const TUNE = [
   { k: 'energy', label: 'Squares per turn (energy: the runner stops where it runs out; 0: no limit)', def: 10, min: 0, max: 40, step: 1, group: 'Rules' },
   { k: 'boards', label: 'Mazes (separate: one each, equally long; shared: one for both, a runner each; one: one runner both players move)', def: 'separate', opts: ['separate', 'shared', 'one'], group: 'Rules' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/maze): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Pick a way and your runner dashes to the next fork. A dead end ends your turn. First to the flag wins.';
+export const luckSkill = 2;
+export const format = 'race';

@@ -18,3 +18,7 @@ export const TUNE = [
   { k: 'pips', label: 'Set (highest pip count)', def: 6, opts: [4, 5, 6], group: 'Board' },
   { k: 'hand', label: 'Tiles in each hand', def: 3, min: 2, max: 9, step: 1, group: 'Rules' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/dominoes): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Match a tile to either end of the line, or draw. Empty your hand first to win.';
+export const luckSkill = 3;
+export const format = 'shared';

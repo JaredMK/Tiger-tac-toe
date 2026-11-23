@@ -16,3 +16,7 @@ export const TUNE = [
   { k: 'lines', label: 'Pictures that appear three times (each in a line)', def: 1, min: 1, max: 2, step: 1, group: 'Rules' },
   { k: 'pairs', label: 'Other pictures that appear twice', def: 2, min: 0, max: 3, step: 1, group: 'Rules' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/scratch): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Scratch panels on your own card. Show three of a kind first to win.';
+export const luckSkill = 1;
+export const format = 'race';

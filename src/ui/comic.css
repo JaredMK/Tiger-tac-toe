@@ -780,9 +780,10 @@ main.scr.cc:not(.mini) > .bar .ttl small { margin-top: 2px; padding-left: 12px; 
 .lupage ul { list-style: none; margin: 0; padding: 0; }
 /* Coming soon: big cards, the art large, the name, a tilted release sticker; each pops in after the one before. */
 .lusoonl { display: grid; gap: 18px; }
-.lusoonc { position: relative; min-width: 0; display: flex; align-items: center; gap: 14px; padding: 10px; background: #fff; border: 3px solid var(--ink);
-  animation: ccpunch .5s cubic-bezier(.2, 1.7, .4, 1) backwards; animation-delay: calc(var(--k, 0) * 90ms + 200ms); }
-.lusoonc:nth-child(even) { flex-direction: row-reverse; }
+.lusoonc { position: relative; min-width: 0; display: grid; animation: ccpunch .5s cubic-bezier(.2, 1.7, .4, 1) backwards; animation-delay: calc(var(--k, 0) * 90ms + 200ms); }
+.lusoonc .luf { padding: 10px; }
+.lusoonc .lufin { align-items: center; gap: 14px; }
+.lusoonc:nth-child(even) .lufin { flex-direction: row-reverse; }
 .lusoonc .lubig { flex: none; width: min(40vw, 210px); aspect-ratio: 1; border: 3px solid var(--ink); overflow: hidden; }
 .lusoonc .lubig > .lumys { width: 100%; height: 100%; }
 .lusoonc .lutxt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
@@ -794,13 +795,47 @@ main.scr.cc:not(.mini) > .bar .ttl small { margin-top: 2px; padding-left: 12px; 
 .lusoonc.mys .lustk { background: var(--x); color: #fff; }
 /* In rotation: a grid of cards, art and name. */
 .lunowl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.lunowc { display: flex; flex-direction: column; gap: 6px; padding: 6px 6px 8px; background: #fff; border: 3px solid var(--ink); min-width: 0;
-  animation: ccpunch .45s cubic-bezier(.2, 1.7, .4, 1) backwards; animation-delay: calc(min(var(--k, 0), 12) * 50ms + 260ms); }
+.lunowc { min-width: 0; display: grid; animation: ccpunch .45s cubic-bezier(.2, 1.7, .4, 1) backwards; animation-delay: calc(min(var(--k, 0), 12) * 50ms + 260ms); }
+.lunowc .luf { padding: 6px 6px 8px; }
+.lunowc .lufin { flex-direction: column; gap: 6px; }
 .lunowc .lusm { width: 100%; aspect-ratio: 1; border: 2.5px solid var(--ink); overflow: hidden; }
 .lunowc .lusm > .lumys { width: 100%; height: 100%; }
-.lunowc > b { font: 400 18px/1.12 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; text-align: center; padding: 0 .2em; hyphens: manual; min-height: 2.24em; display: grid; place-items: center; }
+.lunowc .lufin > b { font: 400 18px/1.12 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; text-align: center; padding: 0 .2em; hyphens: manual; min-height: 2.24em; display: grid; place-items: center; }
 @media (min-width: 560px) { .lunowl { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 400px) { .lustk { font-size: 17px; padding: 5px 7px 2px; } .lusoonc { gap: 10px; } }
+@media (max-width: 400px) { .lustk { font-size: 17px; padding: 5px 7px 2px; } .lusoonc .lufin { gap: 10px; } }
+/* Every card flips (ui/lineup.js flipCard): the card a button holding both faces in one grid cell (so its height never
+   changes), turned over in 3-D about its upright (--lufm: the interface's 400 ms through dur, Speed halves it). The back is
+   information like the front: flat white, ink outlined, never shadowed: the name, the line, the luck-to-skill pips, the
+   Race or Head-to-head tag and, on a Coming soon card, the sticker. Reduced motion: the back fades in over the front. */
+.lupage .luflip { display: grid; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; color: var(--ink); font: inherit; text-align: left;
+  cursor: pointer; perspective: 1100px; -webkit-tap-highlight-color: transparent; touch-action: manipulation; -webkit-user-select: none; user-select: none; transform: none; }
+.lupage .luflip:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.luflip .luin { display: grid; min-width: 0; transform-style: preserve-3d; transition: transform var(--lufm, 400ms) cubic-bezier(.4, 0, .2, 1); }
+.luflip.on .luin { transform: rotateY(180deg); }
+.luflip .luface { grid-area: 1 / 1; min-width: 0; box-sizing: border-box; background: #fff; border: 3px solid var(--ink); -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+.luflip .lub { transform: rotateY(180deg); display: flex; flex-direction: column; justify-content: center; }
+.luflip .lufin, .luflip .lubin { display: flex; min-width: 0; }
+.luflip .lubin { flex-direction: column; align-items: flex-start; gap: 6px; }
+.lunowc .lub { padding: 8px 8px 9px; }
+.lusoonc .lub { padding: 10px 14px; }
+.luflip .lubn { display: block; max-width: 100%; font: 400 18px/1.08 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .04em; padding-right: .2em; hyphens: manual; }
+.lusoonc .lubn { font-size: 24px; }
+.luflip .lubl { display: block; max-width: 100%; font: 700 calc(14px * var(--lufs, 1))/1.22 'Comic Neue', 'Patrick Hand', sans-serif; color: var(--ink); overflow-wrap: break-word; hyphens: manual; }
+.lusoonc .lubl { font-size: calc(15px * var(--lufs, 1)); }
+.luflip .lubf { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; max-width: 100%; }
+.lumeter { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.lumeter > small { font: 700 12px/1 'Comic Neue', 'Patrick Hand', sans-serif; letter-spacing: .02em; text-transform: uppercase; }
+.lumeter .lupips { display: inline-flex; align-items: center; gap: 3px; }
+.lumeter .lupips > i { width: 9px; height: 9px; border: 2px solid var(--ink); border-radius: 50%; background: #fff; box-sizing: border-box; }
+.lumeter .lupips > i.on { width: 14px; height: 14px; background: var(--x); }
+.lufmt { display: inline-block; font: 400 16px/1 'Bangers', 'Luckiest Guy', sans-serif; font-style: normal; letter-spacing: .05em; padding: 4px 7px 2px; border: 2px solid var(--ink); background: var(--o); white-space: nowrap; }
+.lufmt.race { background: #7fd3ec; }
+.lusoonc .lub .lustk { margin-top: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  .luflip .luin, .luflip.on .luin { transition: none; transform: none; }
+  .luflip .luface { -webkit-backface-visibility: visible; backface-visibility: visible; transition: opacity var(--lufm, 400ms) ease !important; }   /* (!important over styles.css's reduced-motion `* { transition: none !important }`: the owner's crossfade is the reduced-motion form) */
+  .luflip .lub { transform: none; opacity: 0; }
+  .luflip.on .lub { opacity: 1; }   /* (the back fades in over the front, which stays put: never the page showing through between the two) */
 }
 @media (prefers-reduced-motion: reduce) { .lupage, .lusoonc, .lunowc, .cc .menu-top .lucard .lunew { animation: none; } }
 /* A guest's "Create an account" under Rematch (ui/acctask.js): information on a flat white card (their numbers), one

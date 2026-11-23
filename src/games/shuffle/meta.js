@@ -29,3 +29,7 @@ export const TUNE = [
   { k: 'aiErrHard', label: 'Hard computer: distance error (%)', def: 9, min: 0, max: 40, step: 0.5, group: 'Computer' },
   { k: 'aiErrEasy', label: 'Easy computer: distance error (%)', def: 24, min: 0, max: 40, step: 0.5, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/shuffle): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Flick your puck up the lane and score the zone it stops in. Reach the target first.';
+export const luckSkill = 4;
+export const format = 'race';

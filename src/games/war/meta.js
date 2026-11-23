@@ -16,3 +16,7 @@ export const TUNE = [
   { k: 'warWorth', label: 'A war won counts', def: 2, min: 1, max: 3, step: 1, group: 'Rules' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><rect x="2.6" y="5.2" width="9.2" height="13" rx="1.8" transform="rotate(-12 7.2 11.7)"/><rect x="12.2" y="5.2" width="9.2" height="13" rx="1.8" transform="rotate(12 16.8 11.7)"/><path d="M12 8.6l1.1 2.3 2.5.3-1.8 1.7.5 2.5L12 14.2l-2.3 1.2.5-2.5-1.8-1.7 2.5-.3z" fill="currentColor" stroke="none"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/war): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Flip your card against the dealer\'s: the higher card wins the round. Win enough rounds first.';
+export const luckSkill = 1;
+export const format = 'race';

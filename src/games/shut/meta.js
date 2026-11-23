@@ -17,3 +17,7 @@ export const TUNE = [
   { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 100, step: 5, group: 'Computer' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M6.5 9v6M10.5 9v6M14.5 9v3M18 9v6"/><path d="M13.5 15h2" stroke-linecap="round"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/shut): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Roll, then flip down tiles that add up to the roll. Shut all your tiles first.';
+export const luckSkill = 2;
+export const format = 'race';

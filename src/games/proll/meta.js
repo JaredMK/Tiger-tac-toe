@@ -19,3 +19,7 @@ export const TUNE = [
   { k: 'p6', label: 'Points: 6 or 8', def: 4, min: 1, max: 40, step: 1, group: 'Rules' },
   { k: 'shown', label: 'Most rolls shown a move (its last ones)', def: 5, min: 2, max: 10, step: 1, group: 'Timing' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/proll): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Pick a number, then roll until it comes up or a 7 does. Rarer numbers score more. Reach the target first.';
+export const luckSkill = 1;
+export const format = 'race';

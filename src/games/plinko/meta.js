@@ -14,3 +14,7 @@ export const TUNE = [
   { k: 'bonus', label: 'Bonus peg points', def: 2, min: 1, max: 5, step: 1, group: 'Rules' },
   { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 100, step: 5, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/plinko): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Drop a disc down through the pegs and score the bin it lands in. Reach the target first.';
+export const luckSkill = 1;
+export const format = 'race';

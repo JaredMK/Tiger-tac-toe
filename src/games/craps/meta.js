@@ -16,3 +16,7 @@ export const TUNE = [
   { k: 'goal', label: 'Rounds to win', def: 3, min: 2, max: 4, step: 1, group: 'Rules' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><rect x="2.5" y="8" width="10.5" height="10.5" rx="2.2" transform="rotate(-12 7.7 13.2)"/><rect x="11.5" y="4.5" width="10" height="10" rx="2.2" transform="rotate(10 16.5 9.5)"/><circle cx="5.6" cy="11.2" r="1.1" fill="currentColor" stroke="none"/><circle cx="9.6" cy="15.6" r="1.1" fill="currentColor" stroke="none"/><circle cx="16.5" cy="9.5" r="1.1" fill="currentColor" stroke="none"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/craps): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Roll to win rounds: 7 or 11 at once, or your point again before a 7. Win enough rounds first.';
+export const luckSkill = 1;
+export const format = 'race';

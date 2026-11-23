@@ -12,3 +12,7 @@ export const TUNE = [
   { k: 'start', label: 'Both pieces start on (space, 0: Home)', def: 0, min: 0, max: 4, step: 1, group: 'Board' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="7" cy="15" r="4.2"/><circle cx="17" cy="15" r="4.2" fill="currentColor"/><path d="M12 3.5v3.2M7.6 5.2l1.8 2.4M16.4 5.2l-1.8 2.4"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/bump): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Spin and move 1, 2 or 3 spaces. Land on your rival to send them home. Reach the finish first.';
+export const luckSkill = 2;
+export const format = 'shared';

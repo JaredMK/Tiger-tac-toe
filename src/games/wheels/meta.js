@@ -19,3 +19,7 @@ export const TUNE = [
 // wheel too, 4-7 with 4 skulls, midSkulls/midLo/midHi: gone from the settings, and a stored config that still has them
 // is read without them; a three-wheel square already dealt plays on.)
 export const WHEEL_DEFAULTS = { target: 30, lowSkulls: 2, highSkulls: 5, lowLo: 1, lowHi: 4, highLo: 6, tensMin: 1, tensMax: 1, gap: 0.4, evSpread: 10 };
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/wheels): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Spin the safe wheel or the risky one, then bank. A skull loses your points. Reach the target first.';
+export const luckSkill = 2;
+export const format = 'race';

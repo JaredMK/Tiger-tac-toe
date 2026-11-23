@@ -23,3 +23,7 @@ export const TUNE = [
   { k: 'w3', label: 'Reel weight: bell', def: 2, min: 1, max: 10, step: 1, group: 'Board' },
   { k: 'w4', label: 'Reel weight: star', def: 1, min: 0, max: 10, step: 1, group: 'Board' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/reels): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Spin the reels: three alike on a line scores, three stars win at once. Reach the target first.';
+export const luckSkill = 1;
+export const format = 'race';

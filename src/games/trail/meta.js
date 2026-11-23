@@ -17,3 +17,7 @@ export const TUNE = [
   { k: 'cells', label: 'Squares a turn, at most', def: 2, min: 1, max: 4, step: 1, group: 'Rules' },
   { k: 'even', label: 'Equal turns (the other player answers; the shorter trail wins)', def: 'off', opts: ['off', 'on'], group: 'Rules' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/trail): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Grow your trail forward or sideways: trails are walls. Reach the far edge first.';
+export const luckSkill = 5;
+export const format = 'shared';

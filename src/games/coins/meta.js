@@ -11,3 +11,7 @@ export const TUNE = [
   { k: 'flips', label: 'Most coins turned a flip', def: 3, min: 1, max: 4, step: 1, group: 'Rules' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/coins): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Flip the coins that aren\'t yours. Win when every coin shows your side.';
+export const luckSkill = 1;
+export const format = 'shared';

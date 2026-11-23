@@ -25,3 +25,7 @@ export const TUNE = [
   { k: 'aiHitEasy', label: 'Easy computer: fruit sliced (%)', def: 45, min: 0, max: 100, step: 1, group: 'Computer' },
   { k: 'aiBombEasy', label: 'Easy computer: bombs struck (%)', def: 28, min: 0, max: 100, step: 1, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/slice): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Swipe through the flying fruit for points. Slice a bomb and your round ends. Reach the target first.';
+export const luckSkill = 4;
+export const format = 'race';

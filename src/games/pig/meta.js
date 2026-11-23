@@ -15,3 +15,7 @@ export const EXPLAIN_KEYS = ['target'];   // {target} in the explainer: the admi
 export const TUNE = [
   { k: 'risk', label: 'Computer banks later by (points)', def: 0, min: -6, max: 8, step: 1, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/pig): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Roll as often as you dare, then bank. Roll a repeat and lose the lot. Bank the target first.';
+export const luckSkill = 2;
+export const format = 'race';

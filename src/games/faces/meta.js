@@ -18,3 +18,7 @@ export const TUNE = [
   { k: 'clue', label: 'Clue (which: a tick or cross on each feature; one: one feature in common; count: how many match)', def: 'which', opts: ['which', 'one', 'count'], group: 'Rules' },
   { k: 'boards', label: 'Mystery faces (separate: one each; shared: one for both)', def: 'separate', opts: ['separate', 'shared'], group: 'Rules' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/faces): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Guess faces and read the clues to find your mystery face. Guess it first to win.';
+export const luckSkill = 4;
+export const format = 'race';

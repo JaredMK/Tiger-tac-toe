@@ -25,3 +25,7 @@ export const TUNE = [
   { k: 'aiEasy', label: 'Easy: swaps taken at random (%)', def: 60, min: 0, max: 100, step: 5, group: 'Computer' },
   { k: 'aiHard', label: 'Hard: weight on the best swap left for the other side (%)', def: 60, min: 0, max: 100, step: 5, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/gems): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Swap two gems to line up three or more. Every gem burst is a point. Reach the target first.';
+export const luckSkill = 3;
+export const format = 'shared';

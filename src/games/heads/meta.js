@@ -14,3 +14,7 @@ export const TUNE = [
   { k: 'wins', label: 'Right calls to take the square', def: 3, min: 1, max: 7, step: 1, group: 'Rules' },
   { k: 'boards', label: 'Each flip counts for', def: 'separate', opts: ['separate', 'shared'], group: 'Rules' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/heads): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Call heads or tails, then the coin flips. A right call is a point. Reach the target first.';
+export const luckSkill = 1;
+export const format = 'race';

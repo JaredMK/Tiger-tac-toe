@@ -10,3 +10,7 @@ export const TUNE = [
   { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 50, step: 1, group: 'Computer' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M12 2.5 20.2 7.25v9.5L12 21.5 3.8 16.75v-9.5z"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/hex): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Claim hexes. X joins left to right, O top to bottom. Complete your path first.';
+export const luckSkill = 5;
+export const format = 'shared';

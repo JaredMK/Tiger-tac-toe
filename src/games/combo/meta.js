@@ -21,3 +21,7 @@ export const TUNE = [
   { k: 'miss', label: 'Computer mistake rate, Normal (%)', def: 0, min: 0, max: 100, step: 5, group: 'Computer' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="2.5" y="3" width="8" height="8" rx="1.8"/><rect x="13.5" y="3" width="8" height="8" rx="1.8"/><rect x="8" y="13" width="8" height="8" rx="1.8"/><circle cx="6.5" cy="7" r="1.1" fill="currentColor"/><circle cx="17.5" cy="7" r="1.1" fill="currentColor"/><circle cx="12" cy="17" r="1.1" fill="currentColor"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/combo): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Roll five dice, hold the ones you like and claim a combo for your card. Claim enough first.';
+export const luckSkill = 2;
+export const format = 'race';

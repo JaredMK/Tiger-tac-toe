@@ -12,3 +12,7 @@ export const TUNE = [
   { k: 'spots', label: 'Spots', def: 16, min: 12, max: 20, step: 4, group: 'Board' },
   { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 50, step: 5, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/districts): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Place pieces on dots to lead the regions they touch. Lock three regions first to win.';
+export const luckSkill = 4;
+export const format = 'shared';

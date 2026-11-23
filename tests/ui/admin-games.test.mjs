@@ -19,7 +19,7 @@ const attrs = tag => { const o = {}; for (const m of tag.matchAll(/([\w-]+)(?:="
 const camel = k => k.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 function elements(html) {   // every <input>, <select> and <button>: { tagName, type, dataset, value, checked, min, max, disabled }
   const out = [];
-  for (const m of html.matchAll(/<input\b([^>]*)>|<(select|button)\b([^>]*)>([\s\S]*?)<\/\2>/g)) {
+  for (const m of html.matchAll(/<input\b([^>]*)>|<(select|button|textarea)\b([^>]*)>([\s\S]*?)<\/\2>/g)) {
     const tag = m[2] || 'input', a = attrs(m[2] ? m[3] : m[1]), el = { tagName: tag.toUpperCase(), type: a.type || (tag === 'select' ? 'select-one' : tag === 'button' ? 'submit' : 'text'), dataset: {}, min: a.min || '', max: a.max || '', disabled: 'disabled' in a, checked: 'checked' in a, id: a.id || '', className: a.class || '', value: a.value || '' };
     for (const k of Object.keys(a)) if (k.startsWith('data-')) el.dataset[camel(k.slice(5))] = a[k];
     if (tag === 'select') {
@@ -27,6 +27,7 @@ function elements(html) {   // every <input>, <select> and <button>: { tagName, 
       const sel = opts.find(o => 'selected' in o) || opts[0];
       el.value = sel ? sel.value : '';
     }
+    if (tag === 'textarea') el.value = (m[4] || '').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
     el.closest = () => null; el.insertAdjacentElement = () => {}; el.classList = { add() {} }; el.matches = () => false;
     out.push(el);
   }
@@ -36,7 +37,7 @@ function elements(html) {   // every <input>, <select> and <button>: { tagName, 
 function matches(el, sel) {
   return sel.split(',').some(one => {
     one = one.trim();
-    const tag = (one.match(/^(input|select|button)/) || [])[1];
+    const tag = (one.match(/^(input|select|button|textarea)/) || [])[1];
     if (tag && el.tagName !== tag.toUpperCase()) return false;
     if (one.startsWith('#')) return el.id === one.slice(1);
     if (one.startsWith('.')) return el.className.split(/\s+/).includes(one.slice(1));
@@ -334,6 +335,31 @@ test('Coming soon: a switch and a release date beside Released and iOS; never fo
   assert.match(html, /data-soon="ttt" disabled><span class="">Coming soon: released</, 'released everywhere: never coming soon');
   assert.match(html, /data-soondate="ttt" value="" disabled>/);
   assert.match(draw('#games'), /badge soon[^>]*>Coming soon · date passed</, 'the list says so too');
+});
+test('a game\'s Lineup card: the back\'s line with its count, luck or skill and the format, its meta.js the defaults; Save keeps what differs at config/lineup, Reset clears it', async () => {
+  await A.loadMetas();
+  const db = mockDb(); A.fb = db.fb; A.ctl = ctl0();
+  const m = E.metaOf('coins');
+  let html = draw('#games/coins');
+  assert.ok(html.indexOf('id="relCard"') < html.indexOf('id="lineupCard"') && html.indexOf('id="lineupCard"') < html.indexOf('id="tuneCard"'), 'under the release switches');
+  assert.match(html, new RegExp(`<textarea data-lublurb="coins" maxlength="120" rows="3">${m.lineupBlurb.replace(/'/g, '&#39;').replace(/[.?*+()]/g, '\\$&')}</textarea>`));
+  assert.match(html, new RegExp(`id="luCount">${m.lineupBlurb.length} / 120<`));
+  assert.match(html, new RegExp(`<option value="${m.luckSkill}" selected>`)); assert.match(html, /data-lureset="coins" disabled/, 'nothing saved: nothing to reset');
+  const save = { dataset: { lusave: 'coins' }, tagName: 'BUTTON', disabled: false, closest: () => null, insertAdjacentElement() {} };
+  await A.saveLineup('coins', save, false);
+  assert.deepEqual(db.writes.pop(), ['config/lineup/coins', null], 'as the defaults: nothing kept');
+  type(el => el.dataset.lublurb === 'coins', { value: '  Flip   them all.  ' }); type(el => el.dataset.luls === 'coins', { value: '2' });
+  await A.saveLineup('coins', save, false);
+  assert.deepEqual(db.writes.pop(), ['config/lineup/coins', { blurb: 'Flip them all.', luckSkill: 2 }], 'what differs, tidied');
+  assert.equal(db.versions.length, 0, 'display text: no settings version');
+  app.edits = []; html = draw('#games/coins');
+  assert.match(html, /<textarea data-lublurb="coins"[^>]*>Flip them all\.<\/textarea>/); assert.match(html, /badge chg">changed</);
+  type(el => el.dataset.lublurb === 'coins', { value: 'x'.repeat(121) });
+  await A.saveLineup('coins', save, false);
+  assert.equal(db.writes.length, 0, 'too long: nothing written');
+  app.edits = [];
+  await A.saveLineup('coins', { dataset: { lureset: 'coins' }, tagName: 'BUTTON', disabled: false, closest: () => null, insertAdjacentElement() {} }, true);
+  assert.deepEqual(db.writes.pop(), ['config/lineup/coins', null]); assert.equal(A.ctl.lineup.coins, undefined);
 });
 test('Remove from rotation: a date everywhere and one for iOS on a game\'s Release card, saved to releases/retire and cleared; badges and the Scheduled removals list on Games', async () => {
   await A.loadMetas();

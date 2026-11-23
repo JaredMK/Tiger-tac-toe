@@ -24,7 +24,7 @@ import {
   setNet, shareRoom, copyInvite, startOnline, validCode
 } from '../net/room.js';
 import { liveSquare, liveUnwatch, liveWatch, setWatch } from '../net/live.js';
-import { lineupOpen, setLineupOpen } from './lineup.js';
+import { flipCard, lineupOpen, setLineupOpen } from './lineup.js';
 import { askAct } from './acctask.js';
 import { devAct, devStep, noteHelp, noteLeave, noteRematch, reportLocal, trackEnd, trackLeft, trackStart } from '../net/tracking.js';
 import { markMine } from '../net/owner.js';
@@ -363,6 +363,8 @@ export function init() {
       if (askAct(act) === 'login') { setAfterLogin(null); setLoginMsg(null); state.screen = 'login'; commit(); connectQuiet(); } else render();
     } else if (act === 'lineup') {               // the main menu's Game lineup: open or shut its sheet (ui/lineup.js)
       setLineupOpen(!lineupOpen); render();
+    } else if (act === 'lu-flip') {              // a lineup card: turned over to its back, or back again (one at a time; on the page, no redraw)
+      flipCard(el);
     } else if (act === 'adv') {
       setAdvOpen(!advOpen); render();
     } else if (act === 'games-none') {            // Deselect all: every mini-game off, in place (Start waits for one)

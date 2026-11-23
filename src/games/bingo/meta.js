@@ -17,3 +17,7 @@ export const TUNE = [
   { k: 'offer', label: 'Numbers offered each turn', def: 3, min: 2, max: 4, step: 1, group: 'Rules' },
   { k: 'diag', label: 'Diagonals count (1 = yes, 0 = no)', def: 1, min: 0, max: 1, step: 1, group: 'Rules' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/bingo): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Call a ball from the ones that roll out: it marks every card. Complete a line first.';
+export const luckSkill = 2;
+export const format = 'shared';

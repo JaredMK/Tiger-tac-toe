@@ -34,3 +34,7 @@ export const TUNE = [
   { k: 'aiAimEasy', label: 'Easy computer: aim error (mrad)', def: 80, min: 0, max: 300, step: 5, group: 'Computer' },
   { k: 'aiPowEasy', label: 'Easy computer: power error (%)', def: 8, min: 0, max: 30, step: 0.5, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/castle): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Fling boulders with your catapult at the other castle. Smash its crystal first to win.';
+export const luckSkill = 4;
+export const format = 'shared';

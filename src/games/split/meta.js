@@ -22,3 +22,7 @@ export const TUNE = [
   { k: 'aiErrHard', label: 'Hard computer: error (%)', def: 3, min: 1, max: 20, step: 1, group: 'Computer' },
   { k: 'aiErrEasy', label: 'Easy computer: error (%)', def: 10, min: 1, max: 20, step: 1, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/split): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Cut your shape in two with one straight line. The nearer to half and half, the more you score.';
+export const luckSkill = 5;
+export const format = 'race';

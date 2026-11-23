@@ -22,3 +22,7 @@ export const TUNE = [
   { k: 'birdTakes', label: 'Apples the bird takes', def: 2, min: 1, max: 6, step: 1, group: 'Rules' },
   { k: 'spillPct', label: 'Spill: share of the bucket tipped back (%)', def: 50, min: 10, max: 100, step: 10, group: 'Rules' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/apple): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Spin to pick apples into your bucket. Birds and spills put some back. Empty your tree first.';
+export const luckSkill = 1;
+export const format = 'race';

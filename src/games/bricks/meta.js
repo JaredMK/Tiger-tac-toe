@@ -25,3 +25,7 @@ export const TUNE = [
   { k: 'aiAim', label: 'Computer aim spread (cm)', def: 55, min: 0, max: 300, step: 5, group: 'Computer' },
   { k: 'aiLapse', label: 'Computer misses a return (%)', def: 13, min: 0, max: 100, step: 1, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/bricks): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Bounce the ball into your wall of bricks. Broken bricks stay broken. Clear your wall first.';
+export const luckSkill = 4;
+export const format = 'race';

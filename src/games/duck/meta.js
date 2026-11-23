@@ -25,3 +25,7 @@ export const TUNE = [
 ];
 // The icon: a little duck on a ripple, a hook above it.
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15.5c0 2.6 2.4 4.5 6.5 4.5H15c2.8 0 4.6-1.6 4.6-3.8 0-1.4-.8-2.4-2.2-2.9-.4-1.8-1.8-3.1-3.7-3.1-2 0-3.5 1.5-3.5 3.4v.4H6.2c-1.3 0-2.2.6-2.2 1.5z"/><path d="M13.7 12.4h.01M17.4 13.3l2.4-.6M12.8 2v4.3a1.6 1.6 0 0 0 3.2 0"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/duck): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Hook a duck from the pond: each scores 1 to 5, or a boot scores nothing. Reach the target first.';
+export const luckSkill = 1;
+export const format = 'shared';

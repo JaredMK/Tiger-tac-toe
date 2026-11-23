@@ -63,7 +63,7 @@ test('admin page: the games\' own tuning cards are exactly the paths copy-settin
   const cards = new Set(E.TYPES.map(legacyPath).filter(Boolean).map(p => p.replace(/^config\/run\/.*/, 'config/run')));
   const copy = fs.readFileSync(path.join(__dirname, '..', '..', 'scripts', 'copy-settings.js'), 'utf8').match(/^const PATHS = (\[[\s\S]*?\]);$/m);
   assert.ok(copy, 'copy-settings.js lists its PATHS');
-  const shared = ['releases', 'features', 'config/tune', 'config/ai', 'config/anim', 'config/timer', 'admin/config'];
+  const shared = ['releases', 'features', 'config/tune', 'config/ai', 'config/anim', 'config/timer', 'config/lineup', 'admin/config'];   // (config/lineup: the Lineup card on every game's page, not a tuning card)
   assert.deepEqual([...cards].sort(), new Function(`return ${copy[1]};`)().filter(p => !shared.includes(p)).sort(), 'every game card the copy carries has a page here, and nothing else writes a config node');
   assert.match(admin, /import\('\.\/src\/core\/race\.js'\)/, 'the race games come from the engine');
   assert.doesNotMatch(admin, /^const RACE_TYPES/m, 'no copy of the race list');
@@ -83,4 +83,19 @@ test('admin page: the computer\'s difficulty card keeps the engine\'s defaults a
   const rules = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'database.rules.json'), 'utf8')).rules.config.ai.$k['.validate'];
   const re = new RegExp(rules.match(/\$k\.matches\(\/(.+?)\/\)/)[1]);
   for (const k of Object.keys(E.AI_DEFAULTS)) assert.ok(re.test(k), `the rules take ${k}`);
+});
+
+// The Game lineup's card backs as the admin edits them (admin.js lineupCard): public read, the admin's write, its shape held.
+test('config/lineup: public read, the admin\'s write, a line of at most 120 characters, luck or skill 1 to 5, race or shared, nothing else', () => {
+  const rules = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'database.rules.json'), 'utf8')).rules;
+  assert.equal(rules.config['.read'], true);
+  const r = rules.config.lineup.$type;
+  assert.match(r['.write'], /auth\.token\.admin === true/);
+  assert.match(r.blurb['.validate'], /length <= 120/);
+  for (const k of [1, 2, 3, 4, 5]) assert.ok(r.luckSkill['.validate'].includes(`=== ${k}`));
+  assert.match(r.format['.validate'], /'race'.*'shared'/);
+  assert.equal(r.$other['.validate'], false);
+  const staging = require(path.join(__dirname, '..', '..', 'scripts', 'staging-rules.js')).gate(rules);
+  assert.equal(staging.config['.read'], true, 'staging: still read before a login');
+  assert.match(staging.config.lineup.$type['.write'], /auth\.token\.admin === true/);
 });

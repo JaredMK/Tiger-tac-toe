@@ -18,3 +18,7 @@ export const TUNE = [
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6.5 3L3.5 21M17.5 3l3 18"/><path d="M12 3v3M12 9.5v3M12 16v3"/><rect x="13" y="12" width="5.5" height="8" rx="2" fill="currentColor" stroke="none"/></svg>';
 export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/lane): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Swipe or tap the arrows to change lanes and dodge traffic. Reach 1,000 m first.';
+export const luckSkill = 4;
+export const format = 'race';

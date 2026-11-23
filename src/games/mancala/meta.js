@@ -19,3 +19,7 @@ export const TUNE = [
   { k: 'seeds', label: 'Seeds in each pit at the start (on average)', def: 3, min: 2, max: 6, step: 1, group: 'Board' },
   { k: 'mix', label: 'Uneven pits at the start (the same on both sides)', def: 'on', opts: ['on', 'off'], group: 'Board' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/mancala): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Sow seeds round the board from your pits into your bank. Bank enough seeds first.';
+export const luckSkill = 5;
+export const format = 'shared';

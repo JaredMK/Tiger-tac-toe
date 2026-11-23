@@ -26,3 +26,7 @@ export const TUNE = [
   { k: 'aiErrHard', label: 'Hard computer: aim error', def: 5, min: 0, max: 30, step: 0.5, group: 'Computer' },
   { k: 'aiErrEasy', label: 'Easy computer: aim error', def: 11, min: 0, max: 30, step: 0.5, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/toss): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Swipe to throw a paper ball into the bin while a fan pushes it sideways. Score enough baskets first.';
+export const luckSkill = 4;
+export const format = 'race';

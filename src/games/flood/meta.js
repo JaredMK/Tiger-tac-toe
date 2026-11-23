@@ -12,3 +12,7 @@ export const TUNE = [
   { k: 'goal', label: 'Squares to win', def: 18, min: 10, max: 18, step: 1, group: 'Rules' },
   { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 50, step: 5, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/flood): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Pick a colour and your blob grows into it. Every square it grabs is yours. Grab enough first.';
+export const luckSkill = 4;
+export const format = 'shared';

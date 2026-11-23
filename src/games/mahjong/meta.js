@@ -22,3 +22,7 @@ export const TUNE = [
   { k: 'nums', label: 'Numbers in a suit', def: 5, min: 3, max: 9, step: 1, group: 'Board' },
   { k: 'honours', label: 'Honour tiles (Sun, Moon, Cloud)', def: 'off', opts: ['on', 'off'], group: 'Board' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/mahjong): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Take a tile, throw one away. Build sets of three and a pair. Complete your hand first.';
+export const luckSkill = 2;
+export const format = 'shared';

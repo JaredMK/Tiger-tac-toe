@@ -14,3 +14,7 @@ export const TUNE = [
   { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 60, step: 5, group: 'Computer' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2.5" y="2.5" width="5.5" height="5.5" rx="1.2"/><rect x="9.25" y="9.25" width="5.5" height="5.5" rx="1.2"/><rect x="16" y="16" width="5.5" height="5.5" rx="1.2"/><rect x="16" y="2.5" width="5.5" height="5.5" rx="1.2" opacity=".35"/><rect x="2.5" y="16" width="5.5" height="5.5" rx="1.2" opacity=".35"/><path d="M15.2 3.5l5.3 5.3M20.5 3.5l-5.3 5.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/clash): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Claim squares at the same time as your rival: pick the same one and it\'s blocked. Get a line first.';
+export const luckSkill = 4;
+export const format = 'shared';

@@ -19,3 +19,7 @@ export const TUNE = [
   { k: 'aiBank', label: 'Normal computer banks at (points this turn)', def: 9, min: 2, max: 30, step: 1, group: 'Computer' },
   { k: 'aiBankEasy', label: 'Easy computer banks at (points this turn)', def: 4, min: 2, max: 30, step: 1, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/piggy): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Roll as often as you dare, then bank. Roll the bust number and lose the turn\'s points. Bank the target first.';
+export const luckSkill = 2;
+export const format = 'race';

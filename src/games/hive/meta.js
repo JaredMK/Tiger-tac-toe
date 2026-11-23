@@ -42,3 +42,7 @@ export const TUNE = [
   { k: 'aiMaxEasy', label: 'Easy computer: words a burst, at most', def: 3, min: 0, max: 12, step: 1, group: 'Computer' },
   { k: 'aiShortEasy', label: 'Easy computer: a letter longer is this likely (%)', def: 35, min: 5, max: 150, step: 5, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/hive): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Tap letters to make words with the centre letter. Longer words score more. Reach the target first.';
+export const luckSkill = 4;
+export const format = 'race';

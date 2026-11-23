@@ -20,3 +20,7 @@ export const TUNE = [
 ];
 // A little ship with a mast and a crate on deck.
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15h18l-2.6 4.5H5.6z"/><path d="M12 3v12"/><path d="M12 4.5l6 6.5h-6"/><rect x="5.5" y="11" width="4.5" height="4" rx=".6"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/scc): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Roll for a ship, a captain and a crew; the other dice are cargo. Reach the target cargo first.';
+export const luckSkill = 1;
+export const format = 'race';

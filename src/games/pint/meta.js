@@ -27,3 +27,7 @@ export const TUNE = [
   { k: 'aiMsHard', label: 'Hard computer: timing error (ms)', def: 90, min: 20, max: 400, step: 5, group: 'Computer' },
   { k: 'aiMsEasy', label: 'Easy computer: timing error (ms)', def: 170, min: 20, max: 400, step: 5, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/pint): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Hold to drink and let go to stop the level on your mark. Score enough splits first.';
+export const luckSkill = 5;
+export const format = 'race';

@@ -701,7 +701,8 @@ const TAP_SOUND = { 'golf-key': 'open', 'ky-hold': null, 'mj-pick': null, 'pj-pi
   'echo-tap': null, 'echo-play': null, bulls: null, bowl: null, 'run-go': null, 'fing-start': null, 'odd-reveal': null, 'trivia-reveal': null, 'att-start': null, 'hc-key': null, 'snap-cell': null, 'snap-submit': null, pokmark: null, domtile: null, hpsel: 'select',   // a game's own inputs: each plays its own sound (from its handler or its move), never the click as well
   mmcol: 'peg', mmslot: 'peg', rlnum: 'peg', rlgrp: 'peg', rlzero: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', 'anim-set': 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
   'set-sound': 'toggle', 'set-vib': 'toggle', settings: 'open', 'settings-back': 'close', 'pause-settings': 'open', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'tap' };   // (back: the Board button in a square, a plain tap)
-TAP_SOUND['brl-fire'] = null;   // [barrel] Barrel Launch's Fire: the shot's own thump, from its press
+TAP_SOUND['brl-fire'] = null;
+TAP_SOUND['lu-flip'] = null;   // a Game lineup card turning over: its own flip (ui/lineup.js flipCard), never the click as well   // [barrel] Barrel Launch's Fire: the shot's own thump, from its press
 // A press on a Comic Chaos screen (main.cc): the bam for the one big action, the zip going back, the pip-pip for an
 // option picked, the blip for every other panel.
 const CC_GO = ['start', 'rematch', 'find-again', 'practice', 'test-again'];

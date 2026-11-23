@@ -19,3 +19,7 @@ export const TUNE = [
   { k: 'ai4', label: 'Computer beats pattern 4 (%)', def: 55, min: 10, max: 100, step: 5, group: 'Computer' },
 ];
 export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/echo): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Watch the pattern once, then tap it back. Beat all four patterns first.';
+export const luckSkill = 4;
+export const format = 'race';

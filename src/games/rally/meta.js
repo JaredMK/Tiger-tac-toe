@@ -24,3 +24,7 @@ export const TUNE = [
   { k: 'aiLapseHard', label: 'Hard computer: lapses (in 100 s)', def: 40, min: 0, max: 600, step: 1, group: 'Computer' },
   { k: 'aiLapseEasy', label: 'Easy computer: lapses (in 100 s)', def: 115, min: 0, max: 600, step: 1, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/rally): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Steer your car round the winding road without leaving it. Finish the laps first.';
+export const luckSkill = 4;
+export const format = 'race';

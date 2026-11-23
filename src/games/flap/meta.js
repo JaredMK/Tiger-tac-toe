@@ -18,3 +18,7 @@ export const TUNE = [
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><ellipse cx="10.5" cy="13" rx="7" ry="5.6" fill="currentColor" fill-opacity=".35"/><path d="M17.3 11.6l4.2 1.6-4.2 1.6"/><path d="M6.5 12.5c1.2-4 4-6.2 6.5-6.4-.8 2.2-2 4.6-3.6 6.4z" fill="currentColor"/><circle cx="13.6" cy="11" r="1.1" fill="currentColor" stroke="none"/></svg>';
 export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/flap): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Tap to flap through the gaps. Reach the finish first.';
+export const luckSkill = 4;
+export const format = 'race';

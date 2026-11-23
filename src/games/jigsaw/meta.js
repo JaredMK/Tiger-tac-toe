@@ -35,3 +35,7 @@ export const TUNE = [
   { k: 'aiTurnNormal', label: 'Normal computer: rotated pieces turned the right way up (%)', def: 90, min: 5, max: 100, step: 1, group: 'Computer' },
   { k: 'aiTurnHard', label: 'Hard computer: rotated pieces turned the right way up (%)', def: 97, min: 5, max: 100, step: 1, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/jigsaw): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Build one picture puzzle together, a piece a go. Place more than half the pieces to win.';
+export const luckSkill = 4;
+export const format = 'shared';

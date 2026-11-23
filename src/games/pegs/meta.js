@@ -13,3 +13,7 @@ export const TUNE = [
   { k: 'rows', label: 'Board length (rows to cross)', def: 4, min: 3, max: 6, step: 1, group: 'Board' },
   { k: 'cols', label: 'Board width (columns)', def: 5, min: 4, max: 6, step: 1, group: 'Board' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/pegs): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Step or jump your pegs across the board, over any peg in the way. Get all your pegs home first.';
+export const luckSkill = 5;
+export const format = 'shared';

@@ -23,3 +23,7 @@ export const TUNE = [
   { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 100, step: 5, group: 'Computer' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h18v15H3z"/><path d="M5 4.5l2 7 2-7M11 4.5l2 7 2-7M15 19.5l2-7 2 7M9 19.5l2-7 2 7"/><circle cx="7" cy="16.5" r="1.6" fill="currentColor"/><circle cx="17" cy="7.5" r="1.6"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/bglite): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Race three pieces round the track by dice, knocking lone ones off. Bear all three off first.';
+export const luckSkill = 2;
+export const format = 'shared';

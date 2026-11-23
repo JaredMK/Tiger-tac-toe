@@ -17,3 +17,7 @@ export const TUNE = [
   { k: 'bmax', label: 'Weak platforms in a row, at most', def: 2, min: 0, max: 2, step: 1, group: 'Board' },
   { k: 'boards', label: 'Bridges (shared: one for both; separate: one each, equally hard)', def: 'shared', opts: ['shared', 'separate'], group: 'Rules' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/bridge): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Hop across the glass bridge row by row. Weak glass breaks and sends you back. First across wins.';
+export const luckSkill = 1;
+export const format = 'shared';

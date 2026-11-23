@@ -21,3 +21,7 @@ export const TUNE = [
   { k: 'miss', label: 'Computer random letter rate (%)', def: 0, min: 0, max: 60, step: 1, group: 'Computer' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 21h8M8 21V3h9v4"/><circle cx="17" cy="10" r="2.5"/><path d="M17 12.5v5"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/hangman): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Guess a letter at a time. Reveal the last letter of the word to win.';
+export const luckSkill = 3;
+export const format = 'shared';

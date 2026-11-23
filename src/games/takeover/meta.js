@@ -12,3 +12,7 @@ export const TUNE = [
   { k: 'depth', label: 'Computer look-ahead (moves)', def: 2, opts: [1, 2], group: 'Computer' },
   { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 50, step: 5, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/takeover): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Take an empty square and every square around it, even your rival\'s. Own the most when it\'s full.';
+export const luckSkill = 5;
+export const format = 'shared';

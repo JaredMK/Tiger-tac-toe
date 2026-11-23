@@ -17,3 +17,7 @@ export const TUNE = [
 ];
 // The icon: a fist and a pair of scissors (drawn).
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5c0-1.4 1-2.3 2.2-2.3h3.6c1.3 0 2.2 1 2.2 2.2v3.4c0 2.4-1.8 4.2-4.2 4.2h-.6c-1.8 0-3.2-1.4-3.2-3.2z"/><path d="M5.6 7.2V5.9M7.6 7.2V5.6M9.6 7.4V6"/><circle cx="16" cy="16.6" r="2"/><circle cx="20.2" cy="16.6" r="2"/><path d="M16.9 14.9 21 5.5M19.3 14.9 15.2 5.5"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/rps): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Throw rock, paper or scissors against the house. Win enough throws first.';
+export const luckSkill = 1;
+export const format = 'race';

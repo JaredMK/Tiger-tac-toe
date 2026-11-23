@@ -152,6 +152,8 @@ function loadModel(read, oldTypes) {
       const la = lm.index, lb = lineEnd(src, la);
       for (const km of src.slice(la, lb).matchAll(/(\w+): '/g)) { const lit = keyLiteral(src, la, lb, km[1]); if (lit) fields.push(fld('List ' + km[1], site(file, lit), { kind: 'text' })); }
     }
+    const lb = constLit(src, 'lineupBlurb');   // its Game lineup card's back (ui/lineup.js): what it is and how you win
+    if (lb) fields.push(fld('Lineup card', site(file, lb), { kind: 'text' }));
     const ek = /^export const EXPLAIN_KEYS = \[([^\]]*)\]/m.exec(src);   // settings outside TUNE the explainer fills in (Risky Rolls' target, from config/pig)
     const allowed = new Set([...src.matchAll(/\bk: '(\w+)'/g)].map(m => m[1]).concat(ek ? [...ek[1].matchAll(/'(\w+)'/g)].map(m => m[1]) : []));
     for (const f of fields) for (const s of f.sites) for (const m of siteValue(read, s).matchAll(/\{(\w+)\}/g)) allowed.add(m[1]);
@@ -193,6 +195,10 @@ function loadModel(read, oldTypes) {
     fld('Sticker no date', region(GAMESCORE, /if \(typeof date !== 'string' \|\| !SOON_DATE\.test\(date\)\) return '([^']*)';/, 'sq')),
     fld('Sticker today', region(GAMESCORE, /if \(days === 0\) return '([^']*)';/, 'sq')),
     fld('Sticker tomorrow', region(GAMESCORE, /if \(days === 1\) return '([^']*)';/, 'sq')),
+    fld('Card back, luck end', after(LINEUP, /const LU_WORDS = \{ luck: /)),
+    fld('Card back, skill end', after(LINEUP, /const LU_WORDS = \{ luck: '[^']*', skill: /)),
+    fld('Card back, race', after(LINEUP, /const LU_WORDS = \{ luck: '[^']*', skill: '[^']*', race: /)),
+    fld('Card back, head-to-head', after(LINEUP, /const LU_WORDS = \{ luck: '[^']*', skill: '[^']*', race: '[^']*', shared: /)),
   ]);
   // Mini Golf's trap key (games/golf/view.js TRAPS): each trap's name and what it does.
   sec('other', 'golfkey', 'Mini Golf trap key', [

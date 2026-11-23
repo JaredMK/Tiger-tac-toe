@@ -22,3 +22,7 @@ export const TUNE = [
   { k: 'aiAim', label: "Computer's aim error", def: 0.012, min: 0, max: 0.1, step: 0.001, group: 'Computer' },
   { k: 'aiPower', label: "Computer's power error", def: 0.018, min: 0, max: 0.1, step: 0.001, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/pong): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Flick to throw the ball into the cups. Sink all three of your cups first.';
+export const luckSkill = 4;
+export const format = 'race';

@@ -277,6 +277,46 @@ function releaseCard(t) {
     <p class="note">Coming soon lists the game first in the main menu's Game lineup, on each platform where it is not released (never Released and Coming soon on one platform), with a sticker from its release date as each player's own day has it ("Out today!", "Coming tomorrow", "Coming Wednesday", "Coming Dec 3"; no date, or a date passed: "Coming soon"). The date is display only: releasing stays the switch above. Releasing it everywhere takes it off Coming soon.</p>
     <p class="note">Remove from rotation: from that day (New York's) the game is dealt to no new match, everywhere or on iOS alone, as if un-released there; matches already under way keep it. Clear: back to what the switches above say. Scheduled removals are listed at the top of the Games list.</p></div>`;
 }
+// A game's Game lineup card (the main menu's lineup, src/ui/lineup.js): the back's line (at most 120 characters), where it
+// sits from luck (1) to skill (5) and race or head-to-head. Its meta.js gives the defaults (lineupBlurb, luckSkill, format);
+// Save keeps only what differs from them at config/lineup/{type} (public read, admin write: database.rules.json), which
+// every page reads as it starts; Reset to defaults clears it. Display text, not a rule: no settings version (bumpVersion
+// is for what a square is dealt with), and saved on its own, apart from the page's Save.
+const LU_MAX = 120;
+const luDef = t => { const m = META[t] || {}; return { blurb: m.lineupBlurb || '', luckSkill: m.luckSkill || 3, format: m.format === 'race' ? 'race' : 'shared' }; };
+const luSaved = t => ((ctl.lineup || {})[t]) || {};
+const luNow = t => Object.assign(luDef(t), luSaved(t));
+const LU_LS = [[1, 'Pure luck'], [2, 'Mostly luck'], [3, 'Half and half'], [4, 'Mostly skill'], [5, 'Pure skill']];
+function lineupCard(t) {
+  const v = luNow(t), d = luDef(t), sv = luSaved(t), ch = Object.keys(sv).length > 0;
+  return `<div class="card ctl" id="lineupCard"><div class="row"><h2>Lineup card</h2>${ch ? badge('chg', 'changed') : ''}</div>
+    <div class="rform luform">
+      <label class="rf lublurb${sv.blurb !== undefined ? ' chg' : ''}"><span>Back of the card <small class="lucount" id="luCount">${v.blurb.length} / ${LU_MAX}</small></span><textarea data-lublurb="${t}" maxlength="${LU_MAX}" rows="3">${esc(v.blurb)}</textarea><small>Default: ${esc(d.blurb)}</small></label>
+      <label class="rf${sv.luckSkill !== undefined ? ' chg' : ''}"><span>Luck or skill</span><select data-luls="${t}">${LU_LS.map(([k, lab]) => `<option value="${k}"${k === v.luckSkill ? ' selected' : ''}>${k} · ${lab}</option>`).join('')}</select><small>Default ${d.luckSkill}</small></label>
+      <label class="rf${sv.format !== undefined ? ' chg' : ''}"><span>Format</span><select data-lufmt="${t}">${[['race', 'Race (each their own board)'], ['shared', 'Head-to-head (one shared board)']].map(([k, lab]) => `<option value="${k}"${k === v.format ? ' selected' : ''}>${lab}</option>`).join('')}</select><small>Default ${d.format === 'race' ? 'Race' : 'Head-to-head'}</small></label>
+    </div>
+    <div class="tbar"><button class="btn go" data-lusave="${t}">Save card</button><button class="btn" data-lureset="${t}"${ch ? '' : ' disabled'}>Reset to defaults</button></div>
+    <p class="note">What the back of this game's card says in the main menu's Game lineup: what the game is and how you win, a luck-to-skill meter (five pips, this one filled) and a Race or Head-to-head tag. Saved on its own (not with the settings below, and no new settings version); every player's page reads it as it starts. Reset to defaults: back to the game's meta.js.</p></div>`;
+}
+async function saveLineup(t, btn, reset) {
+  const box = app.querySelector(`[data-lublurb="${t}"]`), ls = app.querySelector(`[data-luls="${t}"]`), fm = app.querySelector(`[data-lufmt="${t}"]`), d = luDef(t);
+  let out = {};
+  if (!reset) {
+    const blurb = box ? box.value.replace(/\s+/g, ' ').trim() : d.blurb, k = ls ? Number(ls.value) : d.luckSkill, f = fm ? fm.value : d.format;
+    if (!blurb) { said(btn, false, 'Write a line, or Reset to defaults'); return; }
+    if (blurb.length > LU_MAX) { said(btn, false, `At most ${LU_MAX} characters`); return; }
+    if (blurb !== d.blurb) out.blurb = blurb;
+    if (Number.isInteger(k) && k >= 1 && k <= 5 && k !== d.luckSkill) out.luckSkill = k;
+    if ((f === 'race' || f === 'shared') && f !== d.format) out.format = f;
+  }
+  btn.disabled = true;
+  try {
+    await fb.dbM.set(fb.dbM.ref(fb.db, `config/lineup/${t}`), Object.keys(out).length ? out : null);
+    const all = Object.assign({}, ctl.lineup); if (Object.keys(out).length) all[t] = out; else delete all[t];
+    ctl.lineup = all;
+  } catch (e) { said(btn, false, failed(e)); return; }
+  render(); said(app.querySelector(`[data-lusave="${t}"]`) || btn, true, reset ? 'Back to the defaults' : 'Saved');
+}
 // ---------- Platforms (the top of the Games page): the clients' minimum versions and the Super Chaos switch, neither a game's own ----------
 function platformsCard() {
   const sc = !!(ctl.releases && ctl.releases.superchaos === true);   // the Super Chaos mode: admin only until released here (releases/superchaos)
@@ -719,7 +759,7 @@ function gamePage(t) {
   const body = fields.length ? groups.map(([g, fs]) => `<h3>${esc(g)}</h3><div class="rform tform">${fs.map(inp).join('')}</div>`).join('') : `<p class="note">${own ? 'No settings beyond its tuning above.' : 'No settings.'}</p>`;
   const any = fields.length || own || isRaceGame(t);
   const ver = BAL ? BAL.versionCard(t, ctl.versions, ctl.versionLog, k => { const f = tuneList(t).find(x => x.k === k); return f ? f.label : k; }) : '';
-  return `<div class="gpage" id="gamePage" data-game="${t}">${releaseCard(t)}${modeCard(t)}${own}
+  return `<div class="gpage" id="gamePage" data-game="${t}">${releaseCard(t)}${lineupCard(t)}${modeCard(t)}${own}
     <div class="card ctl" id="tuneCard"><h2>Settings</h2>${presetRow(t)}${body}
       <div class="tbar"><button class="btn go" data-gamesave="${t}"${any ? '' : ' disabled'}>Save</button><button class="btn" data-tunereset="${t}">Reset to defaults</button><button class="btn tplay" data-testplay="${t}" title="Opens the game alone in a new tab with this page's values, saved or not (the live settings are not touched)">Test play</button><span class="unsaved" role="status"></span></div>
       <p class="note">Save (a new settings version): every value on this page${own ? ' (the tuning card\'s too)' : ''}${isRaceGame(t) ? ', the Mode included,' : ''} to the game and the server at once, for squares dealt from then on; only what differs from the defaults is kept. Reset to defaults: every value on this page back to the code's${own ? ' (the tuning card\'s too)' : ''}. Test play: a game of it alone against the computer on Hard, in a new tab, with the values as they are here, saved or not; back here when it ends.</p></div>${ver}</div>`;
@@ -1103,7 +1143,7 @@ async function loadCtl() {
   const [config, secretsSet, bots, botStats, alertStats, features, log, releases, runCfg, bullsCfg, wheelsCfg, plinkoCfg, oddCfg, headCfg, flashCfg, snapCfg, hopCfg, scoopCfg, pinCfg, pigCfg, roadsCfg, bowlCfg] = await Promise.all([g('admin/config'), g('admin/secretsSet'), g('bots'), g('botStats'), g('alertStats'), g('features'),
     fb.dbM.get(fb.dbM.query(fb.dbM.ref(fb.db, 'alertLog'), fb.dbM.orderByChild('at'), fb.dbM.limitToLast(8))).then(s => s.val()).catch(() => null), g('releases'), g('config/run'), g('config/bulls'), g('config/wheels'), g('config/plinko'), g('config/oddone'), g('config/headcount'), g('config/flash'), g('config/snapshot'), g('config/skyhop'), g('config/scoop'), g('config/pinball'), g('config/pig'), g('config/roads'), g('config/bowling'), loadMetas()]);
   ctl = { config: config || {}, secretsSet: secretsSet || {}, bots: bots || {}, botStats: botStats || {}, alertStats: alertStats || {}, features: features || {}, releases: releases || {}, runCfg: runCfg || {}, bullsCfg: bullsCfg || {}, wheelsCfg: wheelsCfg || {}, plinkoCfg: plinkoCfg || {}, pigCfg: pigCfg || {}, roadsCfg: roadsCfg || {}, oddCfg: oddCfg || {}, attCfg: { headcount: headCfg || {}, flash: flashCfg || {}, snapshot: snapCfg || {} }, fingCfg: { skyhop: hopCfg || {}, scoop: scoopCfg || {}, bowling: bowlCfg || {}, pinball: pinCfg || {} },
-    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {}, versions: (await g('config/versions')) || {}, versionLog: (await g('config/versionLog')) || {}, ai: (await g('config/ai')) || {}, anim: (await g('config/anim')) || {}, timer: (await g('config/timer')) || {}, clients: (await g('config/clients')) || {}, allow: STAGING ? ((await g('admin/staging/allow')) || {}) : {}, stagingMode: STAGING ? ((await g('config/staging/mode')) === 'open' ? 'open' : 'allowlist') : 'allowlist' };
+    alertLog: Object.values(log || {}).sort((a, b) => b.at - a.at), tune: (await g('config/tune')) || {}, lineup: (await g('config/lineup')) || {}, versions: (await g('config/versions')) || {}, versionLog: (await g('config/versionLog')) || {}, ai: (await g('config/ai')) || {}, anim: (await g('config/anim')) || {}, timer: (await g('config/timer')) || {}, clients: (await g('config/clients')) || {}, allow: STAGING ? ((await g('admin/staging/allow')) || {}) : {}, stagingMode: STAGING ? ((await g('config/staging/mode')) === 'open' ? 'open' : 'allowlist') : 'allowlist' };
 }
 async function signIn(how) {
   view.error = '';
@@ -1185,6 +1225,8 @@ app.addEventListener('click', e => {
   else if (b.dataset.act === 'save-keys') saveKeys();
   else if (b.dataset.testplay) testPlay(b.dataset.testplay);
   else if (b.dataset.gamesave) saveGame(b.dataset.gamesave, b);
+  else if (b.dataset.lusave) saveLineup(b.dataset.lusave, b, false);
+  else if (b.dataset.lureset) saveLineup(b.dataset.lureset, b, true);
   else if (b.dataset.preset) applyPreset(b.dataset.pgame, b.dataset.preset, b);
   else if (b.dataset.tunereset) resetGame(b.dataset.tunereset, b);
   else if (b.dataset.airesets) resetAi(b);
@@ -1203,6 +1245,7 @@ app.addEventListener('input', e => {
     const i = app.querySelector(sel); if (i) { i.focus(); try { i.setSelectionRange(at, at); } catch (x) { /* (a type without a caret) */ } }
     return;
   }
+  if (d.lublurb) { const c = document.getElementById('luCount'); if (c) { c.textContent = `${e.target.value.length} / ${LU_MAX}`; c.classList.toggle('over', e.target.value.length > LU_MAX); } return; }   // the Lineup card's line: its count as it is typed
   if (d.gf) return;                                          // (a filter: on its change)
   if (note) { note = null; showNote(); } dirtyMark(e.target);   // (an edit after a save: its note goes; on a game's page the edit is marked unsaved)
 });
@@ -1225,6 +1268,6 @@ if (window.TTT_FIREBASE && window.TTT_FIREBASE.offline) {   // the tests (tests/
   window.TTC_ADMIN = { get ctl() { return ctl; }, set ctl(v) { ctl = v; }, set fb(v) { fb = v; }, get devmeta() { return devmeta; }, get model() { return model; }, get filters() { return filters; }, get scope() { return scopeOf(); },
     seed(o) { devmeta = o.devmeta || {}; ownerToken = o.token || null; templates = o.templates || {}; flagged = o.flagged || null; setRaw(o); },   // the rows a page counts (src/admin/metrics.js build's data)
     ready() { user = { email: 'test', uid: 'admin' }; view = { status: 'ready', error: '' }; if (!raw) setRaw({}); },
-    setFilter, tstate, metaPut, exAdd, loadMetas, loadCtl, draw, render, route, gamesIndex, gamePage, settingsPage, saveGame, resetGame, legacyPath, isReleased, iosOff, gameChanged, raceOn, TEST_TYPES, saveRetire, retireList };
+    setFilter, tstate, metaPut, exAdd, loadMetas, loadCtl, draw, render, route, gamesIndex, gamePage, settingsPage, saveGame, resetGame, legacyPath, isReleased, iosOff, gameChanged, raceOn, TEST_TYPES, saveRetire, retireList, saveLineup };
 } else boot().catch(() => { app.innerHTML = '<div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Could not load. Check the connection and reload.</p></div>'; });
 document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false }); document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });   // (iPhone's pinch)

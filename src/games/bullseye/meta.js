@@ -18,3 +18,7 @@ export const TUNE = [
 ];
 // The settings checked together (the admin's Save): a bullseye is an inner-ring hit and that a board hit.
 export const tuneCheck = v => (v.aiBull > v.aiMid || v.aiMid > v.aiBoard ? "Computer's bullseyes can't be more than its inner-ring hits, nor those more than its board hits (each counts in the next)." : null);
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/bullseye): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Stop two sweeping lines to throw a dart where they cross. Score the target first.';
+export const luckSkill = 4;
+export const format = 'race';

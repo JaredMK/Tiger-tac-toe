@@ -19,3 +19,7 @@ export const TUNE = [
   { k: 'towers', label: 'Towers (separate: one each, built the same; shared: one for both, every tried door marked for both)', def: 'separate', opts: ['separate', 'shared'], group: 'Rules' },
   AGAIN_TUNE,
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/doors): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Pick a door on each floor: one drops you down, the rest are dead ends. First to the ground wins.';
+export const luckSkill = 2;
+export const format = 'shared';

@@ -1,5 +1,5 @@
 // Release control: which games a player may be dealt (released, or admin only until released).
-import { INFO, SC_ONLY, TEST_TYPES, TYPES } from '../games/index.js';
+import { INFO, SC_ONLY, TEST_TYPES, TYPES, metaOf } from '../games/index.js';
 
 export function isReleased(t, releases) { return releases && typeof releases[t] === 'boolean' ? releases[t] : !TEST_TYPES.includes(t); }
 export function releasedTypes(releases) { return TYPES.filter(t => isReleased(t, releases)); }
@@ -62,6 +62,24 @@ export function soonSticker(date, now = new Date()) {
   if (days === 1) return 'Coming tomorrow';
   if (days < 7) return 'Coming ' + when.toLocaleDateString('en-US', { weekday: 'long' });
   return 'Coming ' + when.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+// A lineup card's back (ui/lineup.js): each game's meta.js gives its defaults (lineupBlurb, at most LINEUP_MAX characters:
+// what the game is and how you win; luckSkill, 1 pure luck to 5 pure skill; format, 'race' each player their own board or
+// progress, 'shared' one board between them, head-to-head), and the admin's Lineup card may override any of the three
+// (config/lineup/{type} { blurb, luckSkill, format }, admin write, public read: database.rules.json). Pure: a value that is
+// not of its shape is ignored, so a card always reads its meta.js's.
+export const LINEUP_MAX = 120;
+export const LINEUP_FORMATS = ['race', 'shared'];
+export const lineupBlurbOk = v => typeof v === 'string' && v.trim().length > 0 && v.length <= LINEUP_MAX;
+export const luckSkillOk = v => Number.isInteger(v) && v >= 1 && v <= 5;
+export const lineupFormatOk = v => LINEUP_FORMATS.includes(v);
+export function lineupInfo(t, over) {
+  const m = metaOf(t) || {}, o = over && typeof over === 'object' && over[t] && typeof over[t] === 'object' ? over[t] : {};
+  return {
+    blurb: lineupBlurbOk(o.blurb) ? o.blurb.trim() : (m.lineupBlurb || ''),
+    luckSkill: luckSkillOk(o.luckSkill) ? o.luckSkill : (luckSkillOk(m.luckSkill) ? m.luckSkill : 3),
+    format: lineupFormatOk(o.format) ? o.format : (lineupFormatOk(m.format) ? m.format : 'shared'),
+  };
 }
 // A date already past while the game is still not released on some platform (the admin's warning).
 export function soonLate(t, releases, today) {

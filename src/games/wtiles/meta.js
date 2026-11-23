@@ -22,3 +22,7 @@ export const TUNE = [
   { k: 'aiSee', label: 'Computer (Normal): share of the words it sees (%)', def: 3, min: 1, max: 100, step: 1, group: 'Computer' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><rect x="2.5" y="8" width="6" height="6" rx="1.2"/><rect x="9" y="8" width="6" height="6" rx="1.2"/><rect x="15.5" y="8" width="6" height="6" rx="1.2"/><path d="M5.5 10v2.5M12 10.2h-1.2v2.3H12M18.5 10v2.5" stroke-linecap="round"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/wtiles): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Make words from your tiles on the shared board. Tinted squares count extra. Reach the target first.';
+export const luckSkill = 4;
+export const format = 'shared';

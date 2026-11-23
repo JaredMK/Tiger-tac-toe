@@ -65,10 +65,64 @@ test('the lineup card: hidden before a match is finished here, never on a first 
   LU.setLineupOpen(true);
   const s2 = LU.renderLineup('menu');
   assert.ok(s2.indexOf('Coming soon</h2>') < s2.indexOf('In rotation now</h2>'), 'Coming soon first');
-  assert.match(s2, /class="lusoonc mys" style="--k:0"><div class="lubig"><div class="lumys" aria-hidden="true"><b>\?<\/b><\/div><\/div><div class="lutxt"><b>Dom.?inoes<\/b><i class="lustk">Coming Jan 5<\/i>/s, 'no miniature loaded: a mystery card, the name and its sticker');
+  assert.match(s2, /class="lusoonc mys" style="--k:0"><button type="button" class="luflip" data-act="lu-flip" data-lu="s:dominoes"[^>]*><span class="luin"><span class="luface luf"><span class="lufin"><div class="lubig"><div class="lumys" aria-hidden="true"><b>\?<\/b><\/div><\/div><div class="lutxt"><b>Dom.?inoes<\/b><i class="lustk">Coming Jan 5<\/i>/s, 'no miniature loaded: a mystery card, the name and its sticker');
   assert.match(s2, /Shell Game<\/b><i class="lustk">Coming soon<\/i>/, 'no date: Coming soon');
   LU.setLineupOpen(false);
   R.setReleases({});
+});
+
+// Every card flips (November 2026): the back's name, line, luck-to-skill pips and Race / Head-to-head tag (a Coming soon
+// card's sticker too), from each game's meta.js or the admin's Lineup card (config/lineup), one card over at a time.
+test('the lineup cards flip: every card a button with its back, one over at a time, the admin\'s words over the meta\'s', async () => {
+  const { metaOf } = await import('../../src/games/index.js');
+  R.setReleases({ soon: { dominoes: '2099-01-05' } });
+  LU.setLineupOpen(true);
+  const L = LU.lineupNow(), page = LU.renderLineup('menu');
+  const cards = page.match(/<button type="button" class="luflip[^"]*" data-act="lu-flip"/g) || [];
+  assert.equal(cards.length, L.now.length + L.soon.length, 'every card in both lists is a button');
+  assert.match(page, /style="--lufm:\d+ms"/, 'the flip\'s time through dur');
+  const back = t => { const i = page.indexOf(`data-lu="${t}"`); return page.slice(i, page.indexOf('</button>', i)); };
+  const d = back('s:dominoes');
+  assert.match(d, /<span class="luface lub" aria-hidden="true"><span class="lubin"><b class="lubn">Dom.?inoes<\/b>/s, 'the back: the name, unseen until flipped');
+  assert.ok(d.includes(metaOf('dominoes').lineupBlurb.replace(/'/g, '&#39;')), 'its line from meta.js');
+  assert.equal((d.match(/class="lustk"/g) || []).length, 2, 'a Coming soon card\'s sticker on both faces');
+  const pips = (d.match(/<span class="lupips">(.*?)<\/span>/) || [])[1];
+  const pipList = pips.split('<i').slice(1);
+  assert.equal(pipList.length, 5); assert.deepEqual(pipList.map((x, k) => (x.includes('class="on"') ? k + 1 : 0)).filter(Boolean), [metaOf('dominoes').luckSkill], 'its place filled, alone');
+  assert.match(d, /<small>Luck<\/small>.*<small>Skill<\/small>/s);
+  assert.match(back('r:ttt'), /class="lufmt h2h">Head-to-head</); assert.match(back('r:snakes'), /class="lufmt race">Race</);
+  assert.doesNotMatch(back('r:ttt'), /class="lustk"/, 'no sticker in rotation');
+  assert.match(back('r:ttt'), /aria-pressed="false" aria-label="Tic-Tac-Toe\. Place your mark/);
+  LU.setLineupCfg({ ttt: { blurb: 'Edited line.', luckSkill: 2, format: 'race' }, snakes: { blurb: 'x'.repeat(121), luckSkill: 9, format: 'nope' } });
+  const p2 = LU.renderLineup('menu'), t2 = p2.slice(p2.indexOf('data-lu="r:ttt"')), s2 = p2.slice(p2.indexOf('data-lu="r:snakes"'));
+  assert.match(t2.slice(0, t2.indexOf('</button>')), /Edited line\..*class="lufmt race"/s, 'the admin\'s words');
+  assert.ok(s2.slice(0, s2.indexOf('</button>')).includes(metaOf('snakes').lineupBlurb), 'an override out of shape is ignored');
+  LU.setLineupCfg(null);
+  // one over at a time, by the page itself (no redraw): a stand-in page of two cards
+  const mk = key => { const cls = new Set(), attrs = { 'aria-pressed': 'false' }, face = () => ({ a: {}, setAttribute(k, v) { this.a[k] = v; }, removeAttribute(k) { delete this.a[k]; } }), f = face(), b = face();
+    return { dataset: { lu: key }, classList: { toggle: (c, on) => (on ? cls.add(c) : cls.delete(c)), has: c => cls.has(c) }, setAttribute: (k, v) => { attrs[k] = v; }, attrs, f, b, querySelector: q => (q === '.luf' ? f : b), closest: () => root }; };
+  const A = mk('r:ttt'), B = mk('r:snakes'), root = { querySelectorAll: () => [A, B] };
+  LU.flipCard(A); assert.ok(A.classList.has('on') && !B.classList.has('on')); assert.equal(A.attrs['aria-pressed'], 'true'); assert.equal(LU.flippedCard(), 'r:ttt');
+  assert.equal(A.f.a['aria-hidden'], 'true'); assert.equal(A.b.a['aria-hidden'], undefined, 'the back read out once turned');
+  LU.flipCard(B); assert.ok(!A.classList.has('on') && B.classList.has('on'), 'another card: the first turns back');
+  assert.match(LU.renderLineup('menu'), /class="luflip on" data-act="lu-flip" data-lu="r:snakes" aria-pressed="true"/, 'kept across a redraw');
+  LU.flipCard(B); assert.equal(LU.flippedCard(), null, 'tapped again: back');
+  LU.flipCard(A); LU.setLineupOpen(false); assert.equal(LU.flippedCard(), null, 'shut: every card face up next time');
+  R.setReleases({});
+});
+
+test('every game has its lineup card: a line of at most 120 characters, a luck-to-skill place 1 to 5, race or shared', async () => {
+  const { metaOf, OLD_TYPES } = await import('../../src/games/index.js');
+  for (const t of TYPES.filter(x => !OLD_TYPES.includes(x))) {
+    const m = metaOf(t);
+    assert.equal(typeof m.lineupBlurb, 'string', `${t}: lineupBlurb`);
+    assert.ok(m.lineupBlurb.trim().length > 10 && m.lineupBlurb.length <= 120, `${t}: ${m.lineupBlurb.length} characters`);
+    assert.doesNotMatch(m.lineupBlurb, /[{}]/, `${t}: no placeholder`);
+    assert.doesNotMatch(m.lineupBlurb, /\b(bets?|betting|wagers?|jackpot|chips?|payouts?|casino|gambl\w*|slots?)\b/i, `${t}: no gambling words`);
+    assert.ok(Number.isInteger(m.luckSkill) && m.luckSkill >= 1 && m.luckSkill <= 5, `${t}: luckSkill`);
+    assert.ok(['race', 'shared'].includes(m.format), `${t}: format`);
+    assert.deepEqual(G.lineupInfo(t, null), { blurb: m.lineupBlurb, luckSkill: m.luckSkill, format: m.format });
+  }
 });
 
 test('the release sticker, from the viewer\'s own local date; a past date never shown', () => {

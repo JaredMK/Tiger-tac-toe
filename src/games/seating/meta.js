@@ -12,3 +12,7 @@ export const TUNE = [
   { k: 'colors', label: 'Seat colours', def: 4, min: 2, max: 8, step: 1, group: 'Board' },
   { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 50, step: 5, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/seating): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Take a seat at an empty table. Score when a customer sits across from you. Most customers wins.';
+export const luckSkill = 3;
+export const format = 'shared';

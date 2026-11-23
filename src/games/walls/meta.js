@@ -12,3 +12,7 @@ export const TUNE = [
   { k: 'size', label: 'Board size (squares a side)', def: 5, min: 4, max: 7, step: 1, group: 'Board' },
   { k: 'walls', label: 'Walls each', def: 3, min: 0, max: 6, step: 1, group: 'Rules' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/walls): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Step your pawn or drop a wall to slow your rival. First pawn to the far side wins.';
+export const luckSkill = 5;
+export const format = 'shared';

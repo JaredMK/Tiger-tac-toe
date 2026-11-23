@@ -28,6 +28,7 @@ import { chunkFailed, devAct, devAudio, devError, devOpen, devPulse, init as tra
 import { devShort, ownerLink } from './net/owner.js';
 import { clockTimer, commit, save, setClockTimer, setMenuNote, state } from './ui/app.js';
 import { fetchAttConfig } from './ui/attention.js';
+import { setLineupCfg } from './ui/lineup.js';
 import { setTuneVersions, setTunes } from './core/tune.js';
 import { AI_CLOCK } from './core/ai.js';
 import { setAiWeights } from './core/aiw.js';
@@ -91,6 +92,7 @@ function loadConfigs() {
   fetchAttConfig('versions', setTuneVersions, true);              // and their settings versions (config/versions: a square is dealt under its game's own)
   fetchAttConfig('ai', setAiWeights, true);                       // the Hard computer's weights (npm run tune-ai: config/ai), likewise
   fetchAttConfig('anim', v => { setAnimSpeed(v && v.speed); setAnimFast(v && v.fast); setAnimFx(v && v.fx); }, true);   // the admin's Animation speed (everyone) and Speed mode's multiplier and effects (config/anim)
+  fetchAttConfig('lineup', setLineupCfg, true);                   // the Game lineup cards' backs as the admin edited them (config/lineup: ui/lineup.js)
   fetchAttConfig('clients', v => { const was = updateNeeded(); setClientMins(v); if (updateNeeded() !== was) render(); }, true);   // the oldest version still allowed per platform (config/clients): below it, "Please update"
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && !sandboxParams() && Date.now() - configsAt > 60000) loadConfigs(); });

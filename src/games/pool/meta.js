@@ -17,3 +17,7 @@ export const TUNE = [
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="15" r="4"/><circle cx="16.5" cy="8" r="3.5"/><path d="M3 21l3.5-3.5"/><circle cx="9" cy="15" r="1" fill="currentColor" stroke="none"/></svg>';
 export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/pool): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Drag to aim and shoot. Sink all your balls first, and never the black.';
+export const luckSkill = 4;
+export const format = 'shared';

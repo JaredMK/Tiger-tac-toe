@@ -18,3 +18,7 @@ export const TUNE = [
   { k: 'ranks', label: 'Ranks in the deck (from the ace up)', def: 8, min: 5, max: 13, step: 1, group: 'Rules' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><rect x="3" y="6" width="8" height="12" rx="1.6" transform="rotate(-14 7 12)"/><rect x="8" y="5" width="8" height="12" rx="1.6"/><rect x="13" y="6" width="8" height="12" rx="1.6" transform="rotate(14 17 12)"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/rummy): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Take a card, throw one away. Make melds: three of a kind or three in a row. Hold enough melds first.';
+export const luckSkill = 2;
+export const format = 'shared';

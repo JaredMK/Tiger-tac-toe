@@ -18,3 +18,7 @@ export const TUNE = [
   { k: 'even', label: 'Equal turns (the other player answers; fewer pieces wins)', def: 'on', opts: ['on', 'off'], group: 'Rules' },
   { k: 'junk', label: 'Junk rows sent to the other player', def: 'off', opts: ['off', 'on'], group: 'Rules' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/blocks): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Drop your pieces to fill rows on your board. A full row clears. Clear enough rows first.';
+export const luckSkill = 4;
+export const format = 'race';

@@ -49,3 +49,7 @@ export const TUNE = [
   ...[0, 1, 2, 3, 4].flatMap(level),
   ...[0, 1, 2, 3, 4].map(i => ({ k: 'ai' + (i + 1), label: `Computer's right picks, level ${i + 1} (%)`, def: D[i].ai, min: 0, max: 100, step: 1, group: 'Computer' })),
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/shell): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Watch the ball, then follow its cup as they shuffle. Pick right at every level first.';
+export const luckSkill = 4;
+export const format = 'race';

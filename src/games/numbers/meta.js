@@ -14,3 +14,7 @@ export const TUNE = [
   { k: 'mode', label: 'Mode (race: a hidden number each; shared: one for both)', def: 'race', opts: ['race', 'shared'], group: 'Rules' },
   { k: 'n', label: 'Digits', def: 5, min: 3, max: 7, step: 1, group: 'Board' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/numbers): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Arrange the digits to guess a hidden number and hear higher or lower. Find the exact order first.';
+export const luckSkill = 4;
+export const format = 'race';

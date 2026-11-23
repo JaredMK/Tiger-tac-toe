@@ -32,3 +32,7 @@ export const TUNE = [
 ];
 // The icon: a claw on its cable over a ball.
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h16M12 3v6"/><path d="M12 9c-2.6 0-4 1.6-4 3.4l1.6 2M12 9c2.6 0 4 1.6 4 3.4l-1.6 2"/><circle cx="12" cy="18.5" r="3"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/claw): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Drop the swinging claw on a prize: the more centred, the better the grip. Win enough prizes first.';
+export const luckSkill = 4;
+export const format = 'shared';

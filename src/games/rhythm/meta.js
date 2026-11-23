@@ -27,3 +27,7 @@ export const TUNE = [
   { k: 'aiMsEasy', label: 'Easy computer: timing error (ms)', def: 105, min: 0, max: 250, step: 1, group: 'Computer' },
   { k: 'aiMissEasy', label: 'Easy computer: notes let go by (%)', def: 26, min: 0, max: 60, step: 1, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/rhythm): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Tap the lanes as the notes reach the line, right on the beat. Score the target first.';
+export const luckSkill = 5;
+export const format = 'race';

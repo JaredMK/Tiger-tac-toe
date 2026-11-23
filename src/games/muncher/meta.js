@@ -35,3 +35,7 @@ export const TUNE = [
   { k: 'aiAvoid', label: 'Computer keeps this far from a spook (cells)', def: 2, min: 0, max: 5, step: 1, group: 'Computer' },
   { k: 'aiLapse', label: 'Computer forgets the spooks (%)', def: 10, min: 0, max: 100, step: 1, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/muncher): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Steer round the maze eating dots. Dodge the spooks, or eat them after a power pellet. Eat enough first.';
+export const luckSkill = 4;
+export const format = 'race';

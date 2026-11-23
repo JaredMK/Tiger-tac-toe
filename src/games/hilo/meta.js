@@ -16,3 +16,7 @@ export const TUNE = [
   { k: 'limit', label: 'Guesses each (Shared mode)', def: 5, min: 2, max: 12, step: 1, group: 'Rules' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 10 6-6 6 6M6 14l6 6 6-6"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/hilo): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Guess the number and hear higher or lower. Find it before your guesses run out.';
+export const luckSkill = 3;
+export const format = 'shared';

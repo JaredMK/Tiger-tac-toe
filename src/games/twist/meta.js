@@ -13,3 +13,7 @@ export const TUNE = [
   { k: 'line', label: 'In a row to win', def: 4, min: 3, max: 5, step: 1, group: 'Rules' },
   { k: 'size', label: 'Board size (cells a side)', def: 6, opts: [4, 6], group: 'Board' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/twist): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Place a piece, then twist a quarter of the board. Line up four in a row first.';
+export const luckSkill = 5;
+export const format = 'shared';

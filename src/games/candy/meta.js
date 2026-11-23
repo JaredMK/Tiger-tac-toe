@@ -11,3 +11,7 @@ export const TUNE = [
   { k: 'gap', label: 'Same colour at least (spaces apart)', def: 3, min: 1, max: 4, step: 1, group: 'Board' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17M6 6l12 12M18 6 6 18" stroke-width="1.6"/></svg>';
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/candy): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Spin and jump to the next space of that colour. Reach the finish first.';
+export const luckSkill = 1;
+export const format = 'race';

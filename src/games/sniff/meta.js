@@ -18,3 +18,7 @@ export const TUNE = [
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><ellipse cx="12" cy="16" rx="4.8" ry="4"/><ellipse cx="5.4" cy="10.2" rx="2" ry="2.4"/><ellipse cx="9.4" cy="6.2" rx="2" ry="2.5"/><ellipse cx="14.6" cy="6.2" rx="2" ry="2.5"/><ellipse cx="18.6" cy="10.2" rx="2" ry="2.4"/></svg>';
 export const scExplainer = { name: 'Sniff', play: 'You each have a dog, both starting in the middle. Move yours one step, any of 8 ways, to see if it\'s getting hotter, colder or the same.', win: 'Be the first dog onto the treasure.' };
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/sniff): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Move the dog a step and hear hotter, colder or the same. Be the one who finds the treasure.';
+export const luckSkill = 2;
+export const format = 'shared';

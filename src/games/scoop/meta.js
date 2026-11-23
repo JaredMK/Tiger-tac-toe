@@ -20,3 +20,7 @@ export const TUNE = [
   { k: 'aiLapse', label: 'Computer misses a hazard (%)', def: 20, min: 0, max: 100, step: 1, group: 'Computer' },
 ];
 export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/scoop): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Drag the cone to catch scoops and dodge the bad stuff. Stack to the target first.';
+export const luckSkill = 4;
+export const format = 'race';

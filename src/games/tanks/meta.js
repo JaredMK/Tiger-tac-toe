@@ -41,3 +41,7 @@ export const TUNE = [
   { k: 'aiAngEasy', label: 'Easy computer: angle error', def: 5, min: 0, max: 20, step: 0.25, group: 'Computer' },
   { k: 'aiPowEasy', label: 'Easy computer: power error', def: 7, min: 0, max: 30, step: 0.25, group: 'Computer' },
 ];
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/tanks): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Aim, set your power and fire as the wind bends your shot. Knock the other tank to zero.';
+export const luckSkill = 4;
+export const format = 'shared';

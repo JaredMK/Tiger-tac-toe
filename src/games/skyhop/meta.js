@@ -19,3 +19,7 @@ export const TUNE = [
   { k: 'aiMisjudge', label: 'Computer misjudges a moving platform (%)', def: 50, min: 0, max: 100, step: 1, group: 'Computer' },
 ];
 export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)
+// Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/skyhop): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
+export const lineupBlurb = 'Drag to steer as you bounce up. Fall and your turn ends, but you keep your height. Reach the top first.';
+export const luckSkill = 4;
+export const format = 'race';
