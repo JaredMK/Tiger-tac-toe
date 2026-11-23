@@ -6984,3 +6984,20 @@ button.jgcell { cursor: pointer; touch-action: none; }
 .trcx, .trco { stroke: var(--ink); stroke-width: 2.6; } .trcx { fill: var(--x); } .trco { fill: var(--o); }   /* each player's car on the miniature: where they got to on this lap */
 /* [/rally] */
 
+
+/* [barrel] Barrel Launch */
+/* Barrel Launch (December 2026): the tallies, the scene (a canvas 100 by 125: the mover's column large, the other's beside it), the result's own line, the Fire button. */
+.g-brl { width: min(var(--gw), 440px); height: min(var(--gh), 600px); display: flex; flex-direction: column; gap: 8px; }
+.g-brl > * { flex: none; }
+.g-brl .brlbox { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size; }
+.brlfield { position: relative; width: 100cqw; height: min(100cqh, 150cqw); border: 3.5px solid var(--ink); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 0 var(--ink); box-sizing: border-box; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.brlcv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.brlline { margin: 0; height: 26px; text-align: center; white-space: nowrap; font: 400 21px/28px 'Luckiest Guy', 'Arial Black', sans-serif; letter-spacing: .02em; }
+.brlline.ok { color: var(--green); } .brlline.no { color: var(--muted); }
+.g-brl .brlbtn { height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.g-brl .brlbtn svg { width: 24px; height: 24px; flex: none; }
+/* the miniature: two little columns of barrels, each player's mark at the height they have reached */
+.tbrlw .tpic { width: 38cqw; } .tbrl { width: 100%; display: block; }
+.tbrb { fill: #c27b3c; stroke: var(--ink); stroke-width: 1.8; } .tbrb.g { fill: #f2b51b; } .tbrh { stroke: #3b3f4a; stroke-width: 1.6; }
+.tbrt { stroke: var(--ink); stroke-width: 1.8; } .tbrt.X { fill: var(--x); } .tbrt.O { fill: var(--o); }
+/* [/barrel] */

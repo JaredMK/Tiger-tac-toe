@@ -652,6 +652,18 @@ def('hvLand', 0.12, (c, d, t) => { sfxTone(c, d, t, 620, .09, { to: 880, type: '
 def('rrSqueal', 0.3, (c, d, t) => { sfxNoise(c, d, t, .26, { f: 2300, to: 1700, q: 9, vol: .5, att: .02 }); sfxTone(c, d, t, 1480, .24, { to: 1260, type: 'sawtooth', vol: .1, att: .03 }); }, { level: .3 });   // tyres at a hard lock: a narrow band of noise sliding down, a thin whine under it
 // [/rally]
 //
+// [barrel] Barrel Launch: its sounds (names start `bl`)
+// The launch: a hollow wooden thump with a puff of air. The flight: a short rising whoosh. A catch: a woody clunk as the
+// player drops into the barrel above, with a bright pop. A miss: a falling slide whistle; then the bump back into the
+// barrel it came from. The top: a short rising trill.
+def('blFire', 0.22, (c, d, t) => { sfxTone(c, d, t, 150, .16, { to: 70, vol: .7, att: .002 }); sfxNoise(c, d, t, .12, { f: 900, to: 300, q: .8, vol: .4, att: .003 }); sfxTone(c, d, t, 420, .05, { to: 260, type: 'triangle', vol: .25, att: .001 }); }, { level: .5, vary: true });
+def('blWhoosh', 0.34, (c, d, t) => sfxNoise(c, d, t, .3, { f: 700, to: 2600, q: 1.3, vol: .26, att: .06 }), { level: .24 });
+def('blCatch', 0.3, (c, d, t) => { sfxTone(c, d, t, 230, .12, { to: 150, type: 'triangle', vol: .6, att: .001 }); sfxNoise(c, d, t, .04, { f: 1300, q: 1.2, vol: .4, att: .001 }); sfxTone(c, d, t + .06, 990, .14, { to: 1480, type: 'triangle', vol: .32, att: .002 }); }, { level: .5, vary: true });
+def('blMiss', 0.5, (c, d, t) => sfxTone(c, d, t, 1400, .46, { to: 380, type: 'sine', vol: .3, att: .02 }), { level: .3 });
+def('blBump', 0.2, (c, d, t) => { sfxTone(c, d, t, 120, .16, { to: 70, vol: .6, att: .001 }); sfxNoise(c, d, t, .05, { f: 500, filter: 'lowpass', vol: .45, att: .001 }); }, { level: .46 });
+def('blTop', 0.6, (c, d, t) => { [659, 880, 1109, 1319].forEach((f, i) => sfxTone(c, d, t + i * .07, f, i === 3 ? .3 : .1, { type: 'triangle', vol: .36, att: .002 })); }, { level: .46 });
+// [/barrel]
+//
 // A press a game takes itself, on pointerdown (Echo's pads, Bullseye, Bowling, the drags and the runs): the
 // click that ends it plays no tap, whatever is under the finger by then (the result coming up, say).
 let ownDown = false, ownUp = -1e9;
@@ -663,6 +675,7 @@ const TAP_SOUND = { 'golf-key': 'open', 'ky-hold': null, 'mj-pick': null, 'pj-pi
   'echo-tap': null, 'echo-play': null, bulls: null, bowl: null, 'run-go': null, 'fing-start': null, 'odd-reveal': null, 'trivia-reveal': null, 'att-start': null, 'hc-key': null, 'snap-cell': null, 'snap-submit': null, pokmark: null, domtile: null, hpsel: 'select',   // a game's own inputs: each plays its own sound (from its handler or its move), never the click as well
   mmcol: 'peg', mmslot: 'peg', rlnum: 'peg', rlgrp: 'peg', rlzero: 'peg', key: 'key', bksp: 'key', enter: 'key', side: 'toggle', kind: 'toggle', 'anim-set': 'toggle', lside: 'toggle', timer: 'toggle', adv: 'toggle',
   'set-sound': 'toggle', 'set-vib': 'toggle', settings: 'open', 'settings-back': 'close', 'pause-settings': 'open', 'games-all': 'select', 'games-none': 'deselect', share: 'copy', back: 'tap' };   // (back: the Board button in a square, a plain tap)
+TAP_SOUND['brl-fire'] = null;   // [barrel] Barrel Launch's Fire: the shot's own thump, from its press
 // A press on a Comic Chaos screen (main.cc): the bam for the one big action, the zip going back, the pip-pip for an
 // option picked, the blip for every other panel.
 const CC_GO = ['start', 'rematch', 'find-again', 'practice', 'test-again'];

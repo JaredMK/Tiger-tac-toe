@@ -59,6 +59,11 @@ Category: More luck
 Play: Your 3 pieces start on your first point. Roll two dice. Each die moves a piece that many points; a double moves four times. Land on a lone enemy piece to knock it onto the bar. A piece on the bar must come back in before any other piece moves: it enters on the point the die shows, counted from its own start, unless two or more enemy pieces hold that point. No way in? The turn ends. Two of your pieces on a point block it. Once all your pieces are in your home zone, the last {home} points, any roll that takes it past the last point bears a piece off.{goAgain}
 Win: Move all 3 of your pieces off first.
 
+## Barrel Launch [barrel]
+Category: More skill
+Play: Each player has their own column of barrels, and every barrel swings. Tap to fire from your barrel. Land in the barrel above and you fire again. Miss and you drop back into your barrel, and your turn ends.{rampText}
+Win: First to the top barrel ({top} up).
+
 ## Bin Shot [toss]
 Category: More skill
 Play: Swipe up to throw the paper ball at the bin: the swipe's angle aims it, its speed throws it further. The fan beside the bin pushes it sideways: its arrow shows which way and its number how many bins wide. A ball on the rim may drop in or bounce out. The fan changes after every throw.

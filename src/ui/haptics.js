@@ -33,6 +33,9 @@ for (const n of ['hvNo']) BAD_SOUNDS.add(n);   // [hive] bad
 for (const n of []) RESULT_SOUNDS.add(n);   // [rally] results
 for (const n of []) BAD_SOUNDS.add(n);   // [rally] bad
 //
+for (const n of ['blCatch']) RESULT_SOUNDS.add(n);   // [barrel] results
+for (const n of ['blBump']) BAD_SOUNDS.add(n);   // [barrel] bad
+//
 const WON_GAP_MS = 250;                                              // (a result this close to the win: the win's buzz alone)
 
 // This phone's side: online, the player's; against the computer, the person's; on one phone shared by two (or the
