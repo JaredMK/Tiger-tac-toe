@@ -232,3 +232,33 @@ test('gems: a move is the server\'s: two draws of the new gems never agree, so a
   assert.equal(R.flashMs(st.flash, 0, false), T.end + G.hold); assert.equal(R.flashMs(st.flash, 0, true), T.end + G.hold + 500);
   assert.equal(R.gemsTimes({ steps: [{}, {}], sh: 'x' }).end, G.swap + 2 * (G.pop + G.fall + G.gap) + G.shuffle);
 });
+
+test('gems: a board in play always has a swap to make: thousands of moves at every size and number of kinds, by random hands and the computer, never leave a board with no swap or a line standing; a board left with none is shuffled and the shuffle is on the record', () => {
+  let boards = 0, shuffles = 0;
+  for (const n of [5, 6, 7, 8]) for (const kinds of [4, 5, 6]) withTune({ size: n, kinds }, () => {
+    for (let sq = 0; sq < 6; sq++) {
+      const rng = E.makeRng(`play:${n}:${kinds}:${sq}`); let m = E.newMini('gems', rng);
+      assert.ok(sound(R.gemsArr(m.b), n), `the opening board ${n}x${n} of ${kinds}`);
+      let p = 'X';
+      for (let k = 0; k < 120; k++) {
+        const level = ['easy', 'normal', 'hard'][k % 3], all = R.gemsMoves(R.gemsArr(m.b), n);
+        assert.ok(all.length > 0, `a swap to make (${n}x${n} of ${kinds}, square ${sq}, move ${k})`);
+        const mv = k % 2 ? { a: all[Math.floor(rng() * all.length)][0], b: all[Math.floor(rng() * all.length)][1] } : E.localBest(E.publicMini(m, p), p, rng, {}, { level, until: null }).move;
+        let r = E.applyMove(m, p, mv, rng);
+        if (!r.ok) { const one = all[Math.floor(rng() * all.length)]; r = E.applyMove(m, p, { a: one[0], b: one[1] }, rng); }
+        assert.equal(r.ok, true, 'a swap the board offers is taken');
+        const g = R.gemsArr(m.b); boards++;
+        assert.ok(sound(g, n), `after the move: no line standing and a swap to make (${n}x${n} of ${kinds})`);
+        if (m.last.sh) { shuffles++; assert.equal(m.last.sh, m.b, 'a shuffle is on the record: the board laid out again is the board in play'); }
+        if (r.outcome !== 'continue') { m = E.newMini('gems', rng); assert.ok(sound(R.gemsArr(m.b), n), 'a fresh square'); p = 'X'; continue; }   // (a square won: play on in a fresh one)
+        p = r.again ? p : p === 'X' ? 'O' : 'X';
+      }
+    }
+  });
+  // a move that leaves no swap is followed by a shuffle (forced: a board whose only swap clears the way to a dead one)
+  const n = 5, dead = Array.from({ length: n * n }, (_, i) => (i % n + 2 * Math.floor(i / n)) % 3);
+  assert.equal(R.gemsMoves(dead, n).length, 0);
+  for (let k = 0; k < 40; k++) { const g = R.gemsShuffle(dead, n, 3, E.makeRng('dead' + k)); assert.ok(sound(g, n)); boards++; }
+  assert.ok(boards > 5000, `boards checked: ${boards}`);
+  console.log(`  ${boards} boards checked, ${shuffles} shuffles in play`);
+});
