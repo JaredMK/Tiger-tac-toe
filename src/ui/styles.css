@@ -3603,6 +3603,7 @@ main.scr.mini.screplay * { cursor: pointer; }   /* (a tap anywhere skips to the 
 /* a move's result in words: in the header's turn line, in place of the turn (never over the game) */
 .hdr .turn .tswap { display: grid; place-items: center; min-width: 0; height: 100%; }
 .hdr .turn .tswap > span { grid-area: 1 / 1; min-width: 0; max-width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; }
+@media (prefers-reduced-motion: reduce) { .hdr .turn .tswap > .tu { display: none; } }   /* (the turn's words go as the result's come: the general .tu rule lost to the line above, and both showed at once) */
 .hdr .turn .tswap > .flres { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'Luckiest Guy', 'Arial Black', sans-serif; font-weight: 400; font-size: clamp(13px, 3.9vw, 17px); letter-spacing: .02em; padding-top: 3px; color: var(--ink); }
 .hdr .turn .flres b.X { color: var(--x); } .hdr .turn .flres b.O { color: var(--o); }
 
