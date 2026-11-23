@@ -22,3 +22,16 @@ test('Maze Runner camera: the default 8 by 10 maze fits a 375px phone whole; a 1
   const far = mazeCam(G, W, H, 11, 0); assert.ok(Math.abs(far.ox - (W - 12 * far.u)) < 1e-6 && far.oy === 0, 'and at the flag\'s corner');
   const wide = mazeCam(G, W, H, 6, 7, MAZEV.dash); assert.ok(wide.u < mid.u, 'a touch wider while dashing');
 });
+
+test('Maze Runner fog: exactly the maze\'s bounds (its cells and outlined outer wall), never the room round a maze that fits', async () => {
+  const { mazeFogRect, mazeWall, mazeHalo } = await import('../../src/games/maze/view.js');
+  for (const [w, h, W, H] of [[8, 10, 345, 411], [8, 10, 400, 640], [6, 6, 345, 411], [12, 14, 345, 411]]) {
+    const G = R.mazeGeoOf(w, h);
+    for (const V of [mazeCam(G, W, H, 0, h - 1), mazeCam(G, W, H, w - 1, 0)]) {
+      const F = mazeFogRect(G, V), e = (mazeWall(V.u) + mazeHalo(V.u)) / 2;     // the outer wall's white outline reaches e past the cells
+      assert.ok(Math.abs(F.x - (V.ox - e)) < 1e-9 && Math.abs(F.y - (V.oy - e)) < 1e-9, `${w}x${h}: starts at the outer wall`);
+      assert.ok(Math.abs(F.x + F.w - (V.ox + w * V.u + e)) < 1e-9 && Math.abs(F.y + F.h - (V.oy + h * V.u + e)) < 1e-9, `${w}x${h}: ends at the outer wall`);
+      if (V.fit) assert.ok(F.x > 0 || F.y > 0 || F.x + F.w < W || F.y + F.h < H || (w * V.u >= W - 1e-6 && h * V.u >= H - 1e-6), 'a maze that fits leaves its room unfogged');
+    }
+  }
+});

@@ -39,6 +39,16 @@ export function mazeCam(g, W, H, fx, fy, z = 1) {
   const u = Math.max(fit, MAZEV.min * z), axis = (box, cells, f) => (cells * u <= box ? (box - cells * u) / 2 : Math.min(0, Math.max(box - cells * u, box / 2 - (f + 0.5) * u)));
   return { u, ox: axis(W, g.w, fx), oy: axis(H, g.h, fy), fit: false };
 }
+// The walls' width at cell size u (the ink) and the white outline round them (added to it): the outer wall's outline is
+// the revealed maze's edge.
+export const mazeWall = u => Math.max(u >= MAZEV.min ? 4 : 3, u * 0.14);
+export const mazeHalo = u => Math.max(3, u * 0.08);
+// Where the fog lies under camera V (u, ox, oy): the maze's cells grown by half the outlined outer wall, its corners
+// rounded as the wall's round ends are, so the hidden maze and the revealed one are the same size. Pure: the tests hold it.
+export function mazeFogRect(g, V) {
+  const e = (mazeWall(V.u) + mazeHalo(V.u)) / 2;
+  return { x: V.ox - e, y: V.oy - e, w: g.w * V.u + 2 * e, h: g.h * V.u + 2 * e, r: e };
+}
 // A little map of a maze as far as it has been seen (a tally's, the miniature's): seen cells light, the flag, the runners.
 function mapSvg(mini, who, cls, skip) {                          // skip: cells not to show yet (a reveal still to play)
   const g = mazeGeo(mini), seen = mazeSeen(mini, who[0]);
@@ -116,9 +126,15 @@ const go = stage('canvas.mzcv', (c, W, H, now) => {
   const u = V.u, ox = V.ox, oy = V.oy, X = x => ox + x * u, Y = y => oy + y * u;
   const moving = !V.fit && !wb && (Math.abs(focus[0] - cam.fx) + Math.abs(focus[1] - cam.fy) > 0.01 || Math.abs((dashing ? MAZEV.dash : 1) - cam.z) > 0.004);
   c.clearRect(0, 0, W, H);
-  c.fillStyle = MAZEV.fog; c.fillRect(0, 0, W, H);             // the fog: a light cool grey with a halftone of dots (never the walls' black, never the floor's cream)
+  // the fog: a light cool grey with a halftone of dots (never the walls' black, never the floor's cream), over exactly the
+  // maze's own bounds (its cells and its outer wall, as the revealed maze stands): the room the box leaves round a maze
+  // that fits shows the page, as it does once the maze is revealed
+  const F = mazeFogRect(G, V);
+  c.save(); c.beginPath(); c.roundRect(F.x, F.y, F.w, F.h, F.r); c.clip();
+  c.fillStyle = MAZEV.fog; c.fillRect(F.x, F.y, F.w, F.h);
   c.fillStyle = MAZEV.dots; const step = Math.max(6, u * 0.25), dr = Math.max(1, step * 0.17), sx0 = ((ox % step) + step) % step, sy0 = ((oy % step) + step) % step;
   for (let y = sy0 - step, row = 0; y < H + step; y += step, row++) { c.beginPath(); for (let x = sx0 - step + (row % 2 ? step / 2 : 0); x < W + step; x += step) { c.moveTo(x + dr, y); c.arc(x, y, dr, 0, 7); } c.fill(); }
+  c.restore();
   const vis = (x, y) => X(x + 1) >= 0 && X(x) <= W && Y(y + 1) >= 0 && Y(y) <= H;
   c.fillStyle = P.paper;
   for (let cc = 0; cc < G.n; cc++) { const al = alpha(cc); if (al > 0) { const [x, y] = xy(w, cc); if (vis(x, y)) { c.globalAlpha = al; c.fillRect(X(x) - 0.5, Y(y) - 0.5, u + 1, u + 1); } } }
@@ -131,7 +147,7 @@ const go = stage('canvas.mzcv', (c, W, H, now) => {
   c.strokeRect(u * 0.03, -u * 0.66, u * 0.42, u * 0.3); c.restore();
   c.fillStyle = '#8d6e63'; c.strokeStyle = P.ink; c.lineWidth = u * 0.05; c.beginPath(); c.roundRect(X(sx + 0.3), Y(sy + 0.62), u * 0.4, u * 0.38, [u * 0.2, u * 0.2, 0, 0]); c.fill(); c.stroke();
   // the walls of every cell seen: its closed sides (the cells fading in as the fog lifts: each at its own strength)
-  const wl = Math.max(u >= MAZEV.min ? 4 : 3, u * 0.14); c.lineCap = 'round';           // bold black, outlined in white, so a wall found stands out from the fog and the floor
+  const wl = mazeWall(u); c.lineCap = 'round';           // bold black, outlined in white, so a wall found stands out from the fog and the floor
   const walls = (cc, x, y) => {
     const m = seen[cc];
     if (!(m & 1)) { c.moveTo(X(x), Y(y)); c.lineTo(X(x + 1), Y(y)); }
@@ -139,7 +155,7 @@ const go = stage('canvas.mzcv', (c, W, H, now) => {
     if (!(m & 4)) { c.moveTo(X(x), Y(y + 1)); c.lineTo(X(x + 1), Y(y + 1)); }
     if (!(m & 8)) { c.moveTo(X(x), Y(y)); c.lineTo(X(x), Y(y + 1)); }
   };
-  const ink = () => { c.strokeStyle = '#fff'; c.lineWidth = wl + Math.max(3, u * 0.08); c.stroke(); c.strokeStyle = P.ink; c.lineWidth = wl; c.stroke(); };
+  const ink = () => { c.strokeStyle = '#fff'; c.lineWidth = wl + mazeHalo(u); c.stroke(); c.strokeStyle = P.ink; c.lineWidth = wl; c.stroke(); };
   const part = [];
   c.beginPath();
   for (let cc = 0; cc < G.n; cc++) { const al = alpha(cc); if (al <= 0) continue; const [x, y] = xy(w, cc); if (!vis(x, y)) continue; if (al < 1) part.push([cc, x, y, al]); else walls(cc, x, y); }
