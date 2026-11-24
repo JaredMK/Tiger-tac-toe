@@ -178,7 +178,7 @@ test('the computer\'s levels on a game\'s page: Computer: Easy, Normal, Hard in 
   for (const k of ['aiMissEasy', 'aiMissNormal', 'aiMissHard', 'aiThinkEasy']) assert.ok(html.includes(`data-tune="c4" data-k="${k}"`), `${k}: a field`);
   assert.match(html, /Mistakes: chance a move is a deliberately weaker one/);
   html = draw('#games/shell');
-  const g = order(html); assert.ok(g.indexOf('Level 5') < g.indexOf('Computer'), 'a game\'s own groups before the computer\'s');
+  const g = order(html); assert.ok(g.indexOf('Level 5') < g.findIndex(x => x.startsWith('Computer')), 'a game\'s own groups before the computer\'s');
 });
 test('Shell Game\'s page: its settings by level, the difficulty presets (Gentle, Normal, Brutal: the one the page holds is lit), Save and Test play', async () => {
   const { PRESETS } = await import('../../src/games/shell/meta.js');
@@ -186,7 +186,7 @@ test('Shell Game\'s page: its settings by level, the difficulty presets (Gentle,
   let html = draw('#games/shell');
   assert.match(html, /<div class="presets" role="group" aria-label="Difficulty presets">/);
   assert.deepEqual([...html.matchAll(/data-preset="(\w+)" data-pgame="shell" aria-pressed="(\w+)"/g)].map(m => [m[1], m[2]]), [['Gentle', 'false'], ['Normal', 'true'], ['Brutal', 'false']], 'Normal is the defaults: lit');
-  for (const g of ['Rules', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Computer']) assert.ok(html.includes(`<h3>${g}</h3>`), `${g}: its own group`);
+  for (const g of ['Rules', 'Level 1', 'Level 2', 'Level 3', 'Level 4', 'Level 5', 'Computer: Easy', 'Computer: Normal', 'Computer: Hard']) assert.ok(html.includes(`<h3>${g}</h3>`), `${g}: its own group`);
   for (const k of ['levels', 'again', 'c1', 'ms1', 'sw1', 'pr1', 'far1', 'rp1', 'sh1', 'c5', 'ms5', 'ai1', 'ai5']) assert.ok(html.includes(`data-tune="shell" data-k="${k}"`), `${k}: a field`);
   assert.match(html, /data-tune="shell" data-k="levels" min="1" max="5" step="1" value="3"/); assert.match(html, /data-tune="shell" data-k="c1" min="2" max="7" step="1" value="3"/); assert.match(html, /data-tune="shell" data-k="pr2" min="0" max="2" step="1" value="1"/);
   assert.equal((html.match(/>Save</g) || []).length, 1); assert.equal((html.match(/>Test play</g) || []).length, 1);

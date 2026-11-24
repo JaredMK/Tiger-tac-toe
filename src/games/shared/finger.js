@@ -88,7 +88,7 @@ export const FHAND = { skyhop: { react: [0.22, 0.32], aim: 0.65, lapse: 0.15, mi
 const LV_SFX = { easy: 'Easy', hard: 'Hard' };
 export function fingHand(mini, level) {
   const sfx = LV_SFX[level] || '';
-  if (!mini || (!mini.tune && !sfx)) return FHAND[mini && mini.type];
+  if (!mini || (!mini.tune && !sfx && mini.type !== 'pinball')) return FHAND[mini && mini.type];
   const t0 = tune(mini), t = k => (t0[k + sfx] != null ? t0[k + sfx] : t0[k]), react = [t('aiReact0') / 1000, t('aiReact1') / 1000];
   if (mini.type === 'pinball') return { react, jitter: t('aiJitter') / 1000, letGo: t('aiLetGo') / 100, anyPull: t('aiAnyPull') / 100, own: true };
   return Object.assign({}, FHAND[mini.type], { react, aim: t('aiAim') / 100, lapse: t('aiLapse') / 100 }, mini.type === 'skyhop' ? { misjudge: t('aiMisjudge') / 100 } : {});

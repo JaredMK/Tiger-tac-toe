@@ -33,8 +33,8 @@ export const TUNE = [
   { k: 'aiAimEasy', label: "Easy: aim spread (cm)", def: 80, min: 0, max: 300, step: 5, group: 'Computer: Easy' },
   { k: 'aiLapseEasy', label: "Easy: misses a threat (%)", def: 28, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
   { k: 'aiReact0Hard', label: "Hard: reaction, fastest (ms)", def: 170, min: 0, max: 800, step: 10, group: 'Computer: Hard' },
-  { k: 'aiReact1Hard', label: "Hard: reaction, slowest (ms)", def: 255, min: 0, max: 800, step: 10, group: 'Computer: Hard' },
-  { k: 'aiAimHard', label: "Hard: aim spread (cm)", def: 38, min: 0, max: 300, step: 5, group: 'Computer: Hard' },
+  { k: 'aiReact1Hard', label: "Hard: reaction, slowest (ms)", def: 260, min: 0, max: 800, step: 10, group: 'Computer: Hard' },
+  { k: 'aiAimHard', label: "Hard: aim spread (cm)", def: 40, min: 0, max: 300, step: 5, group: 'Computer: Hard' },
   { k: 'aiLapseHard', label: "Hard: misses a threat (%)", def: 11, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
 ];
 export const realTime = true;   // its move plays back in real time (a run): never sped up past the replay's own speed (core/timer.js moveRate)
