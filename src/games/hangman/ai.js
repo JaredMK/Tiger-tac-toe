@@ -18,18 +18,41 @@ export function needs(pm, p) {
 }
 export function best(pm, me, rng, style, ctx) {
   const cand = hangmanCandidates(pm, me), tried = new Set(hangLetters(pm, me).map(x => x.l)), shared = !pm.race;   // (a race: its own letters alone, and a letter found tells the other side nothing)
-  const miss = tune(pm).miss;
+  const miss = tune(pm).miss;                                   // (the old level-blind rate, for squares dealt with it; the levels' own is aiMiss<Level>, worse below)
   if (miss && rng() * 100 < miss) {                            // a slip: any letter not tried yet
     const left = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(l => !tried.has(l));
     if (left.length) return { move: left[randInt(rng, left.length)], q: 0, shared };
   }
-  if (ctx && ctx.level === 'hard' && cand.length > 1 && tried.size < 26) return pm.race ? hangSolo(cand, tried, ctx) : hangHard(pm, cand, tried, ctx);
+  const lv = ctx && ctx.level, T = tune(pm), q = cand.length === 1 ? 1 : cand.length ? 1 / cand.length : 0;
+  if (lv === 'hard' && cand.length > 1 && tried.size < 26) return pm.race ? hangSolo(cand, tried, ctx) : hangHard(pm, cand, tried, ctx);
+  // Easy: the common letters of English, not the words that fit: one of the aiPoolEasy most common letters not yet
+  // tried, at random, but for the share of its guesses (aiListEasy %) where it does read the words that fit.
+  if (lv === 'easy' && !(cand.length === 1 && rng() < 0.5) && !(rng() * 100 < num(T.aiListEasy, 10))) {
+    const left = ORDER.split('').filter(l => !tried.has(l)).slice(0, Math.max(1, num(T.aiPoolEasy, 6)));
+    if (left.length) return { move: left[randInt(rng, left.length)], q, shared };
+  }
+  // Normal (and Easy reading the words): the letter in the most words that still fit, or by chance one of the
+  // aiPoolNormal likeliest (1: always the likeliest).
+  const top = ranked(cand, tried), k = lv === 'easy' ? 1 : Math.max(1, num(T.aiPoolNormal, 1));
+  const best = top.length ? top[k > 1 ? randInt(rng, Math.min(k, top.length)) : 0] : ORDER.split('').find(ch => !tried.has(ch));
+  return { move: best, q, shared };
+}
+const ORDER = 'ETAOINSRHLDCUMFPGWYBVKXJQZ';
+const num = (v, d) => (Number.isFinite(Number(v)) && v !== '' && v != null ? Number(v) : d);
+function ranked(cand, tried) {                                   // the untried letters in the words that fit, most words first (ties: the commoner letter)
   const count = {};
   for (const w of cand) for (const ch of new Set(w)) if (!tried.has(ch)) count[ch] = (count[ch] || 0) + 1;
-  let best = null, top = 0;
-  for (const ch of 'ETAOINSRHLDCUMFPGWYBVKXJQZ') { const n = count[ch] || 0; if (n > top) { top = n; best = ch; } }
-  if (!best) for (const ch of 'ETAOINSRHLDCUMFPGWYBVKXJQZ') if (!tried.has(ch)) { best = ch; break; }
-  return { move: best, q: cand.length === 1 ? 1 : cand.length ? 1 / cand.length : 0, shared };
+  return ORDER.split('').filter(ch => count[ch]).sort((a, b) => count[b] - count[a] || ORDER.indexOf(a) - ORDER.indexOf(b));
+}
+// A level's mistake (aiMiss<Level>): a common letter it has not tried that few of the words that fit hold (a hunch
+// at the alphabet's usual suspects), never the letter it meant.
+export function worse(pm, me, rng, ctx) {
+  const cand = hangmanCandidates(pm, me), tried = new Set(hangLetters(pm, me).map(x => x.l)), not = ctx && ctx.best;
+  const count = {}; for (const w of cand) for (const ch of new Set(w)) count[ch] = (count[ch] || 0) + 1;
+  const left = ORDER.split('').filter(l => !tried.has(l) && l !== not).slice(0, 12);
+  if (!left.length) return null;
+  const low = Math.min(...left.map(l => count[l] || 0)), pool = left.filter(l => (count[l] || 0) <= low);
+  return pool[randInt(rng, pool.length)];
 }
 
 // ---- Hard, Race mode: the word alone ----

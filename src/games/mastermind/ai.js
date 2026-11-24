@@ -1,6 +1,6 @@
 // Codebreaker: the computer's play.
 import { tune } from '../../core/tune.js';
-import { MM, mmAll, mmBestGuess, mmCandidates, mmCode, mmFeedback } from './rules.js';
+import { MM, mmAll, mmBestGuess, mmCandidates, mmCode, mmFeedback, mmGuesses } from './rules.js';
 
 // Race mode (core/race.js, `rv: 2`): the computer cracks its own code from its own guesses (pm.side[me]); the other
 // side's guesses are open too (their needs from their own candidates), and its guesses tell nothing of their code, so
@@ -16,13 +16,35 @@ export function needs(pm, p) {
   }
   return fromRows(mmCandidates(pm, p).length);
 }
+// Easy: guesses loosely, from only some of the feedback: each earlier row's markers kept in mind with the chance
+// aiHeedEasy (%), the rest forgotten, and a code at random among those that fit what it remembers (it may well have
+// been ruled out already).
+const num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
+function mmLoose(pm, me, rng, heed, colors) {
+  const gs = (pm.race ? mmGuesses(pm, me) : pm.guesses).filter(() => rng() * 100 < heed), said = new Set((pm.race ? mmGuesses(pm, me) : pm.guesses).map(g => g.code.join()));
+  const fit = mmAll(colors).filter(code => !said.has(code.join()) && gs.every(g => { const f = mmFeedback(g.code, code); return f.solid === g.solid && f.hollow === g.hollow; }));
+  return fit.length ? fit[Math.floor(rng() * fit.length)].slice() : null;
+}
 export function best(pm, me, rng, style, ctx) {
-  const race = !!pm.race, cand = mmCandidates(pm, me), t = tune(pm);
+  const race = !!pm.race, cand = mmCandidates(pm, me), t = tune(pm), lv = ctx && ctx.level;
   if (!cand.length) return { move: mmCode(rng, t.colors), q: 0, shared: !race };
+  if (lv === 'easy' && (cand.length > 1 || num(t.aiHeedEasy, 70) < 100)) {
+    const g = mmLoose(pm, me, rng, num(t.aiHeedEasy, 70), t.colors);
+    if (g) { const k = g.join(); return { move: g, q: cand.some(c => c.join() === k) ? 1 / cand.length : 0, shared: !race }; }
+  }
   if (cand.length === 1) return { move: cand[0].slice(), q: 1, shared: !race };
+  // (t.miss: the old level-blind rate, for squares dealt with it; the levels' own is aiMiss<Level>, worse below)
   if (t.miss && rng() * 100 < t.miss) { const g = mmCode(rng, t.colors), k = g.join(); return { move: g, q: cand.some(c => c.join() === k) ? 1 / cand.length : 0, shared: !race }; }   // a slip: a code at random, clues ignored
   if (ctx && ctx.level === 'hard') return race ? mmHardRace(pm, cand, t.colors, ctx) : mmHard(pm, cand, t.colors, ctx, rng);
-  return { move: mmBestGuess(cand, t.colors), q: 1 / cand.length, shared: !race };
+  // Normal: every clue used, a code that could be it: the one that splits what is left best as often as aiSplitNormal
+  // says (%), else any of them.
+  const split = num(t.aiSplitNormal, 50);
+  return { move: split >= 100 || rng() * 100 < split ? mmBestGuess(cand, t.colors) : cand[Math.floor(rng() * cand.length)].slice(), q: 1 / cand.length, shared: !race };
+}
+// A level's mistake (aiMiss<Level>): a code that fits only about half the feedback, never the one it meant.
+export function worse(pm, me, rng, ctx) {
+  const g = mmLoose(pm, me, rng, 50, tune(pm).colors);
+  return g && (!ctx || !ctx.best || g.join() !== [].concat(ctx.best).join()) ? g : null;
 }
 
 // ---- Hard: the race for the code ----

@@ -35,11 +35,18 @@ export function best(pm, me, rng, style, ctx) {
 function bestWord(pm, me, rng, style, ctx) {
   const cand = wordleCandidates(pm, me), shared = !pm.race;      // (a race: its own guesses alone, and a miss tells the other side nothing)
   if (!cand.length) return { move: GUESS5[randInt(rng, GUESS5.length)].toUpperCase(), q: 0, shared };
+  if (ctx && ctx.level === 'easy' && cand.length > 1 || (ctx && ctx.level === 'easy' && cand.length === 1 && num(tune(pm).aiHeedEasy, 50) < 100)) {   // Easy: from what it remembers alone, even when the clues already give the word away
+    const w = loose(pm, me, rng, num(tune(pm).aiHeedEasy, 50), num(tune(pm).aiPoolEasy, 8));
+    if (w) return { move: w, q: cand.includes(w) ? 1 / cand.length : 0, shared, loose: true };
+  }
   if (cand.length === 1) return { move: cand[0], q: 1, shared };
-  const miss = tune(pm).miss;
+  const miss = tune(pm).miss;                                   // (the old level-blind rate, for squares dealt with it; the levels' own: aiMiss<Level>, worse below)
   if (miss && rng() * 100 < miss) { const w = GUESS5[randInt(rng, GUESS5.length)].toUpperCase(); return { move: w, q: cand.includes(w) ? 1 / cand.length : 0, shared }; }   // a slip: a word at random, clues ignored
   if (!(pm.race ? wordleGuesses(pm, me) : pm.guesses).length) { const w = WVARY.open[randInt(rng, WVARY.open.length)]; return { move: w, q: cand.includes(w) ? 1 / cand.length : 0, shared }; }   // the opening (Shared: nobody's guess yet; a race: none of its own)
   if (ctx && ctx.level === 'hard') return pm.race ? wordleSolo(pm, cand, ctx, rng) : wordleHard(pm, cand, ctx, rng);
+  // Normal: a word that fits every clue, one of the aiPoolNormal with the commonest letters (in a shared race
+  // a guess that splits the words best hands the other side the narrowing: Hard's wordleHard weighs that, Normal not).
+  { const w = loose(pm, me, rng, 100, num(tune(pm).aiPoolNormal, 2)); if (w) return { move: w, q: cand.includes(w) ? 1 / cand.length : 0, shared }; }
   let scored;
   if (cand.length > 24) {                                      // many left: the guesses with the most common letters
     const freq = {};
@@ -56,6 +63,26 @@ function bestWord(pm, me, rng, style, ctx) {
   }
   scored.sort((a, b) => b.v - a.v);
   return { move: wordleTop(scored, rng).w, q: 1 / cand.length, shared };
+}
+
+// Easy: a word with the commonest letters among those that fit the clues it heeds: each earlier guess's colours are
+// kept in mind with the chance `heed` (%), the rest forgotten; one of the `pool` best by common letters, at random.
+const num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
+function loose(pm, me, rng, heed, pool) {
+  const gs = pm.race ? wordleGuesses(pm, me) : pm.guesses, kept = gs.filter(() => rng() * 100 < heed), said = new Set(gs.map(g => g.word));
+  const fit = [];
+  for (const w of GUESS5) { const W = w.toUpperCase(); if (!said.has(W) && kept.every(g => wordleMarks(g.word, W).join('') === g.marks.join(''))) fit.push(W); }
+  if (!fit.length) return null;
+  const freq = {};
+  for (const w of fit) for (const ch of new Set(w)) freq[ch] = (freq[ch] || 0) + 1;
+  const scored = fit.map(w => { let sc = 0; for (const ch of new Set(w)) sc += freq[ch]; return { w, v: sc }; }).sort((a, b) => b.v - a.v);
+  return scored[randInt(rng, Math.max(1, Math.min(pool, scored.length)))].w;
+}
+// A level's mistake (aiMiss<Level>): a word that fits only some of the clues (about half of them heeded), never the
+// word it meant.
+export function worse(pm, me, rng, ctx) {
+  const w = loose(pm, me, rng, 50, 20);
+  return w && w !== (ctx && ctx.best) ? w : null;
 }
 
 // ---- Hard, Race mode: the word alone ----

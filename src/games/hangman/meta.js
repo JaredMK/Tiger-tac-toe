@@ -18,7 +18,9 @@ export const TUNE = [
   MODE_TUNE,
   { k: 'minLen', label: 'Shortest word (letters)', def: 5, min: 5, max: 7, step: 1, group: 'Rules' },
   { k: 'maxLen', label: 'Longest word (letters)', def: 7, min: 5, max: 7, step: 1, group: 'Rules' },
-  { k: 'miss', label: 'Computer random letter rate (%)', def: 0, min: 0, max: 60, step: 1, group: 'Computer' },
+  { k: 'aiPoolEasy', label: 'Easy: picks at random among this many of the most common letters (E, T, A, O...) it has not tried', def: 6, min: 1, max: 12, step: 1, group: 'Computer: Easy' },
+  { k: 'aiListEasy', label: 'Easy: how often it thinks about which words fit instead (% of guesses)', def: 10, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
+  { k: 'aiPoolNormal', label: 'Normal: picks at random among this many of the letters in the most words that fit (1 = always the likeliest)', def: 1, min: 1, max: 6, step: 1, group: 'Computer: Normal' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 21h8M8 21V3h9v4"/><circle cx="17" cy="10" r="2.5"/><path d="M17 12.5v5"/></svg>';
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/hangman): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

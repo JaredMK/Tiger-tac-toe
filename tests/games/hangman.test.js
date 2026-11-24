@@ -153,14 +153,14 @@ test('a timeout with a hangman letter owed guesses nothing: the turn ends there'
 });
 
 test('hangman: the admin\'s settings (word lengths, the computer\'s random letters) are dealt into the square and played by', () => {
-  E.setTune('hangman', { minLen: 7, maxLen: 7, miss: 60 });
+  E.setTune('hangman', { minLen: 7, maxLen: 7, aiMissNormal: 60 });
   const ms = Array.from({ length: 8 }, (_, k) => E.newMini('hangman', E.makeRng('hang-tune' + k)));
   E.setTune('hangman', null);
   for (const m of ms) assert.equal(m.word.length, 7);
-  assert.deepEqual(ms[0].tune, { again: 'on', minLen: 7, miss: 60 });
+  assert.equal(ms[0].tune.minLen, 7); assert.equal(ms[0].tune.aiMissNormal, 60);
   const pm = E.publicMini(ms[0]), moves = new Set();
-  for (let k = 0; k < 20; k++) moves.add(E.localBest(pm, 'X', E.makeRng('hang-ai' + k)).move);
-  assert.ok(moves.size > 1, 'a random letter now and then');
+  for (let k = 0; k < 20; k++) moves.add(E.localBest(pm, 'X', E.makeRng('hang-ai' + k), {}, { level: 'normal' }).move);
+  assert.ok(moves.size > 1, 'a weaker letter now and then (Normal\'s mistakes)');
   assert.ok(E.newMini('hangman', E.makeRng('hang-def')).word.length <= 7);
 });
 

@@ -13,7 +13,9 @@ export const scExplainer = { name: 'Five Letters', play: "Guess a 5-letter word.
 export const TUNE = [
   MODE_TUNE,
   { k: 'limit', label: 'Guesses each (Shared mode)', def: 5, min: 2, max: 12, step: 1, group: 'Rules' },
-  { k: 'miss', label: 'Computer ignores the clues (%)', def: 0, min: 0, max: 60, step: 1, group: 'Computer' },
+  { k: 'aiHeedEasy', label: "Easy: how much of each earlier guess's colours it keeps in mind (% of the guesses; the rest forgotten)", def: 50, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
+  { k: 'aiPoolEasy', label: 'Easy: picks at random among this many of the words with the commonest letters that fit what it remembers', def: 8, min: 1, max: 40, step: 1, group: 'Computer: Easy' },
+  { k: 'aiPoolNormal', label: 'Normal: picks at random among this many of the words with the commonest letters that fit every clue', def: 2, min: 1, max: 20, step: 1, group: 'Computer: Normal' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="7" width="6" height="6" rx="1"/><rect x="9" y="7" width="6" height="6" rx="1" opacity=".45"/><rect x="16" y="7" width="6" height="6" rx="1" opacity=".45"/><rect x="2" y="14" width="6" height="6" rx="1" opacity=".45"/><rect x="9" y="14" width="6" height="6" rx="1"/><rect x="16" y="14" width="6" height="6" rx="1" opacity=".45"/></svg>';
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/wordle): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

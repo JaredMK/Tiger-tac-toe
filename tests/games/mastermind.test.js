@@ -151,10 +151,10 @@ test('mastermind: a timed-out random move is a valid 4-colour guess', () => {
 });
 
 test('mastermind: the admin\'s settings (colours, the computer ignoring the clues) are dealt into the square and played by', () => {
-  E.setTune('mastermind', { colors: 4, miss: 60 });
+  E.setTune('mastermind', { colors: 4, aiMissNormal: 60 });
   const m = E.newMini('mastermind', E.makeRng('mm-tune'));
   E.setTune('mastermind', null);
-  assert.deepEqual(m.tune, { colors: 4, miss: 60 });
+  assert.equal(m.tune.colors, 4); assert.equal(m.tune.aiMissNormal, 60);
   assert.ok(m.code.every(c => c < 4));
   assert.equal(E.applyMove(m, 'X', [0, 1, 2, 5], anyRng()).ok, false, 'a colour not in play');
   assert.equal(E.applyMove(m, 'X', [3, 2, 1, 0], anyRng()).ok, true);
@@ -298,7 +298,7 @@ test('mm race: the computer cracks its own code from the public view at every le
         assert.ok(r.ok, `${level}: guess ${JSON.stringify(mv)} refused (${r.reason})`);
         n++; done = r.outcome === 'win';
       }
-      assert.ok(done && n <= 6, `${level}: cracked in ${n}`); total += n;
+      assert.ok(done && n <= (level === "easy" ? 20 : 6), `${level}: cracked in ${n}`);   // (Easy forgets some of the feedback) total += n;
       assert.ok(Date.now() - t0 < 4000, `${level}: in time`);
       assert.deepEqual(m.side.X.guesses, [], "X's part untouched");
     }

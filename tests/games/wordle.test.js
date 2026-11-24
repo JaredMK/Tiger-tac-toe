@@ -160,14 +160,14 @@ test('wordle tactics: guesses stay consistent with the feedback and the last wor
 });
 
 test('wordle: the admin\'s settings (the computer ignoring the clues) are dealt into the square and played by', () => {
-  E.setTune('wordle', { miss: 60 });
+  E.setTune('wordle', { aiMissNormal: 60 });
   const m = E.newMini('wordle', E.makeRng('wordle-tune'));
   E.setTune('wordle', null);
-  assert.deepEqual(m.tune, { miss: 60 });
+  assert.equal(m.tune.aiMissNormal, 60);
   E.applyMove(m, 'X', m.word === 'CRANE' ? 'SLOTH' : 'CRANE', anyRng());
   const pm = E.publicMini(m), cand = E.wordleCandidates(pm);
   let off = 0;
-  for (let k = 0; k < 20; k++) { const lb = E.localBest(pm, 'O', E.makeRng('wordle-ai' + k)); if (!cand.includes(lb.move)) off++; }
+  for (let k = 0; k < 20; k++) { const lb = E.localBest(pm, 'O', E.makeRng('wordle-ai' + k), {}, { level: 'normal' }); if (!cand.includes(lb.move)) off++; }
   assert.ok(off > 0 && off < 20, 'some guesses ignore the clues');
 });
 

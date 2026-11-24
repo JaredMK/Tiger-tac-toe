@@ -57,3 +57,30 @@ test('Snakes and Ladders, Candy Race, Coin Flip, Bump: one move only, so no mist
     assert.ok(!keys.includes('aiMissEasy') && keys.includes('aiThinkEasy'), t);
   }
 });
+
+test('Hangman: Easy guesses the common letters of English, Normal the letter in most of the words that fit, Hard plays the race for the word', () => {
+  const m = E.newMini('hangman', lcg(7)); withT(m);
+  const pm = E.publicMini(m);
+  const easy = new Set(); for (let k = 1; k < 40; k++) easy.add(pick('hangman', pm, 'X', 'easy', k));
+  assert.ok(easy.size > 2 && [...easy].every(l => 'ETAOINSRHL'.includes(l)), [...easy].join());
+  const normal = new Set(); for (let k = 1; k < 10; k++) normal.add(pick('hangman', pm, 'X', 'normal', k));
+  assert.equal(normal.size, 1, 'Normal: always the likeliest letter');
+  assert.ok(/^[A-Z]$/.test(pick('hangman', pm, 'X', 'hard')));
+});
+
+test('Five Letters: Easy forgets some of the colours (its guesses may not fit them), Normal and Hard always fit them', () => {
+  const m = E.newMini('wordle', lcg(8)); withT(m);
+  E.applyMove(m, 'X', m.word === 'CRANE' ? 'SLOTH' : 'CRANE', lcg(9)); E.applyMove(m, 'O', m.word === 'MOIST' ? 'DUCKY' : 'MOIST', lcg(9));
+  const pm = E.publicMini(m), cand = E.wordleCandidates(pm);
+  const off = level => { let n = 0; for (let k = 1; k < 30; k++) if (!cand.includes(pick('wordle', pm, 'X', level, k))) n++; return n; };
+  if (cand.length > 2) { assert.ok(off('easy') > 3); assert.equal(off('normal'), 0); }
+});
+
+test('Codebreaker: Easy uses only some of the feedback, Normal all of it (now and then the best split), Hard the race', () => {
+  const m = E.newMini('mastermind', lcg(10)); withT(m);
+  for (const g of [[0, 1, 2, 3], [4, 5, 0, 1]]) E.applyMove(m, 'X', g, lcg(11));
+  const pm = E.publicMini(m), cand = E.mmCandidates(pm).map(c => c.join());
+  const off = level => { let n = 0; for (let k = 1; k < 30; k++) if (!cand.includes(pick('mastermind', pm, 'O', level, k).join())) n++; return n; };
+  assert.ok(off('easy') > 3, 'Easy: codes already ruled out');
+  pm.tune.aiSplitNormal = 0; assert.equal(off('normal'), 0, 'Normal, never the best split: always a code that fits (the best split may be one that cannot be it)');
+});

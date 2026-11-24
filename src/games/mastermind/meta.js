@@ -13,7 +13,8 @@ export const scExplainer = { name: 'Codebreaker', play: "Guess the 4-colour code
 export const TUNE = [
   MODE_TUNE,
   { k: 'colors', label: 'Colours to choose from', def: 6, min: 4, max: 6, step: 1, group: 'Rules' },
-  { k: 'miss', label: 'Computer ignores the clues (%)', def: 0, min: 0, max: 60, step: 1, group: 'Computer' },
+  { k: 'aiHeedEasy', label: "Easy: how much of the feedback it uses (% of the earlier rows it keeps in mind; it guesses any code that fits those)", def: 70, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
+  { k: 'aiSplitNormal', label: 'Normal: how often it picks the code that rules out the most (% of guesses; else any code that still fits)', def: 50, min: 0, max: 100, step: 5, group: 'Computer: Normal' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="8" r="3"/><circle cx="12" cy="8" r="3"/><circle cx="19" cy="8" r="3"/><circle cx="8.5" cy="17" r="2.2"/><circle cx="15.5" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/mastermind): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
