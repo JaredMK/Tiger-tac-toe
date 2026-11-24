@@ -1,5 +1,5 @@
 'use strict';
-// The iOS app's web files (docs/ios-plan.md): the same build as the site (scripts/build-site.js), into _app/ for Capacitor's
+// The iOS app's web files (docs/ios-plan.md): the same build as the site (scripts/build-site.js), into _app.nosync/ for Capacitor's
 // webDir, with what a page served from inside the app needs and a page on the web does not:
 //   - <meta name="ttc-env">: the Firebase project (src/env.js: the app's own address, capacitor://localhost, cannot say),
 //   - the Firebase SDK copied in (vendor/firebase/, <meta name="ttc-sdk">: src/net/connect.js), so the app runs its own copy of
@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
 const { build, envOf } = require('./build-site.js');
-const ROOT = path.join(__dirname, '..'), OUT = path.join(ROOT, '_app');
+const ROOT = path.join(__dirname, '..'), OUT = path.join(ROOT, '_app.nosync');
 const SDK = ['firebase-app.js', 'firebase-database.js', 'firebase-auth.js', 'firebase-functions.js', 'firebase-app-check.js'];
 function versionOfSdk() {
   const m = fs.readFileSync(path.join(ROOT, 'src', 'net', 'connect.js'), 'utf8').match(/FIREBASE_VERSION = '([\d.]+)'/);
@@ -50,8 +50,18 @@ function npmSdk(v) {
   execSync(`tar -xzf firebase-${v}.tgz ${SDK.map(f => 'package/' + f).join(' ')}`, { cwd: tmp });
   return (npmDir = path.join(tmp, 'package'));
 }
+// iCloud Drive's conflict copies ("client 2.js", "src 3"), which the project's folder gets when iCloud syncs it: never in the app.
+const isConflictCopy = name => / \d+(\.[\w.]+)?$/.test(name);
+function dropConflictCopies(dir) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (isConflictCopy(e.name)) fs.rmSync(p, { recursive: true, force: true });
+    else if (e.isDirectory()) dropConflictCopies(p);
+  }
+}
 async function buildApp(env, sha, opts) {
   build(env, sha, OUT);
+  dropConflictCopies(OUT);
   for (const f of ['admin.html', 'admin.js', 'styles.html', 'robots.txt', 'version.json']) fs.rmSync(path.join(OUT, f), { force: true });
   fs.rmSync(path.join(OUT, '.well-known'), { recursive: true, force: true });
   const sdk = !(opts && opts.noSdk);
@@ -60,11 +70,11 @@ async function buildApp(env, sha, opts) {
   fs.writeFileSync(p, appHead(fs.readFileSync(p, 'utf8'), env, sdk));
   return { out: OUT, sdk: v };
 }
-module.exports = { appHead, localImports, buildApp, SDK };
+module.exports = { appHead, localImports, isConflictCopy, dropConflictCopies, buildApp, SDK };
 if (require.main === module) {
   const args = process.argv.slice(2), env = envOf(args.find(a => !a.startsWith('--')) || 'production');
   let sha = process.env.GITHUB_SHA || '';
   if (!sha) try { sha = execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim(); } catch (e) { sha = 'unknown'; }
-  buildApp(env, sha, { noSdk: args.includes('--no-sdk') }).then(r => console.log(`Built _app/ for ${env} at ${sha.slice(0, 7)}${r.sdk ? ` with Firebase ${r.sdk}` : ' (the SDK from the CDN)'}.`))
+  buildApp(env, sha, { noSdk: args.includes('--no-sdk') }).then(r => console.log(`Built _app.nosync/ for ${env} at ${sha.slice(0, 7)}${r.sdk ? ` with Firebase ${r.sdk}` : ' (the SDK from the CDN)'}.`))
     .catch(e => { console.error('Could not build the app: ' + e.message); process.exit(1); });
 }

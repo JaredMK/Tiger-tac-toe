@@ -53,7 +53,7 @@ to reach TestFlight.
     mini-game's title bar and the board's foot to 720px, centred (the end of `styles.css`). Nothing scrolls at 768x1024,
     1024x768 or 1180x820. Keep `UIRequiresFullScreen` off only if the layout is checked at Split View widths too.
 - **The app's web files** (`npm run build:app`, `scripts/build-app.js`):
-  - The site build goes into `_app/`.
+  - The site build goes into `_app.nosync/`.
   - `index.html` gets a `<meta name="ttc-env">` tag naming the Firebase project. Inside the app the page's address is
     `capacitor://localhost`, which can't name a project.
   - The Firebase SDK is copied into the app (`vendor/firebase/`), so the app runs its own copy of every script.
@@ -80,7 +80,7 @@ Run these on the Mac, or as the cloud build's steps.
    and `npm i -D @capacitor/cli`.
 2. **Write `capacitor.config.json`:**
    ```json
-   { "appId": "<bundle ID>", "appName": "Tic Tac Chaos", "webDir": "_app",
+   { "appId": "<bundle ID>", "appName": "Tic Tac Chaos", "webDir": "_app.nosync",
      "ios": { "contentInset": "never", "scheme": "Tic Tac Chaos" },
      "plugins": { "FirebaseAuthentication": { "skipNativeAuth": true, "providers": ["google.com", "apple.com"] } } }
    ```
@@ -354,7 +354,7 @@ iPhone 17 Pro Max's safe areas (62 top, 34 bottom), every outside request blocke
 
 | Item | Before | Now |
 |---|---|---|
-| Wrapper, bundling | Capacitor 8.6, the game bundled in `_app/` with its own Firebase SDK; no server URL | Unchanged: starts offline, a full match against the computer to the result screen with no page error |
+| Wrapper, bundling | Capacitor 8.6, the game bundled in `_app.nosync/` with its own Firebase SDK; no server URL | Unchanged: starts offline, a full match against the computer to the result screen with no page error |
 | Sign in with Apple | Built and wired, hidden everywhere (`src/env.js` `apple: false`) | Shown in the iOS app always (`ui/screens/account.js` `appleOn`); the web keeps its switch. **Needs the Firebase Apple provider on (below)** |
 | Account deletion | In the app (Settings, My Stats); no Apple token revocation | An Apple-ID account's token is revoked first (`net/auth.js` `appleRevoke`: Apple's sheet once more, Firebase `revokeAccessToken`); a closed sheet deletes nothing |
 | Admin / debug | No admin page; Test play and the owner link in the code, unreachable | Both refuse to run in the app (`sandboxParams`, `ownerLink`) |

@@ -54,7 +54,7 @@ test('the committed iOS project: the client\'s version, light appearance, the cr
   assert.match(info, /<key>ITSAppUsesNonExemptEncryption<\/key>\s*<false\/>/, 'no export-compliance question');
   assert.match(fs.readFileSync(path.join(root, 'scripts', 'ios-setup.js'), 'utf8'), /UIUserInterfaceStyle/, 'ios-setup writes it every build');
   const cap = JSON.parse(fs.readFileSync(path.join(root, 'capacitor.config.json'), 'utf8'));
-  assert.equal(cap.ios.backgroundColor, '#f4e6c8'); assert.equal(cap.ios.contentInset, 'never'); assert.equal(cap.webDir, '_app');
+  assert.equal(cap.ios.backgroundColor, '#f4e6c8'); assert.equal(cap.ios.contentInset, 'never'); assert.equal(cap.webDir, '_app.nosync');
   const launch = fs.readFileSync(path.join(root, 'assets', 'app', 'launch-2048.png'));
   for (const f of ['splash-2732x2732.png', 'splash-2732x2732-1.png', 'splash-2732x2732-2.png']) assert.ok(launch.equals(fs.readFileSync(path.join(root, 'ios', 'App', 'App', 'Assets.xcassets', 'Splash.imageset', f))), f + ' is the launch art');
   assert.ok(fs.readFileSync(path.join(root, 'assets', 'app', 'icon-1024.png')).equals(fs.readFileSync(path.join(root, 'ios', 'App', 'App', 'Assets.xcassets', 'AppIcon.appiconset', 'AppIcon-512@2x.png'))), 'the app icon is the Patchwork one');

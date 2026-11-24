@@ -3,6 +3,7 @@ node_modules
 functions/deploy-stamp.txt
 _site
 _app
+_app.nosync
 .claude/
 _shots
 
@@ -15,3 +16,10 @@ ios/DerivedData/
 xcuserdata/
 .ai-ref/
 .ai-mid/
+
+# iCloud Drive's conflict copies ("name 2.js", "name 2"), and Finder's files: never the game's
+* [0-9]
+* [0-9].*
+.DS_Store
+# Xcode's own resolution of the Swift packages (Capacitor writes the package list)
+ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/

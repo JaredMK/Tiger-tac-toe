@@ -104,6 +104,7 @@ function entitlements() {
 }
 
 // ---- the Xcode project (project.pbxproj): the two files it must know, the signing and version settings
+const WEB = '../web.nosync/public';                               // (from the App group's folder, ios/App/App)
 const ID = { plistRef: '5A0F1A00C0DE0000000F0001', plistBuild: '5A0F1A00C0DE0000000F0002', entRef: '5A0F1A00C0DE0000000F0003', privRef: '5A0F1A00C0DE0000000F0004', privBuild: '5A0F1A00C0DE0000000F0005' };
 // The app's privacy manifest (App Store: every app declares what it collects and the required-reason APIs its own code
 // calls). What it collects is docs/app-privacy-labels.md's table: every type linked to the account, none for tracking.
@@ -165,6 +166,8 @@ function projectText(s, build) {
   add('/* Begin PBXFileReference section */', 'ref', `\t\t${ID.entRef} /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };`);
   add('/* Begin PBXBuildFile section */', 'build', `\t\t${ID.privBuild} /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = ${ID.privRef} /* PrivacyInfo.xcprivacy */; };`);
   add('/* Begin PBXFileReference section */', 'ref', `\t\t${ID.privRef} /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };`);
+  // the game's folder: ios/App/web.nosync/public, where iCloud puts no old copy back (scripts/ios-web.js), never Capacitor's own
+  s = s.replace(/(\/\* public \*\/ = \{isa = PBXFileReference; lastKnownFileType = folder; )(?:name = public; )?path = [^;]+;/, `$1name = public; path = ${WEB};`);
   // the App group's children, and the Resources build phase's files
   const grp = s.match(/(504EC3061FED79650016851F \/\* App \*\/ = \{\s*isa = PBXGroup;\s*children = \(\n)/);
   if (!grp) die('project.pbxproj: the App group was not found');
@@ -188,7 +191,7 @@ function projectText(s, build) {
   });
   if (n !== 2) die(`project.pbxproj: expected the app target's 2 build configurations, found ${n}`);
   // each file whole: its reference, in the App group, and the plist in the resources (else Xcode leaves it out of the app)
-  const need = [[`${ID.plistRef} /* GoogleService-Info.plist */ = {isa = PBXFileReference;`, 'the plist\'s file reference'], [`${ID.entRef} /* App.entitlements */ = {isa = PBXFileReference;`, 'the entitlements\' file reference'],
+  const need = [[`path = ${WEB};`, 'the game\'s folder'], [`${ID.plistRef} /* GoogleService-Info.plist */ = {isa = PBXFileReference;`, 'the plist\'s file reference'], [`${ID.entRef} /* App.entitlements */ = {isa = PBXFileReference;`, 'the entitlements\' file reference'],
     [`${ID.plistBuild} /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile;`, 'the plist\'s build file'], [`${ID.plistBuild} /* GoogleService-Info.plist in Resources */,`, 'the plist in the resources'], [`${ID.plistRef} /* GoogleService-Info.plist */,`, 'the plist in the App group'],
     [`${ID.privRef} /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference;`, 'the privacy manifest\'s file reference'], [`${ID.privBuild} /* PrivacyInfo.xcprivacy in Resources */,`, 'the privacy manifest in the resources'], [`${ID.privRef} /* PrivacyInfo.xcprivacy */,`, 'the privacy manifest in the App group']];
   for (const [t, what] of need) if (!s.includes(t)) die(`project.pbxproj: ${what} is missing`);

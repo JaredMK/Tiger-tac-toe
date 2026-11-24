@@ -5,13 +5,13 @@
 // names (src/ui/debug.js puts state, render, newMini... on window, as the browser tests do). Writes _shots/<device>/*.png
 // (gitignored). Needs Playwright with Chromium (npm i --no-save playwright && npx playwright install --with-deps chromium).
 //   node scripts/app-screenshots.js            (npm run app-shots; SHOT_DEVICES=iphone69 to pick devices, SHOT_MINIS=hilo,wordle the games)
-//   SHOT_APP=1: the iOS app's own files instead (_app/, npm run build:app first), as the app runs them: a stand-in Capacitor
+//   SHOT_APP=1: the iOS app's own files instead (_app.nosync/, npm run build:app first), as the app runs them: a stand-in Capacitor
 //   shell (iOS), the phone's safe areas (the Dynamic Island's 62 points at the top, the home bar's 34 at the bottom), no network.
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
-const APP = !!process.env.SHOT_APP, SERVE = APP ? path.join(ROOT, '_app') : ROOT;
+const APP = !!process.env.SHOT_APP, SERVE = APP ? path.join(ROOT, '_app.nosync') : ROOT;
 const OUT = path.join(ROOT, '_shots');
 // The CSS viewport and the scale: 440x956 @3 = 1320x2868 (iPhone 6.9"), 428x926 @3 = 1284x2778 (iPhone 6.5"), 1032x1376 @2 = 2064x2752 (iPad 13").
 const DEVICES = {
