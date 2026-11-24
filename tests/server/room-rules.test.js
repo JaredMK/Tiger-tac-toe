@@ -243,7 +243,7 @@ test('templates rules: an admin\'s game templates (templates/{uid}/{id}: name, g
   await me.write(`templates/${me.uid}/t1abc`, null);                                        // deleted by its owner
   assert.equal(await me.read(`templates/${me.uid}/t1abc`), null);
 });
-test('release rules: Deprioritized (releases/depri/{type}) is the admin\'s alone, a flag true or nothing; anyone reads it', async () => {
+test('release rules: Deprioritized (releases/depri/{type}) and Leaving soon (releases/leaving/{type}) are the admin\'s alone, held to their shapes; anyone reads them', async () => {
   const app = initializeApp({ apiKey: 'test', projectId: PROJECT, databaseURL: `https://${NS}.firebaseio.com`, appId: '1:1:web:1' }, 'c' + (++n));
   const db = D.getDatabase(app);
   D.connectDatabaseEmulator(db, HOST, PORT, { mockUserToken: { sub: 'uid-admin', user_id: 'uid-admin', admin: true } });
@@ -256,6 +256,12 @@ test('release rules: Deprioritized (releases/depri/{type}) is the admin\'s alone
   await denied(admin.write('releases/depri/maze', false), 'a flag that is not true');
   await denied(admin.write('releases/depri/maze', '2026-12-01'), 'a date');
   await denied(admin.write('releases/depri/Not-A-Game', true), 'a name that is not a type');
+  await admin.write('releases/leaving/ttt', true); await admin.write('releases/leaving/war', '2026-12-04');
+  assert.equal(await anon.read('releases/leaving/war'), '2026-12-04', 'Leaving soon: true or a plain date, a public read');
+  await denied(me.write('releases/leaving/ttt', true), 'a player flagging a game leaving');
+  await denied(admin.write('releases/leaving/ttt', 'Friday'), 'a date that is not one');
+  await denied(admin.write('releases/leaving/ttt', false), 'false (cleared is nothing)');
+  await admin.write('releases/leaving/ttt', null); await admin.write('releases/leaving/war', null);
   await admin.write('releases/depri/hex', null);
   assert.equal(await anon.read('releases/depri/hex'), null, 'cleared');
 });

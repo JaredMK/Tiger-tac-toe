@@ -780,6 +780,9 @@ In rotation: In rotation now
 Sticker no date: Coming soon
 Sticker today: Out today!
 Sticker tomorrow: Coming tomorrow
+Leaving no date: Leaving soon
+Leaving today: Leaving today
+Leaving tomorrow: Leaving tomorrow
 Card back, luck end: Luck
 Card back, skill end: Skill
 Card back, race: Race

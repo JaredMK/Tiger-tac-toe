@@ -136,7 +136,8 @@ select { border: 2.5px solid var(--ink); border-radius: 10px; padding: 4px 8px; 
 .relst { display: inline-flex; flex-wrap: wrap; gap: 6px; } .stopt { display: inline-flex; align-items: center; gap: 6px; border: 2px solid var(--line); border-radius: 999px; padding: 6px 12px 5px 8px; background: #fff; cursor: pointer; min-height: 44px; box-sizing: border-box; }
 .stopt input { width: 20px; height: 20px; margin: 0; accent-color: var(--ink); } .stopt b { font: 400 15px/1 'Luckiest Guy', sans-serif; letter-spacing: .02em; padding-top: 2px; }
 .stopt:has(input:checked) { border-color: var(--ink); box-shadow: 0 3px 0 var(--ink); } .stopt.st-released:has(input:checked) { background: color-mix(in srgb, var(--green) 28%, #fff); } .stopt.st-depri:has(input:checked) { background: #e8e4dc; }
-.ggrp { margin: 16px 0 0; font-size: 17px; display: flex; align-items: baseline; gap: 8px; } .ggrp small { color: var(--muted); font-size: 14px; font-family: inherit; }
+.leaverow { flex-wrap: wrap; gap: 10px; margin-top: 8px; } .rf.leavedate input { min-width: 150px; }
+.card h3.ggrp { margin: 18px 0 0; padding: 6px 10px 4px; display: flex; align-items: baseline; gap: 8px; font: 400 18px/1.1 'Luckiest Guy', sans-serif; letter-spacing: .02em; color: var(--ink); background: var(--paper); border-radius: 10px; } .ggrp small { color: var(--muted); font: 600 14px/1 system-ui, sans-serif; }
 .badge.dep { background: #e8e4dc; color: #5b5346; }
 .badge.ret { background: #fde2e2; color: #8a1c1c; } .retrow { flex-wrap: wrap; gap: 10px; margin-top: 8px; } .retrow h3 { margin: 0; font-size: 15px; flex: 1 0 100%; } .retrow .rf input { min-width: 150px; }
 .modesw { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; margin-top: 6px; }

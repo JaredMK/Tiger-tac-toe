@@ -49,6 +49,15 @@ const soonVal = (t, releases) => { const s = releases && releases.soon; return s
 export function soonFlag(t, releases) { const v = soonVal(t, releases); return v === true || (typeof v === 'string' && SOON_DATE.test(v)); }
 export function soonDate(t, releases) { const v = soonVal(t, releases); return typeof v === 'string' && SOON_DATE.test(v) ? v : null; }
 export function soonOn(t, releases, p) { return soonFlag(t, releases) && !releasedOn(t, releases, p) && !depriOn(t, releases); }
+// Leaving soon (December 2026): the admin's flag on a released game (releases/leaving/{type}: true, or a plain date
+// 'YYYY-MM-DD', display only), a banner across its card in the lineup's In rotation list, shown only where the game is
+// released on that platform. It deals nothing differently: the game stays playable until it is switched off (un-released,
+// or its Remove from rotation day, releases/retire, which takes it out of rotation, and so off the lineup, by itself).
+// Its date: its own, else the game's removal day on that platform (retireDate), so a scheduled removal names the day.
+const leaveVal = (t, releases) => { const s = releases && releases.leaving; return s && typeof s === 'object' ? s[t] : undefined; };
+export function leavingFlag(t, releases) { const v = leaveVal(t, releases); return v === true || (typeof v === 'string' && SOON_DATE.test(v)); }
+export function leavingDate(t, releases, p) { const v = leaveVal(t, releases); return typeof v === 'string' && SOON_DATE.test(v) ? v : (leavingFlag(t, releases) ? retireDate(t, releases, p) : null); }
+export function leavingOn(t, releases, p) { return leavingFlag(t, releases) && releasedOn(t, releases, p); }
 // { now, soon }: the games in rotation and coming soon on platform p (has(t): this client has the game); in rotation by
 // shown name, coming soon by date (the soonest first, undated and past dates last), then name.
 // (today: the viewer's 'YYYY-MM-DD'; a date before it sorts with the undated, as its sticker reads "Coming soon")
@@ -56,21 +65,35 @@ export function lineup(releases, p, has = () => true, today = '') {
   const nm = t => String((INFO[t] || {}).name || t), by = (a, b) => nm(a).localeCompare(nm(b), undefined, { numeric: true, sensitivity: 'base' });
   const dt = t => { const d = soonDate(t, releases); return d && d >= today ? d : '9999-99-99'; };
   const ok = TYPES.filter(t => !SC_ONLY.includes(t));
-  return { now: ok.filter(t => releasedOn(t, releases, p) && has(t)).sort(by), soon: ok.filter(t => soonOn(t, releases, p)).sort((a, b) => (dt(a) < dt(b) ? -1 : dt(a) > dt(b) ? 1 : by(a, b))) };
+  const now = ok.filter(t => releasedOn(t, releases, p) && has(t)).sort(by);
+  return { now, soon: ok.filter(t => soonOn(t, releases, p)).sort((a, b) => (dt(a) < dt(b) ? -1 : dt(a) > dt(b) ? 1 : by(a, b))), leaving: now.filter(t => leavingOn(t, releases, p)) };
 }
+// A date's days from the viewer's own local day (`now`), or null for no date, a malformed one or no such day.
+function daysTo(date, now) {
+  if (typeof date !== 'string' || !SOON_DATE.test(date)) return null;
+  const [y, m, d] = date.split('-').map(Number), when = new Date(y, m - 1, d), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (when.getMonth() !== m - 1) return null;                                // (no such day: 2026-02-30)
+  return { days: Math.round((when - today) / 86400000), when };              // (whole local days: a clock change is an hour either way)
+}
+const dayWord = (x, lead) => (x.days < 7 ? lead + ' ' + x.when.toLocaleDateString('en-US', { weekday: 'long' }) : lead + ' ' + x.when.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
 // The release sticker, from the viewer's own local date (`now`): a date today "Out today!", tomorrow "Coming tomorrow",
 // 2 to 6 days on "Coming Wednesday", 7 or more "Coming Dec 3"; no date, or a date already past (the game still not
 // released): "Coming soon" (never a past date).
 export function soonSticker(date, now = new Date()) {
-  if (typeof date !== 'string' || !SOON_DATE.test(date)) return 'Coming soon';
-  const [y, m, d] = date.split('-').map(Number), when = new Date(y, m - 1, d), today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (when.getMonth() !== m - 1) return 'Coming soon';                       // (no such day: 2026-02-30)
-  const days = Math.round((when - today) / 86400000);                        // (whole local days: a clock change is an hour either way)
-  if (days < 0) return 'Coming soon';
-  if (days === 0) return 'Out today!';
-  if (days === 1) return 'Coming tomorrow';
-  if (days < 7) return 'Coming ' + when.toLocaleDateString('en-US', { weekday: 'long' });
-  return 'Coming ' + when.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const x = daysTo(date, now);
+  if (!x || x.days < 0) return 'Coming soon';
+  if (x.days === 0) return 'Out today!';
+  if (x.days === 1) return 'Coming tomorrow';
+  return dayWord(x, 'Coming');
+}
+// The Leaving soon banner, the same way: that day "Leaving today", the next "Leaving tomorrow", 2 to 6 days "Leaving Friday",
+// 7 or more "Leaving Dec 3"; no date, or a date already past (the game still in rotation): "Leaving soon".
+export function leavingSticker(date, now = new Date()) {
+  const x = daysTo(date, now);
+  if (!x || x.days < 0) return 'Leaving soon';
+  if (x.days === 0) return 'Leaving today';
+  if (x.days === 1) return 'Leaving tomorrow';
+  return dayWord(x, 'Leaving');
 }
 // A lineup card's back (ui/lineup.js): each game's meta.js gives its defaults (lineupBlurb, at most LINEUP_MAX characters:
 // what the game is and how you win; luckSkill, 1 pure luck to 5 pure skill; format, 'race' each player their own board or

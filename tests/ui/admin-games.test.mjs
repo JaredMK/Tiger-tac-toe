@@ -358,6 +358,35 @@ test('statuses: the Games list in three groups (Released, Testing, Deprioritized
   assert.equal(A.statusOf('maze'), 'testing');
   await A.saveRelease(radio('maze', 'bogus')); assert.equal(db.writes.length, 0, 'an unknown status: nothing written');
 });
+test('Leaving soon: a switch and a date on a released game\'s Release card, saved to releases/leaving and cleared; never on a game not released; un-releasing clears it; a badge on Games', async () => {
+  await A.loadMetas(); A.ready();
+  const db = mockDb(); A.fb = db.fb;
+  A.ctl = Object.assign(ctl0(), { releases: { ttt: true, war: true, pig: false, leaving: { war: '2999-03-04', ttt: true }, retire: { all: { ttt: '2999-05-06' } } } });
+  let html = draw('#games/war');
+  assert.match(html, /data-leaving="war" checked><span class="good">Leaving soon</);
+  assert.match(html, /type="date" data-leavedate="war" value="2999-03-04">/);
+  html = draw('#games/ttt');
+  assert.match(html, /data-leavedate="ttt" value="">/); assert.match(html, /Banner: the removal day, May 6/, 'no date of its own: the removal day named');
+  html = draw('#games/pig');
+  assert.match(html, /data-leaving="pig" disabled><span class="">Leaving soon: not released</); assert.match(html, /data-leavedate="pig" value="" disabled>/);
+  const list = draw('#games');
+  assert.match(list, /href="#games\/war"[\s\S]*?badge ret">Leaving Mar 4</); assert.match(list, /href="#games\/ttt"[\s\S]*?badge ret">Leaving soon</);
+  const box = (d, extra) => Object.assign({ dataset: d, closest: () => null, insertAdjacentElement() {} }, extra);
+  // on with no date: true; a date picked: the date; off: cleared
+  await A.saveLeaving(box({ leaving: 'c4' }, { checked: true }));
+  assert.deepEqual(db.writes.pop(), ['releases/leaving/c4', true]);
+  draw('#games/c4'); type(el => el.dataset.leavedate === 'c4', { value: '2999-12-24' });
+  await A.saveLeaving(box({ leavedate: 'c4' }, { value: '2999-12-24' }));
+  assert.deepEqual(db.writes.pop(), ['releases/leaving/c4', '2999-12-24']); app.edits = [];
+  await A.saveLeaving(box({ leaving: 'c4' }, { checked: false }));
+  assert.deepEqual(db.writes.pop(), ['releases/leaving/c4', null]);
+  await A.saveLeaving(box({ leaving: 'pig' }, { checked: true }));
+  assert.deepEqual(db.writes.pop(), ['releases/leaving/pig', null], 'not released: never set');
+  // un-released (Testing): the flag goes with it
+  await A.saveRelease({ type: 'radio', value: 'testing', dataset: { rel: 'war' }, closest: () => null, insertAdjacentElement() {} });
+  assert.deepEqual(db.writes.splice(0), [['releases/war', false], ['releases/leaving/war', null]]);
+  assert.equal(A.ctl.releases.leaving.war, undefined);
+});
 test('Coming soon: a switch and a release date beside Released and iOS; never for a game released everywhere; a date passed warns', async () => {
   await A.loadMetas();
   A.ctl = Object.assign(ctl0(), { releases: { pig: false, ttt: true, war: true, platform: { ios: { war: false } }, soon: { pig: '2020-01-02', war: true, ttt: true } } });

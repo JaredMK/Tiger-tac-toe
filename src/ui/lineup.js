@@ -20,7 +20,7 @@
 // reduced motion the faces crossfade instead. The back's words: each game's meta.js (lineupBlurb, luckSkill, format),
 // overridden by the admin's Lineup card (config/lineup/{type}, read at the start: setLineupCfg; core/games.js lineupInfo).
 import { clientHas } from '../core/client.js';
-import { lineup, lineupInfo, soonDate, soonSticker } from '../core/games.js';
+import { leavingDate, leavingSticker, lineup, lineupInfo, soonDate, soonSticker } from '../core/games.js';
 import { dur } from '../core/timer.js';
 import { SND } from '../audio/sound.js';
 import { applyMove, newMini, randomLegalMove } from '../core/minis.js';
@@ -43,7 +43,7 @@ export const luState = lu;
 // The lists for this platform and client (an older app leaves out the games it does not have).
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };   // (this phone's own day)
 export const lineupNow = () => lineup(nowReleases(), PLATFORM, t => clientHas(clientInfo(), t), todayStr());
-const keysOf = L => L.now.map(t => 'r:' + t).concat(L.soon.map(t => 's:' + t));
+const keysOf = L => L.now.map(t => 'r:' + t).concat(L.soon.map(t => 's:' + t), (L.leaving || []).map(t => 'l:' + t));   // (a game newly flagged Leaving soon is NEW too)
 // Shown on the menu: once this device has finished a match.
 export const lineupShown = () => matchesDone() >= 1;
 // NEW: never opened, or a game in a list it was not in when the lineup was last opened.
@@ -99,6 +99,10 @@ function fitWatch() {
   try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(again); } catch (e) { /* (no font API) */ }   // (the words measured in their own font)
 }
 const sticker = t => `<i class="lustk">${esc(soonSticker(soonDate(t, releases)))}</i>`;
+// Leaving soon (core/games.js leavingOn): a skewed tape across the top corner of the card's art, on the front (never over
+// the name) and as a sticker on the back, its words from the date as this phone's own day has it (leavingSticker).
+const leaveWords = t => leavingSticker(leavingDate(t, releases, PLATFORM));
+const leaveTape = t => `<i class="luleave" aria-hidden="true"><span>${esc(leaveWords(t))}</span></i>`;
 
 // ----- the cards' backs: the admin's overrides (config/lineup), kept for the next visit by fetchAttConfig -----
 let luCfg = null;
@@ -109,12 +113,12 @@ const LU_WORDS = { luck: 'Luck', skill: 'Skill', race: 'Race', shared: 'Head-to-
 export const LU_FLIP_MS = 400;
 const meter = n => `<span class="lumeter" aria-hidden="true"><small>${LU_WORDS.luck}</small><span class="lupips">${[1, 2, 3, 4, 5].map(k => `<i${k === n ? ' class="on"' : ''}></i>`).join('')}</span><small>${LU_WORDS.skill}</small></span>`;
 const fmtTag = f => `<i class="lufmt ${f === 'race' ? 'race' : 'h2h'}">${f === 'race' ? LU_WORDS.race : LU_WORDS.shared}</i>`;
-const backOf = (t, soon) => { const c = cardInfo(t); return `<span class="lubin"><b class="lubn">${name(t)}</b><span class="lubl">${esc(c.blurb)}</span><span class="lubf">${meter(c.luckSkill)}${fmtTag(c.format)}</span>${soon ? sticker(t) : ''}</span>`; };
-const ariaOf = (t, soon) => { const c = cardInfo(t); return esc(`${INFO[t].name}${soon ? ', ' + soonSticker(soonDate(t, releases)) : ''}. ${c.blurb} ${LU_WORDS.luck} to ${LU_WORDS.skill}: ${c.luckSkill} of 5. ${c.format === 'race' ? LU_WORDS.race : LU_WORDS.shared}.`); };
+const backOf = (t, soon, leave) => { const c = cardInfo(t); return `<span class="lubin"><b class="lubn">${name(t)}</b><span class="lubl">${esc(c.blurb)}</span><span class="lubf">${meter(c.luckSkill)}${fmtTag(c.format)}</span>${soon ? sticker(t) : ''}${leave ? `<i class="lustk lulvs">${esc(leaveWords(t))}</i>` : ''}</span>`; };
+const ariaOf = (t, soon, leave) => { const c = cardInfo(t); return esc(`${INFO[t].name}${soon ? ', ' + soonSticker(soonDate(t, releases)) : ''}${leave ? ', ' + leaveWords(t) : ''}. ${c.blurb} ${LU_WORDS.luck} to ${LU_WORDS.skill}: ${c.luckSkill} of 5. ${c.format === 'race' ? LU_WORDS.race : LU_WORDS.shared}.`); };
 // The one card turned over (its list and type, 's:dominoes' / 'r:ttt'), or null; kept across a redraw, dropped as the lineup shuts.
 let flipped = null;
 export const flippedCard = () => flipped;
-const card = (key, t, soon, front, back) => { const on = flipped === key; return `<button type="button" class="luflip${on ? ' on' : ''}" data-act="lu-flip" data-lu="${key}" aria-pressed="${on}" aria-label="${ariaOf(t, soon)}"><span class="luin"><span class="luface luf"${on ? ' aria-hidden="true"' : ''}>${front}</span><span class="luface lub"${on ? '' : ' aria-hidden="true"'}>${back}</span></span></button>`; };
+const card = (key, t, soon, front, back, leave = false) => { const on = flipped === key; return `<button type="button" class="luflip${on ? ' on' : ''}" data-act="lu-flip" data-lu="${key}" aria-pressed="${on}" aria-label="${ariaOf(t, soon, leave)}"><span class="luin"><span class="luface luf"${on ? ' aria-hidden="true"' : ''}>${front}</span><span class="luface lub"${on ? '' : ' aria-hidden="true"'}>${back}</span></span></button>`; };
 // A tap on a card: it turns over (another turned back first), or back again. Straight on the page, no redraw (the lineup's
 // own entrances never play again); the state kept for the next redraw.
 export function flipCard(el) {
@@ -152,7 +156,7 @@ let openAt = 0;
 export function setLineupOpen(v) { lineupOpen = !!v; flipped = null; if (lineupOpen) { openAt = performance.now(); markSeen(); fitWatch(); } }
 const name = t => softName(esc(INFO[t].name));
 const soonCard = (t, k) => `<li class="lusoonc${gameArt(t) ? '' : ' mys'}" style="--k:${k}">${card('s:' + t, t, true, `<span class="lufin"><div class="lubig">${preview(t)}</div><div class="lutxt"><b>${name(t)}</b>${sticker(t)}</div></span>`, backOf(t, true))}</li>`;
-const nowCard = (t, k) => `<li class="lunowc${gameArt(t) ? '' : ' mys'}" style="--k:${k}">${card('r:' + t, t, false, `<span class="lufin"><div class="lusm">${preview(t)}</div><b>${name(t)}</b></span>`, backOf(t, false))}</li>`;
+const nowCard = (t, k, leave) => `<li class="lunowc${gameArt(t) ? '' : ' mys'}${leave ? ' leaving' : ''}" style="--k:${k}">${card('r:' + t, t, false, `<span class="lufin"><div class="lusm">${preview(t)}${leave ? leaveTape(t) : ''}</div><b>${name(t)}</b></span>`, backOf(t, false, leave), leave)}</li>`;
 export function renderLineup(screen) {
   if (screen !== 'menu') { lineupOpen = false; flipped = null; }          // (shut once the menu is left)
   if (!lineupOpen) return '';
@@ -161,7 +165,7 @@ export function renderLineup(screen) {
     <div class="luhead"><h1 class="lutitle ccpunch"><span>Game</span> <span>lineup</span></h1><button class="pn y gdone" data-act="lineup"><b>Done</b></button></div>
     <div class="lubody" data-keep-scroll="lineup">
       ${L.soon.length ? `<h2 class="cap luh">Coming soon</h2><ul class="lusoonl">${L.soon.map((t, k) => soonCard(t, k)).join('')}</ul>` : ''}
-      <h2 class="cap luh">In rotation now</h2><ul class="lunowl">${L.now.map((t, k) => nowCard(t, k + L.soon.length)).join('')}</ul>
+      <h2 class="cap luh">In rotation now</h2><ul class="lunowl">${L.now.map((t, k) => nowCard(t, k + L.soon.length, L.leaving.includes(t))).join('')}</ul>
     </div></div>`;
 }
 // The menu's card (its top row, left): a fan of three previews (coming soon first, then in rotation) and GAME LINEUP.

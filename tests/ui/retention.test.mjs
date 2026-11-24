@@ -176,3 +176,42 @@ test('a guest\'s matches go over to the account they make here; an account is ne
   assert.equal(TR.guestCount('z'), 0, 'not counted');
   localStorage.removeItem('tiger-tac-toe.v4.acct');
 });
+
+// Leaving soon (December 2026): the admin's flag on a released game (releases/leaving/{type}: true or a date), a banner
+// across its card in In rotation (front and back), its words from the viewer's own local date; it deals nothing differently.
+test('the leaving banner\'s words, from the viewer\'s own local date; a past date never shown', () => {
+  const now = new Date(2026, 11, 2, 21, 30);                    // Wednesday 2 December 2026, 9:30 pm local
+  assert.equal(G.leavingSticker('2026-12-02', now), 'Leaving today');
+  assert.equal(G.leavingSticker('2026-12-03', now), 'Leaving tomorrow');
+  assert.equal(G.leavingSticker('2026-12-04', now), 'Leaving Friday');
+  assert.equal(G.leavingSticker('2026-12-08', now), 'Leaving Tuesday', '6 days: its weekday');
+  assert.equal(G.leavingSticker('2026-12-09', now), 'Leaving Dec 9', '7 days: the date');
+  assert.equal(G.leavingSticker('2026-12-01', now), 'Leaving soon', 'past');
+  assert.equal(G.leavingSticker(null, now), 'Leaving soon', 'no date');
+  assert.equal(G.leavingSticker('2026-02-30', now), 'Leaving soon', 'no such day');
+  const rel = { war: true, pig: false, leaving: { ttt: '2026-12-20', war: true, pig: true, c4: 'nope' }, retire: { all: { war: '2026-12-11' } }, platform: { ios: { ttt: false } } };
+  assert.equal(G.leavingDate('ttt', rel, 'web'), '2026-12-20'); assert.equal(G.leavingDate('war', rel, 'web'), '2026-12-11', 'no date of its own: its removal day');
+  assert.ok(!G.leavingFlag('c4', rel), 'a malformed value: no flag');
+  assert.ok(G.leavingOn('ttt', rel, 'web') && !G.leavingOn('ttt', rel, 'ios'), 'only where it is released');
+  assert.ok(!G.leavingOn('pig', rel, 'web'), 'never a game not released');
+  assert.deepEqual(G.lineup(rel, 'web').leaving.sort(), ['ttt', 'war']);
+  assert.ok(G.lineup(rel, 'web').now.includes('war'), 'still in rotation: playable');
+  assert.ok(G.releasedTypes(rel).includes('war'), 'dealt as before');
+});
+test('a Leaving soon card: a tape across its art, its words on the back and in its label; NEW for a game newly leaving', () => {
+  state.screen = 'menu';
+  R.setReleases({});
+  LU.setLineupOpen(true); LU.renderLineup('menu'); LU.setLineupOpen(false);
+  assert.doesNotMatch(renderMenu(), /class="lunew"/, 'seen');
+  R.setReleases({ leaving: { ttt: true } });
+  assert.match(renderMenu(), /class="lunew"/, 'a game newly leaving: NEW');
+  LU.setLineupOpen(true);
+  const page = LU.renderLineup('menu'), c = page.slice(page.indexOf('data-lu="r:ttt"') - 200, page.indexOf('data-lu="r:ttt"') + 3000);
+  assert.match(c, /class="lunowc[^"]* leaving"/);
+  assert.match(c, /aria-label="Tic-Tac-Toe, Leaving soon\./);
+  assert.match(c, /<i class="luleave" aria-hidden="true"><span>Leaving soon<\/span><\/i><\/div><b>/, 'over the art, the name below');
+  assert.match(c, /<i class="lustk lulvs">Leaving soon<\/i>/, 'on the back too');
+  assert.equal((page.match(/class="luleave"/g) || []).length, 1, 'that card alone');
+  LU.setLineupOpen(false);
+  R.setReleases({});
+});

@@ -235,6 +235,15 @@ const depriOf = t => !isReleased(t) && !!(ctl.releases && ctl.releases.depri && 
 const statusOf = t => (isReleased(t) ? 'released' : depriOf(t) ? 'depri' : 'testing');
 const STATUS = [['released', 'Released'], ['testing', 'Testing'], ['depri', 'Deprioritized']];
 const STATUS_BADGE = { released: ['rel', 'Released'], testing: ['adm', 'Testing'], depri: ['dep', 'Deprioritized'] };
+// Leaving soon (releases/leaving/{type}: true, or a plain date, display only; src/core/games.js leavingOn): a banner across
+// the game's card in the Game lineup's In rotation list, on each platform where it is released. It deals nothing
+// differently: the game stays playable until it is switched off (Testing, or its Remove from rotation day below, which
+// takes it out of rotation and so off the lineup by itself). With no date of its own the banner names the removal day,
+// where one is set. Only for a released game; un-releasing it clears the flag.
+const leaveRaw = t => (ctl.releases && ctl.releases.leaving ? ctl.releases.leaving[t] : undefined);
+// Coming soon (releases/soon/{type} true: the main menu's Game lineup, src/core/games.js soonOn): shown on a platform only
+// where the game is not released there, so a game is never Released and Coming soon on one platform. Released everywhere
+// (web, and iOS on): the switch is off and can't be set; released on the web with iOS off: coming soon on iOS alone.
 const soonRaw = t => (ctl.releases && ctl.releases.soon ? ctl.releases.soon[t] : undefined);
 const SOON_RE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const soonSet = t => soonRaw(t) === true || (typeof soonRaw(t) === 'string' && SOON_RE.test(soonRaw(t)));
@@ -243,6 +252,9 @@ const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${St
 const soonLate = t => soonShown(t) && !!soonDateOf(t) && soonDateOf(t) < todayLocal();   // its date has passed and it is still not released: players see "Coming soon"
 const soonWhere = t => (depriOf(t) ? '' : !isReleased(t) ? 'web, iOS' : iosOff(t) ? 'iOS' : '');   // the platforms it may be coming soon on (never a deprioritized game)
 const soonShown = t => soonSet(t) && !!soonWhere(t);
+const leaveSet = t => leaveRaw(t) === true || (typeof leaveRaw(t) === 'string' && SOON_RE.test(leaveRaw(t)));
+const leaveDateOf = t => (typeof leaveRaw(t) === 'string' && SOON_RE.test(leaveRaw(t)) ? leaveRaw(t) : '');
+const leaveShown = t => leaveSet(t) && isReleased(t);
 // Remove from rotation (src/core/games.js inRotation: releases/retire/all/{type} everywhere, releases/retire/ios/{type} on iOS
 // alone, as release is): a plain day, New York's as the numbers are; from that day the game is dealt to no new match there
 // (as if un-released: off everywhere, or off on iOS), while a match already dealt keeps it. Cleared: as before.
@@ -272,14 +284,17 @@ function releaseCard(t) {
   return `<div class="card ctl" id="relCard"><div class="row"><h2>Release</h2>
       <span class="relst" role="radiogroup" aria-label="Status">${STATUS.map(([k, lab]) => `<label class="stopt st-${k}"><input type="radio" name="relst" value="${k}" data-rel="${t}"${statusOf(t) === k ? ' checked' : ''}><b>${lab}</b></label>`).join('')}</span>
       <label class="sw ios"><input type="checkbox" data-relios="${t}"${ios ? ' checked' : ''}><span class="${ios ? 'good' : ''}">${ios ? 'iOS on' : 'iOS off'}</span></label>
-      <label class="sw soon"><input type="checkbox" data-soon="${t}"${soonShown(t) ? ' checked' : ''}${soonWhere(t) ? '' : ' disabled'}><span class="${soonShown(t) ? 'good' : ''}">${soonShown(t) ? 'Coming soon' + (soonWhere(t) === 'iOS' ? ' on iOS' : '') : soonWhere(t) ? 'Not coming soon' : 'Coming soon: released'}</span></label>
+      <label class="sw soon"><input type="checkbox" data-soon="${t}"${soonShown(t) ? ' checked' : ''}${soonWhere(t) ? '' : ' disabled'}><span class="${soonShown(t) ? 'good' : ''}">${soonShown(t) ? 'Coming soon' + (soonWhere(t) === 'iOS' ? ' on iOS' : '') : soonWhere(t) ? 'Not coming soon' : depriOf(t) ? 'Coming soon: deprioritized' : 'Coming soon: released'}</span></label>
       <label class="rf soondate"><span>Release date</span><input type="date" data-soondate="${t}" value="${esc(soonDateOf(t))}"${soonShown(t) ? '' : ' disabled'}></label></div>
+    <div class="row leaverow"><label class="sw leave"><input type="checkbox" data-leaving="${t}"${leaveShown(t) ? ' checked' : ''}${on ? '' : ' disabled'}><span class="${leaveShown(t) ? 'good' : ''}">${leaveShown(t) ? 'Leaving soon' : on ? 'Not leaving' : 'Leaving soon: not released'}</span></label>
+      <label class="rf leavedate"><span>Leaving date</span><input type="date" data-leavedate="${t}" value="${esc(leaveDateOf(t))}"${leaveShown(t) ? '' : ' disabled'}></label>${leaveShown(t) && !leaveDateOf(t) && retRaw('all', t) ? `<span class="note" style="margin:0">Banner: the removal day, ${esc(shortDay(retRaw('all', t)))}</span>` : ''}</div>
     <div class="row retrow"><h3>Remove from rotation</h3>${RET_PLATS.map(([p, lab]) => `<label class="rf"><span>${lab}${retGone(p, t) ? ' (out)' : ''}</span><input type="date" data-retire="${p}" data-rt="${t}" value="${esc(retRaw(p, t))}"></label>${retRaw(p, t) ? `<button class="btn sm" data-retclear="${t}" data-p="${p}">Clear</button>` : ''}`).join('')}</div>
     ${soonLate(t) ? `<p class="note warn" id="soonLate">The release date (${esc(soonDateOf(t))}) has passed and the game is still not released${soonWhere(t) === 'iOS' ? ' on iOS' : ''}: players see "Coming soon". Release it, or set a new date.</p>` : ''}
     <p class="note">${esc(catName(t))} · ${esc((m.info && m.info.hint) || '')}${from}</p>
     <p class="note">A tap releases or un-releases at once, for new matches; matches under way are not affected. Admin only: the game exists for nobody but you (not in the Advanced checklist, How to Play, random draws, Find Match or anyone else's rooms); you play it in local matches and friend games you host, and your guest plays it in that match only. Find Match deals released games only, even for you; squares of admin-only games are counted under "Admin-only games (testing)" in the stats. iOS off keeps a released game out of the iOS app (its local matches, and any online match with an iOS player in it) while the web still has it: it only ever takes a released game away from iOS, never gives iOS one the web lacks.</p>
     <p class="note">Coming soon lists the game first in the main menu's Game lineup, on each platform where it is not released (never Released and Coming soon on one platform), with a sticker from its release date as each player's own day has it ("Out today!", "Coming tomorrow", "Coming Wednesday", "Coming Dec 3"; no date, or a date passed: "Coming soon"). The date is display only: releasing stays the switch above. Releasing it everywhere takes it off Coming soon.</p>
     <p class="note">Status: Released (everyone), Testing (admin only: you alone see and play it) or Deprioritized (kept in the code, its page and numbers here, but dealt to nobody, you included: off your Mini-games checklists and templates, How to Play, Practice and the Game lineup, Coming soon too). Releasing it clears Deprioritized; deprioritizing takes it off Coming soon.</p>
+    <p class="note">Leaving soon puts a banner across the game's card in the Game lineup's In rotation list, with its day as each player's own day has it ("Leaving today", "Leaving tomorrow", "Leaving Friday", "Leaving Dec 3"; no date, or a date passed: "Leaving soon"; no date of its own: its Remove from rotation day, where one is set). Display only: the game stays playable until it is switched off (Testing, or its removal day below). Un-releasing it clears the flag.</p>
     <p class="note">Remove from rotation: from that day (New York's) the game is dealt to no new match, everywhere or on iOS alone, as if un-released there; matches already under way keep it. Clear: back to what the switches above say. Scheduled removals are listed at the top of the Games list.</p></div>`;
 }
 // A game's Game lineup card (the main menu's lineup, src/ui/lineup.js): the back's line (at most 120 characters), where it
@@ -383,6 +398,18 @@ async function saveSoon(el) {
   } catch (e) { render(); said(el, false, failed(e)); return; }
   render(); said(app.querySelector(`[data-soon="${t}"]`) || el, true, 'Saved');
 }
+async function saveLeaving(el) {
+  const t = el.dataset.leaving || el.dataset.leavedate, dateEl = app.querySelector(`[data-leavedate="${t}"]`), date = dateEl && SOON_RE.test(dateEl.value) ? dateEl.value : '';
+  if (!GAMES[t]) return;
+  const on = (el.dataset.leaving ? el.checked : leaveSet(t)) && isReleased(t);
+  try {
+    await fb.dbM.set(fb.dbM.ref(fb.db, `releases/leaving/${t}`), on ? (date || true) : null);   // (true: leaving with no date of its own; a date: its banner)
+    const lv = Object.assign({}, ctl.releases && ctl.releases.leaving);
+    if (on) lv[t] = date || true; else delete lv[t];
+    ctl.releases = Object.assign({}, ctl.releases, { leaving: lv });
+  } catch (e) { render(); said(el, false, failed(e)); return; }
+  render(); said(app.querySelector(`[data-leaving="${t}"]`) || el, true, 'Saved');
+}
 async function saveRetire(el, clear) {
   const t = el.dataset.rt || el.dataset.retclear, p = el.dataset.retire || el.dataset.p, date = clear ? '' : (SOON_RE.test(el.value) ? el.value : '');
   if (!GAMES[t] || !['all', 'ios'].includes(p)) return;
@@ -411,6 +438,7 @@ async function saveRelease(el) {
       }
       if (dep && soonSet(t)) { await fb.dbM.set(fb.dbM.ref(fb.db, `releases/soon/${t}`), null); drop('soon', t); }   // (never coming soon)
     }
+    if (!on && leaveSet(t)) { await fb.dbM.set(fb.dbM.ref(fb.db, `releases/leaving/${t}`), null); drop('leaving', t); }   // (leaving is for a released game)
     await clearSoonIfEverywhere(t);
   } catch (e) { render(); said(el, false, failed(e)); return; }
   render(); said(el, true, 'Saved');
@@ -745,7 +773,7 @@ function gamesIndex() {
   const ts = Object.keys(GAMES).sort((a, b) => GAMES[a].localeCompare(GAMES[b]));   // alphabetical by the shown name
   const row = t => {
     const k = tuneList(t).length + legacyCount(t);
-    return `<li><a class="grow" href="#games/${t}">${gameIcon(t)}<span class="gnm"><b>${esc(GAMES[t])}</b><small>${esc(catName(t))} · ${k} setting${k === 1 ? '' : 's'}</small></span><span class="gbadges">${badge(...STATUS_BADGE[statusOf(t)])}${iosOff(t) ? badge('ios', 'iOS off') : ''}${soonShown(t) ? badge('soon', soonLate(t) ? 'Coming soon · date passed' : 'Coming soon') : ''}${retBadges(t)}${raceOn(t) ? badge('race', 'Race') : ''}${gameChanged(t) ? badge('chg', 'changed') : ''}</span></a></li>`;
+    return `<li><a class="grow" href="#games/${t}">${gameIcon(t)}<span class="gnm"><b>${esc(GAMES[t])}</b><small>${esc(catName(t))} · ${k} setting${k === 1 ? '' : 's'}</small></span><span class="gbadges">${badge(...STATUS_BADGE[statusOf(t)])}${leaveShown(t) ? badge('ret', leaveDateOf(t) ? 'Leaving ' + esc(shortDay(leaveDateOf(t))) : 'Leaving soon') : ''}${iosOff(t) ? badge('ios', 'iOS off') : ''}${soonShown(t) ? badge('soon', soonLate(t) ? 'Coming soon · date passed' : 'Coming soon') : ''}${retBadges(t)}${raceOn(t) ? badge('race', 'Race') : ''}${gameChanged(t) ? badge('chg', 'changed') : ''}</span></a></li>`;
   };
   // Three groups, each alphabetical: Released, Testing (admin only), Deprioritized (kept, dealt to nobody).
   const rows = STATUS.map(([k, lab]) => { const g = ts.filter(t => statusOf(t) === k); return g.length ? `<h3 class="ggrp" id="ggrp-${k}">${lab} <small>${g.length}</small></h3><ul class="glist">${g.map(row).join('')}</ul>` : ''; }).join('');
@@ -1278,6 +1306,7 @@ app.addEventListener('change', e => {
   else if (d.rel) saveRelease(e.target);
   else if (d.relios) saveRelIos(e.target);
   else if (d.soon || d.soondate) saveSoon(e.target);
+  else if (d.leaving || d.leavedate) saveLeaving(e.target);
   else if (d.retire) saveRetire(e.target, false);
   else dirtyMark(e.target);   // (a select or the Mode switch on a game's page)
 });
@@ -1285,6 +1314,6 @@ if (window.TTT_FIREBASE && window.TTT_FIREBASE.offline) {   // the tests (tests/
   window.TTC_ADMIN = { get ctl() { return ctl; }, set ctl(v) { ctl = v; }, set fb(v) { fb = v; }, get devmeta() { return devmeta; }, get model() { return model; }, get filters() { return filters; }, get scope() { return scopeOf(); },
     seed(o) { devmeta = o.devmeta || {}; ownerToken = o.token || null; templates = o.templates || {}; flagged = o.flagged || null; setRaw(o); },   // the rows a page counts (src/admin/metrics.js build's data)
     ready() { user = { email: 'test', uid: 'admin' }; view = { status: 'ready', error: '' }; if (!raw) setRaw({}); },
-    setFilter, tstate, metaPut, exAdd, loadMetas, loadCtl, draw, render, route, gamesIndex, gamePage, settingsPage, saveGame, resetGame, legacyPath, isReleased, iosOff, gameChanged, raceOn, TEST_TYPES, saveRetire, retireList, saveLineup, saveRelease, statusOf };
+    setFilter, tstate, metaPut, exAdd, loadMetas, loadCtl, draw, render, route, gamesIndex, gamePage, settingsPage, saveGame, resetGame, legacyPath, isReleased, iosOff, gameChanged, raceOn, TEST_TYPES, saveRetire, retireList, saveLineup, saveRelease, saveLeaving, statusOf };
 } else boot().catch(() => { app.innerHTML = '<div class="card msg"><h1>Tic Tac Chaos Stats</h1><p>Could not load. Check the connection and reload.</p></div>'; });
 document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false }); document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });   // (iPhone's pinch)
