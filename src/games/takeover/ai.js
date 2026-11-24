@@ -95,14 +95,25 @@ export function needs(pm, p) {
   if (k) return k[p];
   const e = pm.cells.filter(c => !c).length; return e ? raceNeeds(takeCount(pm.cells, p) - takeCount(pm.cells, other(p)), e / 5, 3) : Infinity;
 }
+// Each level its own look-ahead (TUNE: Easy depthEasy, Normal depth: 1 the cells it takes now, 2 the other side's best
+// answer too; Hard the solved game on 5x5, the deep search on 7x7) and its own mistake rate (aiMiss<Level>, the level
+// settings: `worse` below). The old level-blind `miss` is folded into them.
 export function best(pm, me, rng, style, ctx) {
-  const t = tune(pm), e = pm.cells.map((c, i) => (c ? -1 : i)).filter(i => i >= 0), hard = !!(ctx && ctx.level === 'hard');
-  const slip = t.miss && rng() < t.miss / 100, i = slip ? e[randInt(rng, e.length)] : null;   // (the admin's settings: a mistake now and then, any empty cell)
+  const t = tune(pm), level = (ctx && ctx.level) || 'normal', hard = level === 'hard';
   let b;
-  if (slip) b = { i, after: takeApply(pm.cells, i, me) };
-  else if (hard && pm.cells.length === N5) b = hard5(pm, me, rng);   // (Hard on 5x5: the solved game)
-  else b = hard ? takeHard(pm.cells, me, ctx.until) : takeSearch(pm.cells, me, rng, t.depth);   // (Hard on 7x7: the deep search, as the time allows)
+  if (hard && pm.cells.length === N5) b = hard5(pm, me, rng);   // (Hard on 5x5: the solved game)
+  else b = hard ? takeHard(pm.cells, me, ctx.until) : takeSearch(pm.cells, me, rng, level === 'easy' ? t.depthEasy : t.depth);   // (Hard on 7x7: the deep search, as the time allows)
   const full = !b.after.includes(null), o = other(me), after = { type: 'takeover', cells: b.after };
   if (b.known) KNOWN.set(after, b.known);
   return { move: b.i, after, win: full && takeCount(b.after, me) > takeCount(b.after, o) };
+}
+// A weaker move (the level's mistakes, core/ai.js aiSlip): one of the better half by what it takes at once, not the
+// one it meant: a grab that looks good now and is not the best.
+export function worse(pm, me, rng, ctx) {
+  const o = other(me), net = c => takeCount(c, me) - takeCount(c, o);
+  const moves = pm.cells.map((c, i) => (c ? null : { i, v: net(takeApply(pm.cells, i, me)) })).filter(x => x && x.i !== (ctx && ctx.best));
+  if (!moves.length) return null;
+  moves.sort((a, b) => b.v - a.v);
+  const pool = moves.slice(0, Math.max(1, Math.ceil(moves.length / 2)));
+  return pool[randInt(rng, pool.length)].i;
 }

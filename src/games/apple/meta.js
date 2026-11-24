@@ -26,3 +26,7 @@ export const TUNE = [
 export const lineupBlurb = 'Spin to pick apples into your bucket. Birds and spills put some back. Empty your tree first.';
 export const luckSkill = 1;
 export const format = 'race';
+
+// The computer's levels (core/tune.js levelTune): pure luck, nothing to choose (every level makes the one move there is:
+// apple's ai.js), so no mistake rate; each level keeps its thinking time (feel only).
+export const AI_LEVELS = { miss: false };

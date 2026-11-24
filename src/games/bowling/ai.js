@@ -2,9 +2,9 @@
 // each of the three sweeping meters at it, late or early by its timing error (TUNE aiMs, aiMsHard, aiMsEasy: ms on
 // each tap), so where the meter stops is where its finger did. Its picks: every curve from a list, aimed by the hook's
 // own law (rules.js bowlPath) so the ball comes into the pins at one of the pockets, at two powers, each played out in
-// the real roll; Normal takes the best of them, Hard the best of the leaders over a dozen rolls with its own timing
-// error (a roll that only strikes when it is perfect is not worth one that strikes on a near miss), Easy any of the
-// better half.
+// the real roll; Normal and Hard take the best of the leaders over a dozen rolls with their own timing error (a roll
+// that only strikes when it is perfect is not worth one that strikes on a near miss), Easy any of the better half. The
+// levels' timing errors (aiMsEasy, aiMs, aiMsHard: Computer: Easy / Normal / Hard) are what tells Normal from Hard.
 import { gaussOf, makeRng } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 import { physRun } from '../shared/physics.js';
@@ -49,13 +49,13 @@ export function errMs(mini, level) { const t = tune(mini); return level === 'har
 // timing error, a dozen rolls each from a fixed seed, and the best on average kept.
 const PICKS = new Map();
 export function bowlPick(mini, p, rng, level) {
-  const t = tune(mini), key = [t.vMax, t.hook, level === 'hard' ? [t.aiMsHard, t.aimMs, t.curveMs, t.powerMs].join() : ''].join('|');
+  const t = tune(mini), sure = level !== 'easy', key = [t.vMax, t.hook, level, sure ? [errMs(mini, level), t.aimMs, t.curveMs, t.powerMs].join() : ''].join('|');
   let o = PICKS.get(key);
   if (!o) {
     const tried = bowlCandidates(mini).map(c => ({ c, s: pinsOf(mini, p, c) })).sort((a, b) => b.s - a.s);
     if (!tried.length) tried.push({ c: bowlShot({ aim: 0, curve: 0, power: 0.85 }), s: 0 });
     o = { tried, hard: null };
-    if (level === 'hard') {
+    if (sure) {
       const ms = Math.max(10, errMs(mini, level) || 0), top = tried.slice(0, 6), r = makeRng('bowl-hard');
       for (const x of top) { let sum = 0; for (let k = 0; k < 12; k++) { const m = bowlTimed(x.c, mini, ms, r); sum += m ? pinsOf(mini, p, m) : 0; } x.sure = sum / 12; }
       o.hard = top.reduce((a, b) => (b.sure > a.sure ? b : a));
@@ -63,9 +63,8 @@ export function bowlPick(mini, p, rng, level) {
     if (PICKS.size > 20) PICKS.clear();
     PICKS.set(key, o);
   }
-  if (level === 'hard') return o.hard;
-  if (level === 'easy') return o.tried[Math.floor(rng() * Math.max(1, Math.ceil(o.tried.length / 2)))];
-  return o.tried[0];
+  if (sure) return o.hard;
+  return o.tried[Math.floor(rng() * Math.max(1, Math.ceil(o.tried.length / 2)))];
 }
 export function best(pm, me, rng, style, ctx) {
   const level = (ctx && ctx.level) || 'normal', pick = bowlPick(pm, me, rng, level);

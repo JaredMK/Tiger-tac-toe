@@ -20,3 +20,7 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export const lineupBlurb = 'Roll to win rounds: 7 or 11 at once, or your point again before a 7. Win enough rounds first.';
 export const luckSkill = 1;
 export const format = 'race';
+
+// The computer's levels (core/tune.js levelTune): pure luck, nothing to choose (every level makes the one move there is:
+// craps's ai.js), so no mistake rate; each level keeps its thinking time (feel only).
+export const AI_LEVELS = { miss: false };

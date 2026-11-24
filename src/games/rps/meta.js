@@ -21,3 +21,8 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export const lineupBlurb = 'Throw rock, paper or scissors against the house. Win enough throws first.';
 export const luckSkill = 1;
 export const format = 'race';
+
+// The computer's levels (core/tune.js levelTune): pure luck: the house throws at random, so no throw is better than
+// another and no level can play better (ai.js throws at random at every level); no mistake rate; each level keeps its
+// thinking time (feel only).
+export const AI_LEVELS = { miss: false };

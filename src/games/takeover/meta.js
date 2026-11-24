@@ -9,10 +9,12 @@ export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="9" y=
 // Its settings (the admin's Mini-game Settings; core/tune.js): the board's side dealt into each square (its cells).
 export const TUNE = [
   { k: 'size', label: 'Board size (cells a side)', def: 5, opts: [5, 7], group: 'Board' },
-  { k: 'depth', label: 'Computer look-ahead (moves)', def: 2, opts: [1, 2], group: 'Computer' },
-  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 50, step: 5, group: 'Computer' },
+  { k: 'depthEasy', label: 'How far it looks ahead (1: its own move, 2: your best answer too)', def: 1, opts: [1, 2], group: 'Computer: Easy' },
+  { k: 'depth', label: 'How far it looks ahead (1: its own move, 2: your best answer too)', def: 2, opts: [1, 2], group: 'Computer: Normal' },   // (the key from before the levels: Normal's; Hard plays the solved game)
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/takeover): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Take an empty square and every square around it, even your rival\'s. Own the most when it\'s full.';
 export const luckSkill = 5;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): its mistakes by level (Hard: the solved game, a slip now and then).
+export const AI_LEVELS = { miss: { easy: 8, normal: 8, hard: 22 } };

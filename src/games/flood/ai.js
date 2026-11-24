@@ -1,7 +1,7 @@
 // Flood: the computer's play.
 import { randInt } from '../../core/random.js';
 import { other } from '../../core/util.js';
-import { FLOOD, floodApply, floodCfg, floodHard, floodNear, floodSearch } from './rules.js';
+import { FLOOD, floodApply, floodCfg, floodGain, floodHard, floodNear, floodSearch } from './rules.js';
 
 // ---- Hard: the square solved, every move ----
 // The cells not yet in the blob never change colour, so they fall into regions (touching cells of one colour) that
@@ -125,18 +125,28 @@ export function needs(pm, p) {
   if (k) return k[p];
   return Math.max(0.5, (floodCfg(pm).goal - pm.score[p]) / 3.2);
 }
+// Each level its own play (TUNE): Easy and Normal the colour that grabs most now, less the other side's best answer
+// weighed by their setting (replyEasy 0: it never minds what it leaves you; reply 60%); Hard the solved game where it can
+// be solved, else the deep search. Their mistakes by level (aiMiss<Level>, `worse` below; the old level-blind `miss`
+// folded into them).
 export function best(pm, me, rng, style, ctx) {
-  const cf = floodCfg(pm), hard = !!(ctx && ctx.level === 'hard');
-  if (cf.miss && rng() < cf.miss / 100) {                   // (the admin's settings: a mistake now and then, any colour but the blob's)
-    const cs = Array.from({ length: cf.colors - 1 }, (_, k) => (k >= pm.colors[0] ? k + 1 : k)), c = cs[randInt(rng, cs.length)], a = floodApply(pm, c, me);
-    return { move: c, after: { type: 'flood', colors: a.colors, owner: a.owner, score: a.score }, win: a.score[me] >= cf.goal };
-  }
+  const cf = floodCfg(pm), level = (ctx && ctx.level) || 'normal', hard = level === 'hard';
   const h = hard ? hardPick(pm, me, rng, cf) : null;
   if (h) {
     const a = floodApply(pm, h.c, me), after = { type: 'flood', colors: a.colors, owner: a.owner, score: a.score }, win = a.score[me] >= cf.goal;
     if (!win) KNOWN.set(after, known(after, cf, me, h.chance));
     return { move: h.c, after, win };
   }
-  const b = hard ? floodHard(pm, me, ctx.until) : floodSearch(pm, me, rng);   // (Hard on a board too broken up to solve: the deep search, as the time allows)
+  const w = (level === 'easy' ? cf.replyEasy : cf.reply) / 100;
+  const b = hard ? floodHard(pm, me, ctx.until) : floodSearch(pm, me, rng, Number.isFinite(w) ? w : 0.6);   // (Hard on a board too broken up to solve: the deep search, as the time allows)
   return { move: b.c, after: b.after, win: b.win };
+}
+// A weaker colour (the level's mistakes, core/ai.js aiSlip): another colour that grabs something, else any other colour
+// but the blob's.
+export function worse(pm, me, rng, ctx) {
+  const cf = floodCfg(pm), blob = pm.colors[0], all = [];
+  for (let c = 0; c < cf.colors; c++) if (c !== blob && c !== (ctx && ctx.best)) all.push(c);
+  if (!all.length) return null;
+  const grab = all.filter(c => floodGain({ colors: pm.colors, owner: pm.owner }, c) > 0), pool = grab.length ? grab : all;
+  return pool[randInt(rng, pool.length)];
 }

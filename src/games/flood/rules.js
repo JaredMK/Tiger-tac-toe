@@ -32,16 +32,17 @@ export function floodApply(pm, c, p) {
   for (const w of waves) for (const i of w) { owner[i] = p; colors[i] = c; score[p] += 1; }
   return { colors, owner, score, waves };
 }
-// The computer, two moves deep: the colour with the most cells for it less the other player's best answer.
-export function floodSearch(pm, me, rng) {
+// The computer, two moves deep: the colour with the most cells for it less the other player's best answer (weighed by
+// `reply`, 0.6 by default; 0: the biggest grab now, never minding the answer: Easy's).
+export function floodSearch(pm, me, rng, reply0 = 0.6) {
   const o = other(me), blob = pm.colors[0], { colors: nc, goal } = floodCfg(pm);
   let best = null;
   for (let c = 0; c < nc; c++) {
     if (c === blob) continue;
     const a = floodApply(pm, c, me), gain = a.score[me] - pm.score[me];
     let reply = 0;
-    if (a.score[me] < goal) for (let d = 0; d < nc; d++) { if (d === c) continue; const g = floodGain({ colors: a.colors, owner: a.owner }, d); if (g > reply) reply = g; }
-    const v = (a.score[me] >= goal ? 1000 : 0) + (gain > 0 ? 100 : 0) + gain - 0.6 * reply + (rng ? rng() * 0.01 : 0);   // a colour that grabs nothing only when none grabs anything (else both sides could stall)
+    if (a.score[me] < goal && reply0 > 0) for (let d = 0; d < nc; d++) { if (d === c) continue; const g = floodGain({ colors: a.colors, owner: a.owner }, d); if (g > reply) reply = g; }
+    const v = (a.score[me] >= goal ? 1000 : 0) + (gain > 0 ? 100 : 0) + gain - reply0 * reply + (rng ? rng() * 0.01 : 0);   // a colour that grabs nothing only when none grabs anything (else both sides could stall)
     if (!best || v > best.v) best = { c, v, gain, after: { type: 'flood', colors: a.colors, owner: a.owner, score: a.score }, win: a.score[me] >= goal };
   }
   return best;

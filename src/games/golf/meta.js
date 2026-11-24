@@ -16,8 +16,12 @@ export const TUNE = [
   { k: 'water', label: 'Water', def: 'on', opts: ['off', 'on'], group: 'Board' },
   { k: 'waterPenalty', label: 'Water penalty (strokes)', def: 1, min: 0, max: 3, step: 1, group: 'Board' },
   { k: 'mills', label: 'Moving obstacles (windmills)', def: 'on', opts: ['off', 'on'], group: 'Board' },
-  { k: 'aiAim', label: 'Computer aim error (mrad)', def: 20, min: 0, max: 200, step: 1, group: 'Computer' },
-  { k: 'aiPow', label: 'Computer power error (%)', def: 4, min: 0, max: 20, step: 0.5, group: 'Computer' },
+  { k: 'aiAimEasy', label: 'Aim error (thousandths of a radian)', def: 45, min: 0, max: 200, step: 1, group: 'Computer: Easy' },
+  { k: 'aiPowEasy', label: 'Power error (%)', def: 8, min: 0, max: 20, step: 0.5, group: 'Computer: Easy' },
+  { k: 'aiAim', label: 'Aim error (thousandths of a radian)', def: 20, min: 0, max: 200, step: 1, group: 'Computer: Normal' },   // (the keys from before the levels: Normal's)
+  { k: 'aiPow', label: 'Power error (%)', def: 4, min: 0, max: 20, step: 0.5, group: 'Computer: Normal' },
+  { k: 'aiAimHard', label: 'Aim error (thousandths of a radian)', def: 8, min: 0, max: 200, step: 1, group: 'Computer: Hard' },
+  { k: 'aiPowHard', label: 'Power error (%)', def: 2, min: 0, max: 20, step: 0.5, group: 'Computer: Hard' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v14"/><path d="M12 3l7 3-7 3"/><ellipse cx="12" cy="18.5" rx="7" ry="2.5"/><circle cx="6" cy="14" r="1.8" fill="currentColor" stroke="none"/></svg>';
 export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)

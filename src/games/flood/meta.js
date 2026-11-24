@@ -10,9 +10,12 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export const TUNE = [
   { k: 'colors', label: 'Colours', def: 5, min: 3, max: 5, step: 1, group: 'Board' },
   { k: 'goal', label: 'Squares to win', def: 18, min: 10, max: 18, step: 1, group: 'Rules' },
-  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 50, step: 5, group: 'Computer' },
+  { k: 'replyEasy', label: 'How much it minds the grab it leaves you (%)', def: 0, min: 0, max: 100, step: 10, group: 'Computer: Easy' },
+  { k: 'reply', label: 'How much it minds the grab it leaves you (%)', def: 60, min: 0, max: 100, step: 10, group: 'Computer: Normal' },   // (Hard: the solved game where it can be solved)
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/flood): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Pick a colour and your blob grows into it. Every square it grabs is yours. Grab enough first.';
 export const luckSkill = 4;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): its mistakes by level.
+export const AI_LEVELS = { miss: { easy: 20, normal: 6, hard: 2 } };

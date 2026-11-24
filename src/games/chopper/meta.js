@@ -14,8 +14,12 @@ export const TUNE = [
   { k: 'maxSecs', label: 'Attempt time limit (s)', def: 30, min: 5, max: 60, step: 1, group: 'Timing' },   // (shared/runner.js RUN_MAX: the same default)
   { k: 'up', label: 'Climb when held (m/s²)', def: 16, min: 12, max: 22, step: 1, group: 'Rules' },
   { k: 'down', label: 'Drop when let go (m/s²)', def: 15, min: 12, max: 22, step: 1, group: 'Rules' },
-  { k: 'aiRuns', label: 'Computer: runs to finish (about)', def: 4.5, min: 2, max: 10, step: 0.5, group: 'Computer' },
-  { k: 'aiSpread', label: 'Computer: run length spread (%)', def: 45, min: 15, max: 80, step: 5, group: 'Computer' },
+  { k: 'aiRunsEasy', label: 'Runs it takes to finish, about (more: shorter runs)', def: 5.5, min: 2, max: 12, step: 0.5, group: 'Computer: Easy' },
+  { k: 'aiSpreadEasy', label: 'How much its run lengths vary (%)', def: 50, min: 15, max: 80, step: 5, group: 'Computer: Easy' },
+  { k: 'aiRuns', label: 'Runs it takes to finish, about (more: shorter runs)', def: 4.5, min: 2, max: 12, step: 0.5, group: 'Computer: Normal' },   // (the key from before the levels: Normal's)
+  { k: 'aiSpread', label: 'How much its run lengths vary (%)', def: 45, min: 15, max: 80, step: 5, group: 'Computer: Normal' },
+  { k: 'aiRunsHard', label: 'Runs it takes to finish, about (more: shorter runs)', def: 3.5, min: 2, max: 12, step: 0.5, group: 'Computer: Hard' },
+  { k: 'aiSpreadHard', label: 'How much its run lengths vary (%)', def: 40, min: 15, max: 80, step: 5, group: 'Computer: Hard' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5h16M12 4.5V8"/><ellipse cx="13" cy="12" rx="6" ry="4" fill="currentColor" fill-opacity=".35"/><path d="M7 11.5H2.5l-1-2.5M8.5 19h10M11 16v3M16 16v3"/></svg>';
 export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)

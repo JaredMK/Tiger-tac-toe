@@ -72,10 +72,10 @@ function tunedPlay(t, seed, guard = 400) {                        // (the comput
   return st;
 }
 test('takeover: the admin\'s settings: a 7x7 board, a one-move look-ahead and mistakes deal a square that plays by them', () => {
-  E.setTune('takeover', { size: 7, depth: 1, miss: 30 });
+  E.setTune('takeover', { size: 7, depth: 1, aiMissNormal: 30 });
   try {
     const m = E.newMini('takeover', lcg(1));
-    assert.equal(m.cells.length, 49); assert.deepEqual(m.tune, { size: 7, depth: 1, miss: 30 });
+    assert.equal(m.cells.length, 49); assert.deepEqual(m.tune, { size: 7, depth: 1, aiMissNormal: 30 });
     E.applyMove(m, 'X', 8);
     assert.deepEqual(m.cells.map((c, i) => (c ? i : -1)).filter(i => i >= 0), [1, 7, 8, 9, 15], 'the neighbours on a 7-wide board');
     const st = tunedPlay('takeover', 3);
@@ -91,33 +91,33 @@ test('takeover: the Hard computer searches deeper (a forced win Normal misses), 
   const pm = { type: 'takeover', cells };
   const h = R.takeHard(cells, 'X');
   assert.ok(h.i === 4 && h.v >= R.TAKE_HARD.win, `a forced win seen (${h.i}: ${h.v} at depth ${h.depth})`);
-  const hm = E.localBest(pm, 'X', lcg(1), {}, hard).move;                 // (Hard has the square solved: any of the winning cells, 4 among them)
+  const hm = E.localPlain(pm, 'X', lcg(1), {}, hard).move;                 // (Hard has the square solved: any of the winning cells, 4 among them)
   assert.ok(R.takeHard(E.takeApply(cells, hm, 'X'), 'O').v <= -R.TAKE_HARD.win, `Hard's cell (${hm}) wins by force`);
-  assert.equal(E.localBest(pm, 'X', lcg(1), {}, normal).move, 22, 'Normal as before');
+  assert.equal(E.localPlain(pm, 'X', lcg(1), {}, normal).move, 22, 'Normal as before');
   assert.ok(R.takeHard(E.takeApply(cells, 22, 'X'), 'O').v >= R.TAKE_HARD.win, 'after Normal\'s move O wins by force');
   // the shape the square choice needs: the position after, the last cell's win
-  const w = E.localBest(pm, 'X', lcg(1), {}, hard);
+  const w = E.localPlain(pm, 'X', lcg(1), {}, hard);
   assert.deepEqual(w.after, { type: 'takeover', cells: E.takeApply(cells, w.move, 'X') }); assert.equal(w.win, false);
   const last = Array.from({ length: 25 }, (_, i) => (i < 12 ? 'X' : 'O')); last[12] = null;
-  assert.deepEqual(E.localBest({ type: 'takeover', cells: last }, 'X', lcg(1), {}, hard).win, true, 'the last cell, most cells');
+  assert.deepEqual(E.localPlain({ type: 'takeover', cells: last }, 'X', lcg(1), {}, hard).win, true, 'the last cell, most cells');
   // legal moves everywhere (5x5 and the admin's 7x7), the mistake rate still applied, quickly
   const r = lcg(5);
-  E.localBest(E.publicMini(E.newMini('takeover', lcg(1))), 'X', lcg(1), {}, hard);               // (warm)
+  E.localPlain(E.publicMini(E.newMini('takeover', lcg(1))), 'X', lcg(1), {}, hard);               // (warm)
   for (let k = 0; k < 8; k++) {
     const b = E.newMini('takeover', lcg(k)); if (k >= 6) { b.tune = { size: 7 }; b.cells = new Array(49).fill(null); }
     let p = 'X';
     for (let i = 0; i < k; i++) { const mv = E.randomLegalMove(b, p, r); if (E.applyMove(b, p, mv, r).outcome !== 'continue') break; p = E.other(p); }
     if (!b.cells.includes(null)) continue;
-    const t0 = performance.now(); const mv = E.localBest(E.publicMini(b), p, lcg(k), {}, hard).move; const ms = performance.now() - t0;
+    const t0 = performance.now(); const mv = E.localPlain(E.publicMini(b), p, lcg(k), {}, hard).move; const ms = performance.now() - t0;
     assert.ok(Number.isInteger(mv) && b.cells[mv] === null, `a legal cell (${mv})`);
     assert.ok(ms < 150, `a Hard move in ${ms.toFixed(1)} ms`);
   }
-  const sq = E.newMini('takeover', lcg(2)); sq.tune = { miss: 50 };
+  const sq = E.newMini('takeover', lcg(2)); sq.tune = { aiMissHard: 50 };
   const slips = new Set();
   for (let i = 0; i < 20; i++) slips.add(E.localBest(E.publicMini(sq), 'X', E.makeRng('take-hard-miss' + i), {}, hard).move);
   assert.ok(slips.size > 1, 'the mistake rate still applies');
   const t1 = performance.now(), until = () => Math.max(0, t1 + 12 - performance.now());
-  const timed = E.localBest(E.publicMini(E.newMini('takeover', lcg(3))), 'X', lcg(1), {}, { level: 'hard', until });
+  const timed = E.localPlain(E.publicMini(E.newMini('takeover', lcg(3))), 'X', lcg(1), {}, { level: 'hard', until });
   assert.ok(performance.now() - t1 < 40 && Number.isInteger(timed.move) && timed.move >= 0 && timed.move < 25, 'stops at its budget with a legal move');
 });
 
@@ -142,7 +142,7 @@ test('takeover: Hard plays the solved 5x5 game: it wins every won position again
   for (let g = 0; g < 12; g++) {
     const rng = E.makeRng('take-solved' + g), b = E.newMini('takeover', rng), me = g % 2 ? 'X' : 'O'; let p = me, res;
     do {
-      const mv = p === me ? E.localBest(E.publicMini(b), p, rng, {}, hard).move : g < 8 ? E.randomLegalMove(b, p, rng) : R.takeHard(b.cells, p).i;
+      const mv = p === me ? E.localPlain(E.publicMini(b), p, rng, {}, hard).move : g < 8 ? E.randomLegalMove(b, p, rng) : R.takeHard(b.cells, p).i;
       res = E.applyMove(b, p, mv, rng); p = E.other(p);
     } while (res.outcome === 'continue');
     assert.equal(res.winner, me, 'the first player, playing the solved game, takes the square');
@@ -151,11 +151,11 @@ test('takeover: Hard plays the solved 5x5 game: it wins every won position again
   assert.equal(Object.keys(T.TAKE_BOOK).length, 51, 'the empty board and every board with one move played, either side to move');
   // needs: as before for the other levels; for Hard's own positions, the solved result
   const pm = E.publicMini(E.newMini('takeover', lcg(1))); pm.cells = E.takeApply(E.takeApply(pm.cells, 12, 'X'), 6, 'O');
-  const before = [E.needsOf(pm, 'X'), E.needsOf(pm, 'O')], lb = E.localBest(pm, 'X', lcg(1), {}, hard);
+  const before = [E.needsOf(pm, 'X'), E.needsOf(pm, 'O')], lb = E.localPlain(pm, 'X', lcg(1), {}, hard);
   const sure = A.takeSolve(bits(lb.after.cells, 'O'), bits(lb.after.cells, 'X')) < 0;
   assert.ok(sure ? E.needsOf(lb.after, 'O') > 5 * E.needsOf(lb.after, 'X') : E.needsOf(lb.after, 'X') > 5 * E.needsOf(lb.after, 'O'), 'after Hard\'s move the square is counted for whoever has it');
   const fresh = E.publicMini(E.newMini('takeover', lcg(1))); fresh.cells = pm.cells.slice();
-  E.localBest(fresh, 'X', lcg(1), {}, { level: 'normal', until: null });
+  E.localPlain(fresh, 'X', lcg(1), {}, { level: 'normal', until: null });
   const plain = { type: 'takeover', cells: pm.cells.slice() };
   assert.deepEqual([E.needsOf(fresh, 'X'), E.needsOf(fresh, 'O')], [E.needsOf(plain, 'X'), E.needsOf(plain, 'O')], 'Normal\'s count of a square is untouched');
   assert.ok(before.every(Number.isFinite));
