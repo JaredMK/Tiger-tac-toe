@@ -204,15 +204,15 @@ export function needs(pm, p) {
 // time it is there to see, else one of its aiPoolEasy likeliest-looking columns at random.
 const num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
 function c4Easy(pm, me, rng, t) {
-  const moves = c4Moves(pm.cells, me, Math.max(1, num(t.aiDepthEasy, 2)), t.k), WINV = 5000;
+  const moves = c4Moves(pm.cells, me, Math.max(1, num(t.aiDepthEasy, 3)), t.k), WINV = 5000;
   const wins = moves.filter(m => m.v >= WINV);
   if (wins.length) return pickValued(pm, me, [wins[0]], c4Drop);
-  const sees = rng() * 100 < num(t.aiBlockEasy, 60);
+  const sees = rng() * 100 < num(t.aiBlockEasy, 90);
   let pool = sees ? moves.filter(m => m.v > -WINV) : moves.slice();
   if (!pool.length) pool = moves.slice();
   if (!sees) pool = pool.map(m => ({ i: m.i, v: m.v <= -WINV ? 0 : m.v }));   // (it does not see the other side's line coming)
   pool.sort((a, b) => b.v - a.v);
-  const k = Math.max(1, Math.min(pool.length, num(t.aiPoolEasy, 3)));
+  const k = Math.max(1, Math.min(pool.length, num(t.aiPoolEasy, 1)));
   return pickValued(pm, me, [pool[Math.floor(rng() * k)]], c4Drop);
 }
 export function best(pm, me, rng, style, ctx) {

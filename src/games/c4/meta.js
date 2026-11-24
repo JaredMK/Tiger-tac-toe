@@ -8,9 +8,9 @@ export const explainer = { name: 'Four in a Row', play: 'Drop a piece into a col
 // Its settings (the admin's Mini-game Settings; core/tune.js): read through tune(mini).
 export const TUNE = [
   { k: 'k', label: 'Pieces in a row to win', def: 4, min: 3, max: 5, step: 1, group: 'Rules' },
-  { k: 'aiDepthEasy', label: 'Easy: how many moves ahead it looks', def: 2, min: 1, max: 4, step: 1, group: 'Computer: Easy' },
-  { k: 'aiBlockEasy', label: "Easy: how often it notices the other side's four coming and blocks it (%)", def: 60, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
-  { k: 'aiPoolEasy', label: 'Easy: picks at random among this many of the columns that look best', def: 3, min: 1, max: 7, step: 1, group: 'Computer: Easy' },
+  { k: 'aiDepthEasy', label: 'Easy: how many moves ahead it looks', def: 3, min: 1, max: 4, step: 1, group: 'Computer: Easy' },
+  { k: 'aiBlockEasy', label: "Easy: how often it notices the other side's four coming and blocks it (%)", def: 90, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
+  { k: 'aiPoolEasy', label: 'Easy: picks at random among this many of the columns that look best', def: 1, min: 1, max: 7, step: 1, group: 'Computer: Easy' },
   { k: 'depth', label: 'Normal: how many moves ahead it looks', def: 5, min: 1, max: 6, step: 1, group: 'Computer: Normal' },
   { k: 'aiNodesHard', label: 'Hard: how hard it thinks (thousands of positions a move, within its time on a phone)', def: 45, min: 1, max: 200, step: 1, group: 'Computer: Hard' },
 ];
@@ -19,3 +19,6 @@ export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5"
 export const lineupBlurb = 'Drop pieces into the columns. Line up four in a row, any direction, to win.';
 export const luckSkill = 5;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): Easy and Hard now and then play a column that looks fine but is not
+// their best (ai.js worse): without it Hard, searching far deeper than Normal, would win nearly every square.
+export const AI_LEVELS = { miss: { easy: 6, hard: 4 }, think: { hard: 250 } };

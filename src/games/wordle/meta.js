@@ -22,3 +22,5 @@ export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y=
 export const lineupBlurb = 'Guess the five-letter word. Green is the right spot, yellow the wrong spot. Guess it to win.';
 export const luckSkill = 4;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): Hard takes a moment longer over its guess (feel only).
+export const AI_LEVELS = { think: { hard: 250 } };

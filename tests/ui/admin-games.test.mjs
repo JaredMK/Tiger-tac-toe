@@ -99,7 +99,7 @@ test('the Games list: every mini-game once, alphabetical, with its icon, categor
   }
   const row = t => (html.match(new RegExp(`<li><a class="grow" href="#games/${t}"[\\s\\S]*?</a></li>`)) || [''])[0];
   assert.match(row('ttt'), /class="gico"[^>]*><svg/, 'the icon');
-  assert.match(row('ttt'), /Brain · 7 settings</, 'the category and the settings count (its own one and the computer\'s six: a mistake rate and a thinking time a level)');
+  assert.match(row('ttt'), /Brain · 9 settings</, 'the category and the settings count (its own three, Easy\'s and Normal\'s look-ahead and Easy\'s blocking, and the computer\'s six: a mistake rate and a thinking time a level)');
   assert.match(row('ttt'), /badge rel">Released</); assert.doesNotMatch(row('ttt'), /badge chg/);
   assert.match(row('hex'), /badge rel">Released</, 'released in the database although admin only in the code');
   assert.match(row('pig'), /badge adm">Testing</, 'un-released in the database'); assert.match(row('pig'), /badge chg">changed</, 'a TUNE value saved');

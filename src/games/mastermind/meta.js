@@ -21,3 +21,5 @@ export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5"
 export const lineupBlurb = 'Crack the hidden four-colour code. The markers tell you how close each guess is.';
 export const luckSkill = 4;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): Hard takes a moment longer over its guess (feel only).
+export const AI_LEVELS = { think: { hard: 250 } };

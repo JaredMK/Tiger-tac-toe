@@ -33,3 +33,5 @@ export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h
 export const lineupBlurb = 'Dig for buried treasure. Each dig tells you how close you are. Dig it up to win.';
 export const luckSkill = 2;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): Hard takes a moment longer over its guess (feel only).
+export const AI_LEVELS = { think: { hard: 250 } };

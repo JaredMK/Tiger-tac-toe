@@ -21,3 +21,5 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export const lineupBlurb = 'Flip two cards at a time. Find a matching pair to win.';
 export const luckSkill = 3;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): Hard takes a moment longer over its guess (feel only).
+export const AI_LEVELS = { think: { hard: 250 } };

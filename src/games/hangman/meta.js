@@ -27,3 +27,5 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export const lineupBlurb = 'Guess a letter at a time. Reveal the last letter of the word to win.';
 export const luckSkill = 3;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): Hard takes a moment longer over its guess (feel only).
+export const AI_LEVELS = { think: { hard: 250 } };
