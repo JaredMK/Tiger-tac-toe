@@ -10,7 +10,7 @@ const coin = (...v) => { let k = 0; return () => (v[k++ % v.length] === 'h' ? 0.
 
 test('heads: Admin only, luck; its settings; nothing hidden', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder], ['admin', 'luck', '1.25.0', false]);
-  assert.deepEqual(E.tuneFields('heads').map(f => f.k), ['wins', 'boards']);
+  assert.deepEqual(E.gameFields('heads').map(f => f.k), ['wins', 'boards']);
   const m = E.newMini('heads', E.makeRng('a'));
   assert.deepEqual([m.shared, R.headsCfg(m).wins, E.secretOf(m)], [false, 3, null]);
   assert.match(M.explainVars({ boards: 'shared' }).sharedText, /other player/); assert.equal(M.explainVars({ boards: 'separate' }).sharedText, '');

@@ -14,6 +14,7 @@ export function registerTunes(map) {
   }
 }
 export const tuneFields = type => FIELDS[type] || [];
+export const gameFields = type => tuneFields(type).filter(f => !f.lv);   // (the game's own, its meta.js TUNE: without the per-level ones levelTune adds, marked lv)
 export const tuneDefaults = type => Object.assign({}, DEF[type]);
 // One field's value checked: in its range (or one of its choices), on its step; else null.
 export function tuneValue(f, v) {
@@ -72,3 +73,33 @@ export function tuneChanges(type, before, after) {
 // off, every move is one action and the turn ends; on, a success keeps the turn. Read from the square (goAgain(mini)).
 export const AGAIN_TUNE = { k: 'again', label: 'Go again on success', def: 'off', opts: ['off', 'on'], group: 'Rules' };
 export const goAgain = mini => tune(mini).again === 'on';
+// The computer's levels in each game (the AI levels pass): every game's settings carry, per difficulty, a mistake
+// rate and a thinking time, added to its TUNE at registration (games/index.js, levelTune) in the groups
+// 'Computer: Easy', 'Computer: Normal' and 'Computer: Hard' (AI_GROUPS; 'Computer' stays for what the levels share).
+//   aiMiss<Level>: % of its moves in this game replaced by a deliberately weaker one (core/ai.js localBest: the game's
+//     ai.js `worse`, else any legal move; a game whose move is a run or an attempt gets these only with a `worse`).
+//   aiThink<Level>: ms it pauses in the square before its move (feel only: the page's computer turn, ui/turns.js;
+//     taken through dur('ui'), so Speed shortens it; added to the usual pause, so 0 is today's pacing).
+// A game sets other defaults, or leaves some out, in its meta.js: export const AI_LEVELS = { miss: { easy: 20 },
+// think: { hard: 400 } } (miss: false, no mistake settings; AI_LEVELS = false, none at all). A key already in the
+// game's own TUNE is kept as the game has it (its label, range and group).
+export const AI_LEVELS_LIST = ['easy', 'normal', 'hard'];
+export const AI_GROUPS = { easy: 'Computer: Easy', normal: 'Computer: Normal', hard: 'Computer: Hard' };
+export const TUNE_GROUPS = ['Board', 'Rules', 'Timing', 'Computer', AI_GROUPS.easy, AI_GROUPS.normal, AI_GROUPS.hard];
+const LV_CAP = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+export const aiMissKey = level => 'aiMiss' + (LV_CAP[level] || 'Normal');
+export const aiThinkKey = level => 'aiThink' + (LV_CAP[level] || 'Normal');
+export function levelTune(T, opts) {
+  const list = Array.isArray(T) ? T.slice() : [], o = opts === undefined ? {} : opts;
+  if (o === false) return list;
+  const have = new Set(list.map(f => f.k)), pick = (m, l) => (m && typeof m === 'object' && m[l] != null ? m[l] : 0);
+  for (const l of AI_LEVELS_LIST) {
+    const g = AI_GROUPS[l];
+    if (o.miss !== false && o.slip !== false && !have.has(aiMissKey(l))) list.push({ k: aiMissKey(l), label: 'Mistakes: chance a move is a deliberately weaker one (%)', def: pick(o.miss, l), min: 0, max: 100, step: 1, group: g, lv: true });
+    if (o.think !== false && !have.has(aiThinkKey(l))) list.push({ k: aiThinkKey(l), label: 'Thinking time: extra pause before its move (ms, for feel only)', def: pick(o.think, l), min: 0, max: 3000, step: 50, group: g, lv: true });
+  }
+  return list;
+}
+// A square's (or its public view's) level settings: the mistake chance (0..1) and the extra pause (ms).
+export const aiMiss = (mini, level) => { const v = Number(tune(mini)[aiMissKey(level)]); return v > 0 ? Math.min(1, v / 100) : 0; };
+export const aiThink = (mini, level) => { const v = Number(tune(mini)[aiThinkKey(level)]); return v > 0 ? v : 0; };

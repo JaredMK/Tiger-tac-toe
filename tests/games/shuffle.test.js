@@ -10,7 +10,7 @@ const flat = () => 0.5;                                            // (gauss of 
 const still = () => { let k = 0; return () => (k++ % 2 ? 0.25 : 0.9); };   // gauss = sqrt(-2 ln .9) * cos(pi/2) = 0: no spread at all
 test('shuffle: Admin only, skill; its settings; the zones at the lane\'s end', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder], ['admin', 'skill', '1.25.0', false]);
-  assert.deepEqual(E.tuneFields('shuffle').map(f => f.k), ['target', 'boards', 'z1', 'z2', 'z3', 'zoneLen', 'friction', 'spread', 'knock', 'knockLoss', 'flickMin', 'flickMax', 'aiErr', 'aiErrHard', 'aiErrEasy']);
+  assert.deepEqual(E.gameFields('shuffle').map(f => f.k), ['target', 'boards', 'z1', 'z2', 'z3', 'zoneLen', 'friction', 'spread', 'knock', 'knockLoss', 'flickMin', 'flickMax', 'aiErr', 'aiErrHard', 'aiErrEasy']);
   const m = E.newMini('shuffle', E.makeRng('a')), c = R.shufCfg(m);
   assert.deepEqual([m.shared, c.target, c.vals, c.z0, c.zl], [false, 10, [1, 2, 4], 70, 10]);
   assert.deepEqual([69.9, 70, 79.9, 80, 90, 100, 100.1].map(y => R.shufPts(c, 25, y)), [0, 1, 1, 2, 4, 4, 0]);

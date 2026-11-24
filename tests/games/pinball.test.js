@@ -196,7 +196,7 @@ test('pinball: the launch — on every layout, at every power from 0.3 to full w
   for (let k = 0; k < P.PIN_LAYOUTS.length; k++) { const r = launchTrial(dealTable(k, E.makeRng('weak' + k)), 0, 8); assert.ok(r.entered && !r.tunnel, `${P.PIN_LAYOUTS[k].name}: the weakest launch plays (${r.end})`); }
 });
 test('pinball: the time limit (November 2026, TUNE maxSecs, 30 s by default, from Start): at the limit the ball ends as a drain, the targets lit so far kept; played through again on the server it is the same ball, and the move goes in', () => {
-  assert.equal(E.tuneFields('pinball').find(f => f.k === 'maxSecs').def, PIN.maxSecs, 'the setting and the simulation share the default');
+  assert.equal(E.gameFields('pinball').find(f => f.k === 'maxSecs').def, PIN.maxSecs, 'the setting and the simulation share the default');
   E.setTune('pinball', { maxSecs: 5 });
   let mini;
   try { mini = E.newMini('pinball', E.makeRng('cap')); } finally { E.setTune('pinball', null); }

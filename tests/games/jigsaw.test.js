@@ -24,7 +24,7 @@ const fixed = (placed, offer, by, t) => { const m = mini('fx', t); m.placed = pl
 test('jigsaw: the defaults: a 3 by 3 puzzle with nothing in place: nine pieces to lay, five take the square (never a draw)', () => {
   E.setTune('jigsaw', null); const d = E.newMini('jigsaw', E.makeRng('dflt')); E.setTune('jigsaw', ON);
   assert.deepEqual([d.n, d.placed, R.jigTotal(d), R.jigNeed(d)], [3, '.........', 9, 5]); assert.equal(d.tune, undefined, 'nothing kept for the defaults');
-  assert.equal(E.tuneFields('jigsaw').find(f => f.k === 'centre').def, 'off');
+  assert.equal(E.gameFields('jigsaw').find(f => f.k === 'centre').def, 'off');
 });
 test('jigsaw: with the centre piece in place: a 3 by 3 puzzle, the centre laid by nobody; eight pieces to lay, five take the square; nothing drawn, nothing hidden', () => {
   const m = mini();
@@ -134,10 +134,10 @@ test('jigsaw: more than half of the pieces takes the square at once; level with 
 test('jigsaw: the settings: the grid\'s size and its centre piece (an even grid has none), the piece timer, the computer\'s shares; "Go again on success" is off by default', () => {
   const keys = M.TUNE.map(f => f.k);
   assert.deepEqual(keys, ['again', 'size', 'centre', 'edges', 'rotate', 'secs', 'aiEasy', 'aiNormal', 'aiHard', 'aiTurnEasy', 'aiTurnNormal', 'aiTurnHard']);
-  for (const k of ['edges', 'rotate']) { const f = E.tuneFields('jigsaw').find(x => x.k === k); assert.deepEqual([f.def, f.opts], ['off', ['off', 'on']], `${k}: off by default`); }
-  assert.deepEqual(['edges', 'rotate'].map(k => E.tuneFields('jigsaw').find(x => x.k === k).label), ['Flat edge pieces', 'Pieces drawn rotated']);
+  for (const k of ['edges', 'rotate']) { const f = E.gameFields('jigsaw').find(x => x.k === k); assert.deepEqual([f.def, f.opts], ['off', ['off', 'on']], `${k}: off by default`); }
+  assert.deepEqual(['edges', 'rotate'].map(k => E.gameFields('jigsaw').find(x => x.k === k).label), ['Flat edge pieces', 'Pieces drawn rotated']);
   assert.ok(M.TUNE.every(f => ['Board', 'Rules', 'Timing', 'Computer'].includes(f.group)));
-  const again = E.tuneFields('jigsaw').find(f => f.k === 'again'); assert.deepEqual([again.label, again.def, again.opts], ['Go again on success', 'off', ['off', 'on']]);
+  const again = E.gameFields('jigsaw').find(f => f.k === 'again'); assert.deepEqual([again.label, again.def, again.opts], ['Go again on success', 'off', ['off', 'on']]);
   let m = mini('s4', { size: 4 });
   assert.deepEqual([m.n, m.placed, R.jigTotal(m), R.jigNeed(m)], [4, '.'.repeat(16), 16, 9]); assert.equal(R.jigEdge(m).length, 16, 'an empty board: any piece may come first');
   m = mini('s5', { size: 5 });
@@ -378,7 +378,7 @@ test('jigsaw: the edge cells by grid size: a corner piece has two sides on the p
 });
 
 test('jigsaw: Flat edge pieces: every side on the picture\'s outer border is a straight line, every inner side cut as ever and still shared point for point, so the puzzle has a straight outline; off, the cut is byte for byte as it was', () => {
-  const sizes = E.tuneFields('jigsaw').find(f => f.k === 'size'), ns = [];
+  const sizes = E.gameFields('jigsaw').find(f => f.k === 'size'), ns = [];
   for (let n = sizes.min; n <= sizes.max; n += sizes.step) ns.push(n);
   assert.deepEqual(ns, [3, 4, 5], 'every grid size the admin allows');
   // off: the very paths of before the option (a digest of every piece at four seeds and every size, taken before the change)

@@ -7,6 +7,8 @@ import { mmIntro } from '../net/matchmaking.js';
 import { haptic } from '../net/platform.js';
 import { cutHaptics, moveHaptics, mySide } from './haptics.js';
 import { applyPending, clockGo } from '../net/room.js';
+import { aiThink } from '../core/tune.js';
+import { levelOf } from '../core/aiw.js';
 import { ANIM, dur, durRate, holdRate, moveRate, replaySpeed, speedMode } from '../core/timer.js';
 import {
   CPU_MS, FLASH_MS, FLIP_MS, MEMORY_MS, RNG, app, commit, cpuPlan, cpuTimer, flashReady, flashTimer, holdTimer,
@@ -73,15 +75,21 @@ export function scheduleCpu() {
     think(plan => {
       setCpuPlan(plan); if (!plan) return; plan.stage = 0;        // (no move at all: the admin's test play, its square over)
       if (plan.square !== state.zoom) { state.zoom = plan.square; state.draft = ''; state.pick = null; state.sel = []; commit(); return; }   // after a reload mid-move
-      setCpuTimer(setTimeout(cpuAct, state.lock != null ? CPU_MS.again : Math.max(CPU_MS.zoom, zoomBusy()) + (state.practice ? CPU_MS.think : 0)));   // (practice: its turn in place, a pause to think as on the board)
+      setCpuTimer(setTimeout(cpuAct, (state.lock != null ? CPU_MS.again : Math.max(CPU_MS.zoom, zoomBusy()) + (state.practice ? CPU_MS.think : 0)) + cpuThinkMs(plan.square)));   // (practice: its turn in place, a pause to think as on the board; the game's own thinking time for its level on top)
     });
     return;
   }
-  setCpuTimer(setTimeout(cpuAct, cpuPlan.stage ? CPU_MS.pre : state.lock != null ? CPU_MS.again : Math.max(CPU_MS.zoom, zoomBusy()) + (state.practice ? CPU_MS.think : 0)));   // (its look at the square starts once the zoom into it has landed)
+  setCpuTimer(setTimeout(cpuAct, cpuPlan.stage ? CPU_MS.pre : (state.lock != null ? CPU_MS.again : Math.max(CPU_MS.zoom, zoomBusy()) + (state.practice ? CPU_MS.think : 0)) + cpuThinkMs(cpuPlan.square)));   // (its look at the square starts once the zoom into it has landed)
 }
 // The computer's choice for the match as it stands (ui/think.js): the answer may come later (the Hard
 // computer's worker); by then the match must stand just the same, else it is asked again.
 let thinkGen = 0;                                              // (cpuStop: a question asked before it is never answered into the match after)
+// The computer's thinking time in the game it is about to play (its settings' aiThink<Level>, core/tune.js: per level,
+// feel only, 0 by default): added to its pause in the square before each of its moves there, at the page's pace (dur).
+function cpuThinkMs(i) {
+  const sq = i != null && state.squares[i];
+  return sq && sq.mini ? dur(aiThink(sq.mini, levelOf(state.cpuLevel))) : 0;
+}
 function think(cb) {
   const mark = () => `${state.moves}:${state.turn}:${state.lock}:${state.screen}:${state.zoom}`, at = mark(), gen = thinkGen;
   thinking = true;

@@ -11,7 +11,7 @@ const at = (m, c, t, dbl) => { const s = R.cricketSpot(m, c, t, dbl); return { x
 test('cricket: Admin only, skill, real time, held out of Find Match; its settings; the deal: three numbers from 15 to 20', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder, M.realTime], ['admin', 'skill', '1.25.0', false, true]);
   assert.ok(E.FIND_MATCH_HOLD.includes('cricket'));
-  assert.deepEqual(E.tuneFields('cricket').map(f => f.k), ['numbers', 'hits', 'scoring', 'doubles', 'band', 'bull', 'heart', 'sweepMs', 'aiErr', 'aiErrHard', 'aiErrEasy']);
+  assert.deepEqual(E.gameFields('cricket').map(f => f.k), ['numbers', 'hits', 'scoring', 'doubles', 'band', 'bull', 'heart', 'sweepMs', 'aiErr', 'aiErrHard', 'aiErrEasy']);
   for (let g = 0; g < 40; g++) { const m = E.newMini('cricket', E.makeRng('d' + g)); assert.equal(m.nums.length, 3); assert.equal(new Set(m.nums).size, 3); m.nums.forEach(n => assert.ok(n >= 15 && n <= 20)); assert.deepEqual(m.marks, { X: [0, 0, 0, 0], O: [0, 0, 0, 0] }); }
   assert.equal(E.secretOf(E.newMini('cricket', E.makeRng('s'))), null);
 });

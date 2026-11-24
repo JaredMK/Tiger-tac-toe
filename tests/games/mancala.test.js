@@ -13,7 +13,7 @@ const emptyAll = m => m.pits.X.every(v => v === 0) && m.pits.O.every(v => v === 
 
 test('mancala: Admin only, brain; the deal: six pits a side, three seeds a pit on average, the two sides the same pit for pit', () => {
   assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'brain', '1.31.0']);
-  assert.deepEqual(E.tuneFields('mancala').map(f => f.k), ['target', 'extra', 'capture', 'cross', 'pits', 'seeds', 'mix']);
+  assert.deepEqual(E.gameFields('mancala').map(f => f.k), ['target', 'extra', 'capture', 'cross', 'pits', 'seeds', 'mix']);
   let uneven = 0;
   for (let g = 0; g < 60; g++) {
     const m = E.newMini('mancala', E.makeRng('d' + g));

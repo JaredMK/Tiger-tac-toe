@@ -76,3 +76,12 @@ export function best(pm, me, rng, style, ctx) {
   }
   return pick;
 }
+// The weaker move a level's mistake plays (core/ai.js aiSlip; the settings' aiMiss<Level>, 0 by default): the worst of the
+// solved values, a move that throws away what the best one held (a win given up, a loss let in), else any other empty
+// cell. The pattern for a game's own `worse(pm, side, rng, ctx)`: a legal move, worse than ctx.best, from the public view.
+export function worse(pm, me, rng, ctx) {
+  const moves = tttMinimax(pm.cells, me).filter(m => m.i !== (ctx && ctx.best));
+  if (!moves.length) return null;
+  const low = Math.min(...moves.map(m => m.v)), pool = moves.filter(m => m.v === low);
+  return pool[randInt(rng, pool.length)].i;
+}

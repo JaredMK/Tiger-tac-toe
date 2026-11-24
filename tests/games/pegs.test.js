@@ -10,7 +10,7 @@ const board = (X, O, rows = 4, cols = 5) => ({ type: 'pegs', v: 1, rows, cols, p
 
 test('pegs: Admin only, brain; the deal: three pegs each on their own end row, in the middle columns', () => {
   assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'brain', '1.24.0']);
-  assert.deepEqual(E.tuneFields('pegs').map(f => f.k), ['pegs', 'rows', 'cols']);
+  assert.deepEqual(E.gameFields('pegs').map(f => f.k), ['pegs', 'rows', 'cols']);
   const m = E.newMini('pegs', E.makeRng('a'));
   assert.deepEqual([m.rows, m.cols, m.pegs.X, m.pegs.O], [4, 5, [[3, 1], [3, 2], [3, 3]], [[0, 1], [0, 2], [0, 3]]]);
   assert.deepEqual(E.publicMini(m).pegs, m.pegs, 'nothing hidden'); assert.equal(E.secretOf(m), null);

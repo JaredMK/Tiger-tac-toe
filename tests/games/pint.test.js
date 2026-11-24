@@ -10,7 +10,7 @@ const close = (a, b, e = 1e-6) => Math.abs(a - b) <= e;
 test('pint: Admin only, skill, real time, held out of Find Match; the deal: a mark each within the settings\' range, nothing hidden', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.realTime, M.placeholder], ['admin', 'skill', '1.30.0', true, false]);
   assert.ok(E.FIND_MATCH_HOLD.includes('pint'), 'the server cannot time a finger letting go');
-  assert.deepEqual(E.tuneFields('pint').map(f => f.k), ['goal', 'tol', 'perfect', 'again', 'rate', 'markLo', 'markHi', 'aiMs', 'aiMsHard', 'aiMsEasy']);
+  assert.deepEqual(E.gameFields('pint').map(f => f.k), ['goal', 'tol', 'perfect', 'again', 'rate', 'markLo', 'markHi', 'aiMs', 'aiMsHard', 'aiMsEasy']);
   const m = E.newMini('pint', E.makeRng('d')), c = R.pintCfg(m);
   assert.deepEqual([c.goal, c.tol, c.perfect, c.rate, c.lo, c.hi], [3, 0.035, 0.01, 0.5, 0.35, 0.7]);
   assert.deepEqual([m.pts, m.n, m.last], [{ X: 0, O: 0 }, { X: 0, O: 0 }, null]); assert.equal(E.secretOf(m), null);
@@ -55,7 +55,7 @@ test('pint: a move is held to its shape and range', () => {
 });
 
 test('pint: Go again on success: off, every attempt ends the turn; on, any split keeps it (a miss ends it, the winning one wins)', () => {
-  const f = E.tuneFields('pint').find(x => x.k === 'again'); assert.deepEqual([f.label, f.def, f.opts], ['Go again on success', 'off', ['off', 'on']]);
+  const f = E.gameFields('pint').find(x => x.k === 'again'); assert.deepEqual([f.label, f.def, f.opts], ['Go again on success', 'off', ['off', 'on']]);
   assert.equal(E.newMini('pint', E.makeRng('g')).tune, undefined, 'nothing kept for the default');
   E.setTune('pint', { again: 'on' });
   try {

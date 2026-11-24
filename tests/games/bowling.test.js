@@ -150,8 +150,8 @@ test('bowling: the three sweeps — each meter sweeps back and forth and stops w
   const strikes = curve => { let best = 0; for (let c = 10; c <= 90; c += 2) { let n = 0; for (let x = c - 2; x <= c + 2; x += 1) for (const power of [0.8, 0.95]) if (P.run('bowling', pos, 'ball', { aim: Math.atan((x - 50) / 169), curve, power }).result.knocked === 10) n++; best = Math.max(best, n); } return best; };
   const straight = strikes(0), hook = Math.max(strikes(0.7), strikes(-0.7));
   assert.ok(hook > straight, `the hook's window (${hook} of 10) beats the straight ball's (${straight})`);
-  for (const f of E.tuneFields('bowling')) if (['aimMs', 'curveMs', 'powerMs', 'hook', 'even'].includes(f.k)) assert.ok(f.group === 'Rules');
-  assert.ok(!E.tuneFields('bowling').some(f => /^flick|angleGain|aiAim|aiPow/.test(f.k)), 'the flick\'s settings are gone');
+  for (const f of E.gameFields('bowling')) if (['aimMs', 'curveMs', 'powerMs', 'hook', 'even'].includes(f.k)) assert.ok(f.group === 'Rules');
+  assert.ok(!E.gameFields('bowling').some(f => /^flick|angleGain|aiAim|aiPow/.test(f.k)), 'the flick\'s settings are gone');
   assert.equal(E.minVersionOf('bowling'), '1.16.0');
 });
 

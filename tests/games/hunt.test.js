@@ -334,7 +334,7 @@ const R = E.rulesOf('hunt'), A = E.aiOf('hunt'), M = require('../../src/games/hu
 const OLD_BAND = d => (d <= 0 ? 0 : d === 1 ? 1 : d <= 3 ? 2 : d <= 5 ? 3 : 4);   // the band before the setting existed
 const withHints = (hints, fn, more) => { E.setTune('hunt', Object.assign({ hints }, more)); try { return fn(); } finally { E.setTune('hunt', null); } };
 test('hunt, hints: the default is the game as it was: the same bands, the same square, the same clues, the same computer', () => {
-  const f = E.tuneFields('hunt').find(x => x.k === 'hints');
+  const f = E.gameFields('hunt').find(x => x.k === 'hints');
   assert.deepEqual([f.def, f.opts, f.group], ['normal', ['normal', 'hard', 'harder'], 'Rules']);
   assert.equal(E.tuneLive('hunt').hints, 'normal');
   assert.deepEqual(R.HUNT_HINTS.normal, [1, 3, 5]);
@@ -414,7 +414,7 @@ test('hunt, hints: Race and Super Chaos read the square\'s bands; the computer d
   assert.ok(A.needs(L.publicMini(withHints('harder', () => L.newMini('hunt', lcg(1)))), 'X') > A.needs(L.publicMini(withHints('hard', () => L.newMini('hunt', lcg(1)))), 'X'), 'harder: more than hard');
 });
 test('hunt, hints: the explainer and the setting\'s label say the bands as the table has them', () => {
-  const f = E.tuneFields('hunt').find(x => x.k === 'hints');
+  const f = E.gameFields('hunt').find(x => x.k === 'hints');
   assert.deepEqual(M.explainVars({ hints: 'normal' }), { bandWords: 'hot, warm, cool or cold', hintText: '' });
   assert.deepEqual(M.explainVars({ hints: 'hard' }), { bandWords: 'hot, warm, cool or cold', hintText: ' Hot is 1 or 2 steps away, warm 3 to 5, cool 6 to 8, cold 9 or more.' });
   assert.deepEqual(M.explainVars({ hints: 'harder' }), { bandWords: 'hot, warm or cold', hintText: ' Hot is 1 to 3 steps away, warm 4 to 6, cold 7 or more.' });

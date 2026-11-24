@@ -8,7 +8,7 @@ const M = require('../../src/games/faces/meta.js');
 
 test('faces: Admin only, brain; the deal: distinct faces, a mystery face each (never the same), hidden', () => {
   assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'brain', '1.24.0']);
-  assert.deepEqual(E.tuneFields('faces').map(f => f.k), ['faces', 'traits', 'vals', 'clue', 'boards']);
+  assert.deepEqual(E.gameFields('faces').map(f => f.k), ['faces', 'traits', 'vals', 'clue', 'boards']);
   for (let g = 0; g < 40; g++) {
     const m = E.newMini('faces', E.makeRng('d' + g));
     assert.deepEqual([m.faces.length, m.faces[0].length, m.sep, m.clue], [16, 5, true, 'which']);

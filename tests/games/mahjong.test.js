@@ -12,7 +12,7 @@ const pv = (m, p) => E.publicMini(m, p);
 
 test('mahjong: Admin only, luck, never on one phone; its settings; the tile set; a deal of seven each from one wall (Shared) or a wall each (Race)', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder, M.samePhone], ['admin', 'luck', '1.29.0', false, false]);
-  assert.deepEqual(E.tuneFields('mahjong').map(f => [f.k, f.def]), [['mode', 'shared'], ['hand', 7], ['suits', 3], ['nums', 5], ['honours', 'off']]);
+  assert.deepEqual(E.gameFields('mahjong').map(f => [f.k, f.def]), [['mode', 'shared'], ['hand', 7], ['suits', 3], ['nums', 5], ['honours', 'off']]);
   assert.equal(R.mjTiles(R.mjCfg({ type: 'mahjong' })).length, 60, '3 suits of 1-5, four of each');
   assert.equal(R.mjTiles({ suits: 3, nums: 6, honours: true }).length, 84, 'with the honours: Sun, Moon, Cloud');
   const s = mini(1);

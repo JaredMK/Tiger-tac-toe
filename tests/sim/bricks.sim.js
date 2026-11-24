@@ -54,5 +54,5 @@ test('brick break: Hard beats Normal, Normal beats Easy', () => {
   assert.ok(avg(hn) > 0.6); assert.ok(avg(ne) > 0.6);
 });
 test('brick break: the tuned values are the defaults (meta.js TUNE)', () => {
-  assert.deepEqual(Object.fromEntries(M.TUNE.map(f => [f.k, f.def])), E.tuneLive('bricks'));
+  assert.deepEqual(Object.fromEntries(M.TUNE.map(f => [f.k, f.def])), Object.fromEntries(E.gameFields('bricks').map(f => [f.k, E.tuneLive('bricks')[f.k]])));
 });

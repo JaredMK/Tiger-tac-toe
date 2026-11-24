@@ -10,7 +10,7 @@ const put = (m, p, cells) => { for (const c of cells) m.cells[c] = p; };
 
 test('twist: Admin only, brain; a 6x6 board in four quarters, 4 in a row to win by default (5 ran ten turns each)', () => {
   assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'brain', '1.24.0']);
-  assert.deepEqual(E.tuneFields('twist').map(f => f.k), ['line', 'size']);
+  assert.deepEqual(E.gameFields('twist').map(f => f.k), ['line', 'size']);
   const m = E.newMini('twist', E.makeRng('a'));
   assert.deepEqual([m.n, m.L, m.cells.length, m.cells.every(c => c === null)], [6, 4, 36, true]);
   assert.equal(R.twistLines(6, 5).length, 32); assert.equal(R.twistLines(6, 4).length, 54);

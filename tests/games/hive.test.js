@@ -21,7 +21,7 @@ const go = (m, p, k) => { if (k != null) next(m, k); const r = E.applyMove(m, p,
 test('hive: Admin only, brain, a timed burst, a 60 s turn, held out of Find Match; its settings', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder, M.realTime, M.turnSecs], ['admin', 'brain', '1.31.0', false, true, 60]);
   assert.ok(E.FIND_MATCH_HOLD.includes('hive'), 'what a phone found in its burst is the phone\'s word');
-  assert.deepEqual(E.tuneFields('hive').map(f => f.k), ['again', 'secs', 'target', 'four', 'bonus', 'aiRare', 'aiMin', 'aiMax', 'aiShort', 'aiMinHard', 'aiMaxHard', 'aiShortHard', 'aiFullHard', 'aiMinEasy', 'aiMaxEasy', 'aiShortEasy']);
+  assert.deepEqual(E.gameFields('hive').map(f => f.k), ['again', 'secs', 'target', 'four', 'bonus', 'aiRare', 'aiMin', 'aiMax', 'aiShort', 'aiMinHard', 'aiMaxHard', 'aiShortHard', 'aiFullHard', 'aiMinEasy', 'aiMaxEasy', 'aiShortEasy']);
   const c = R.hiveCfg(fresh('a'));
   assert.deepEqual([c.target, c.secs, c.four, c.bonus, c.rare, c.ai.normal, c.ai.hard, c.ai.easy], [40, 20, 1, 7, 20, [1, 4, 45, 0], [2, 5, 50, 10], [1, 3, 35, 0]]);
   for (const bad of ['slot', 'jackpot', 'bet', 'queen bee', 'genius', 'pangram']) assert.ok(!JSON.stringify([M.info, M.explainer, M.goAgainText]).toLowerCase().includes(bad), bad);
@@ -29,7 +29,7 @@ test('hive: Admin only, brain, a timed burst, a 60 s turn, held out of Find Matc
 });
 
 test('hive: every puzzle keeps to the curation rules', () => {
-  const n = R.hiveCount(), top = E.tuneFields('hive').find(f => f.k === 'target'), c = R.hiveCfg(fresh('a')), seen = new Set();
+  const n = R.hiveCount(), top = E.gameFields('hive').find(f => f.k === 'target'), c = R.hiveCfg(fresh('a')), seen = new Set();
   assert.ok(n >= 40 && n <= 60, `${n} puzzles`); assert.equal(n, HIVE_PUZZLES.length);
   for (let i = 0; i < n; i++) {
     const pz = R.hivePuzzle(i), tag = `puzzle ${i} (${pz.letters})`;

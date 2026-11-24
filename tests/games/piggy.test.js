@@ -11,7 +11,7 @@ const at = v => () => v;                                          // an rng that
 
 test('piggy: Admin only, luck, its settings (target, bust number, roll limit, die, the computer\'s bank points)', () => {
   assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'luck', '1.24.0']);
-  assert.deepEqual(E.tuneFields('piggy').map(f => f.k), ['target', 'bust', 'maxRolls', 'sides', 'aiBank', 'aiBankEasy']);
+  assert.deepEqual(E.gameFields('piggy').map(f => f.k), ['target', 'bust', 'maxRolls', 'sides', 'aiBank', 'aiBankEasy']);
   const c = R.piggyCfg(E.newMini('piggy', E.makeRng('a')));
   assert.deepEqual([c.target, c.bust, c.max, c.sides], [25, 1, 0, 6]);
   assert.equal(M.explainVars({ maxRolls: 0 }).maxText, ''); assert.match(M.explainVars({ maxRolls: 3 }).maxText, /3 rolls/);

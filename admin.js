@@ -692,7 +692,7 @@ function testPlay(t) {
 // server and the copy to production read). One Save and one Reset to defaults cover the whole page; Test play opens the
 // game alone in a new tab with the page's values, saved or not. (This took over Mini-game Settings and Releases, November 2026.) ----------
 const CATS = [['luck', 'Luck'], ['skill', 'Skill'], ['brain', 'Brain']];
-const TGROUPS = ['Board', 'Rules', 'Timing', 'Computer'];
+const TGROUPS = ['Board', 'Rules', 'Timing', 'Computer', 'Computer: Easy', 'Computer: Normal', 'Computer: Hard'];   // (core/tune.js TUNE_GROUPS: a game's own groups, e.g. Shell Game's Level 1-5, come after Timing; then Computer, what the levels share, and the per-level groups in Easy, Normal, Hard order)
 let META = {}, TUNE = null, CLIENT = null, RACE = null;      // each game's meta.js; core/tune.js (tuneValue, tuneNorm); core/client.js (versions); core/race.js (RACE_TYPES)
 async function loadMetas() {
   if (TUNE) return;
@@ -704,7 +704,7 @@ async function loadMetas() {
   BAL = await import('./src/admin/balance.js');   // a game's version card (its saves)
   P = await import('./src/admin/pages.js');       // the pages, with the metrics layer (P.X) and the table (P.T)
 }
-const tuneList = t => (META[t] && Array.isArray(META[t].TUNE) ? META[t].TUNE : []);
+const tuneList = t => (TUNE && TUNE.tuneFields(t).length ? TUNE.tuneFields(t) : META[t] && Array.isArray(META[t].TUNE) ? META[t].TUNE : []);   // (as registered: the game's TUNE with its per-level computer settings, core/tune.js levelTune)
 const catName = t => { const c = CATS.find(x => META[t] && x[0] === META[t].category); return c ? c[1] : ''; };
 const gameIcon = t => (META[t] && META[t].icon ? `<span class="gico" aria-hidden="true">${META[t].icon}</span>` : '');
 const isRaceGame = t => !!(RACE && RACE.RACE_TYPES.includes(t));
@@ -800,7 +800,7 @@ function gamePage(t) {
       : `<input type="number" inputmode="decimal" data-tune="${t}" data-k="${f.k}" min="${f.min}" max="${f.max}" step="${f.step || 1}" value="${esc(v)}">`;
     return `<label class="rf${ch ? ' chg' : ''}"><span>${esc(f.label)}</span>${box}<small>Default ${esc(f.def)}${f.opts ? '' : ` · ${f.min}–${f.max}`}</small></label>`;
   };
-  const groups = TGROUPS.concat([...new Set(fields.map(f => f.group).filter(g => !TGROUPS.includes(g)))]).map(g => [g, fields.filter(f => (f.group || 'Rules') === g)]).filter(([, fs]) => fs.length);
+  const groups = TGROUPS.slice(0, 3).concat([...new Set(fields.map(f => f.group).filter(g => !TGROUPS.includes(g)))], TGROUPS.slice(3)).map(g => [g, fields.filter(f => (f.group || 'Rules') === g)]).filter(([, fs]) => fs.length);
   const body = fields.length ? groups.map(([g, fs]) => `<h3>${esc(g)}</h3><div class="rform tform">${fs.map(inp).join('')}</div>`).join('') : `<p class="note">${own ? 'No settings beyond its tuning above.' : 'No settings.'}</p>`;
   const any = fields.length || own || isRaceGame(t);
   const ver = BAL ? BAL.versionCard(t, ctl.versions, ctl.versionLog, k => { const f = tuneList(t).find(x => x.k === k); return f ? f.label : k; }) : '';

@@ -43,7 +43,7 @@ export function cpuThink(st, cb) {
   if (waiting) settle(waiting, null);                           // (a second question before the first answer: the first is decided now)
   const me = st.turn, pre = {}, s0 = STYLE0;
   const owned = p => st.squares.filter(s => s.owner === p).length, behind = owned(other(me)) - owned(me);
-  st.squares.forEach((sq, i) => { if (!sq.owner && (PHYS_TYPES.includes(sq.mini.type) || sq.mini.type === 'pinball' || sq.mini.type === 'castle')) pre[i] = localBest(publicMini(sq.mini, me), me, RNG, s0, { value: squareValue(st.squares, i, me, s0), behind, level: L.sharp >= 0.5 ? 'hard' : lv === 'easy' ? 'easy' : 'normal', until: null }); });
+  st.squares.forEach((sq, i) => { if (!sq.owner && (PHYS_TYPES.includes(sq.mini.type) || sq.mini.type === 'pinball' || sq.mini.type === 'castle')) pre[i] = localBest(publicMini(sq.mini, me), me, RNG, s0, { value: squareValue(st.squares, i, me, s0), behind, level: L.sharp >= 0.5 ? 'hard' : lv === 'easy' ? 'easy' : 'normal', diff: lv, until: null }); });
   const id = ++seq;
   waiting = { id, cb, state: st, timer: setTimeout(() => { if (waiting && waiting.id === id) settle(waiting, null); }, WAIT_MS) };
   try {

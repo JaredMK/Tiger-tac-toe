@@ -10,7 +10,7 @@ const F = require('../../src/games/shared/flick.js');
 const flat = () => 0.5;                                            // an rng with no spread worth the name (gauss of .5, .5 is small and fixed)
 test('marble: Admin only, skill; its settings; the deal: the layout\'s holes with their points', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder], ['admin', 'skill', '1.25.0', false]);
-  assert.deepEqual(E.tuneFields('marble').map(f => f.k), ['marbles', 'target', 'layout', 'v1', 'v2', 'v3', 'hole', 'spread', 'flickMin', 'flickMax', 'aiErr', 'aiErrHard', 'aiErrEasy']);
+  assert.deepEqual(E.gameFields('marble').map(f => f.k), ['marbles', 'target', 'layout', 'v1', 'v2', 'v3', 'hole', 'spread', 'flickMin', 'flickMax', 'aiErr', 'aiErrHard', 'aiErrEasy']);
   const m = E.newMini('marble', E.makeRng('a')), c = R.marbleCfg(m);
   assert.deepEqual([m.lay, m.holes.length, c.target, c.marbles, m.holes.map(h => h.v)], ['classic', 6, 18, 3, [1, 2, 2, 4, 4, 4]]);
   for (const lay of Object.keys(R.LAYOUTS)) R.LAYOUTS[lay].forEach(([x, y, k], i) => { const rad = [11, 8.5, 6.5]; assert.ok(x - rad[k] >= 0 && x + rad[k] <= 100 && y - rad[k] >= 0 && y + rad[k] <= 101, `${lay}: hole ${i} on the table, clear of the start`); R.LAYOUTS[lay].forEach(([x2, y2, k2], j) => { if (j > i) assert.ok(Math.hypot(x - x2, y - y2) >= rad[k] + rad[k2] + 1, `${lay}: holes ${i} and ${j} apart`); }); });

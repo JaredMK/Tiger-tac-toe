@@ -22,8 +22,8 @@ const sane = m => {
 
 test('tanks: Admin only, skill; its settings; the deal: hills fair to both sides, a tank in each outer third on a level pad at about the same height, the wind in its range', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder, M.info.name], ['admin', 'skill', '1.30.0', false, 'Tank Duel']);
-  assert.deepEqual(E.tuneFields('tanks').map(f => f.k), ['again', 'health', 'hitDmg', 'splash', 'blast', 'fuel', 'crater', 'climb', 'hills', 'windMin', 'windMax', 'gravity', 'speed', 'aiAng', 'aiPow', 'aiAngHard', 'aiPowHard', 'aiRange', 'aiAngEasy', 'aiPowEasy']);
-  for (const f of E.tuneFields('tanks')) if (f.k !== 'again') assert.equal(R.TANK_DEF[f.k], f.def, `${f.k}: the rules' default is the setting's`);
+  assert.deepEqual(E.gameFields('tanks').map(f => f.k), ['again', 'health', 'hitDmg', 'splash', 'blast', 'fuel', 'crater', 'climb', 'hills', 'windMin', 'windMax', 'gravity', 'speed', 'aiAng', 'aiPow', 'aiAngHard', 'aiPowHard', 'aiRange', 'aiAngEasy', 'aiPowEasy']);
+  for (const f of E.gameFields('tanks')) if (f.k !== 'again') assert.equal(R.TANK_DEF[f.k], f.def, `${f.k}: the rules' default is the setting's`);
   let left = 0, right = 0, winds = new Set(), hx = 0, ho = 0;
   for (let g = 0; g < 300; g++) {
     const m = E.newMini('tanks', E.makeRng('d' + g)), H = R.tankHeights(m.h); sane(m);

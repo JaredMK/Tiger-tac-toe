@@ -4,7 +4,7 @@
 // every random choice comes from an rng passed in (makeRng(seed) for a seeded one). The page imports the
 // same modules, so a move is checked the same way on a phone and on the server.
 
-export { cpuEcho, STYLE0, AI_CLOCK, localForget, AI, needsOf, winChance, localBest, squareValue, moveGain, cpuMove, catchUp, CATCH, CLOSE, closeTo, raceChance, RACE_K, SAFE, safeLead } from './ai.js';
+export { cpuEcho, STYLE0, AI_CLOCK, localForget, AI, needsOf, winChance, localBest, localPlain, aiSlip, squareValue, moveGain, cpuMove, catchUp, CATCH, CLOSE, closeTo, raceChance, RACE_K, SAFE, safeLead } from './ai.js';
 export { lineOpen, majorityResult, LINES, timeoutMove, mainResult, playMove, endFlash, leaveSquare, sqEntry, SQ_GAP_MS } from './board.js';
 export { SC, scTypes, isChaos, scHuman, scSquareMini, startChaos, scBegin, scCpu, chaosPlay, chaosTimeout, chaosResolve, chaosNext, scPool, scMainResult, SC_ONLINE, startChaosOnline, scMoveOf, chaosResolveOnline, scRoundStart, scRecapOrder } from './chaos.js';
 export { cfgKit, lohi, SUPER_CHAOS_ENABLED } from './config.js';
@@ -15,7 +15,7 @@ export { canMove, upgradeMini, anyMove, newMini, withTune, applyMove, publicMini
 export { RACE_TYPES, RACE_V, MODE_TUNE, raceDealt, isRace, raceOld, raceSide, raceShape, raceSides, raceHide, raceView, raceFlashHide } from './race.js';
 export { LEVELS, LEVEL_NAME, levelOf, AI_DEFAULTS, AI_LIMITS, AI_CFG, aiNorm, setAiWeights, aiWeights, levelCfg } from './aiw.js';
 export { mc2Pick } from './mc2.js';
-export { registerTunes, tuneFields, tuneDefaults, tuneValue, tuneNorm, setTune, setTunes, tuneLive, tuneSnap, tune, setTuneVersions, tuneVersion, tuneVersions, miniVersion, tuneChanges } from './tune.js';
+export { registerTunes, tuneFields, gameFields, tuneDefaults, tuneValue, tuneNorm, setTune, setTunes, tuneLive, tuneSnap, tune, setTuneVersions, tuneVersion, tuneVersions, miniVersion, tuneChanges, levelTune, aiMiss, aiThink, aiMissKey, aiThinkKey, AI_GROUPS, TUNE_GROUPS, AI_LEVELS_LIST } from './tune.js';
 export { gaussOf, makeRng, needRng, randInt, randomType, shuffle } from './random.js';
 export { resignLocal, RECENT_MAX, MATCH_FIELDS, secretOf, hideMini, matchRecord, fullState, settle, applyOnlineMove, applyOnlineTimeout, applyOnlinePick, applyOnlineReveal, applyOnlineStart, applyOnlineOpen, applyOnlineGo, newOnlineMatch, applyOnlineResign, applyChaosSubmit, applyChaosDeadline, applyChaosBegin, scReady, roomDue, applyRoomSweep, SC_ROOM, scResyncPlan, parseMatch, packMatch, matchTxn } from './records.js';
 export { SC_GAME, newScGame, scSideState, applyScMove, applyScTimeout, applyScBot, applyScBegin, applyScResign, applyScStart, scDue, scPublicState, scSideView, scFinal } from './scgame.js';
@@ -58,7 +58,7 @@ export { HEX_N, hexT, hexSize, hexNeighbors, hexPath, hexDist, hexMoves } from '
 export { HP, hpMoves, hpGoalRow, HP_MEMO, hpSolve, hpMovesValued, hpNeeds } from '../games/hexapawn/rules.js';
 export { HILO, hiloTop, hiloLimit, hiloUsed, hiloLeft } from '../games/hilo/rules.js';
 export { huntSize, huntBand, huntClue, HUNT, huntDist, huntCandidates } from '../games/hunt/rules.js';
-export { TEST_TYPES, TYPES, OLD_TYPES, INFO, SC_ONLY, NO_SAME_PHONE, aiOf, rulesOf, metaOf } from '../games/index.js';
+export { TEST_TYPES, TYPES, OLD_TYPES, INFO, SC_ONLY, NO_SAME_PHONE, aiOf, rulesOf, metaOf, slipMode, GAMES } from '../games/index.js';
 export { LANE_TIGHT, LANE_NEAR, LANE, laneRow, laneNeed, lanePilot } from '../games/lane/rules.js';
 export { MM, mmFeedback, mmValid, MM_ALL, mmAll, mmCode, mmCandidates, mmBestGuess } from '../games/mastermind/rules.js';
 export { MEMORY, memoryDeck, memoryPair } from '../games/memory/rules.js';

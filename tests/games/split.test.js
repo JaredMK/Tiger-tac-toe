@@ -10,7 +10,7 @@ const SQUARE = [[10, 10], [90, 10], [90, 90], [10, 90]];
 
 test('split: Admin only, skill; its settings (the target, three bands and their points, the corners, the computer\'s error)', () => {
   assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'skill', '1.24.0']);
-  assert.deepEqual(E.tuneFields('split').map(f => f.k), ['target', 'band1', 'pts1', 'band2', 'pts2', 'band3', 'pts3', 'corners', 'aiErr', 'aiErrHard', 'aiErrEasy']);
+  assert.deepEqual(E.gameFields('split').map(f => f.k), ['target', 'band1', 'pts1', 'band2', 'pts2', 'band3', 'pts3', 'corners', 'aiErrEasy', 'aiErr', 'aiErrHard']);
   const c = R.splitCfg(E.newMini('split', E.makeRng('a')));
   assert.deepEqual([c.target, c.bands, c.corners], [6, [[1, 3], [3, 2], [6, 1]], 8]);
 });

@@ -14,7 +14,7 @@ const withKinds = (p, kinds, tune) => { for (let s = 0; s < 20000; s++) { const 
 test('blocks: Admin only, brain; allowed in Find Match (the server makes the same move); its settings; pieces of its own', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder, !!M.realTime], ['admin', 'brain', '1.25.0', false, false]);
   assert.ok(!E.FIND_MATCH_HOLD.includes('blocks'));
-  assert.deepEqual(E.tuneFields('blocks').map(f => f.k), ['pieces', 'lines', 'cols', 'rows', 'even', 'junk']);
+  assert.deepEqual(E.gameFields('blocks').map(f => f.k), ['pieces', 'lines', 'cols', 'rows', 'even', 'junk']);
   const m = E.newMini('blocks', E.makeRng('a')), c = R.blocksCfg(m);
   assert.deepEqual([m.cols, m.rows, c.lines, c.pieces, c.junk, c.even, E.secretOf(m)], [6, 8, 4, 3, false, true, null]);
   assert.deepEqual(R.KINDS.map(k => [k.id, k.rot.length, k.rot[0].length]), [['two', 2, 2], ['three', 2, 3], ['corner', 4, 3], ['square', 1, 4]]);

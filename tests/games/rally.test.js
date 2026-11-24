@@ -19,7 +19,7 @@ const hand = (c, tr, dir = 1) => (S, w) => { const q = ((S.i + dir * c.look) % t
 test('rally: Admin only, skill, real time, held out of Find Match; its settings; a new square', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder, M.realTime], ['admin', 'skill', '1.31.0', false, true]);
   assert.ok(E.FIND_MATCH_HOLD.includes('rally'), 'how fast the steps were played is the phone\'s word');
-  assert.deepEqual(E.tuneFields('rally').map(f => f.k), ['laps', 'speed', 'turn', 'width', 'tracks', 'travel', 'aiLapse', 'aiLapseHard', 'aiLapseEasy']);
+  assert.deepEqual(E.gameFields('rally').map(f => f.k), ['laps', 'speed', 'turn', 'width', 'tracks', 'travel', 'aiLapse', 'aiLapseHard', 'aiLapseEasy']);
   const m = E.newMini('rally', E.makeRng('a')), c = R.rallyCfg(m);
   assert.deepEqual([c.laps, c.speed, c.half, c.set, c.travel, c.rot.length], [3, 26, 6, 'mixed', 20, 2 * L + 1]);
   assert.ok(Math.abs(c.turn - 170 * Math.PI / 180) < 1e-12); assert.equal(c.rot[L][0], 0, 'the wheel straight: no turn'); assert.ok(Math.abs(c.rot[L][1] - 1) < 1e-15);

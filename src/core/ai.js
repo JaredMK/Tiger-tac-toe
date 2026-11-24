@@ -1,12 +1,13 @@
 // The computer player on the main board: what a square is worth, what a move changes, its move; and the
 // dispatch to each game's tactics (its ai.js: needs, best).
 import { LINES } from './board.js';
-import { canMove, publicMini, randomLegalMove } from './minis.js';
-import { needRng, randInt } from './random.js';
+import { applyMove, canMove, publicMini, randomLegalMove } from './minis.js';
+import { makeRng, needRng, randInt } from './random.js';
 import { other, PRACTICE_SQ } from './util.js';
 import { fingPlay } from '../games/shared/finger.js';
 import { ECHO, echoSeq } from '../games/echo/rules.js';
-import { aiOf, metaOf } from '../games/index.js';
+import { aiOf, metaOf, slipMode } from '../games/index.js';
+import { aiMiss } from './tune.js';
 import { aiWeights, levelCfg, levelOf } from './aiw.js';
 import { mc2Pick } from './mc2.js';
 
@@ -95,10 +96,44 @@ export function safeLead(squares, i, pm, me, value, margin) {
   }
   return true;
 }
-export function localBest(pm, me, rng, style, ctx) {
+// A game's tactics for the side to play: { move, q, win, ... } (its ai.js best), with the level's mistakes in this game
+// applied (aiSlip). Every computer move goes through here (cpuMove, the page's physics shots worked out ahead, the
+// simulations), so the page, the server's bots and the sims make the same mistakes from the same rng.
+export function localBest(pm, me, rng, style, ctx) { return aiSlip(pm, me, rng, ctx, localPlain(pm, me, rng, style, ctx)); }
+export function localPlain(pm, me, rng, style, ctx) {
   const game = aiOf(pm.type);
   if (game.best) return game.best(pm, me, rng, style, ctx);
   throw new Error('no tactics for ' + pm.type);
+}
+// The level's mistake in a game (its settings' aiMiss<Level>, core/tune.js; the level is the match's difficulty,
+// ctx.diff, else the tactics' ctx.level): with that chance its move is replaced by a deliberately weaker one, the game's
+// own ai.js worse(pm, side, rng, ctx) where it has one (ctx.best: the move it would have played; null: keep it), else
+// any legal move (rules.js randomMove on the public view). Nothing for a game whose move is a run or attempt without a
+// `worse` (games/index.js slipMode), a finger game's attempt still to be made (move.fing) or Echo's plan. The chance is
+// rolled only when it is above 0, so a game left at 0 plays (and draws from its rng) exactly as before. The tactics'
+// own figures (q, win, after) are kept: the computer chose its square believing in the better move, then fumbled it.
+export function aiSlip(pm, me, rng, ctx, local) {
+  if (!local || local.move == null || (local.move && (local.move.fing || local.move.echo))) return local;
+  const level = levelOf((ctx && (ctx.diff || ctx.level)) || 'normal'), p = aiMiss(pm, level);
+  if (!(p > 0)) return local;
+  rng = needRng(rng);
+  if (!(rng() < p)) return local;
+  const mode = slipMode(pm.type);
+  let m = null;
+  try {
+    if (mode === 'own') m = aiOf(pm.type).worse(pm, me, rng, Object.assign({}, ctx, { best: local.move }));
+    else if (mode === 'random') m = randomLegalMove(pm, me, rng);
+    if (m != null && !slipLegal(pm, me, m, rng)) m = null;
+  } catch (e) { m = null; }                                       // (a view without what the random mover needs: keep the move)
+  return m == null ? local : Object.assign({}, local, { move: m, slip: true });
+}
+// A weaker move is played only if the rules take it: tried on a copy of the public view (its own rng, drawn from the
+// computer's). Where the rules need what the view leaves out (a hidden deck, word or answer) the try fails and the
+// better move stands: such a game gives its own `worse`, which the rules always take.
+function slipLegal(pm, me, m, rng) {
+  if (slipMode(pm.type) === 'own') return true;
+  try { const r = applyMove(JSON.parse(JSON.stringify(pm)), me, JSON.parse(JSON.stringify(m)), makeRng(String(rng()))); return !!(r && r.ok); }
+  catch (e) { return false; }
 }
 
 // ---- the match: what a square is worth, what a move changes ----
@@ -187,8 +222,10 @@ export function cpuMove(state, rng, style, opts) {
     const at = clock ? clock() : 0, until = clock ? () => Math.max(0, at + share - clock()) : null;
     const key = keys[k], kept = key && !pre[i] ? LOCAL.get(key) : null;
     const pm = kept ? kept.pm : publicMini(state.squares[i].mini, me);   // (only what a person at the screen could know; the kept view is the same position, with what its tactics worked out about it)
-    const local = pre[i] || (kept ? Object.assign({}, kept.local) : localBest(pm, me, rng, st, { value: real, behind, level: how[k], until }));
+    const lctx = { value: real, behind, level: how[k], diff: level, until };
+    let local = pre[i] || (kept ? Object.assign({}, kept.local) : localPlain(pm, me, rng, st, lctx));
     if (key && !pre[i] && !kept) { if (LOCAL.size >= LOCAL_MAX) LOCAL.delete(LOCAL.keys().next().value); LOCAL.set(key, { pm, local: Object.assign({}, local) }); }
+    if (!pre[i]) local = aiSlip(pm, me, rng, lctx, local);          // (the kept answer is the plain one: its mistakes are rolled afresh every decision; pre[i] has had its own, localBest)
     const value = state.lock != null ? 1 : real;
     if (pm.type === 'echo' && local.move && local.move.echo) local.move = cpuEcho(state.squares[i].mini, me, local.move, rng);
     if (value >= AI.win && (local.win || local.q >= 1)) { best = { square: i, move: local.move, score: Infinity, value, gain: 1 }; return; }

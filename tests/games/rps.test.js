@@ -12,7 +12,7 @@ test('rps: no house deck anywhere: the square, its public view and its settings 
   const m = E.newMini('rps', E.makeRng('a'));
   assert.equal(m.deck, undefined); assert.deepEqual(m.score, { X: 0, O: 0 });
   assert.equal(E.publicMini(m).deck, undefined);
-  assert.deepEqual(E.tuneFields('rps').map(f => f.k).sort(), ['again', 'goal']);
+  assert.deepEqual(E.gameFields('rps').map(f => f.k).sort(), ['again', 'goal']);
   E.setTune('rps', { goal: 2 });
   try { assert.equal(R.rpsCfg(E.newMini('rps', E.makeRng('b'))).goal, 2); } finally { E.setTune('rps', null); }
 });

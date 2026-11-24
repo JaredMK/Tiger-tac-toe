@@ -9,7 +9,7 @@ const M = require('../../src/games/slice/meta.js');
 test('slice: Admin only, skill, real time, held out of Find Match; its settings', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder, M.realTime], ['admin', 'skill', '1.25.0', false, true]);
   assert.ok(E.FIND_MATCH_HOLD.includes('slice'), 'what was sliced is the phone\'s word');
-  assert.deepEqual(E.tuneFields('slice').map(f => f.k), ['secs', 'target', 'fruits', 'bombRate', 'bombCost', 'speed', 'aiHit', 'aiBomb', 'aiHitHard', 'aiBombHard', 'aiHitEasy', 'aiBombEasy']);
+  assert.deepEqual(E.gameFields('slice').map(f => f.k), ['secs', 'target', 'fruits', 'bombRate', 'bombCost', 'speed', 'aiHit', 'aiBomb', 'aiHitHard', 'aiBombHard', 'aiHitEasy', 'aiBombEasy']);
   const c = R.sliceCfg(E.newMini('slice', E.makeRng('a')));
   assert.deepEqual([c.target, c.secs, c.fruits, c.bombs, c.cost, c.speed], [25, 10, 14, 4, 5, 1]);
 });

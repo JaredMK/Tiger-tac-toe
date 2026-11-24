@@ -9,7 +9,8 @@ const M = require('../../src/games/keydrop/meta.js');
 test('keydrop: Admin only, skill, real time, held out of Find Match; the deal: a wall of 3 by 3 each, every prize on its shelf, nothing hidden', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.realTime, M.placeholder], ['admin', 'skill', '1.26.0', true, false]);
   assert.ok(E.FIND_MATCH_HOLD.includes('keydrop'), 'the server cannot time a finger letting go');
-  assert.deepEqual(E.tuneFields('keydrop').map(f => f.k), ['goal', 'speedX', 'speedY', 'tol', 'cols', 'rows', 'ramp', 'rampPct', 'aiMs', 'aiMsHard', 'aiMsEasy']);
+  assert.deepEqual(E.tuneFields('keydrop').map(f => f.k), ['goal', 'speedX', 'speedY', 'tol', 'cols', 'rows', 'ramp', 'rampPct', 'aiMsEasy', 'aiMs', 'aiMsHard', 'aiThinkEasy', 'aiThinkNormal', 'aiThinkHard']);
+  assert.deepEqual(E.tuneFields('keydrop').filter(f => /^ai/.test(f.k)).map(f => f.group), ['Computer: Easy', 'Computer: Normal', 'Computer: Hard', 'Computer: Easy', 'Computer: Normal', 'Computer: Hard'], 'each level\'s settings in its own group');
   const m = E.newMini('keydrop', E.makeRng('d')), c = R.keydCfg(m);
   assert.deepEqual([m.cols, m.rows, m.wall.X.length, m.wall.O.length, c.goal, c.vx, c.vy, c.tol, c.ramp], [3, 3, 9, 9, 2, 45, 45, 2.5, 0]);
   assert.ok(m.wall.X.every(Boolean) && m.wall.O.every(Boolean)); assert.equal(E.secretOf(m), null);

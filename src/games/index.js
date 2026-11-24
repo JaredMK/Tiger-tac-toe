@@ -12,7 +12,7 @@ export const viewOf = t => (GAMES[t] && GAMES[t].view) || NONE;
 // does the computer's turn (ui/turns.js scheduleCpu). The server never loads views (ready stays false there, unused).
 export const VIEWS = { done: false, wait: null, get ready() { return this.done || !this.wait; } };   // (no load started, as in the tests and on the server: nothing to wait for)
 export const metaOf = t => (GAMES[t] ? GAMES[t].meta : NONE);
-import { registerTunes } from '../core/tune.js';
+import { levelTune, registerTunes } from '../core/tune.js';
 const add = (type, rules, ai, meta) => { GAMES[type] = { type, rules, ai, meta, view: null }; };
 import * as tttR from './ttt/rules.js'; import * as tttA from './ttt/ai.js'; import * as tttM from './ttt/meta.js'; add('ttt', tttR, tttA, tttM);
 import * as c4R from './c4/rules.js'; import * as c4A from './c4/ai.js'; import * as c4M from './c4/meta.js'; add('c4', c4R, c4A, c4M);
@@ -143,4 +143,15 @@ export const SC_ONLY = TYPES.filter(t => GAMES[t].meta.scOnly);
 export const NO_SAME_PHONE = TYPES.filter(t => GAMES[t].meta.samePhone === false);   // never dealt to two people on one phone (Dominoes: each hand would be on show to the other)
 export const OLD_TYPES = Object.keys(GAMES).filter(t => GAMES[t].meta.retired);
 export const INFO = Object.fromEntries(Object.keys(GAMES).map(t => [t, GAMES[t].meta.info]));
-registerTunes(Object.fromEntries(Object.keys(GAMES).map(t => [t, GAMES[t].meta.TUNE])));   // each game's settings (meta.js TUNE; core/tune.js)
+// The computer's weaker move in a game (core/ai.js localBest, its mistake rate): 'own' (its ai.js `worse(pm, side, rng,
+// ctx)`), 'random' (any legal move, rules.js randomMove) or null (none: a game whose move is a run, an attempt or a
+// timed round, meta.realTime, without a `worse` of its own; a game that opts out, meta.js AI_LEVELS.miss false).
+export function slipMode(t) {
+  const g = GAMES[t];
+  if (!g || g.meta.retired || g.meta.AI_LEVELS === false || (g.meta.AI_LEVELS && g.meta.AI_LEVELS.miss === false)) return null;
+  if (typeof g.ai.worse === 'function') return 'own';
+  return !g.meta.realTime && typeof g.rules.randomMove === 'function' ? 'random' : null;
+}
+// Each game's settings (meta.js TUNE; core/tune.js), with its per-level ones (levelTune: the mistake rate where it can
+// slip, and the thinking time) added; none for a retired game.
+registerTunes(Object.fromEntries(Object.keys(GAMES).map(t => [t, GAMES[t].meta.retired ? GAMES[t].meta.TUNE : levelTune(GAMES[t].meta.TUNE, Object.assign({}, GAMES[t].meta.AI_LEVELS === false ? null : GAMES[t].meta.AI_LEVELS, { slip: !!slipMode(t) }, GAMES[t].meta.AI_LEVELS === false ? { miss: false, think: false } : null))])));

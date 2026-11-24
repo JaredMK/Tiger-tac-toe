@@ -19,7 +19,7 @@ const withTune = (t, fn) => { E.setTune('gems', Object.assign({}, OFF, t)); try 
 
 test('gems: Admin only, brain; a 7x7 board of six kinds, 32 to win, nothing hidden', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder], ['admin', 'brain', '1.30.0', false]);
-  assert.deepEqual(E.tuneFields('gems').map(f => f.k), ['again', 'againAt', 'target', 'even', 'size', 'kinds', 'aiEasy', 'aiHard']);
+  assert.deepEqual(E.gameFields('gems').map(f => f.k), ['again', 'againAt', 'target', 'even', 'size', 'kinds', 'aiEasy', 'aiHard']);
   E.setTune('gems', null); const m = E.newMini('gems', E.makeRng('a')); E.setTune('gems', OFF);
   assert.deepEqual([m.n, m.kinds, m.b.length, m.pts, m.last, m.tune], [7, 6, 49, { X: 0, O: 0 }, null, undefined]);
   assert.equal(R.gemsCfg(m).even, true, 'Equal turns on by default');
@@ -147,14 +147,14 @@ test('gems: Go again on success: off, a swap is the turn; on, a swap that remove
   assert.equal(play(null, 12).again, 0);
   const on = play({ again: 'on' }, 12); assert.ok(on.again > 10 && on.small > 10);
   assert.ok(play({ again: 'on', againAt: 12 }, 12).again < on.again);
-  assert.equal(E.tuneFields('gems').find(f => f.k === 'again').def, 'off');
+  assert.equal(E.gameFields('gems').find(f => f.k === 'again').def, 'off');
   assert.equal(M.explainVars({ again: 'on', againAt: 6 }).goAgain, ' Burst 6 or more with one swap and you go again.'); assert.equal(M.explainVars({ again: 'off' }).goAgain, '');
 });
 
 test('gems: Equal turns (a setting, on by default): the first to move reaching the target gives the other player a turn to answer', () => {
   const rows = ['0102345', '1021534', '2345012', '3450123', '4501234', '5012345', '0123450'], mv = { a: 1, b: 8 };
   const at = (pts, turns) => { const m = square(rows, pts); m.turns = turns; return m; };
-  assert.equal(E.tuneFields('gems').find(f => f.k === 'even').def, 'on');
+  assert.equal(E.gameFields('gems').find(f => f.k === 'even').def, 'on');
   withTune({ even: 'on' }, () => {
     // X has had a turn more once it moves: it reaches the target and the square waits for O's answer
     let m = at({ X: 30, O: 10 }, { X: 3, O: 3 }), r = E.applyMove(m, 'X', mv, E.makeRng('e1'));

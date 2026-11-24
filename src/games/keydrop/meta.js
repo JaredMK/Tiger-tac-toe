@@ -22,9 +22,11 @@ export const TUNE = [
   { k: 'rows', label: 'Prize wall: rows', def: 3, min: 2, max: 4, step: 1, group: 'Board' },
   { k: 'ramp', label: 'The key speeds up a little with each attempt', def: 'off', opts: ['off', 'on'], group: 'Timing' },
   { k: 'rampPct', label: 'Speed added an attempt while that is on (%)', def: 6, min: 1, max: 25, step: 1, group: 'Timing' },
-  { k: 'aiMs', label: 'Normal computer: timing error (ms)', def: 70, min: 0, max: 400, step: 5, group: 'Computer' },
-  { k: 'aiMsHard', label: 'Hard computer: timing error (ms)', def: 55, min: 0, max: 400, step: 5, group: 'Computer' },
-  { k: 'aiMsEasy', label: 'Easy computer: timing error (ms)', def: 95, min: 0, max: 400, step: 5, group: 'Computer' },
+  // The computer's levels (core/tune.js AI_GROUPS: the admin shows them as Computer: Easy, Normal, Hard; the keys are kept,
+  // so a square dealt before reads its own values; each level's thinking time is added after these, levelTune).
+  { k: 'aiMsEasy', label: 'Timing error letting go of the key (ms, a typical miss)', def: 95, min: 0, max: 400, step: 5, group: 'Computer: Easy' },
+  { k: 'aiMs', label: 'Timing error letting go of the key (ms, a typical miss)', def: 70, min: 0, max: 400, step: 5, group: 'Computer: Normal' },
+  { k: 'aiMsHard', label: 'Timing error letting go of the key (ms, a typical miss)', def: 55, min: 0, max: 400, step: 5, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/keydrop): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Hold to slide the key right, then up. Stop it at a keyhole to knock a prize down. Win enough first.';

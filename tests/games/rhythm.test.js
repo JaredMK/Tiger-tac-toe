@@ -9,7 +9,7 @@ const M = require('../../src/games/rhythm/meta.js');
 test('rhythm: Admin only, skill, real time, held out of Find Match; its settings', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder, M.realTime], ['admin', 'skill', '1.25.0', false, true]);
   assert.ok(E.FIND_MATCH_HOLD.includes('rhythm'), 'a tap\'s moment is the phone\'s word');
-  assert.deepEqual(E.tuneFields('rhythm').map(f => f.k), ['secs', 'target', 'lives', 'tempo', 'window', 'dense', 'aiMs', 'aiMiss', 'aiMsHard', 'aiMissHard', 'aiMsEasy', 'aiMissEasy']);
+  assert.deepEqual(E.gameFields('rhythm').map(f => f.k), ['secs', 'target', 'lives', 'tempo', 'window', 'dense', 'aiMs', 'aiMiss', 'aiMsHard', 'aiMissHard', 'aiMsEasy', 'aiMissEasy']);
   const c = R.rhythmCfg(E.newMini('rhythm', E.makeRng('a')));
   assert.deepEqual([c.target, c.secs, c.beat, c.win, c.lives], [60, 10, 600, 150, 2]);
   assert.match(M.explainVars({ lives: 2 }).livesText, /Miss 2 notes/); assert.equal(M.explainVars({ lives: 0 }).livesText, '');

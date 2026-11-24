@@ -13,7 +13,7 @@ const pics = (...v) => { const at = [0.1, 0.5, 0.8, 0.95]; let k = 0; return () 
 test('reels: Admin only, luck; no gambling words in its name or text; its settings', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.info.name], ['admin', 'luck', '1.29.0', 'Fruit Reels']);
   assert.doesNotMatch(`${M.info.name} ${M.info.hint} ${M.explainer.play} ${M.explainer.win} ${M.explainVars({ stars: 'on' }).starText}`, /slot|jackpot|bet|payout|casino|gambl|wager|coin/i);
-  assert.deepEqual(E.tuneFields('reels').map(f => [f.k, f.def]), [['target', 10], ['stars', 'on'], ['tri1', 3], ['tri2', 4], ['tri3', 6], ['tri4', 10], ['w1', 4], ['w2', 3], ['w3', 2], ['w4', 1]]);
+  assert.deepEqual(E.gameFields('reels').map(f => [f.k, f.def]), [['target', 10], ['stars', 'on'], ['tri1', 3], ['tri2', 4], ['tri3', 6], ['tri4', 10], ['w1', 4], ['w2', 3], ['w3', 2], ['w4', 1]]);
 });
 
 test('reels: a spin fills the 3x3 window; three alike on any of the five lines (rows, diagonals) score; no hold', () => {

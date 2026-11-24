@@ -11,7 +11,7 @@ const at = (...v) => { let k = 0; return () => v[k++ % v.length]; };   // an rng
 test('target: Admin only, skill, real time, held out of Find Match; the deal: four targets each, the same places, clear of the edges and each other', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.realTime], ['admin', 'skill', '1.24.0', true]);
   assert.ok(E.FIND_MATCH_HOLD.includes('target'), 'the server cannot time a tap');
-  assert.deepEqual(E.tuneFields('target').map(f => f.k), ['targets', 'size', 'sweepMs', 'circleMin', 'circleMax', 'pulseMs', 'aiErr', 'aiErrHard', 'aiErrEasy']);
+  assert.deepEqual(E.gameFields('target').map(f => f.k), ['targets', 'size', 'sweepMs', 'circleMin', 'circleMax', 'pulseMs', 'aiErr', 'aiErrHard', 'aiErrEasy']);
   for (let g = 0; g < 60; g++) {
     const m = E.newMini('target', E.makeRng('d' + g));
     assert.equal(m.tg.X.length, 4); assert.deepEqual(m.tg.X, m.tg.O); assert.equal(m.tsize, 11);

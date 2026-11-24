@@ -21,7 +21,7 @@ test('bricks: a square deals one 5x7 wall for each player, both whole, no goes t
   assert.deepEqual(m.tries, { X: 0, O: 0 }); assert.equal(m.last, null);
   assert.equal(m.seed.X, m.seed.O); assert.ok(Number.isInteger(m.seed.X));
   assert.equal(R.brkTotal(m), 35); assert.equal(R.brkLeft(m, 'X'), 35); assert.equal(R.brkBroken(m, 'O'), 0);
-  assert.deepEqual(R.brkCfg(m), Object.fromEntries(M.TUNE.map(f => [f.k, f.def])), 'dealt with the defaults');
+  assert.deepEqual(R.brkCfg(m), E.tuneLive('bricks'), 'dealt with the defaults'); assert.deepEqual(Object.fromEntries(M.TUNE.map(f => [f.k, R.brkCfg(m)[f.k]])), Object.fromEntries(M.TUNE.map(f => [f.k, f.def])), 'its own settings at their defaults');
   assert.equal(E.canMove(m, 'X'), true);
 });
 test('bricks: the serve is the same for the same square, player and go, and differs between them', () => {

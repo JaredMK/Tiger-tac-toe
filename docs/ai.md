@@ -138,6 +138,34 @@ The search's own settings (shared by every level that searches): `attack`, `defe
 (the ms a decision may take where there is a clock). `npm run tune-ai` tunes the first five by self-play; it never
 touches the levels' settings.
 
+## Each game's own levels (the AI levels pass)
+
+Inside a square a game's tactics read `ctx.level` ('easy' | 'normal' | 'hard': which tactics) and `ctx.diff` (the
+match's difficulty; the same as `ctx.level` in the simulations; on the board Normal plays a square with the 'hard'
+tactics as often as its Sharpness says, 85% by default, so `ctx.level` can be 'hard' while `ctx.diff` is 'normal').
+Every game also carries, per difficulty, two settings of its own, added to its settings by `core/tune.js` `levelTune`
+(from `games/index.js` at registration) and shown on its admin page under **Computer: Easy**, **Computer: Normal**
+and **Computer: Hard** (`TUNE_GROUPS`; **Computer** stays for what the levels share):
+
+| Key | Label | What it does |
+|---|---|---|
+| `aiMissEasy`, `aiMissNormal`, `aiMissHard` | Mistakes: chance a move is a deliberately weaker one (%) | `core/ai.js` `aiSlip`, from `localBest`: with that chance (by `ctx.diff`) the move is replaced by the game's `ai.js` `worse(pm, side, rng, ctx)` (ctx.best: the move it would have played; return null to keep it), else a random legal move (`randomLegalMove` on the public view, played only if the rules take it on a copy of that view). Rolled only when above 0, so a game at 0 plays and draws from its rng exactly as before. |
+| `aiThinkEasy`, `aiThinkNormal`, `aiThinkHard` | Thinking time: extra pause before its move (ms, for feel only) | `ui/turns.js` `cpuThinkMs`: added to the page's pause in the square before each of the computer's moves there (`dur`, so Speed shortens it). Never on the server. |
+
+All default to 0: nothing changes in play until a game is tuned. The mistake settings exist only where a weaker
+move can be made (`games/index.js` `slipMode`: 'own' with a `worse`, 'random' with a `randomMove` and not
+`realTime`, else none: a run, attempt or timed round expresses a slip through its own level settings, its timing or
+aim errors). A game sets other defaults or leaves some out in its meta.js: `export const AI_LEVELS = { miss: { easy:
+20 }, think: { hard: 400 } }` (`miss: false`: no mistake settings; `AI_LEVELS = false`: none). A key the game's own
+TUNE already has is the game's (Rhythm Tap's own `aiMissEasy`, notes missed, stays its own: it is never read as a
+move mistake while the game has no `worse`). A game's own per-level settings go in the same groups (Key Drop's
+`aiMsEasy`/`aiMs`/`aiMsHard`: keys kept, so a square dealt before reads its own values).
+
+Measuring: `node tests/sim/levels.js <type,...|all> [N] [--budget ms] [--tune '{...}']` plays N squares a pairing
+(Hard v Normal, Normal v Easy; the first mover alternating; through `localBest`, so the mistakes apply) over worker
+threads and prints the higher level's share of the decided squares, the draws and the time; `pairing(type, hi, lo, N,
+tune)` from code. Targets: Hard beats Normal 65-75%, Normal beats Easy 65-75%; a game of pure luck is exempt and says so.
+
 ## How it was measured
 
 - **The reference.** The engine at the commit in `docs/ai-ref.txt` ("the old Hard"), exported by

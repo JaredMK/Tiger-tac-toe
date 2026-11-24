@@ -20,8 +20,8 @@ const F = CS.foot[0];
 
 test('castle: Admin only, skill, its settings in their groups; the deal: one castle for both, its crystal on a perch, the same from the same rng', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder, M.realTime, M.info.name], ['admin', 'skill', '1.31.0', false, true, 'Castle Smash']);
-  assert.deepEqual(E.tuneFields('castle').map(f => f.k), ['again', 'layers', 'stone', 'power', 'weight', 'woodTough', 'stoneTough', 'stoneHits', 'coreTough', 'aiAim', 'aiPow', 'aiAimHard', 'aiPowHard', 'aiTries', 'aiAimEasy', 'aiPowEasy']);
-  assert.ok(E.tuneFields('castle').every(f => ['Board', 'Rules', 'Timing', 'Computer'].includes(f.group)));
+  assert.deepEqual(E.gameFields('castle').map(f => f.k), ['again', 'layers', 'stone', 'power', 'weight', 'woodTough', 'stoneTough', 'stoneHits', 'coreTough', 'aiAim', 'aiPow', 'aiAimHard', 'aiPowHard', 'aiTries', 'aiAimEasy', 'aiPowEasy']);
+  assert.ok(E.gameFields('castle').every(f => ['Board', 'Rules', 'Timing', 'Computer'].includes(f.group)));
   const plans = new Set();
   for (let g = 0; g < 60; g++) for (const layers of [3, 4, 5]) {
     const m = fresh('d' + g, { layers });

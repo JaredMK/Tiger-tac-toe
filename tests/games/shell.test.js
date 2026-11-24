@@ -126,9 +126,9 @@ test('shell: the admin\'s settings: the levels to win (1 to 5), the cups of each
   const seen = [];
   for (let k = 0; k < 5; k++) { seen.push(m5.round.X.n); const r = E.applyMove(m5, 'X', E.attTruth('shell', m5.round.X), lcg('w' + k)); assert.equal(r.outcome, k === 4 ? 'win' : 'continue'); if (k === 0) assert.deepEqual([m5.round.X.ms, m5.round.X.k, m5.round.X.pairs, m5.round.X.far, m5.round.X.ramp, m5.round.X.show], [150, 20, 2, 0, 0, 2000]); }
   assert.deepEqual(seen, [3, 4, 5, 7, 2]);
-  for (const f of E.tuneFields('shell')) assert.ok(f.opts ? f.opts.includes(f.def) : f.min <= f.def && f.def <= f.max, f.k);
-  assert.ok(E.tuneFields('shell').some(f => f.k === 'levels' && f.min === 1 && f.max === 5) && E.tuneFields('shell').filter(f => /^c\d$/.test(f.k)).every(f => f.min === 2 && f.max === 7));
-  assert.deepEqual(E.tuneFields('shell').filter(f => /^pr\d$/.test(f.k)).map(f => [f.min, f.max]), Array(5).fill([0, 2]));
+  for (const f of E.gameFields('shell')) assert.ok(f.opts ? f.opts.includes(f.def) : f.min <= f.def && f.def <= f.max, f.k);
+  assert.ok(E.gameFields('shell').some(f => f.k === 'levels' && f.min === 1 && f.max === 5) && E.gameFields('shell').filter(f => /^c\d$/.test(f.k)).every(f => f.min === 2 && f.max === 7));
+  assert.deepEqual(E.gameFields('shell').filter(f => /^pr\d$/.test(f.k)).map(f => [f.min, f.max]), Array(5).fill([0, 2]));
 });
 
 test('shell: "Go again on success" (off by default): on, a right pick keeps the turn and the next level waits for its Start; never after a wrong pick, the winning one or a timeout', () => {
@@ -182,7 +182,7 @@ test('shell: the computer is right as often as its level\'s setting says; its mi
 });
 
 test('shell: the presets (Gentle, Normal, Brutal): every value one its setting takes; more cups each level; Gentle slower than Normal, Brutal faster', () => {
-  const F = Object.fromEntries(E.tuneFields('shell').map(f => [f.k, f]));
+  const F = Object.fromEntries(E.gameFields('shell').map(f => [f.k, f]));
   assert.deepEqual(Object.keys(E.SHELL_PRESETS), ['Gentle', 'Normal', 'Brutal']);
   for (const name of Object.keys(E.SHELL_PRESETS)) {
     const v = E.shellPreset(name);

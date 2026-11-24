@@ -99,7 +99,7 @@ test('the Games list: every mini-game once, alphabetical, with its icon, categor
   }
   const row = t => (html.match(new RegExp(`<li><a class="grow" href="#games/${t}"[\\s\\S]*?</a></li>`)) || [''])[0];
   assert.match(row('ttt'), /class="gico"[^>]*><svg/, 'the icon');
-  assert.match(row('ttt'), /Brain · 1 setting</, 'the category and the settings count');
+  assert.match(row('ttt'), /Brain · 7 settings</, 'the category and the settings count (its own one and the computer\'s six: a mistake rate and a thinking time a level)');
   assert.match(row('ttt'), /badge rel">Released</); assert.doesNotMatch(row('ttt'), /badge chg/);
   assert.match(row('hex'), /badge rel">Released</, 'released in the database although admin only in the code');
   assert.match(row('pig'), /badge adm">Testing</, 'un-released in the database'); assert.match(row('pig'), /badge chg">changed</, 'a TUNE value saved');
@@ -166,6 +166,19 @@ test('a game that is not a race game has no Mode switch; a game with a tuning ca
   assert.equal((html.match(/>Save</g) || []).length, 1);
   for (const t of E.TYPES) { const h = draw(`#games/${t}`); assert.match(h, new RegExp(`data-gamesave="${t}"`), `${t}: Save`); assert.match(h, new RegExp(`data-tunereset="${t}"`)); assert.match(h, new RegExp(`data-rel="${t}"`)); assert.doesNotMatch(h, /undefined|NaN|\[object/, `${t}: nothing undrawn`); }
   for (const t of ['dash', 'lane', 'flap', 'chopper', 'bullseye', 'plinko', 'pig', 'roads', 'oddone', 'wheels', 'headcount', 'flash', 'snapshot', 'skyhop', 'scoop', 'pinball']) assert.ok(A.legacyPath(t), `${t}: a tuning card path`);
+});
+test('the computer\'s levels on a game\'s page: Computer: Easy, Normal, Hard in that order after the game\'s own groups, each with its thinking time (and mistakes where the game can slip), plain labels', () => {
+  A.ctl = ctl0();
+  const order = h => [...h.matchAll(/<h3>([^<]+)<\/h3>/g)].map(m => m[1]);
+  let html = draw('#games/keydrop');
+  assert.deepEqual(order(html).filter(g => g.startsWith('Computer')), ['Computer: Easy', 'Computer: Normal', 'Computer: Hard']);
+  for (const k of ['aiMsEasy', 'aiMs', 'aiMsHard', 'aiThinkEasy', 'aiThinkNormal', 'aiThinkHard']) assert.ok(html.includes(`data-tune="keydrop" data-k="${k}"`), `${k}: a field`);
+  assert.ok(!html.includes('data-k="aiMissEasy"'), 'Key Drop is an attempt: no generic mistakes without a worse() of its own');
+  html = draw('#games/c4');
+  for (const k of ['aiMissEasy', 'aiMissNormal', 'aiMissHard', 'aiThinkEasy']) assert.ok(html.includes(`data-tune="c4" data-k="${k}"`), `${k}: a field`);
+  assert.match(html, /Mistakes: chance a move is a deliberately weaker one/);
+  html = draw('#games/shell');
+  const g = order(html); assert.ok(g.indexOf('Level 5') < g.indexOf('Computer'), 'a game\'s own groups before the computer\'s');
 });
 test('Shell Game\'s page: its settings by level, the difficulty presets (Gentle, Normal, Brutal: the one the page holds is lit), Save and Test play', async () => {
   const { PRESETS } = await import('../../src/games/shell/meta.js');
