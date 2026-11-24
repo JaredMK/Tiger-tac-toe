@@ -14,9 +14,9 @@ export const TUNE = [
   MODE_TUNE,
   { k: 'goal', label: 'Right answers to win', def: 3, min: 2, max: 5, step: 1, group: 'Rules' },
   { k: 'opts', label: 'Answers to choose from', def: 4, min: 2, max: 4, step: 1, group: 'Rules' },
-  { k: 'knowEasy', label: 'Easy: knows the answer (% of questions; else it guesses among those not crossed out)', def: 25, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
+  { k: 'knowEasy', label: 'Easy: knows the answer (% of questions; else it guesses among those not crossed out)', def: 28, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
   { k: 'know', label: 'Normal: knows the answer (% of questions; else it guesses among those not crossed out)', def: 53, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
-  { k: 'knowHard', label: 'Hard: knows the answer (% of questions; else it guesses among those not crossed out)', def: 85, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
+  { k: 'knowHard', label: 'Hard: knows the answer (% of questions; else it guesses among those not crossed out)', def: 80, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8.5 9a3.5 3.5 0 1 1 5 3.2c-1 .5-1.5 1.3-1.5 2.3"/><circle cx="12" cy="18.5" r="1.1" fill="currentColor" stroke="none"/><rect x="2.5" y="2.5" width="19" height="19" rx="4"/></svg>';
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/trivia): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

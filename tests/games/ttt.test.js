@@ -211,27 +211,30 @@ test('dealing: a drawn square takes a game not used yet this match through playM
 });
 
 test('tic-tac-toe tactics: win now, else block, else take the best minimax move', () => {
-  const win = L.localBest({ type: 'ttt', cells: ['X', 'X', null, 'O', 'O', null, null, null, null] }, 'X', cpuRng());
+  const T0 = { aiMissNormal: 0 };   // (Normal's own mistakes off: its plain tactics)
+  const win = L.localBest({ type: 'ttt', cells: ['X', 'X', null, 'O', 'O', null, null, null, null], tune: T0 }, 'X', cpuRng());
   assert.equal(win.move, 2); assert.equal(win.win, true);
-  const block = L.localBest({ type: 'ttt', cells: ['O', 'O', null, 'X', null, null, null, null, null] }, 'X', cpuRng());
+  const block = L.localBest({ type: 'ttt', cells: ['O', 'O', null, 'X', null, null, null, null, null], tune: T0 }, 'X', cpuRng());
   assert.equal(block.move, 2);
-  const fork = L.localBest({ type: 'ttt', cells: ['X', null, null, null, 'O', null, null, null, 'X'] }, 'O', cpuRng());
-  assert.ok([1, 3, 5, 7].includes(fork.move), 'O must take an edge against the corner fork');
-  const empty = L.localBest({ type: 'ttt', cells: new Array(9).fill(null) }, 'X', cpuRng());
+  const fork = L.localBest({ type: 'ttt', cells: ['X', null, null, null, 'O', null, null, null, 'X'], tune: T0 }, 'O', cpuRng(), {}, { level: 'hard', until: null });
+  assert.ok([1, 3, 5, 7].includes(fork.move), 'O must take an edge against the corner fork (Hard; Normal looks two marks ahead, aiDepthNormal)');
+  const deep = L.localBest({ type: 'ttt', cells: ['X', null, null, null, 'O', null, null, null, 'X'], tune: { aiMissNormal: 0, aiDepthNormal: 9 } }, 'O', cpuRng());
+  assert.ok([1, 3, 5, 7].includes(deep.move), 'Normal looking all the way ahead too');
+  const empty = L.localBest({ type: 'ttt', cells: new Array(9).fill(null), tune: T0 }, 'X', cpuRng());
   assert.equal(empty.move, 4, 'the centre from an empty board');
 });
 
 test('tic-tac-toe: the admin\'s settings (the computer\'s mistake rate) are dealt into the square and played by', () => {
-  E.setTune('ttt', { miss: 50 });
+  E.setTune('ttt', { aiMissNormal: 50 });
   const m = E.newMini('ttt', E.makeRng('ttt-tune'));
   E.setTune('ttt', null);
-  assert.deepEqual(m.tune, { miss: 50 });
+  assert.equal(m.tune.aiMissNormal, 50);
   m.cells = ['X', 'X', null, 'O', 'O', null, null, null, null];
   const moves = new Set();
   for (let k = 0; k < 30; k++) moves.add(E.localBest(E.publicMini(m), 'X', E.makeRng('ttt-ai' + k)).move);
   assert.ok(moves.has(2) && moves.size > 1, 'a slip now and then');
-  delete m.tune;
-  for (let k = 0; k < 10; k++) assert.equal(E.localBest(E.publicMini(m), 'X', E.makeRng('ttt-ai' + k)).move, 2, 'the default: never a slip');
+  m.tune = { aiMissNormal: 0 };
+  for (let k = 0; k < 10; k++) assert.equal(E.localBest(E.publicMini(m), 'X', E.makeRng('ttt-ai' + k)).move, 2, 'no mistakes: never a slip');
 });
 
 test('ttt: Hard is perfect and sets traps: a corner first, never a loss, more wins against a player who goes wrong', () => {
@@ -256,7 +259,8 @@ test('ttt: Hard is perfect and sets traps: a corner first, never a loss, more wi
     }
     return { w, l };
   };
-  const h = score(hard), n = score({ level: 'normal', until: null });
+  const h = score(hard);
+  E.setTune('ttt', { aiDepthNormal: 9, aiMissNormal: 0 }); const n = score({ level: 'normal', until: null }); E.setTune('ttt', null);   // (Normal looking all the way ahead, without mistakes: the plain minimax)
   assert.equal(h.l, 0); assert.equal(n.l, 0);
   assert.ok(h.w > n.w, `more wins against random answers (${h.w} against ${n.w} of 300)`);
 });

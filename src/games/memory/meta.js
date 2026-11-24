@@ -11,10 +11,10 @@ export const raceExplainer = { name: 'Find the Pair', play: 'You each have the s
 export const TUNE = [
   MODE_TUNE,
   { k: 'pairs', label: 'Matching pairs in the deck', def: 1, min: 1, max: 3, step: 1, group: 'Rules' },
-  { k: 'memEasy', label: 'Easy: remembers a card it has seen (% of the time)', def: 60, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
+  { k: 'memEasy', label: 'Easy: remembers a card it has seen (% of the time)', def: 65, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
   { k: 'mem', label: 'Normal: remembers a card it has seen (% of the time)', def: 100, min: 0, max: 100, step: 5, group: 'Computer: Normal' },
   { k: 'memHard', label: 'Hard: remembers a card it has seen (% of the time)', def: 100, min: 0, max: 100, step: 5, group: 'Computer: Hard' },
-  { k: 'aiWaitHard', label: 'Hard: how often it turns two known cards to make the other side show a new one, when that is the better play (%)', def: 85, min: 0, max: 100, step: 5, group: 'Computer: Hard' },
+  { k: 'aiWaitHard', label: 'Hard: how often it turns two known cards to make the other side show a new one, when that is the better play (%)', def: 40, min: 0, max: 100, step: 5, group: 'Computer: Hard' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="6" width="11" height="15" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v12"/></svg>';
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/memory): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

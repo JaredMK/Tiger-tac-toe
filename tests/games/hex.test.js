@@ -111,10 +111,10 @@ test('hex tactics: connects when one cell short and blocks the opponent\'s last 
 });
 
 test('hex: the admin\'s settings (the computer\'s mistake rate) are dealt into the square and played by', () => {
-  E.setTune('hex', { miss: 50 });
+  E.setTune('hex', { aiMissNormal: 50 });
   const m = E.newMini('hex', E.makeRng('hex-tune'));
   E.setTune('hex', null);
-  assert.deepEqual(m.tune, { miss: 50 });
+  assert.equal(m.tune.aiMissNormal, 50);
   m.cells[0] = m.cells[1] = m.cells[2] = m.cells[3] = 'X';   // X wins at cell 4
   const moves = new Set();
   for (let k = 0; k < 30; k++) moves.add(E.localBest(E.publicMini(m), 'X', E.makeRng('hex-ai' + k)).move);
@@ -129,7 +129,7 @@ test('hex: the Hard computer searches deeper (a forced win Normal misses), legal
   const h = R.hexHard(cells, 'X');
   assert.ok(h.moves[0].i === 6 && h.moves[0].v >= R.HEX_HARD.win - 16, `a forced win seen (${JSON.stringify(h.moves[0])} at depth ${h.depth})`);
   assert.equal(L.localBest(pm, 'X', cpuRng(), {}, hard).move, 6);
-  assert.equal(L.localBest(pm, 'X', cpuRng(), {}, normal).move, 2, 'Normal as before');
+  assert.notEqual(L.localBest(pm, 'X', cpuRng(), {}, normal).move, 6, 'Normal misses it (one reply ahead: 2 or 3, alike to it)');
   const after = cells.slice(); after[2] = 'X';
   assert.ok(R.hexHard(after, 'O').moves[0].v >= R.HEX_HARD.win - 16, 'after Normal\'s move O wins by force');
   // the shape the square choice needs: a win now, a block, the position after
@@ -202,7 +202,7 @@ test('hex: Hard plays the solved 5x5 game: its opening wins, and it wins every g
   // Hard against random stones and against the deep search of before: no won game lost
   let games = 0;
   for (let g = 0; g < 80; g++) {
-    const rng = E.makeRng('hex-solved' + g), b = hex5(), me = g % 2 ? 'X' : 'O', opener = (g >> 1) % 2 ? 'X' : 'O';
+    const rng = E.makeRng('hex-solved' + g), b = Object.assign(hex5(), { tune: { aiMissHard: 0 } }), me = g % 2 ? 'X' : 'O', opener = (g >> 1) % 2 ? 'X' : 'O';
     let p = opener, res, first = null;
     do {
       let mv;

@@ -17,7 +17,7 @@ export function best(pm, me, rng, style, ctx) {
   const shared = !pm.race, v = memoryKnown(pm, me) || { seen: [], cards: [] };
   let known = v.seen.filter(i => v.cards[i]);
   const T = tune(pm), lv = ctx && ctx.level, forgot = [];
-  const mem = lv === 'easy' ? num(T.memEasy, 60) : lv === 'hard' ? num(T.memHard, 100) : num(T.mem, 100);   // its memory, by level (TUNE)
+  const mem = lv === 'easy' ? num(T.memEasy, 65) : lv === 'hard' ? num(T.memHard, 100) : num(T.mem, 100);   // its memory, by level (TUNE)
   if (mem < 100) known = known.filter(i => rng() * 100 < mem || !forgot.push(i));   // its memory (TUNE): a card seen may be forgotten, as good as unseen
   const pair = memoryPair(v, known);
   if (pair) return { move: pair, q: 1, shared };

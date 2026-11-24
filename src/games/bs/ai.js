@@ -32,7 +32,7 @@ export function best(pm, me, rng, style, ctx) {
   const hard = ctx && ctx.level === 'hard';
   if (ctx && ctx.level === 'easy') {                             // Easy: no system: any open cell, or (aiTargetEasy % of the time once there is a hit) one beside a hit
     const N = bsN(pm), near = open.filter(k => pm.hits.some(h => Math.abs(h - k) === N || (Math.abs(h - k) === 1 && Math.floor(h / N) === Math.floor(k / N))));
-    const t = tune(pm).aiTargetEasy, pct = t != null && t !== '' && Number.isFinite(Number(t)) ? Number(t) : 70;
+    const t = tune(pm).aiTargetEasy, pct = t != null && t !== '' && Number.isFinite(Number(t)) ? Number(t) : 90;
     const pool = near.length && rng() * 100 < pct ? near : open, mv = pool[randInt(rng, pool.length)];
     return { move: mv, q: cand.filter(c => c.length === 1 && c[0] === mv).length / cand.length, shared: !race };
   }

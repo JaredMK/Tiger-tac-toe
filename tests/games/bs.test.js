@@ -180,11 +180,11 @@ test('bs: an old 3x3 game is moved into the top-left of the 4x4 grid as a Patrol
 });
 
 test('bs: the admin settings deal a 5x5 sea with a long ship (and a 4x4 Super Chaos sea); the computer plays them', () => {
-  E.setTune('bs', { n: 5, len: 4, scN: 4, scLen: 2, miss: 50 });
+  E.setTune('bs', { n: 5, len: 4, scN: 4, scLen: 2, aiMissNormal: 50 });
   try {
     const m = L.newMini('bs', lcg(3));
     assert.equal(m.n, 5); assert.equal(m.len, 4); assert.equal(m.revealed.length, 25);
-    assert.deepEqual(m.tune, { again: 'on', n: 5, len: 4, scN: 4, scLen: 2, miss: 50 });
+    assert.deepEqual([m.tune.n, m.tune.len, m.tune.scN, m.tune.scLen, m.tune.aiMissNormal], [5, 4, 4, 2, 50]);
     for (let k = 0; k < 6; k++) {
       const pm = L.publicMini(m), mv = L.localBest(pm, 'X', lcg(k)).move;
       assert.ok(mv >= 0 && mv < 25 && !m.revealed[mv]);

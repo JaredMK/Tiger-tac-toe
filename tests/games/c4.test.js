@@ -239,7 +239,7 @@ test('connect 4: the Hard computer searches deeper (a forced win Normal misses),
   const k3 = mini('c4'); k3.tune = { k: 3 };
   L.applyMove(k3, 'X', 0); L.applyMove(k3, 'X', 1);
   assert.ok(L.localBest(L.publicMini(k3), 'X', cpuRng(), {}, hard).win, 'three in a row wins with k 3');
-  const slips = new Set(); const sq = mini('c4'); sq.tune = { miss: 50 };
+  const slips = new Set(); const sq = mini('c4'); sq.tune = { aiMissHard: 50 };
   for (let i = 0; i < 20; i++) slips.add(L.localBest(L.publicMini(sq), 'X', E.makeRng('c4-hard-miss' + i), {}, hard).move);
   assert.ok(slips.has(3) && slips.size > 1, 'the mistake rate still applies');
   // the time: a fixed amount of work without a clock, under 60 ms a move on a quiet machine (held to 150: the suite runs its files side by side); with a clock it stops when told

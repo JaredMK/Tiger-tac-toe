@@ -21,7 +21,7 @@ export const TUNE = [
   { k: 'len', label: 'Ship length (cells; Random: 1 to 4 each square)', def: 3, opts: [1, 2, 3, 4, 'Random'], group: 'Rules' },
   { k: 'scN', label: 'Super Chaos sea size (cells across)', def: 5, opts: [4, 5], group: 'Board' },
   { k: 'scLen', label: 'Super Chaos ship (cells)', def: 3, min: 2, max: 4, step: 1, group: 'Rules' },
-  { k: 'aiTargetEasy', label: 'Easy: once it has a hit, how often it fires next to a hit (%; else anywhere open: it never weighs where the ship could lie)', def: 70, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
+  { k: 'aiTargetEasy', label: 'Easy: once it has a hit, how often it fires next to a hit (%; else anywhere open: it never weighs where the ship could lie)', def: 90, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/></svg>';
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/bs): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

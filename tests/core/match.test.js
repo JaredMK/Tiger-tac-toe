@@ -68,7 +68,7 @@ function cpuMatch(me, squares, owners = []) {
   st.cpu = me; st.turn = me;
   return st;
 }
-const tttOf = (...cells) => Object.assign(mini('ttt'), { cells: cells.map(c => c || null) });
+const tttOf = (...cells) => Object.assign(mini('ttt'), { cells: cells.map(c => c || null), tune: { aiMissNormal: 0 } });   // (Normal's own mistakes off: the tests of the board's choices)
 
 // ---- online match records: the public state and the secrets apart, moves applied to the pair ----
 const SECRET_KEYS = { bridge: 'bad', maze: 'open', faces: 'tg', wordle: 'word', hangman: 'word', hilo: 'target', bs: 'ship', hunt: 'treasure', memory: 'cards', mastermind: 'code' , trivia: 'answer', oddone: 'pos', patterns: 'answer', sniff: 'treasure', headcount: 'round', flash: 'round', snapshot: 'round', shell: 'round', war: 'deck', wtiles: 'bag', duck: 'vals', t31: 'deck', rummy: 'deck', mahjong: 'wall', dominoes: 'pile', scratch: 'cards', numbers: 'tg', doors: 'good' };   // (round: an attention game's rounds are the server's until Start; the public state shows each as its frame)
@@ -529,8 +529,9 @@ test('coin flip, higher/lower and pig tactics', () => {
   assert.equal(coins.move, 'flip');
   assert.equal(coins.q, 0, 'four to turn: no chance of finishing this move');
   assert.equal(L.localBest({ type: 'coins', coins: ['X', 'X', 'X', 'X', '?'] }, 'X', cpuRng()).q, 0.5);
-  assert.equal(L.localBest({ type: 'hilo', lo: 1, hi: 20, guesses: [] }, 'X', cpuRng()).move, 10);
-  assert.equal(L.localBest({ type: 'hilo', lo: 11, hi: 20, guesses: [] }, 'X', cpuRng()).move, 15);
+  const EASY = { level: 'easy' };   // (Higher/Lower: Easy halves, the obvious play; Normal guesses anywhere in the range, by default)
+  assert.equal(L.localBest({ type: 'hilo', lo: 1, hi: 20, guesses: [] }, 'X', cpuRng(), {}, EASY).move, 10);
+  assert.equal(L.localBest({ type: 'hilo', lo: 11, hi: 20, guesses: [] }, 'X', cpuRng(), {}, EASY).move, 15);
   assert.equal(L.localBest({ type: 'hilo', lo: 7, hi: 7, guesses: [] }, 'X', cpuRng()).q, 1);
   const pig = (bank, oppBank, turn) => L.localBest({ type: 'pig', bank: { X: bank, O: oppBank }, turn }, 'X', cpuRng()).move;
   assert.equal(pig(0, 0, null), 'roll', 'a move starts with a roll');

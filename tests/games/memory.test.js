@@ -307,7 +307,7 @@ test('memory, Hard: with four or more designs seen and no pair known it may wait
   const deck = L.memoryDeck(lcg(5), 1), key = c => c.s + c.c, n = {};
   for (const c of deck) n[key(c)] = (n[key(c)] || 0) + 1;
   const singles = deck.filter(c => n[key(c)] === 1), pair = deck.filter(c => n[key(c)] === 2);
-  const m = { type: 'memory', cards: singles.concat(pair), flips: 3, seen: [0, 1, 2, 3, 4, 5], last: null };
+  const m = { type: 'memory', cards: singles.concat(pair), flips: 3, seen: [0, 1, 2, 3, 4, 5], last: null, tune: { aiWaitHard: 85 } };   // (Hard waits 85% of the time it is the better play here; the default is the admin's)
   const pm = L.publicMini(m);
   let waits = 0, shows = 0;
   for (let k = 0; k < 60; k++) {

@@ -98,10 +98,10 @@ test('plinko: a square from before (a WIN bin) becomes a points square', () => {
 });
 
 test('plinko: the admin\'s settings (the bonus peg\'s points, the computer\'s mistakes) are dealt into the square and played by', () => {
-  E.setTune('plinko', { bonus: 5, miss: 100 });
+  E.setTune('plinko', { bonus: 5, aiMissNormal: 100 });
   const m = E.newMini('plinko', E.makeRng('plk-tune'));
   E.setTune('plinko', null);
-  assert.deepEqual(m.tune, { bonus: 5, miss: 100 });
+  assert.equal(m.tune.bonus, 5); assert.equal(m.tune.aiMissNormal, 100);
   const rng = E.makeRng('plk-play');
   let hit = null;
   for (let k = 0; k < 200 && !hit; k++) { const c = JSON.parse(JSON.stringify(m)); E.applyMove(c, 'X', k % 7, rng); if (c.last.hit) hit = c.last; }

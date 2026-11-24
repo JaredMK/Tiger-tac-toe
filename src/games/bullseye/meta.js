@@ -12,11 +12,11 @@ export const BULL_DEFAULTS = { board: 32, mid: 17.5, bull: 6.5, sweep: 700, ramp
 export const TUNE = [
   { k: 'goal', label: 'Points to win', def: 7, min: 3, max: 12, step: 1, group: 'Rules' },
   { k: 'bullPts', label: 'Bullseye points', def: 3, min: 3, max: 5, step: 1, group: 'Rules' },
-  { k: 'aiSkillEasy', label: "Easy: how often it lands where Normal would (% of Normal's hits in each ring)", def: 80, min: 10, max: 200, step: 1, group: 'Computer: Easy' },
+  { k: 'aiSkillEasy', label: "Easy: how often it lands where Normal would (% of Normal's hits in each ring)", def: 70, min: 10, max: 200, step: 1, group: 'Computer: Easy' },
   { k: 'aiBull', label: "Normal: bullseyes (% of throws)", def: 12, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
   { k: 'aiMid', label: "Normal: inner-ring hits, bullseyes included (% of throws)", def: 42, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
   { k: 'aiBoard', label: "Normal: board hits, every ring included (% of throws)", def: 80, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
-  { k: 'aiSkillHard', label: "Hard: how often it lands where Normal would (% of Normal's hits in each ring)", def: 112, min: 10, max: 200, step: 1, group: 'Computer: Hard' },
+  { k: 'aiSkillHard', label: "Hard: how often it lands where Normal would (% of Normal's hits in each ring)", def: 125, min: 10, max: 200, step: 1, group: 'Computer: Hard' },
 ];
 // The settings checked together (the admin's Save): a bullseye is an inner-ring hit and that a board hit.
 export const tuneCheck = v => (v.aiBull > v.aiMid || v.aiMid > v.aiBoard ? "Computer's bullseyes can't be more than its inner-ring hits, nor those more than its board hits (each counts in the next)." : null);

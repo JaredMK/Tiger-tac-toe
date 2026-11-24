@@ -39,7 +39,7 @@ export function best(pm, me, rng, style, ctx) {
   if (ctx && ctx.level === 'hard') return shared ? huntHard(pm, cand, ctx, g, rng) : huntSolo(cand, ctx, g);
   const T = tune(pm);
   if (ctx && ctx.level === 'easy') {                             // Easy: from some of the clues (aiHeedEasy % of the digs it keeps in mind), any cell they leave
-    const fit = huntLoose(g, rng, num(T.aiHeedEasy, 60));
+    const fit = huntLoose(g, rng, num(T.aiHeedEasy, 15));
     if (fit.length) { const c = fit[randInt(rng, fit.length)]; return { move: c, q: cand.includes(c) ? 1 / cand.length : 0, shared }; }
   }
   if (!(rng() * 100 < num(T.aiSplitNormal, 100))) return { move: cand[randInt(rng, cand.length)], q: 1 / cand.length, shared };   // (Normal: now and then any cell the clues leave)

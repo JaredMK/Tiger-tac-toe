@@ -19,4 +19,4 @@ export const luckSkill = 1;
 export const format = 'race';
 // The computer's levels (core/tune.js levelTune): Easy drops into any open slot now and then (a random legal move), never
 // weighing the bins; Hard weighs the race (plinkoDeep).
-export const AI_LEVELS = { miss: { easy: 50 } };
+export const AI_LEVELS = { miss: { easy: 75 } };
