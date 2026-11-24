@@ -33,13 +33,13 @@ export const TUNE = [
   { k: 'windMax', label: 'Wind: strongest', def: 8, min: 0, max: 20, step: 1, group: 'Board' },
   { k: 'gravity', label: 'Gravity', def: 30, min: 15, max: 60, step: 1, group: 'Board' },
   { k: 'speed', label: 'A full-power shot\'s speed', def: 60, min: 40, max: 100, step: 1, group: 'Board' },
-  { k: 'aiAng', label: 'Normal computer: angle error (degrees)', def: 3.5, min: 0, max: 20, step: 0.25, group: 'Computer' },
-  { k: 'aiPow', label: 'Normal computer: power error', def: 5, min: 0, max: 30, step: 0.25, group: 'Computer' },
-  { k: 'aiAngHard', label: 'Hard computer: angle error', def: 3, min: 0, max: 20, step: 0.25, group: 'Computer' },
-  { k: 'aiPowHard', label: 'Hard computer: power error', def: 4, min: 0, max: 30, step: 0.25, group: 'Computer' },
-  { k: 'aiRange', label: 'Hard computer: its error once it has seen a shot fall (%)', def: 75, min: 10, max: 100, step: 5, group: 'Computer' },
-  { k: 'aiAngEasy', label: 'Easy computer: angle error', def: 5, min: 0, max: 20, step: 0.25, group: 'Computer' },
-  { k: 'aiPowEasy', label: 'Easy computer: power error', def: 7, min: 0, max: 30, step: 0.25, group: 'Computer' },
+  { k: 'aiAng', label: 'Angle error (degrees)', def: 3.5, min: 0, max: 20, step: 0.25, group: 'Computer: Normal' },
+  { k: 'aiPow', label: 'Power error', def: 5, min: 0, max: 30, step: 0.25, group: 'Computer: Normal' },
+  { k: 'aiAngHard', label: 'Angle error (degrees)', def: 3.5, min: 0, max: 20, step: 0.25, group: 'Computer: Hard' },
+  { k: 'aiPowHard', label: 'Power error', def: 5, min: 0, max: 30, step: 0.25, group: 'Computer: Hard' },
+  { k: 'aiRange', label: 'Its error once it has seen a shot fall (% of its first)', def: 85, min: 10, max: 100, step: 5, group: 'Computer: Hard' },
+  { k: 'aiAngEasy', label: 'Angle error (degrees)', def: 5, min: 0, max: 20, step: 0.25, group: 'Computer: Easy' },
+  { k: 'aiPowEasy', label: 'Power error', def: 7, min: 0, max: 30, step: 0.25, group: 'Computer: Easy' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/tanks): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Aim, set your power and fire as the wind bends your shot. Knock the other tank to zero.';

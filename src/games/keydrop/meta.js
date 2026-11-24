@@ -26,7 +26,7 @@ export const TUNE = [
   // so a square dealt before reads its own values; each level's thinking time is added after these, levelTune).
   { k: 'aiMsEasy', label: 'Timing error letting go of the key (ms, a typical miss)', def: 95, min: 0, max: 400, step: 5, group: 'Computer: Easy' },
   { k: 'aiMs', label: 'Timing error letting go of the key (ms, a typical miss)', def: 70, min: 0, max: 400, step: 5, group: 'Computer: Normal' },
-  { k: 'aiMsHard', label: 'Timing error letting go of the key (ms, a typical miss)', def: 55, min: 0, max: 400, step: 5, group: 'Computer: Hard' },
+  { k: 'aiMsHard', label: 'Timing error letting go of the key (ms, a typical miss)', def: 50, min: 0, max: 400, step: 5, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/keydrop): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Hold to slide the key right, then up. Stop it at a keyhole to knock a prize down. Win enough first.';

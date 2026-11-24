@@ -1,5 +1,5 @@
 // Rhythm Tap: the computer's play. It stands in for a finger: each note is tapped off its beat by an error of its
-// level's size (ms, a normal spread: `aiMs`), or not at all with its level's chance (`aiMiss`); the round ends, as
+// level's size (ms, a normal spread: `aiMs`), or not at all with its level's chance (`aiLetGo`, `aiLetGoHard`, `aiLetGoEasy`; `aiMiss` and its kin before the AI levels pass); the round ends, as
 // anyone's, at the miss that takes its last life.
 import { gaussOf } from '../../core/random.js';
 import { rhythmCfg, rhythmChart, rhythmScore } from './rules.js';

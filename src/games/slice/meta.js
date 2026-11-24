@@ -18,12 +18,12 @@ export const TUNE = [
   { k: 'bombRate', label: 'Bombs (% of the fruit)', def: 30, min: 0, max: 60, step: 5, group: 'Board' },
   { k: 'bombCost', label: 'A bomb costs (points of the round)', def: 5, min: 0, max: 10, step: 1, group: 'Rules' },
   { k: 'speed', label: 'Fruit speed (%)', def: 100, min: 60, max: 180, step: 5, group: 'Timing' },
-  { k: 'aiHit', label: 'Normal computer: fruit sliced (%)', def: 65, min: 0, max: 100, step: 1, group: 'Computer' },
-  { k: 'aiBomb', label: 'Normal computer: bombs struck (%)', def: 20, min: 0, max: 100, step: 1, group: 'Computer' },
-  { k: 'aiHitHard', label: 'Hard computer: fruit sliced (%)', def: 85, min: 0, max: 100, step: 1, group: 'Computer' },
-  { k: 'aiBombHard', label: 'Hard computer: bombs struck (%)', def: 8, min: 0, max: 100, step: 1, group: 'Computer' },
-  { k: 'aiHitEasy', label: 'Easy computer: fruit sliced (%)', def: 45, min: 0, max: 100, step: 1, group: 'Computer' },
-  { k: 'aiBombEasy', label: 'Easy computer: bombs struck (%)', def: 28, min: 0, max: 100, step: 1, group: 'Computer' },
+  { k: 'aiHit', label: 'Fruit sliced (%)', def: 65, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'aiBomb', label: 'Bombs struck (%)', def: 20, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'aiHitHard', label: 'Fruit sliced (%)', def: 72, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
+  { k: 'aiBombHard', label: 'Bombs struck (%)', def: 15, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
+  { k: 'aiHitEasy', label: 'Fruit sliced (%)', def: 55, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
+  { k: 'aiBombEasy', label: 'Bombs struck (%)', def: 24, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/slice): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Swipe through the flying fruit for points. Slice a bomb and your round ends. Reach the target first.';

@@ -25,9 +25,9 @@ export const TUNE = [
   { k: 'knock', label: 'Shared lane: a struck puck goes on this much of the way left (%)', def: 70, min: 20, max: 100, step: 5, group: 'Board' },
   { k: 'knockLoss', label: 'Shared lane: a puck knocked off costs its owner this much of its points (%)', def: 50, min: 0, max: 100, step: 10, group: 'Board' },
   ...FLICK_TUNE,
-  { k: 'aiErr', label: 'Normal computer: distance error (%)', def: 16, min: 0, max: 40, step: 0.5, group: 'Computer' },
-  { k: 'aiErrHard', label: 'Hard computer: distance error (%)', def: 9, min: 0, max: 40, step: 0.5, group: 'Computer' },
-  { k: 'aiErrEasy', label: 'Easy computer: distance error (%)', def: 24, min: 0, max: 40, step: 0.5, group: 'Computer' },
+  { k: 'aiErr', label: 'Distance error (%)', def: 16, min: 0, max: 40, step: 0.5, group: 'Computer: Normal' },
+  { k: 'aiErrHard', label: 'Distance error (%)', def: 10.5, min: 0, max: 40, step: 0.5, group: 'Computer: Hard' },
+  { k: 'aiErrEasy', label: 'Distance error (%)', def: 22, min: 0, max: 40, step: 0.5, group: 'Computer: Easy' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/shuffle): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Flick your puck up the lane and score the zone it stops in. Reach the target first.';

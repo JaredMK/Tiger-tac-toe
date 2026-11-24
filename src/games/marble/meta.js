@@ -21,9 +21,9 @@ export const TUNE = [
   { k: 'hole', label: 'Hole size (%)', def: 100, min: 60, max: 160, step: 5, group: 'Board' },
   { k: 'spread', label: 'Spread: how far from its aim a marble may land (table units)', def: 2.5, min: 0, max: 10, step: 0.5, group: 'Board' },
   ...FLICK_TUNE,
-  { k: 'aiErr', label: 'Normal computer: aim error (table units)', def: 8.5, min: 0, max: 30, step: 0.5, group: 'Computer' },
-  { k: 'aiErrHard', label: 'Hard computer: aim error', def: 5.5, min: 0, max: 30, step: 0.5, group: 'Computer' },
-  { k: 'aiErrEasy', label: 'Easy computer: aim error', def: 11, min: 0, max: 30, step: 0.5, group: 'Computer' },
+  { k: 'aiErr', label: 'Aim error (table units)', def: 8.5, min: 0, max: 30, step: 0.5, group: 'Computer: Normal' },
+  { k: 'aiErrHard', label: 'Aim error (table units)', def: 7, min: 0, max: 30, step: 0.5, group: 'Computer: Hard' },
+  { k: 'aiErrEasy', label: 'Aim error (table units)', def: 10, min: 0, max: 30, step: 0.5, group: 'Computer: Easy' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/marble): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Flick marbles up the table into the holes. Each hole scores its number. Reach the target first.';

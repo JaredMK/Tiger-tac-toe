@@ -23,9 +23,9 @@ export const TUNE = [
   { k: 'rate', label: 'Drinking speed (% of the glass a second)', def: 50, min: 15, max: 120, step: 1, group: 'Timing' },
   { k: 'markLo', label: 'The mark\'s lowest place (% of the glass, from its base)', def: 35, min: 30, max: 85, step: 1, group: 'Board' },
   { k: 'markHi', label: 'The mark\'s highest place (% of the glass)', def: 70, min: 30, max: 85, step: 1, group: 'Board' },
-  { k: 'aiMs', label: 'Normal computer: timing error (ms)', def: 120, min: 20, max: 400, step: 5, group: 'Computer' },
-  { k: 'aiMsHard', label: 'Hard computer: timing error (ms)', def: 90, min: 20, max: 400, step: 5, group: 'Computer' },
-  { k: 'aiMsEasy', label: 'Easy computer: timing error (ms)', def: 170, min: 20, max: 400, step: 5, group: 'Computer' },
+  { k: 'aiMs', label: 'Timing error (ms)', def: 120, min: 20, max: 400, step: 5, group: 'Computer: Normal' },
+  { k: 'aiMsHard', label: 'Timing error (ms)', def: 90, min: 20, max: 400, step: 5, group: 'Computer: Hard' },
+  { k: 'aiMsEasy', label: 'Timing error (ms)', def: 170, min: 20, max: 400, step: 5, group: 'Computer: Easy' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/pint): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Hold to drink and let go to stop the level on your mark. Score enough splits first.';

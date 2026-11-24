@@ -10,7 +10,7 @@ const M = require('../../src/games/toss/meta.js');
 const still = (s = 0.5, right = true) => { const v = [0.9, 0.25, 0.9, 0.25, s, right ? 0.9 : 0.1]; let k = 0; return () => v[k++ % v.length]; };
 test('toss: Admin only, skill, a name of its own; its settings; the deal: a fan for each player within its range', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder, M.info.name], ['admin', 'skill', '1.29.0', false, 'Bin Shot']);
-  assert.deepEqual(E.gameFields('toss').map(f => f.k), ['goal', 'dist', 'bin', 'windMin', 'windMax', 'rim', 'rimIn', 'spread', 'flickMin', 'flickMax', 'aiErr', 'aiErrHard', 'aiErrEasy']);
+  assert.deepEqual(E.gameFields('toss').map(f => f.k), ['goal', 'dist', 'bin', 'windMin', 'windMax', 'rim', 'rimIn', 'spread', 'flickMin', 'flickMax', 'aiErr', 'aiErrHard', 'aiErrEasy', 'aiFanEasy', 'aiFanNormal', 'aiFanHard']);
   for (let g = 0; g < 80; g++) { const m = E.newMini('toss', E.makeRng('d' + g)); for (const p of ['X', 'O']) assert.ok(Math.abs(m.wind[p]) >= 4 && Math.abs(m.wind[p]) <= 26, `fan ${m.wind[p]}`); assert.deepEqual([m.v, m.dist, m.bin, m.rim, m.rimIn], [2, 80, 8, 3.5, 40]); }
   assert.equal(E.secretOf(E.newMini('toss', E.makeRng('s'))), null, 'the fan is on show');
 });

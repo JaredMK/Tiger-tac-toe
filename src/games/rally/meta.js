@@ -20,9 +20,9 @@ export const TUNE = [
   { k: 'width', label: 'Road width (the frame is 100 wide)', def: 12, min: 8, max: 18, step: 0.5, group: 'Board' },
   { k: 'tracks', label: 'Track set', def: 'mixed', opts: ['mixed', 'gentle', 'twisty'], group: 'Board' },
   { k: 'travel', label: 'Steering wheel: finger travel to full lock (% of the screen\'s width)', def: 20, min: 8, max: 40, step: 1, group: 'Board' },
-  { k: 'aiLapse', label: 'Normal computer: lapses of attention (in 100 s)', def: 85, min: 0, max: 600, step: 1, group: 'Computer' },
-  { k: 'aiLapseHard', label: 'Hard computer: lapses (in 100 s)', def: 40, min: 0, max: 600, step: 1, group: 'Computer' },
-  { k: 'aiLapseEasy', label: 'Easy computer: lapses (in 100 s)', def: 115, min: 0, max: 600, step: 1, group: 'Computer' },
+  { k: 'aiLapse', label: 'Lapses of attention (in 100 s)', def: 85, min: 0, max: 600, step: 1, group: 'Computer: Normal' },
+  { k: 'aiLapseHard', label: 'Lapses of attention (in 100 s)', def: 60, min: 0, max: 600, step: 1, group: 'Computer: Hard' },
+  { k: 'aiLapseEasy', label: 'Lapses of attention (in 100 s)', def: 125, min: 0, max: 600, step: 1, group: 'Computer: Easy' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/rally): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Steer your car round the winding road without leaving it. Finish the laps first.';

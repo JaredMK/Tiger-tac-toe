@@ -22,9 +22,12 @@ export const TUNE = [
   { k: 'rimIn', label: 'Rim forgiveness: a ball on the rim drops in (%)', def: 40, min: 0, max: 100, step: 5, group: 'Rules' },
   { k: 'spread', label: 'Spread: how far off its aim a throw may land (floor units)', def: 2, min: 0, max: 10, step: 0.5, group: 'Board' },
   ...FLICK_TUNE,
-  { k: 'aiErr', label: 'Normal computer: aim error (floor units)', def: 8, min: 0, max: 30, step: 0.5, group: 'Computer' },
-  { k: 'aiErrHard', label: 'Hard computer: aim error', def: 5, min: 0, max: 30, step: 0.5, group: 'Computer' },
-  { k: 'aiErrEasy', label: 'Easy computer: aim error', def: 11, min: 0, max: 30, step: 0.5, group: 'Computer' },
+  { k: 'aiErr', label: 'Aim error (floor units)', def: 8, min: 0, max: 30, step: 0.5, group: 'Computer: Normal' },
+  { k: 'aiErrHard', label: 'Aim error (floor units)', def: 6, min: 0, max: 30, step: 0.5, group: 'Computer: Hard' },
+  { k: 'aiErrEasy', label: 'Aim error (floor units)', def: 11, min: 0, max: 30, step: 0.5, group: 'Computer: Easy' },
+  { k: 'aiFanEasy', label: 'How much of the fan it allows for (%)', def: 75, min: 0, max: 150, step: 5, group: 'Computer: Easy' },
+  { k: 'aiFanNormal', label: 'How much of the fan it allows for (%)', def: 100, min: 0, max: 150, step: 5, group: 'Computer: Normal' },
+  { k: 'aiFanHard', label: 'How much of the fan it allows for (%)', def: 100, min: 0, max: 150, step: 5, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/toss): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Swipe to throw a paper ball into the bin while a fan pushes it sideways. Score enough baskets first.';

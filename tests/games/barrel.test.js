@@ -15,7 +15,7 @@ test('barrel: Admin only, skill, real time, held out of Find Match; the deal: th
   assert.deepEqual([M.release, M.category, M.minVersion, M.realTime, M.placeholder], ['admin', 'skill', '1.33.0', true, false]);
   assert.ok(E.FIND_MATCH_HOLD.includes('barrel'), 'the server cannot time a finger');
   assert.deepEqual(E.gameFields('barrel').map(f => f.k), ['top', 'win', 'period', 'ramp', 'rampPct', 'amp', 'gap', 'aiMs', 'aiMsHard', 'aiMsEasy']);
-  assert.ok(E.gameFields('barrel').every(f => ['Board', 'Rules', 'Timing', 'Computer'].includes(f.group)));
+  assert.ok(E.gameFields('barrel').every(f => E.TUNE_GROUPS.includes(f.group)));
   for (let k = 0; k < 300; k++) {
     const m = E.newMini('barrel', E.makeRng('d' + k)), c = R.barrelCfg(m);
     assert.deepEqual([m.top, m.xs.length, m.ph.length, m.xs[0], m.at.X, m.at.O, m.c.X, m.n.O], [7, 8, 8, 0, 0, 0, 0, 0]);

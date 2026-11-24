@@ -21,9 +21,9 @@ export const TUNE = [
   { k: 'rampPct', label: 'Faster for each barrel up while that is on (%)', def: 8, min: 1, max: 30, step: 1, group: 'Timing' },
   { k: 'amp', label: 'Swing angle: degrees each way from straight up', def: 40, min: 15, max: 70, step: 1, group: 'Board' },
   { k: 'gap', label: 'Barrel gap: how far up the next barrel is (units; a barrel is 19 long)', def: 52, min: 30, max: 80, step: 1, group: 'Board' },
-  { k: 'aiMs', label: 'Normal computer: timing error (ms)', def: 60, min: 0, max: 400, step: 5, group: 'Computer' },
-  { k: 'aiMsHard', label: 'Hard computer: timing error (ms)', def: 50, min: 0, max: 400, step: 5, group: 'Computer' },
-  { k: 'aiMsEasy', label: 'Easy computer: timing error (ms)', def: 95, min: 0, max: 400, step: 5, group: 'Computer' },
+  { k: 'aiMs', label: 'Timing error (ms)', def: 60, min: 0, max: 400, step: 5, group: 'Computer: Normal' },
+  { k: 'aiMsHard', label: 'Timing error (ms)', def: 50, min: 0, max: 400, step: 5, group: 'Computer: Hard' },
+  { k: 'aiMsEasy', label: 'Timing error (ms)', def: 70, min: 0, max: 400, step: 5, group: 'Computer: Easy' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/barrel): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Tap to fire from barrel to barrel up your column. Miss and your turn ends. Reach the top first.';

@@ -26,9 +26,9 @@ export const TUNE = [
   { k: 'bull', label: 'Bullseye size (radius)', def: 10, min: 4, max: 16, step: 0.5, group: 'Board' },
   { k: 'heart', label: 'Bullseye heart, counts twice (radius; 0: none)', def: 5, min: 0, max: 10, step: 0.5, group: 'Board' },
   { k: 'sweepMs', label: 'Lines: time to cross once (ms)', def: 900, min: 300, max: 3000, step: 50, group: 'Timing' },
-  { k: 'aiErr', label: 'Normal computer: aim error (wall units)', def: 7, min: 0, max: 30, step: 0.5, group: 'Computer' },
-  { k: 'aiErrHard', label: 'Hard computer: aim error', def: 4.5, min: 0, max: 30, step: 0.5, group: 'Computer' },
-  { k: 'aiErrEasy', label: 'Easy computer: aim error', def: 11, min: 0, max: 30, step: 0.5, group: 'Computer' },
+  { k: 'aiErr', label: 'Aim error (wall units)', def: 7, min: 0, max: 30, step: 0.5, group: 'Computer: Normal' },
+  { k: 'aiErrHard', label: 'Aim error (wall units)', def: 5.5, min: 0, max: 30, step: 0.5, group: 'Computer: Hard' },
+  { k: 'aiErrEasy', label: 'Aim error (wall units)', def: 6, min: 0, max: 30, step: 0.5, group: 'Computer: Easy' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/cricket): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Stop two lines to throw darts at the numbers. Close every number and the bullseye first.';

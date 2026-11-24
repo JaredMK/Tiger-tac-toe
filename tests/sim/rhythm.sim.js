@@ -14,6 +14,6 @@ test('rhythm: 500 squares at Normal: the first mover and the turns each (the def
 test('rhythm: by setting and by level', () => {
   const T = (label, t, a = 'normal', b = 'normal') => console.log(line(label, duel('rhythm', a, b, 4000, t)));
   T('the defaults, 4,000 squares', null);
-  T('target 40', { target: 40 }); T('target 80', { target: 80 }); T('no lives (a round never ends early)', { lives: 0 }); T('3 lives', { lives: 3 }); T('as first tried: 3 lives, 6% let go by, target 40', { lives: 3, aiMiss: 6, target: 40 }); T('window 120', { window: 120 }); T('tempo 120', { tempo: 120 });
+  T('target 40', { target: 40 }); T('target 80', { target: 80 }); T('no lives (a round never ends early)', { lives: 0 }); T('3 lives', { lives: 3 }); T('as first tried: 3 lives, 6% let go by, target 40', { lives: 3, aiLetGo: 6, target: 40 }); T('window 120', { window: 120 }); T('tempo 120', { tempo: 120 });
   T('Hard v Hard', null, 'hard', 'hard'); T('Easy v Easy', null, 'easy', 'easy'); T('Hard v Normal', null, 'hard', 'normal'); T('Normal v Hard', null, 'normal', 'hard');
 });

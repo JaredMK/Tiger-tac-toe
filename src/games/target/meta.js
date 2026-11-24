@@ -18,9 +18,9 @@ export const TUNE = [
   { k: 'circleMin', label: 'Aiming circle: smallest (radius)', def: 5, min: 1, max: 30, step: 1, group: 'Board' },
   { k: 'circleMax', label: 'Aiming circle: largest (radius)', def: 26, min: 5, max: 50, step: 1, group: 'Board' },
   { k: 'pulseMs', label: 'Aiming circle: time from largest to smallest (ms)', def: 700, min: 200, max: 3000, step: 50, group: 'Timing' },
-  { k: 'aiErr', label: 'Normal computer: aim error (field units)', def: 7, min: 0, max: 30, step: 1, group: 'Computer' },
-  { k: 'aiErrHard', label: 'Hard computer: aim error', def: 4, min: 0, max: 30, step: 1, group: 'Computer' },
-  { k: 'aiErrEasy', label: 'Easy computer: aim error', def: 11, min: 0, max: 30, step: 1, group: 'Computer' },
+  { k: 'aiErr', label: 'Aim error (field units)', def: 7, min: 0, max: 30, step: 0.5, group: 'Computer: Normal' },
+  { k: 'aiErrHard', label: 'Aim error (field units)', def: 5.5, min: 0, max: 30, step: 0.5, group: 'Computer: Hard' },
+  { k: 'aiErrEasy', label: 'Aim error (field units)', def: 9, min: 0, max: 30, step: 0.5, group: 'Computer: Easy' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/target): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Stop two sweeping lines and a pulsing circle to throw. Knock out all your targets first.';

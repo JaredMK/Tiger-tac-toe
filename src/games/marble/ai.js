@@ -1,7 +1,7 @@
 // Marble Toss: the computer's play. It aims at the middle of a hole and is off by an error of its level's size (table
-// units, a normal spread each way: `aiErr`), on top of the table's own spread. Normal and Hard take the hole worth the
-// most on average (its points, never more than are needed, times the chance of landing in it: 1 - exp(-r² / 2σ²));
-// Easy any hole.
+// units, a normal spread each way: `aiErr`), on top of the table's own spread. Every level takes the hole worth the
+// most on average (its points, never more than are needed, times the chance of landing in it: 1 - exp(-r² / 2σ²)),
+// but for its mistakes (`aiMiss<Level>`, `worse`: another hole) and its aim error (`aiErr`, `aiErrHard`, `aiErrEasy`).
 import { gaussOf } from '../../core/random.js';
 import { marbleCfg, marbleFlickAt } from './rules.js';
 
@@ -13,6 +13,14 @@ function pick(pm, me, level) {
 export function needs(pm, p) { const c = marbleCfg(pm), need = c.target - pm.score[p]; return need <= 0 ? 0 : Math.max(1, need / Math.max(0.2, pick(pm, p, 'normal')[0].ev * c.marbles)); }
 export function best(pm, me, rng, style, ctx) {
   const c = marbleCfg(pm), level = (ctx && ctx.level) || 'normal', err = c.ai[level] == null ? c.ai.normal : c.ai[level], opts = pick(pm, me, level);
-  const e = level === 'easy' ? opts[Math.floor(rng() * opts.length)] : opts[0];
+  const e = opts[0];
   return { move: marbleFlickAt(e.h.x + gaussOf(rng) * err, e.h.y + gaussOf(rng) * err), q: e.h.v >= c.target - pm.score[me] ? e.pr : 0 };
+}
+// A weaker throw a person might make (the mistake rate, core/ai.js aiSlip): aimed, with the level's error, at another
+// hole than the one worth most (a big hole it is unlikely to land in, or a small sure one that scores little).
+export function worse(pm, me, rng, ctx) {
+  const c = marbleCfg(pm), level = (ctx && (ctx.diff || ctx.level)) || 'normal', err = c.ai[level] == null ? c.ai.normal : c.ai[level], opts = pick(pm, me, level).slice(1);
+  if (!opts.length) return null;
+  const e = opts[Math.floor(rng() * opts.length)];
+  return marbleFlickAt(e.h.x + gaussOf(rng) * err, e.h.y + gaussOf(rng) * err);
 }

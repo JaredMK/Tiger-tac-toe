@@ -11,7 +11,12 @@ import { makeRng, needRng } from '../../core/random.js';
 import { tune } from '../../core/tune.js';
 
 export const RHYTHM = { lanes: 3, fall: 1150, count: 2, tail: 350, perfect: 0.4, pp: 2, gp: 1, out: 600, pre: 300, show: 420, hold: 650, scale: [0, 2, 4, 7, 9, 12, 14] };   // (fall: a note's time down its lane, ms; count: the beats counted in; scale: the notes' pitches, semitones)
-export function rhythmCfg(mini) { const t = tune(mini); return { target: t.target, secs: t.secs, beat: 60000 / t.tempo, win: t.window, lives: t.lives, dense: t.dense / 100, ai: { easy: [t.aiMsEasy, t.aiMissEasy], normal: [t.aiMs, t.aiMiss], hard: [t.aiMsHard, t.aiMissHard] } }; }
+// The computer's notes let go by were `aiMiss`/`aiMissHard`/`aiMissEasy` until the AI levels pass (November 2026), whose
+// common mistake rates are named aiMiss<Level>: they are `aiLetGo`/`aiLetGoHard`/`aiLetGoEasy` now, and a square dealt
+// before keeps the value it was dealt with under the old name (`letGo`).
+const LETGO = { aiLetGo: 'aiMiss', aiLetGoHard: 'aiMissHard', aiLetGoEasy: 'aiMissEasy' };
+function letGo(mini, t, k) { const raw = mini && mini.tune && typeof mini.tune === 'object' ? mini.tune : null; return raw && raw[k] == null && Number.isFinite(Number(raw[LETGO[k]])) && raw[LETGO[k]] !== null && raw[LETGO[k]] !== '' ? Math.max(0, Math.min(60, Number(raw[LETGO[k]]))) : t[k]; }
+export function rhythmCfg(mini) { const t = tune(mini); return { target: t.target, secs: t.secs, beat: 60000 / t.tempo, win: t.window, lives: t.lives, dense: t.dense / 100, ai: { easy: [t.aiMsEasy, letGo(mini, t, 'aiLetGoEasy')], normal: [t.aiMs, letGo(mini, t, 'aiLetGo')], hard: [t.aiMsHard, letGo(mini, t, 'aiLetGoHard')] } }; }
 export function create(type, rng) { return { type, seed: Math.floor(needRng(rng)() * 1e9), score: { X: 0, O: 0 }, n: { X: 0, O: 0 }, last: null }; }
 // A round's notes in order: { t (ms from the round's start: when it reaches the line), lane, tone (its place in the scale) }.
 export function rhythmChart(mini, p) {

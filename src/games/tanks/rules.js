@@ -32,7 +32,7 @@ export const TANK = { w: 100, top: 72, hz: 120, r: 3.4, cy: 2, len: 6, edge: 4, 
 // (its real time over `rate`, never past `flyMax`), the blast, the damage's numbers rising, the result's hold.
 export const TANKT = { col: 120, aim: 260, rate: 1.5, flyMin: 420, flyMax: 2600, boom: 520, dmg: 700, hold: 500 };
 export const TANK_DEF = { health: 100, hitDmg: 40, splash: 70, blast: 9, crater: 5, fuel: 6, climb: 3, windMin: 0, windMax: 8, gravity: 30, speed: 60, hills: 100,
-  aiAng: 3.5, aiPow: 5, aiAngHard: 3, aiPowHard: 4, aiAngEasy: 5, aiPowEasy: 7, aiRange: 75 };
+  aiAng: 3.5, aiPow: 5, aiAngHard: 3.5, aiPowHard: 5, aiAngEasy: 5, aiPowEasy: 7, aiRange: 85 };
 export function tankCfg(mini) {
   const t = Object.assign({}, TANK_DEF, tune(mini));
   return { health: t.health, hitDmg: t.hitDmg, splash: t.splash, blast: t.blast, crater: t.crater, fuel: t.fuel, climb: t.climb, gravity: t.gravity, speed: t.speed, lo: Math.min(t.windMin, t.windMax), hi: Math.max(t.windMin, t.windMax), hills: t.hills,

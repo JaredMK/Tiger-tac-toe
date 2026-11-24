@@ -20,12 +20,12 @@ export const TUNE = [
   { k: 'tempo', label: 'Tempo (beats a minute)', def: 100, min: 60, max: 160, step: 2, group: 'Timing' },
   { k: 'window', label: 'Timing window (ms either side of the beat)', def: 150, min: 60, max: 300, step: 5, group: 'Timing' },
   { k: 'dense', label: 'Notes between beats (% of beats)', def: 25, min: 0, max: 80, step: 5, group: 'Board' },
-  { k: 'aiMs', label: 'Normal computer: timing error (ms)', def: 75, min: 0, max: 250, step: 1, group: 'Computer' },
-  { k: 'aiMiss', label: 'Normal computer: notes let go by (%)', def: 20, min: 0, max: 60, step: 1, group: 'Computer' },
-  { k: 'aiMsHard', label: 'Hard computer: timing error (ms)', def: 45, min: 0, max: 250, step: 1, group: 'Computer' },
-  { k: 'aiMissHard', label: 'Hard computer: notes let go by (%)', def: 7, min: 0, max: 60, step: 1, group: 'Computer' },
-  { k: 'aiMsEasy', label: 'Easy computer: timing error (ms)', def: 105, min: 0, max: 250, step: 1, group: 'Computer' },
-  { k: 'aiMissEasy', label: 'Easy computer: notes let go by (%)', def: 26, min: 0, max: 60, step: 1, group: 'Computer' },
+  { k: 'aiMs', label: 'Timing error tapping a note (ms, a typical miss)', def: 75, min: 0, max: 250, step: 1, group: 'Computer: Normal' },
+  { k: 'aiLetGo', label: 'Notes it lets go by (%)', def: 20, min: 0, max: 60, step: 1, group: 'Computer: Normal' },
+  { k: 'aiMsHard', label: 'Timing error tapping a note (ms, a typical miss)', def: 70, min: 0, max: 250, step: 1, group: 'Computer: Hard' },
+  { k: 'aiLetGoHard', label: 'Notes it lets go by (%)', def: 18, min: 0, max: 60, step: 1, group: 'Computer: Hard' },
+  { k: 'aiMsEasy', label: 'Timing error tapping a note (ms, a typical miss)', def: 86, min: 0, max: 250, step: 1, group: 'Computer: Easy' },
+  { k: 'aiLetGoEasy', label: 'Notes it lets go by (%)', def: 22, min: 0, max: 60, step: 1, group: 'Computer: Easy' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/rhythm): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Tap the lanes as the notes reach the line, right on the beat. Score the target first.';

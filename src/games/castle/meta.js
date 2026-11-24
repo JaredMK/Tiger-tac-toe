@@ -26,13 +26,13 @@ export const TUNE = [
   { k: 'stoneTough', label: 'Stone: the boulder\'s punch that cracks it (tenths)', def: 45, min: 10, max: 200, step: 5, group: 'Rules' },
   { k: 'stoneHits', label: 'Stone: hard hits before it crumbles', def: 2, min: 1, max: 4, step: 1, group: 'Rules' },
   { k: 'coreTough', label: 'Crystal strength (the punch that smashes it, tenths)', def: 55, min: 10, max: 200, step: 5, group: 'Rules' },
-  { k: 'aiAim', label: 'Normal computer: aim error (mrad)', def: 40, min: 0, max: 300, step: 5, group: 'Computer' },
-  { k: 'aiPow', label: 'Normal computer: power error (%)', def: 4, min: 0, max: 30, step: 0.5, group: 'Computer' },
-  { k: 'aiAimHard', label: 'Hard computer: aim error (mrad)', def: 20, min: 0, max: 300, step: 5, group: 'Computer' },
-  { k: 'aiPowHard', label: 'Hard computer: power error (%)', def: 2, min: 0, max: 30, step: 0.5, group: 'Computer' },
-  { k: 'aiTries', label: 'Hard computer: throws it tries and keeps the best of', def: 4, min: 1, max: 8, step: 1, group: 'Computer' },
-  { k: 'aiAimEasy', label: 'Easy computer: aim error (mrad)', def: 80, min: 0, max: 300, step: 5, group: 'Computer' },
-  { k: 'aiPowEasy', label: 'Easy computer: power error (%)', def: 8, min: 0, max: 30, step: 0.5, group: 'Computer' },
+  { k: 'aiAim', label: 'Aim error (mrad)', def: 40, min: 0, max: 300, step: 5, group: 'Computer: Normal' },
+  { k: 'aiPow', label: 'Power error (%)', def: 4, min: 0, max: 30, step: 0.5, group: 'Computer: Normal' },
+  { k: 'aiAimHard', label: 'Aim error (mrad)', def: 20, min: 0, max: 300, step: 5, group: 'Computer: Hard' },
+  { k: 'aiPowHard', label: 'Power error (%)', def: 2, min: 0, max: 30, step: 0.5, group: 'Computer: Hard' },
+  { k: 'aiTries', label: 'Throws it tries in its head and keeps the best of', def: 4, min: 1, max: 8, step: 1, group: 'Computer: Hard' },
+  { k: 'aiAimEasy', label: 'Aim error (mrad)', def: 80, min: 0, max: 300, step: 5, group: 'Computer: Easy' },
+  { k: 'aiPowEasy', label: 'Power error (%)', def: 8, min: 0, max: 30, step: 0.5, group: 'Computer: Easy' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/castle): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Fling boulders with your catapult at the other castle. Smash its crystal first to win.';
