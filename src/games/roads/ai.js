@@ -7,10 +7,20 @@ import { roadCfg, roadGeom, roadLongest, roadPick } from './rules.js';
 export function needs(pm, p) {
   const e = pm.segs.filter(c => !c).length; return e ? raceNeeds(roadLongest(pm.segs, p).len - roadLongest(pm.segs, other(p)).len, e / 4, 1.2) : Infinity;
 }
+// Each level (TUNE): Easy and Normal the plain pick (roadPick: its own road's growth, a cut of the other side's weighed by
+// their "blocks you" setting, blockEasy off, Normal always), Hard the search. Their mistakes by level (aiMiss<Level>,
+// `worse` below; the old level-blind `miss` folded into them).
 export function best(pm, me, rng, style, ctx) {
-  const cf = roadCfg(pm), e = pm.segs.map((w, k) => (w ? -1 : k)).filter(k => k >= 0);
-  if (cf.miss && rng() < cf.miss / 100) { const k = e[randInt(rng, e.length)], a = pm.segs.slice(); a[k] = me; return { move: k, after: { type: 'roads', segs: a } }; }   // (the admin's settings: a mistake now and then, any open edge)
-  const b = ctx && ctx.level === 'hard' ? (cf.blocks === 1 || cf.blocks === 0 ? roadHard(pm, me, rng, ctx.until, cf.blocks) : roadSearch(pm, me, rng, ctx.until)) : roadPick(pm, me, rng); return { move: b.k, after: { type: 'roads', segs: b.after } };
+  const cf = roadCfg(pm), level = (ctx && ctx.level) || 'normal';
+  const b = level === 'hard' ? (cf.blocks === 1 || cf.blocks === 0 ? roadHard(pm, me, rng, ctx.until, cf.blocks) : roadSearch(pm, me, rng, ctx.until)) : roadPick(pm, me, rng, level === 'easy' && cf.blockEasy !== 'on' ? 0 : 1.2); return { move: b.k, after: { type: 'roads', segs: b.after } };
+}
+// A weaker edge (the level's mistakes, core/ai.js aiSlip): one that touches its own lines (it looks like building)
+// but is not the one it meant, else any open edge.
+export function worse(pm, me, rng, ctx) {
+  const segs = pm.segs, E = roadGeom(segs).segs, e = segs.map((w, k) => (w || k === (ctx && ctx.best) ? -1 : k)).filter(k => k >= 0);
+  if (!e.length) return null;
+  const near = e.filter(k => E[k].some(v => E.some((x, j) => segs[j] === me && x.includes(v)))), pool = near.length ? near : e;
+  return pool[randInt(rng, pool.length)];
 }
 
 // ---- Hard with two blocks a move (the admin's setting): the search as it was ----

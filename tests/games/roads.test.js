@@ -139,7 +139,7 @@ function tunedPlay(t, seed, guard = 400) {                        // (the comput
   return st;
 }
 test('roads: the admin\'s settings: two edges blocked a move, or none, and mistakes deal a square that plays by them', () => {
-  E.setTune('roads', { blocks: 2, miss: 20 });
+  E.setTune('roads', { blocks: 2, aiMissNormal: 20 });
   try {
     const m = E.newMini('roads', lcg(1));
     E.applyMove(m, 'X', 0, lcg(2));

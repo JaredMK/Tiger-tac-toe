@@ -8,10 +8,33 @@ import { distEval, distSearch, distTally } from './rules.js';
 export function needs(pm, p) {
   const e = pm.who.filter(w => !w).length; return e ? raceNeeds(distEval(pm.map, pm.who, p), e / 2, 1.2) : Infinity;
 }
+// Each level (TUNE): Easy and Normal look ahead by their setting (depthEasy 1: the spot that leaves it best placed now;
+// depth 2: the other side's best answer too, distSearch), Hard the expectimax over the grey pieces, solved late. Their
+// mistakes by level (aiMiss<Level>, `worse` below; the old level-blind `miss` folded into them).
+export function distGreedy(pm, me, rng) {
+  let best = null;
+  for (let k = 0; k < pm.who.length; k++) {
+    if (pm.who[k]) continue;
+    const a = pm.who.slice(); a[k] = me;
+    const v = distEval(pm.map, a, me) + (rng ? rng() * 0.001 : 0);
+    if (!best || v > best.v) best = { k, v, after: a };
+  }
+  return best;
+}
 export function best(pm, me, rng, style, ctx) {
-  const miss = tune(pm).miss, e = pm.who.map((w, k) => (w ? -1 : k)).filter(k => k >= 0);
-  if (miss && rng() < miss / 100) { const k = e[randInt(rng, e.length)], a = pm.who.slice(); a[k] = me; return { move: k, after: { type: 'districts', map: pm.map, who: a } }; }   // (the admin's settings: a mistake now and then, any empty spot)
-  const b = ctx && ctx.level === 'hard' ? distExpecti(pm, me, ctx.until, rng) : distSearch(pm, me, rng); return { move: b.k, after: { type: 'districts', map: pm.map, who: b.after } };
+  const t = tune(pm), level = (ctx && ctx.level) || 'normal';
+  const b = level === 'hard' ? distExpecti(pm, me, ctx.until, rng) : (level === 'easy' ? t.depthEasy : t.depth) < 2 ? distGreedy(pm, me, rng) : distSearch(pm, me, rng);
+  return { move: b.k, after: { type: 'districts', map: pm.map, who: b.after } };
+}
+// A weaker spot (the level's mistakes, core/ai.js aiSlip): one of the better half by how it leaves the map now, not the
+// one it meant.
+export function worse(pm, me, rng, ctx) {
+  const moves = [];
+  for (let k = 0; k < pm.who.length; k++) { if (pm.who[k] || k === (ctx && ctx.best)) continue; const a = pm.who.slice(); a[k] = me; moves.push({ k, v: distEval(pm.map, a, me) }); }
+  if (!moves.length) return null;
+  moves.sort((a, b) => b.v - a.v);
+  const pool = moves.slice(0, Math.max(1, Math.ceil(moves.length / 2)));
+  return pool[randInt(rng, pool.length)].k;
 }
 
 // ---- Hard: expectimax over the grey pieces, the square solved once it can be ----

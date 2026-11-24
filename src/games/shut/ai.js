@@ -10,7 +10,9 @@ import { shutCfg, shutDice, shutN, shutSum, shutWays } from './rules.js';
 //  - F[S]: the same with it on (a turn ends only on a roll no tiles make): the failed rolls still to come, F least;
 //  - P[S]: with it on, the chance of shutting the box from S without a failed roll (this turn), P greatest.
 // Hard flips by the measure for the switch; Normal by a player's rule of thumb (the fewest tiles, the highest
-// first); Easy any tiles that make the roll. q: the chance this turn shuts the box.
+// first); Easy the same but for its mistakes (aiMissEasy, 100% by default: any tiles that make the roll, as it always
+// played; `worse`). The old level-blind `miss` is folded into the levels' mistake rates. q: the chance this turn shuts
+// the box. Mostly luck: the measured levels are near even whatever they choose.
 const TABLES = new Map();
 const DICE = n => {                                                // [total, chance] for one die or two
   const out = new Map();
@@ -66,13 +68,18 @@ export function best(pm, me, rng, style, ctx) {
   }
   const ways = shutWays(up, shutSum(pm.roll.d));
   if (!ways.length) return { move: 'drop', q: 0 };
-  const miss = tune(pm).miss;
   let pick;
-  if (level === 'easy' || (miss && rng() * 100 < miss)) pick = ways[randInt(rng, ways.length)];
-  else if (level === 'hard') {
+  if (level === 'hard') {
     let bv = Infinity;
     for (const w of ways) { const R = S & ~maskOf(w), v = on ? -t.P[R] * 1e3 + t.F[R] : t.V[R]; if (v < bv - 1e-12) { bv = v; pick = w; } }
   } else pick = thumb(ways);
   const R = S & ~maskOf(pick);
   return { move: pick, q: !R ? 1 : on ? t.P[R] : 0 };
+}
+// A weaker flip (the level's mistakes, core/ai.js aiSlip): other tiles that make the roll.
+export function worse(pm, me, rng, ctx) {
+  const b = ctx && ctx.best;
+  if (!Array.isArray(b) || !pm.roll || pm.roll.by !== me) return null;
+  const ways = shutWays(pm.up[me], shutSum(pm.roll.d)).filter(w => w.join() !== b.join());
+  return ways.length ? ways[randInt(rng, ways.length)] : null;
 }

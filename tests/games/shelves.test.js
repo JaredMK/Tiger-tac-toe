@@ -70,7 +70,7 @@ function tunedPlay(t, seed, guard = 400) {                        // (the comput
   return st;
 }
 test('shelves: the admin\'s settings: five shelves of four and mistakes deal a square that plays by them', () => {
-  E.setTune('shelves', { n: 5, per: 4, miss: 20 });
+  E.setTune('shelves', { n: 5, per: 4, aiMissNormal: 20 });
   try {
     const m = E.newMini('shelves', lcg(1));
     assert.equal(m.cells.length, 20);

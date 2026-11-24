@@ -135,8 +135,8 @@ for (const [name, wheels] of [['two wheels', TWO], ['an old three-wheel square',
     // its q: this spin's chance of reaching the target
     const b = A.best(mk(24, 0, 0), 'X', rng, {}, {});
     assert.equal(b.q, mk(24, 0, 0).wheels[b.move].filter(v => v >= 6).length / 10);
-    // the mistake rate spins any wheel the square has, never one it has not
-    const seen = new Set(); for (let k = 0; k < 80; k++) seen.add(A.best(Object.assign(mk(0, 0, 0), { tune: { miss: 100 } }), 'X', rng, {}, {}).move);
+    // the mistake rate spins any wheel the square has, never one it has not (the level's, aiMissNormal: worse, the other wheel)
+    const seen = new Set(); for (let k = 0; k < 80; k++) seen.add(E.localBest(Object.assign(mk(0, 0, 0), { tune: { aiMissNormal: 50 } }), 'X', rng, {}, {}).move);
     assert.deepEqual([...seen].sort(), Object.keys(wheels).sort());
   });
 }
@@ -168,12 +168,12 @@ test('wheels: an old three-wheel square (v 2) plays out as dealt: its medium whe
 });
 
 test('wheels: the computer\'s mistake rate is dealt into the square and played by', () => {
-  E.setTune('wheels', { miss: 60 });
+  E.setTune('wheels', { aiMissNormal: 60 });
   const m = E.newMini('wheels', E.makeRng('wh-tune'));
   E.setTune('wheels', null);
-  assert.deepEqual(m.tune, { miss: 60 });
+  assert.deepEqual(m.tune, { aiMissNormal: 60 });
   const rng = E.makeRng('wh-miss'), seen = new Set(), plain = new Set();
-  const pm = E.publicMini(m), pm0 = Object.assign({}, pm, { tune: undefined });
+  const pm = E.publicMini(m), pm0 = Object.assign({}, pm, { tune: { aiMissNormal: 0 } });
   for (let k = 0; k < 60; k++) { seen.add(E.localBest(pm, 'X', rng).move); plain.add(E.localBest(pm0, 'X', rng).move); }
   assert.equal(plain.size, 1); assert.ok(seen.size > 1);
 });

@@ -79,11 +79,14 @@ export function needs(pm, p) {
   const base = Math.max(1, free / 2.7);
   return Math.max(1, diff >= 0 ? base / (1 + 0.35 * diff) : base * (1 + 0.5 * -diff));
 }
+// Each level: Normal the seat worth most now (seatPick), Hard two plies exactly (seatHard; measured level with Normal,
+// and so were 200 playouts of the square a seat: the customers' luck decides), Easy Normal's seat but for its mistakes
+// (aiMissEasy, 100% by default: any free seat, as Easy always played; lower it for a sharper Easy). The old level-blind `miss` is folded into the
+// levels' mistake rates.
 export function best(pm, me, rng, style, ctx) {
-  const cf = seatCfg(pm), ms = seatMoves(pm.who);
+  const ms = seatMoves(pm.who);
   if (!ms.length) return { move: null };
   const lvl = ctx && ctx.level;
-  if (lvl === 'easy' || (cf.miss && rng() * 100 < cf.miss)) return { move: ms[randInt(rng, ms.length)] };   // Easy, or the admin's mistake rate: any seat
   const b = lvl === 'hard' ? seatHard(pm, me, rng) : seatPick(pm, me, rng);
   return { move: b.move, q: seatWinNow(pm, me, b.move) };
 }

@@ -103,7 +103,7 @@ export function roadPlacements(open, p, next, nb) {
   return n;
 }
 // The computer: lengthen its own longest road, and take the line that would lengthen the other player's most.
-export function roadPick(pm, me, rng) {
+export function roadPick(pm, me, rng, denyW = 1.2) {   // denyW: how much a cut of the other side's road counts (1.2; 0: never blocks, Easy's default)
   const o = other(me), segs = pm.segs, E = roadGeom(segs).segs, mine0 = roadLongest(segs, me).len, theirs0 = roadLongest(segs, o).len;
   let best = null;
   for (let k = 0; k < segs.length; k++) {
@@ -112,7 +112,7 @@ export function roadPick(pm, me, rng) {
     const b = segs.slice(); b[k] = o;
     const gain = roadLongest(a, me).len - mine0, deny = roadLongest(b, o).len - theirs0;
     const touch = E[k].some(v => E.some((e, j) => segs[j] === me && e.includes(v))) ? 0.3 : 0;
-    const v = 2 * gain + 1.2 * deny + touch + (rng ? rng() * 0.05 : 0);
+    const v = 2 * gain + denyW * deny + touch + (rng ? rng() * 0.05 : 0);
     if (!best || v > best.v) best = { k, v, after: a };
   }
   return best;

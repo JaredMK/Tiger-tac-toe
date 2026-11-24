@@ -10,9 +10,10 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export const TUNE = [
   { k: 'tables', label: 'Tables (odd: an even count ties half the squares)', def: 15, min: 7, max: 23, step: 2, group: 'Board' },
   { k: 'colors', label: 'Seat colours', def: 4, min: 2, max: 8, step: 1, group: 'Board' },
-  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 50, step: 5, group: 'Computer' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/seating): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Take a seat at an empty table. Score when a customer sits across from you. Most customers wins.';
 export const luckSkill = 3;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): its mistakes by level (any free seat: every one of Easy's moves, as it always played).
+export const AI_LEVELS = { miss: { easy: 100, normal: 0, hard: 0 } };

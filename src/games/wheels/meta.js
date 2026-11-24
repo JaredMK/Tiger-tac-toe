@@ -11,7 +11,8 @@ export const EXPLAIN_KEYS = ['target'];   // {target} in the explainer: the admi
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="8.5"/><path d="M12 13.5V5M12 13.5l7.4 4.3M12 13.5l-7.4 4.3"/><path d="M12 13.5V5a8.5 8.5 0 0 1 7.4 12.8z" fill="currentColor" fill-opacity=".35"/><path d="M9.8 1.2h4.4L12 4.4z" fill="currentColor"/></svg>';
 // Its settings besides those below (the admin's Mini-game Settings; core/tune.js): the computer's mistakes.
 export const TUNE = [
-  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 100, step: 5, group: 'Computer' },
+  { k: 'riskEasy', label: 'Risk appetite: points more (or fewer, below 0) in the pot before it banks', def: -10, min: -15, max: 15, step: 1, group: 'Computer: Easy' },
+  { k: 'risk', label: 'Risk appetite: points more (or fewer, below 0) in the pot before it banks', def: 0, min: -15, max: 15, step: 1, group: 'Computer: Normal' },   // (Hard: the exact race)
 ];
 // The target, each wheel's skulls (of 10 segments) and its values (the admin's config/wheels): two wheels, low 1-4 with
 // 2 skulls and high 6-10 with 5 and the only 10 (one of them); the averages at least 0.4 apart; each wheel's best turn
@@ -23,3 +24,5 @@ export const WHEEL_DEFAULTS = { target: 30, lowSkulls: 2, highSkulls: 5, lowLo: 
 export const lineupBlurb = 'Spin the safe wheel or the risky one, then bank. A skull loses your points. Reach the target first.';
 export const luckSkill = 2;
 export const format = 'race';
+// The computer's levels (core/tune.js levelTune): its mistakes by level.
+export const AI_LEVELS = { miss: { easy: 30, normal: 10, hard: 0 } };

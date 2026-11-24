@@ -30,13 +30,25 @@ function normalPick(pm, me, rng, moves, hand) {
   for (const mv of moves) { const s = score(pm, me, mv, hand); if (s > best + 1e-9) { best = s; top = [mv]; } else if (Math.abs(s - best) <= 1e-9) top.push(mv); }
   return top[randInt(rng, top.length)];
 }
+// Each level (TUNE): the deals it plays out to the end for each placement (aiDealsEasy / Normal / Hard: Hard's search
+// over the hidden tiles; 0: by eye, Normal's placement score), and its mistakes (aiMiss<Level>: another tile that fits,
+// `worse`; Easy's default is every move, any tile that fits, as Easy always played).
 export function best(pm, me, rng, style, ctx) {
   const hand = domHand(pm, me) || [], moves = domMoves(pm, me);
   if (!moves.length) return { move: domPile(pm) > 0 ? 'draw' : 'pass', q: 0, shared: false };   // (nothing fits: the draw, or the pass, is the move)
   const out = mv => ({ move: { t: mv.t, e: mv.e }, q: hand.length === 1 ? 1 : 0, shared: false });
-  if (ctx && ctx.level === 'easy') { const r = moves[randInt(rng, moves.length)]; return out(r); }
-  if (ctx && ctx.level === 'hard' && hand.length > 1) return out(hardPick(pm, me, rng, moves, hand, ctx));
+  const t = tune(pm), level = (ctx && ctx.level) || 'normal', deals = Number(level === 'hard' ? t.aiDealsHard : level === 'easy' ? t.aiDealsEasy : t.aiDealsNormal) || 0;
+  if (deals > 0 && hand.length > 1) return out(hardPick(pm, me, rng, moves, hand, ctx || {}, deals));
   return out(normalPick(pm, me, rng, moves, hand));
+}
+// A weaker placement (the level's mistakes, core/ai.js aiSlip): another tile that fits, from its own hand.
+export function worse(pm, me, rng, ctx) {
+  const moves = domMoves(pm, me), b = ctx && ctx.best;
+  if (!moves.length || !b || typeof b !== 'object') return null;
+  const pool = moves.filter(m => m.t !== b.t || m.e !== b.e);
+  if (!pool.length) return null;
+  const m = pool[randInt(rng, pool.length)];
+  return { t: m.t, e: m.e };
 }
 
 // ---- Hard: a determinised search over the hidden tiles ----
@@ -52,7 +64,7 @@ const HARD = { samples: 48, maxSamples: 4000, nodes: 1500, work: 20000, least: 8
 const TA = {}, TB = {};
 function tilesOf(pips) { if (!TA[pips]) { const s = domSet(pips); TA[pips] = s.map(t => t[0]); TB[pips] = s.map(t => t[1]); } return pips; }
 const bits = x => { let n = 0; while (x) { x &= x - 1; n++; } return n; };
-function hardPick(pm, me, rng, moves, hand, ctx) {
+function hardPick(pm, me, rng, moves, hand, ctx, deals) {
   const pips = tilesOf(domPips(pm)), A = TA[pips], B = TB[pips], N = A.length, set = domSet(pips), you = me === 'X' ? 'O' : 'X';
   const seen = new Set(hand);
   for (const t of pm.line) seen.add(set.findIndex(u => (u[0] === t[0] && u[1] === t[1]) || (u[0] === t[1] && u[1] === t[0])));
@@ -125,10 +137,10 @@ function hardPick(pm, me, rng, moves, hand, ctx) {
   };
   let youMask = 0;
   const sum = moves.map(() => 0);
-  const limit = until ? HARD.maxSamples : HARD.samples;
+  const n = deals > 0 ? deals : HARD.samples, limit = until ? Math.min(HARD.maxSamples, n === HARD.samples ? HARD.maxSamples : n) : n, least = Math.min(HARD.least, n);   // (deals: the level's setting, TUNE aiDeals<Level>; Hard's default, with a clock, as many as it allows)
   let done = 0, spent = 0;
   for (let s = 0; s < limit; s++) {
-    if (until ? s > 0 && until() <= 0 : s >= HARD.least && spent > HARD.work) break;
+    if (until ? s > 0 && until() <= 0 : s >= least && spent > HARD.work) break;
     let c = opts[0];
     if (opts.length > 1) { let x = rng() * wAll; for (const o of opts) { c = o; x -= o.w; if (x < 0) break; } }
     const f = c.free.slice(); mix(f, rng);

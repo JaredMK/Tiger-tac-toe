@@ -21,3 +21,5 @@ export const TUNE = [
 export const lineupBlurb = 'Call a ball from the ones that roll out: it marks every card. Complete a line first.';
 export const luckSkill = 2;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): its mistakes by level (another offered ball). Mostly luck.
+export const AI_LEVELS = { miss: { easy: 70, normal: 0, hard: 0 } };

@@ -18,9 +18,14 @@ export const TUNE = [
   { k: 'shape', label: 'Shape puzzles (share)', def: 38, min: 0, max: 100, step: 1, group: 'Rules' },
   { k: 'dots', label: 'Dot puzzles (share)', def: 22, min: 0, max: 100, step: 1, group: 'Rules' },
   { k: 'mid', label: 'Gap in the middle (%)', def: 25, min: 0, max: 100, step: 5, group: 'Rules' },
-  { k: 'right', label: 'Computer right (%)', def: 60, min: 0, max: 100, step: 5, group: 'Computer' },
+  { k: 'rightEasy', label: 'How often it picks the right answer (%)', def: 40, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
+  { k: 'right', label: 'How often it picks the right answer (%)', def: 60, min: 0, max: 100, step: 5, group: 'Computer: Normal' },   // (the key from before the levels: Normal's)
+  { k: 'rightHard', label: 'How often it picks the right answer (%)', def: 80, min: 0, max: 100, step: 5, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/patterns): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Pick what comes next, or what\'s missing. Get enough right first to win.';
 export const luckSkill = 4;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): its mistakes are its wrong picks (how often it picks the right answer,
+// above), so no separate mistake rate.
+export const AI_LEVELS = { miss: false };

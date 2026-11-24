@@ -141,6 +141,8 @@ export function needs(pm, p) {
   if (!o.W) return Math.max(1, SCR.need - scrBest(open));
   return o.h + 0.72 * Math.log2(Math.max(1, o.support));
 }
+// Each level: Hard weighs every card still possible (scrOdds); Normal takes the obvious third of a pair, else any
+// panel; Easy the same but for its mistakes (aiMissEasy: any other panel, the obvious third missed). Mostly luck.
 export function best(pm, me, rng, style, ctx) {
   const open = scrOpen(pm, me), hidden = open.map((v, i) => (v == null ? i : -1)).filter(i => i >= 0);
   if (!hidden.length) return { move: 0, q: 0 };
@@ -164,4 +166,10 @@ export function best(pm, me, rng, style, ctx) {
   const move = hidden[randInt(rng, hidden.length)];
   const twos = Object.values(scrCounts(open)).filter(n => n === 2).length;   // (a pair on show: this panel may be its third)
   return { move, q: twos ? Math.min(1, twos / hidden.length) : 0 };
+}
+// A weaker scratch (the level's mistakes, core/ai.js aiSlip): another hidden panel of its own card, at random: it does
+// not see the third of a pair it could see, or the panel the odds favour.
+export function worse(pm, me, rng, ctx) {
+  const open = scrOpen(pm, me), hidden = open.map((v, i) => (v == null && i !== (ctx && ctx.best) ? i : -1)).filter(i => i >= 0);
+  return hidden.length ? hidden[randInt(rng, hidden.length)] : null;
 }

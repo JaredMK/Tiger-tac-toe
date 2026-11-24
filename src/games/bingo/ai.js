@@ -75,6 +75,8 @@ function rollout(pm, me, called, pool, offerN, lines, n, rng) {
   }
   return 0.5;
 }
+// Each level: Normal the ball that does most for its lines (greedy), Hard the exact race or rollouts, Easy Normal's ball
+// but for its mistakes (aiMissEasy: another offered ball). A line now is taken at every level.
 export function best(pm, me, rng, style, ctx) {
   rng = needRng(rng);
   const n = bingoSize(pm), lines = bingoLines(n, bingoDiag(pm)), offer = Array.isArray(pm.offer) ? pm.offer : [];
@@ -218,4 +220,16 @@ export function bingoExact(pm, me, until) {
     if (s.out) return null;
   }
   return out;
+}
+// A weaker call (the level's mistakes, core/ai.js aiSlip): another of the offered balls, one that does not hand the other
+// side a line where there is one.
+export function worse(pm, me, rng, ctx) {
+  const offer = Array.isArray(pm.offer) ? pm.offer : [], b = ctx && ctx.best;
+  if (!offer.length || !Number.isInteger(b)) return null;
+  const n = bingoSize(pm), lines = bingoLines(n, bingoDiag(pm)), called = new Set(pm.called || []);
+  called.add(offer[b]); const now = evalPos(pm, me, called, lines, n); called.delete(offer[b]);
+  if (now >= 1e6) return null;                                   // (a line now: never let go)
+  const ks = offer.map((v, k) => k).filter(k => k !== b);
+  const safe = ks.filter(k => { called.add(offer[k]); const e = evalPos(pm, me, called, lines, n); called.delete(offer[k]); return e > -1e6; }), pool = safe.length ? safe : ks;
+  return pool.length ? pool[randInt(rng, pool.length)] : null;
 }

@@ -7,11 +7,33 @@ import { shelfCfg, shelfOn, shelfPick } from './rules.js';
 export function needs(pm, p) {
   const e = pm.cells.filter(c => !c).length, per = shelfCfg(pm).per; return e ? raceNeeds(shelfOn(pm.cells, p, per) - shelfOn(pm.cells, other(p), per), e / 4, 1) : Infinity;
 }
-export function best(pm, me, rng, style, ctx) {
-  const cf = shelfCfg(pm), e = pm.cells.map((c, i) => (c ? -1 : i)).filter(i => i >= 0);
-  const b = cf.miss && rng() < cf.miss / 100 ? { i: e[randInt(rng, e.length)] } : ctx && ctx.level === 'hard' ? shelfSolve(pm, me, cf, ctx.until) : shelfPick(pm, me, rng), a = pm.cells.slice(); a[b.i] = me; return { move: b.i, after: { type: 'shelves', cells: a } };
+// Each level (TUNE): Normal the plain pick (shelfPick: a shelf it is not on yet, the emptier of the other side the
+// better, the last spot of a shelf the other side lacks); Easy the same with its "keeps you off shelves" setting
+// (blockEasy off: it never minds where you are, only where it is not yet); Hard the square solved. Their mistakes by
+// level (aiMiss<Level>, `worse` below; the old level-blind `miss` folded into them).
+export function shelfEasy(pm, me, rng) {
+  const c = pm.cells, per = shelfCfg(pm).per;
+  let best = null;
+  for (let i = 0; i < c.length; i++) {
+    if (c[i]) continue;
+    const s = Math.floor(i / per), row = c.slice(s * per, s * per + per);
+    const v = (row.includes(me) ? 0 : 10 + 3 * row.filter(Boolean).length) + (rng ? rng() * 0.5 : 0);
+    if (!best || v > best.v) best = { i, v };
+  }
+  return best;
 }
-
+export function best(pm, me, rng, style, ctx) {
+  const cf = shelfCfg(pm), level = (ctx && ctx.level) || 'normal';
+  const b = level === 'hard' ? shelfSolve(pm, me, cf, ctx.until) : level === 'easy' && cf.blockEasy !== 'on' ? shelfEasy(pm, me, rng) : shelfPick(pm, me, rng), a = pm.cells.slice(); a[b.i] = me; return { move: b.i, after: { type: 'shelves', cells: a } };
+}
+// A weaker spot (the level's mistakes, core/ai.js aiSlip): a spot on a shelf it already holds (a mark that adds
+// nothing), else any other empty spot.
+export function worse(pm, me, rng, ctx) {
+  const per = shelfCfg(pm).per, e = pm.cells.map((c, i) => (c || i === (ctx && ctx.best) ? -1 : i)).filter(i => i >= 0);
+  if (!e.length) return null;
+  const wasted = e.filter(i => { const s = Math.floor(i / per); return pm.cells.slice(s * per, s * per + per).includes(me); }), pool = wasted.length ? wasted : e;
+  return pool[randInt(rng, pool.length)];
+}
 // ---- Hard: the square solved ----
 // A shelf is only how many spots are filled and who is on it, and shelves are alike, so a position is a
 // multiset of shelf kinds: a few thousand on the usual board, every one solved exactly (expectimax over the

@@ -12,9 +12,11 @@ export const ROADS_DEFAULTS = { layout: 'hex7' };
 // Its Mini-game Settings (core/tune.js; the honeycomb stays in config/roads above).
 export const TUNE = [
   { k: 'blocks', label: 'Edges blocked after each move', def: 1, min: 0, max: 2, step: 1, group: 'Rules' },
-  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 50, step: 5, group: 'Computer' },
+  { k: 'blockEasy', label: 'Blocks you (cuts your road)', def: 'off', opts: ['off', 'on'], group: 'Computer: Easy' },   // (Normal always does; Hard searches)
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/roads): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Claim edges of the honeycomb as random edges get blocked. Build the longest road to win.';
 export const luckSkill = 4;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): its mistakes by level.
+export const AI_LEVELS = { miss: { easy: 25, normal: 5, hard: 20 } };

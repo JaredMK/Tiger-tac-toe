@@ -17,8 +17,13 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export const TUNE = [
   { k: 'pips', label: 'Set (highest pip count)', def: 6, opts: [4, 5, 6], group: 'Board' },
   { k: 'hand', label: 'Tiles in each hand', def: 3, min: 2, max: 9, step: 1, group: 'Rules' },
+  { k: 'aiDealsEasy', label: 'Deals of the hidden tiles it plays out for each tile (0: judges by eye)', def: 0, min: 0, max: 200, step: 2, group: 'Computer: Easy' },
+  { k: 'aiDealsNormal', label: 'Deals of the hidden tiles it plays out for each tile (0: judges by eye)', def: 4, min: 0, max: 200, step: 2, group: 'Computer: Normal' },
+  { k: 'aiDealsHard', label: 'Deals of the hidden tiles it plays out for each tile (0: judges by eye)', def: 48, min: 0, max: 200, step: 2, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/dominoes): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Match a tile to either end of the line, or draw. Empty your hand first to win.';
 export const luckSkill = 3;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): its mistakes by level (another tile that fits).
+export const AI_LEVELS = { miss: { easy: 100, normal: 0, hard: 0 } };

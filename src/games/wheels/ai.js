@@ -84,22 +84,24 @@ export function needs(pm, p) {
 }
 // The chance this spin of wheel w reaches the target (a + pot + its points).
 const reach = (pm, w, need) => pm.wheels[w].filter(v => v !== SKULL && v >= need).length / pm.wheels[w].length;
+// Each level (TUNE): Easy and Normal bank at the bank-at score shifted by their risk appetite (riskEasy, risk: points;
+// below 0 it banks early and plays safe, above 0 it pushes on), Hard the exact race. Their mistakes by level
+// (aiMiss<Level>, `worse` below; the old level-blind `miss` folded into them).
 export function best(pm, me, rng, style, ctx) {
-  const T = pm.target, a = pm.pts[me], b = pm.pts[other(me)], miss = tune(pm).miss;
+  const T = pm.target, a = pm.pts[me], b = pm.pts[other(me)], level = (ctx && ctx.level) || 'normal', risk = level === 'easy' ? Number(tune(pm).riskEasy) || 0 : Number(tune(pm).risk) || 0;
   const t = pushYourLuck(pm) && pm.turn && pm.turn.by === me ? pm.turn : null, pot = t ? t.pot : 0, need = T - a - pot;
   if (t && need <= 0) return { move: 'bank', q: 1 };          // enough: only Bank is left
-  if (miss && rng() * 100 < miss) { const ws = wheelsOf(pm), w = ws[randInt(rng, ws.length)]; return { move: w, q: reach(pm, w, need) }; }   // (now and then, the admin's mistake rate: any wheel)
   const f = facts(pm);
   if (!pushYourLuck(pm)) {                                    // the old rule: the best average, the riskier wheel when it can finish
     let w = 'low'; for (const k of f.ws) if (reach(pm, k, need) > reach(pm, w, need) || (reach(pm, k, need) === reach(pm, w, need) && f.w[k].gain > f.w[w].gain)) w = k;
     return { move: w, q: reach(pm, w, need) };
   }
-  if (ctx && ctx.level === 'hard') { const h = hard(pm, me, f, style, ctx.until); if (h) return h; }
+  if (level === 'hard') { const h = hard(pm, me, f, style, ctx.until); if (h) return h; }
   // Normal: bank once the pot reaches the bank-at score (level, the first pot no wheel's spin is worth; more when behind, less when ahead; a
   // bolder style or the admin's setting shifts it); else the wheel whose spin adds the most to the pot on average,
   // the pot it risks counted against it (a riskier wheel is worth it only on a small pot).
   const gap = b - a, base = f.bankAt;
-  const K = Math.max(2, Math.min(base + 10, base + Math.round(gap / 4) + ((style && style.rollRisk) || 0)));
+  const K = Math.max(2, Math.min(base + 10 + Math.max(0, risk), base + Math.round(gap / 4) + ((style && style.rollRisk) || 0) + risk));   // (risk: the level's risk appetite, TUNE: points more, or fewer, in the pot before it banks)
   if (t && pot >= Math.min(K, need)) return { move: 'bank', q: 0 };
   let w = null, g = -Infinity;
   for (const k of f.ws) {
@@ -174,4 +176,14 @@ function hard(pm, me, f, style, until) {
   let c = e.C[Math.min(T - a, pot)];
   if (c === 'bank' && !(t && t.pot)) c = f.best.w;             // (no pot: a spin it must make)
   return { move: c, q: c === 'bank' ? 0 : reach(pm, c, T - a - (t ? t.pot : 0)) };
+}
+// A weaker move (the level's mistakes, core/ai.js aiSlip): the other choice a player torn between them would make: bank
+// where it meant to spin (with something in the pot), else the other wheel; spin the safer wheel where it meant to bank.
+export function worse(pm, me, rng, ctx) {
+  const ws = wheelsOf(pm), t = pushYourLuck(pm) && pm.turn && pm.turn.by === me ? pm.turn : null, b = ctx && ctx.best;
+  if (t && pm.target - pm.pts[me] - t.pot <= 0) return null;     // (enough in the pot: only Bank is left)
+  if (b === 'bank') return ws[ws.length - 1];   // (the safest: low)
+  if (t && t.pot > 0 && rng() < 0.5) return 'bank';
+  const others = ws.filter(w => w !== b);
+  return others.length ? others[randInt(rng, others.length)] : null;
 }

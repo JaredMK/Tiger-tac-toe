@@ -1,4 +1,5 @@
 // Dice Combo: the computer's play (November 2026).
+import { randInt } from '../../core/random.js';
 import { goAgain, tune } from '../../core/tune.js';
 import { COMBO, comboCounts, comboHas, comboOpen } from './rules.js';
 
@@ -77,7 +78,8 @@ export function comboHard(pm, me) {
 // Normal: a claim as soon as the dice make one worth claiming (the hardest of them; a bare three of a kind is kept on
 // rolling while four or five alike are open and a roll is left); else it holds for the likeliest open combo: a run
 // of 3+ for an open straight, two pairs for an open full house, else every die of its commonest face (the higher
-// on a tie). Easy holds its commonest face and claims the first combo it sees. The admin's mistake rate: any hold.
+// on a tie). Easy holds its commonest face and claims the first combo it sees. The levels' mistake rates (aiMiss<Level>,
+// `worse`: any hold; the old Normal-only `miss` folded into them).
 const RANK = ['5k', 'ls', '4k', 'fh', 'ss', '3k'];
 export function comboPlain(pm, me, rng, easy) {
   const t = tune(pm), R = Math.max(1, t.rolls | 0), cur = curOf(pm, me);
@@ -91,7 +93,6 @@ export function comboPlain(pm, me, rng, easy) {
   }
   if (!left) return 'auto';
   const c = comboCounts(cur.dice);
-  if (!easy && t.miss && rng() * 100 < t.miss) { const h = cur.dice.map(() => (rng() < 0.5 ? 1 : 0)); if (h.every(Boolean)) h[0] = 0; return 'roll:' + h.join(''); }
   let kept = [0, 0, 0, 0, 0, 0, 0], maxF = 1;
   for (let f = 2; f <= 6; f++) if (c[f] >= c[maxF]) maxF = f;
   const strOpen = !easy && (!mine.includes('ss') || !mine.includes('ls'));
@@ -116,4 +117,13 @@ export function best(pm, me, rng, style, ctx) {
   const move = comboPlain(pm, me, rng, lvl === 'easy');
   const T = comboTable(t.goal, t.rolls, maskOf(pm.claimed[me]), goAgain(pm));
   return { move, q: left <= 1 ? (move.startsWith('c:') ? 1 : T.claim) : 0 };
+}
+// A weaker move (the level's mistakes, core/ai.js aiSlip): a careless hold (any dice, at least one rolled), or another
+// combo that is open where it meant to claim one.
+export function worse(pm, me, rng, ctx) {
+  const b = ctx && ctx.best, cur = curOf(pm, me);
+  if (typeof b !== 'string' || !cur || !cur.rolls) return null;
+  if (b.startsWith('roll:')) { const h = cur.dice.map(() => (rng() < 0.5 ? 1 : 0)); if (h.every(Boolean)) h[randInt(rng, h.length)] = 0; const m = 'roll:' + h.join(''); return m === b ? null : m; }
+  if (b.startsWith('c:')) { const o = comboOpen(pm, me, cur.dice).filter(k => 'c:' + k !== b); return o.length ? 'c:' + o[randInt(rng, o.length)] : null; }
+  return null;
 }

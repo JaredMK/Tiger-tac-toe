@@ -20,3 +20,5 @@ export const TUNE = [
 export const lineupBlurb = 'Scratch panels on your own card. Show three of a kind first to win.';
 export const luckSkill = 1;
 export const format = 'race';
+// The computer's levels (core/tune.js levelTune): its mistakes by level (another hidden panel: Easy misses the obvious third).
+export const AI_LEVELS = { miss: { easy: 65, normal: 10, hard: 0 } };

@@ -10,9 +10,11 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export const TUNE = [
   { k: 'n', label: 'Shelves', def: 7, min: 5, max: 7, step: 1, group: 'Board' },
   { k: 'per', label: 'Spots a shelf', def: 3, min: 2, max: 4, step: 1, group: 'Board' },
-  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 50, step: 5, group: 'Computer' },
+  { k: 'blockEasy', label: 'Blocks you (takes the shelves you are short of)', def: 'off', opts: ['off', 'on'], group: 'Computer: Easy' },   // (Normal always does; Hard plays the solved square)
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/shelves): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Put your marks on the shelves while grey marks land at random. Be on the most shelves to win.';
 export const luckSkill = 3;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): its mistakes by level.
+export const AI_LEVELS = { miss: { easy: 15, normal: 10, hard: 0 } };

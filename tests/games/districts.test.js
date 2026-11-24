@@ -164,7 +164,7 @@ function tunedPlay(t, seed, guard = 400) {                        // (the comput
   return st;
 }
 test('districts: the admin\'s settings: six regions, 20 spots and mistakes deal a square that plays by them', () => {
-  E.setTune('districts', { regions: 6, spots: 20, miss: 20 });
+  E.setTune('districts', { regions: 6, spots: 20, aiMissNormal: 20 });
   try {
     const m = E.newMini('districts', lcg(1));
     assert.equal(m.map.regions.length, 6); assert.ok(m.map.spots.length >= 19 && m.map.spots.length <= 21 && m.map.spots.length % 4 === 0);
@@ -182,14 +182,14 @@ test('districts: Hard searches the greys too and solves the last moves: a forced
   m.who = '..OG.G.X.G.O..GX'.split('').map(c => (c === '.' ? null : c));
   const pm = E.publicMini(m);
   assert.equal(E.distSearch(pm, 'X', null).k, 12, 'Normal');
-  const b = E.localBest(pm, 'X', lcg(1), {}, hard);
+  const b = E.localPlain(pm, 'X', lcg(1), {}, hard);
   assert.equal(b.move, 0, 'Hard: the spot that wins the square whatever the greys do');
   assert.equal(b.after.who[0], 'X');
   // played out against Normal from there, every grey: X wins
   for (let g = 0; g < 20; g++) {
     const q = JSON.parse(JSON.stringify(m)), rng = lcg(100 + g);
     let p = 'X', r = null;
-    while (!r || r.outcome === 'continue') { const mv = E.localBest(E.publicMini(q), p, rng, {}, p === 'X' ? hard : {}).move; r = E.applyMove(q, p, mv, rng); p = E.other(p); }
+    while (!r || r.outcome === 'continue') { const mv = E.localPlain(E.publicMini(q), p, rng, {}, p === 'X' ? hard : {}).move; r = E.applyMove(q, p, mv, rng); p = E.other(p); }
     assert.equal(r.winner, 'X', 'greys ' + g);
   }
   const times = [];
@@ -197,7 +197,7 @@ test('districts: Hard searches the greys too and solves the last moves: a forced
     const q = E.newMini('districts', lcg(30 + g)), rng = lcg(50 + g);
     let p = 'X';
     for (let k = 0; k < g % 5; k++) { E.applyMove(q, p, q.who.indexOf(null), rng); p = E.other(p); }
-    const t0 = performance.now(), r = E.localBest(E.publicMini(q), p, rng, {}, hard);
+    const t0 = performance.now(), r = E.localPlain(E.publicMini(q), p, rng, {}, hard);
     times.push(performance.now() - t0);
     assert.equal(q.who[r.move], null, 'a legal spot');
   }

@@ -1,5 +1,6 @@
 // Patterns: the computer's play.
 import { randInt } from '../../core/random.js';
+import { tune } from '../../core/tune.js';
 import { PATTERNS, patCfg, patCrossed, patFitting, patPuzOf } from './rules.js';
 
 // Race mode (core/race.js, `rv: 2`): the computer plays its own puzzles (its own cross-outs, its own score to the goal).
@@ -26,8 +27,13 @@ export function patSolve(puz) {
   const fit = patFitting(puz, puz.opts);
   return fit.length === 1 ? fit[0] : null;
 }
-export function best(pm, me, rng, style, ctx) {   // right about 60% of the time (the admin's settings), else a wrong option still standing (never one crossed out; a race: on its own puzzle)
-  const cf = patCfg(pm), crossed = pm.race ? patCrossed(pm, me) : pm.crossed || [], n = optsOf(pm, me);
+// How often each level picks the right answer (TUNE, Computer: Easy / Normal / Hard: rightEasy, right, rightHard; %).
+export function patRate(pm, level) {
+  const t = tune(pm), v = level === 'easy' ? t.rightEasy : level === 'hard' ? t.rightHard : null;
+  return Number.isFinite(v) ? v / 100 : patCfg(pm).aiRight;
+}
+export function best(pm, me, rng, style, ctx) {   // right at its level's rate (the admin's settings), else a wrong option still standing (never one crossed out; a race: on its own puzzle)
+  const cf = Object.assign({}, patCfg(pm), { aiRight: patRate(pm, ctx && ctx.level) }), crossed = pm.race ? patCrossed(pm, me) : pm.crossed || [], n = optsOf(pm, me);
   const right = pm.race ? patSolve(patPuzOf(pm, me)) : pm.answer;
   if (!Number.isInteger(right)) {
     if (!pm.race) return { move: 'auto', q: 0 };
