@@ -15,8 +15,9 @@ export const goAgainText = { on: ' Hit? Go again.', off: '' };
 export const TUNE = [
   AGAIN_TUNE,
   { k: 'goal', label: 'Hits to win', def: 2, min: 2, max: 4, step: 1, group: 'Rules' },
-  { k: 'zeroCrit', label: 'Computer picks 0 to stop a near win (%)', def: 40, min: 0, max: 100, step: 5, group: 'Computer' },
-  { k: 'zeroBehind', label: 'Computer picks 0 when behind (%)', def: 25, min: 0, max: 100, step: 5, group: 'Computer' },
+  { k: 'zeroEasy', label: 'Easy: picks green 0 on a whim, whatever the score (% of spins)', def: 50, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
+  { k: 'zeroCrit', label: 'Normal: picks green 0 to stop a near win (%)', def: 40, min: 0, max: 100, step: 5, group: 'Computer: Normal' },
+  { k: 'zeroBehind', label: 'Normal: picks green 0 when well behind (%)', def: 25, min: 0, max: 100, step: 5, group: 'Computer: Normal' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/rl): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Pick eight numbers, a group or green 0, then spin. Get enough hits, or hit green 0 to win at once.';

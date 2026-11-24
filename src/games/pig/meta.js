@@ -13,7 +13,10 @@ export const PIG_DEFAULTS = { sides: 8, target: 51 };
 export const EXPLAIN_KEYS = ['target'];   // {target} in the explainer: the admin's target (config/pig, ui/explainer.js fillTune), not a TUNE setting
 // Its settings besides those (the admin's Mini-game Settings; core/tune.js): the computer's banking.
 export const TUNE = [
-  { k: 'risk', label: 'Computer banks later by (points)', def: 0, min: -6, max: 8, step: 1, group: 'Computer' },
+  { k: 'riskEasy', label: 'Easy: banks later than the usual pot by (points; below 0, earlier; it never minds the score)', def: -6, min: -8, max: 10, step: 1, group: 'Computer: Easy' },
+  { k: 'jitEasy', label: 'Easy: bank point wanders turn to turn by up to (points)', def: 2, min: 0, max: 6, step: 1, group: 'Computer: Easy' },
+  { k: 'risk', label: 'Normal: banks later than the usual pot by (points; riskier when behind, safer when ahead)', def: 0, min: -6, max: 8, step: 1, group: 'Computer: Normal' },
+  { k: 'riskHard', label: 'Hard: banks later than the exact odds say by (points)', def: 0, min: -6, max: 8, step: 1, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/pig): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Roll as often as you dare, then bank. Roll a repeat and lose the lot. Bank the target first.';

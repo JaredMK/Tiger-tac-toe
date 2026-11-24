@@ -14,6 +14,15 @@ export const TUNE = [
   MODE_TUNE,
   { k: 'hi', label: 'Highest number', def: 30, min: 10, max: 99, step: 1, group: 'Rules' },
   { k: 'limit', label: 'Guesses each (Shared mode)', def: 5, min: 2, max: 12, step: 1, group: 'Rules' },
+  { k: 'aiSpreadEasy', label: 'Easy: the guesses it weighs, the middle part of what is left (% of the range; 0 = just the middle)', def: 0, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
+  { k: 'aiSharpEasy', label: 'Easy: how often it takes the one with the best odds among those (%; else any of them)', def: 0, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
+  { k: 'aiRaceEasy', label: 'Easy, Race mode: how far from the middle it may guess (% of the range; 0 = always the middle, the fastest)', def: 100, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
+  { k: 'aiSpreadNormal', label: 'Normal: the guesses it weighs, the middle part of what is left (% of the range; 0 = just the middle)', def: 100, min: 0, max: 100, step: 5, group: 'Computer: Normal' },
+  { k: 'aiSharpNormal', label: 'Normal: how often it takes the one with the best odds among those (%; else any of them)', def: 0, min: 0, max: 100, step: 5, group: 'Computer: Normal' },
+  { k: 'aiRaceNormal', label: 'Normal, Race mode: how far from the middle it may guess (% of the range; 0 = always the middle, the fastest)', def: 40, min: 0, max: 100, step: 5, group: 'Computer: Normal' },
+  { k: 'aiSpreadHard', label: 'Hard: the guesses it weighs, the middle part of what is left (% of the range; 0 = just the middle)', def: 100, min: 0, max: 100, step: 5, group: 'Computer: Hard' },
+  { k: 'aiSharpHard', label: 'Hard: how often it takes the one with the best odds among those (%; else any of them)', def: 100, min: 0, max: 100, step: 5, group: 'Computer: Hard' },
+  { k: 'aiRaceHard', label: 'Hard, Race mode: how far from the middle it may guess (% of the range; 0 = always the middle, the fastest)', def: 0, min: 0, max: 100, step: 5, group: 'Computer: Hard' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 10 6-6 6 6M6 14l6 6 6-6"/></svg>';
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/hilo): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

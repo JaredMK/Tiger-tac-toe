@@ -18,3 +18,5 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export const lineupBlurb = 'Roll and climb. Ladders lift you up, snakes slide you down. Reach the top first.';
 export const luckSkill = 1;
 export const format = 'race';
+// The computer's levels (core/tune.js levelTune): no mistakes to make, its one move (snakes has no choice), so only the thinking time.
+export const AI_LEVELS = { miss: false };

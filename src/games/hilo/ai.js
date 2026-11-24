@@ -1,4 +1,6 @@
 // Higher/Lower: the computer's play.
+import { tune } from '../../core/tune.js';
+import { levelOf } from '../../core/aiw.js';
 import { hiloLeft, hiloOpen, hiloPart, hiloTop } from './rules.js';
 
 // Halving the range finds the number within its guesses when there are enough (5 guesses cover 31
@@ -13,15 +15,36 @@ export function needs(pm, p) {
   const r = hiloOpen(pm, p), n = r <= 1 ? 1 : Math.log2(r + 1);
   return n > hiloLeft(pm, p) + 0.001 ? Math.max(n, hiloLeft(pm, p) + 2) : n;   // more than its guesses left: a long shot (never in a race: no limit)
 }
+// The levels (the settings' Computer: Easy / Normal / Hard). Shared mode: a miss narrows the range for both, and the
+// halver's middle is not always good (on 15 numbers it leaves the other side the better odds), so a level weighs only
+// the guesses in the middle part of the range (aiSpread<Level> %, 0 the middle itself) and takes the one with the best
+// odds (hiloRace) as often as aiSharp<Level> says, else any of them: Easy halves (the obvious play), Hard plays the
+// exact race. Race mode: halving is the fewest guesses, so a level strays from the middle by aiRace<Level> % of the range.
+const LV = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+const DEF = { aiSpreadEasy: 0, aiSharpEasy: 0, aiSpreadNormal: 100, aiSharpNormal: 0, aiSpreadHard: 100, aiSharpHard: 100, aiRaceEasy: 100, aiRaceNormal: 40, aiRaceHard: 0 };
+const knob = (T, k, l) => { const v = Number(T[k + LV[l]]); return Number.isFinite(v) ? v : DEF[k + LV[l]]; };
+function band(part, spread) {
+  const mid = Math.floor((part.lo + part.hi) / 2), w = Math.floor((part.hi - part.lo) * Math.max(0, Math.min(100, spread || 0)) / 200);
+  return { lo: Math.max(part.lo, mid - w), hi: Math.min(part.hi, mid + w), mid };
+}
+const pickIn = (b, rng) => (b.hi > b.lo && rng ? b.lo + Math.floor(rng() * (b.hi - b.lo + 1)) : b.mid);
+// The chance a guess k (its place in a range of r, 1 to r) wins the race, both playing their best after it.
+export function hiloOdds(r, g, h, k) {
+  const th = n => (!n ? 0 : g <= 1 ? 0 : 1 - hiloRace(n, h, g - 1).w);
+  return 1 / r + (k - 1) / r * th(k - 1) + (r - k) / r * th(r - k);
+}
 export function best(pm, me, rng, style, ctx) {
   const part = hiloPart(pm, me) || { lo: 1, hi: hiloTop(pm) };
-  const r = part.hi - part.lo + 1, left = hiloLeft(pm, me), q = 1 / r;
-  if (pm.race) return { move: Math.floor((part.lo + part.hi) / 2), q, qLose: 0, shared: false };   // (a race: halving, the fewest guesses to its own number)
-  if (ctx && ctx.level === 'hard') {
-    const o = me === 'X' ? 'O' : 'X', k = hiloRace(r, Math.min(G_MAX, left), Math.min(G_MAX, hiloLeft(pm, o))).k;
-    return { move: part.lo + k - 1, q, qLose: left === 1 ? 1 - q : 0, shared: true };
-  }
-  return { move: Math.floor((part.lo + part.hi) / 2), q, qLose: left === 1 ? 1 - q : 0, shared: true };
+  const r = part.hi - part.lo + 1, left = hiloLeft(pm, me), q = 1 / r, lv = levelOf((ctx && ctx.level) || 'normal'), T = tune(pm);
+  if (pm.race) return { move: pickIn(band(part, knob(T, 'aiRace', lv)), rng), q, qLose: 0, shared: false };   // (a race: halving, the fewest guesses to its own number)
+  const b = band(part, knob(T, 'aiSpread', lv)), sharp = knob(T, 'aiSharp', lv) / 100;
+  let move = b.mid;
+  if (sharp > 0 && r <= R_MAX && (sharp >= 1 || (rng && rng() < sharp))) {
+    const o = me === 'X' ? 'O' : 'X', g = Math.min(G_MAX, left), h = Math.min(G_MAX, hiloLeft(pm, o));
+    if (b.lo === part.lo && b.hi === part.hi) move = part.lo + hiloRace(r, g, h).k - 1;   // (the whole range: the race's own pick, the halver's best answer among equals)
+    else { let top = -1; for (let k = b.lo; k <= b.hi; k++) { const w = hiloOdds(r, g, h, k - part.lo + 1); if (w > top + 1e-9) { top = w; move = k; } } }
+  } else if (sharp < 1) move = pickIn(b, rng);
+  return { move, q, qLose: left === 1 ? 1 - q : 0, shared: true };
 }
 
 // ---- Hard: the race ----
@@ -55,4 +78,20 @@ export function hiloRace(r, g, h) {
   }
   W[i] = top; WH[i] = topH; K[i] = pick;
   return { w: top, wh: topH, k: pick };
+}
+// A level's mistake (core/ai.js aiSlip, aiMiss<Level>): a guess near the middle with the worst odds (Shared), or one
+// well off the middle (Race), never the number it would have guessed.
+export function worse(pm, me, rng, ctx) {
+  const part = hiloPart(pm, me) || { lo: 1, hi: hiloTop(pm) }, r = part.hi - part.lo + 1;
+  if (r < 2) return null;
+  const b = band(part, 50), not = ctx && ctx.best;
+  if (pm.race || r > R_MAX) { const k = pickIn(band(part, 100), rng); return k === not ? null : k; }
+  const o = me === 'X' ? 'O' : 'X', g = Math.min(G_MAX, hiloLeft(pm, me)), h = Math.min(G_MAX, hiloLeft(pm, o));
+  let low = Infinity, out = [];
+  for (let k = b.lo; k <= b.hi; k++) {
+    if (k === not) continue;
+    const w = hiloOdds(r, g, h, k - part.lo + 1);
+    if (w < low - 1e-9) { low = w; out = [k]; } else if (w < low + 1e-9) out.push(k);
+  }
+  return out.length ? out[rng ? Math.floor(rng() * out.length) : 0] : null;
 }

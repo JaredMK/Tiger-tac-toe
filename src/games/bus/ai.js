@@ -54,7 +54,7 @@ export function best(pm, me, rng, style, ctx) {
   // The guess most likely right, from the cards left in its own deck (a tie: either); now and then (the
   // admin's mistake rate) any guess.
   const kept = pm.prog[me], odds = busOdds(kept, busTies(pm)), miss = tune(pm).miss;
-  if (miss && rng() * 100 < miss) { const o = odds[randInt(rng, odds.length)]; return { move: o.guess, q: 0 }; }
+  if (miss && rng() * 100 < miss) { const o = odds[randInt(rng, odds.length)]; return { move: o.guess, q: 0 }; }   // (the old level-blind rate: squares dealt with it; 0 now, the levels' own rate is aiMiss<Level>, worse below)
   const top = Math.max(...odds.map(o => o.p));
   if (!goAgain(pm)) { const best = odds.filter(o => o.p >= top - 1e-9), g = best[randInt(rng, best.length)]; return { move: g.guess, q: kept.length >= BUS.rounds - 1 ? g.p : 0 }; }   // (a guess a turn: only the last round takes it now)
   const best = odds.filter(o => o.p >= top - 1e-9), g = best[randInt(rng, best.length)];
@@ -67,4 +67,13 @@ export function best(pm, me, rng, style, ctx) {
   let q = g.p;
   for (let r = kept.length + 1; r < BUS.rounds; r++) q *= BUS_AVG[r];   // right all the way to the end, this turn
   return { move: g.guess, q };
+}
+
+// A level's mistake (aiMiss<Level>): a hunch against the odds, the guess least likely right (a red card called black
+// with more red left, "lower" on a two), never the one it would have made.
+export function worse(pm, me, rng, ctx) {
+  const odds = busOdds(pm.prog[me], busTies(pm)).filter(o => o.guess !== (ctx && ctx.best));
+  if (!odds.length) return null;
+  const low = Math.min(...odds.map(o => o.p)), pool = odds.filter(o => o.p <= low + 1e-9);
+  return pool[randInt(rng, pool.length)].guess;
 }

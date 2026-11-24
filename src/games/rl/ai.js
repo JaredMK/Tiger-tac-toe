@@ -18,6 +18,7 @@ export function best(pm, me, rng, style, ctx) {
   const o = other(me), mine = pm.hits[me], theirs = pm.hits[o], c = tune(pm), goal = c.goal;
   const group = () => ({ move: rlPick(rng), q: goAgain(pm) ? (RL.pick / RL.wheel.length) ** Math.max(1, goal - mine) : goal - mine <= 1 ? RL.pick / RL.wheel.length : 0 });   // q: the chance this turn takes the square (a hit keeps the turn: every hit still needed in a row)
   if (ctx && ctx.level === 'hard') { const r = rlRace(goal); return r.zero[mine * goal + theirs] ? { move: 'zero', q: 1 / RL.wheel.length } : group(); }
+  if (ctx && ctx.level === 'easy') { const pe = (c.zeroEasy || 0) / 100; return pe && rng() < pe ? { move: 'zero', q: 1 / RL.wheel.length } : group(); }   // Easy: green 0 on a whim, never for a reason
   const crit = !!ctx && ctx.value >= AI.block, behind = !!ctx && ctx.behind >= 2 && theirs > mine;
   const pz = (theirs >= goal - 1 && crit ? c.zeroCrit : behind ? c.zeroBehind : 0) / 100;   // (the admin's rates)
   if (pz && rng() < pz) return { move: 'zero', q: 1 / RL.wheel.length };

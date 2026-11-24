@@ -290,7 +290,7 @@ test('Risky Rolls: the Hard computer plays the exact race (a d8 to 51): its tabl
     assert.equal(hard(10, 48, [5, 6, 7]), 'roll', 'the other side a roll from the square: 28 banked would not do'); assert.equal(rule(10, 48, [5, 6, 7]), 'bank', '(the rule banks)');
     assert.equal(hard(30, 30, [1, 2, 3]), 'bank', 'three of eight numbers rolled: a bust costs the pot and the turn'); assert.equal(rule(30, 30, [1, 2, 3]), 'roll');
     assert.equal(hard(30, 30, [1, 2, 3], { rollRisk: 6 }), 'roll', 'a bolder style banks as if the pot were smaller'); assert.equal(hard(44, 0, [2, 3], { rollRisk: -3 }), 'bank');
-    E.setTune('pig', { risk: 8 }); assert.equal(A.best(Object.assign(pm(30, 30, [1, 2, 3]), { tune: { risk: 8 } }), 'X', lcg(3), {}, ctx).move, 'roll', 'the admin\'s banks-later setting too'); E.setTune('pig', null);
+    E.setTune('pig', { riskHard: 8 }); assert.equal(A.best(Object.assign(pm(30, 30, [1, 2, 3]), { tune: { riskHard: 8 } }), 'X', lcg(3), {}, ctx).move, 'roll', 'the admin\'s banks-later setting too'); E.setTune('pig', null);
     // a square played through: Hard against Hard from 0-0, the first to roll wins about as the table says; Hard against the rule, Hard wins more
     const play = (rng, sides) => { const m = E.newMini('pig', rng); let p = 'X', n = 0; for (;;) { const b = A.best(E.publicMini(m), p, rng, E.STYLE0, sides[p]); const r = E.applyMove(m, p, b.move, rng); assert.equal(r.ok, true); if (r.outcome === 'win') return p; if (!r.again) p = p === 'X' ? 'O' : 'X'; assert.ok(++n < 500); } };
     const rng = lcg(21);

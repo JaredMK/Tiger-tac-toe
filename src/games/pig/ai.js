@@ -62,10 +62,21 @@ export function catchRisk(pm, me) {
   while (x < r && pigTurns(sides, r - x) > mine) x++;
   return pigReach(sides, 0, x);
 }
+// Easy's few points either way, the same through a turn (from the turn's start: its banks and the rolls' count are
+// public), so a turn's bank point does not flicker roll to roll.
+function jitter(pm, me, j) {
+  if (!(j > 0)) return 0;
+  const h = ((pm.bank.X * 131 + pm.bank.O * 31 + (me === 'X' ? 7 : 3)) * 2654435761) >>> 0;
+  return (h % (2 * j + 1)) - j;
+}
 export function best(pm, me, rng, style, ctx) {
   const t = pm.turn && pm.turn.by === me ? pm.turn : null, sides = pigSides(pm), base = BEST_POT[sides], r = pigGoal(pm) - pm.bank[me];
   const gap = pm.bank[other(me)] - pm.bank[me];                // positive when behind
-  const target = Math.max(4, Math.min(base + 11, Math.max(base - 3, Math.min(base + 5, base + Math.round(gap / (sides === 8 ? 6 : 4)))) + ((style && style.rollRisk) || 0) + tune(pm).risk));   // riskier when behind, safer when ahead (a bolder or warier style, or the admin's setting, shifts it)
+  const T = tune(pm), lv = ctx && ctx.level, easy = lv === 'easy';
+  // Easy: banks at its own fixed pot (base + riskEasy), never minding the score, a few points either way each turn
+  // (jitEasy); Normal: riskier when behind, safer when ahead (a bolder or warier style, or the admin's setting, shifts it).
+  const target = easy ? Math.max(2, base + (T.riskEasy || 0) + ((style && style.rollRisk) || 0) + jitter(pm, me, T.jitEasy || 0))
+    : Math.max(4, Math.min(base + 11, Math.max(base - 3, Math.min(base + 5, base + Math.round(gap / (sides === 8 ? 6 : 4)))) + ((style && style.rollRisk) || 0) + (T.risk || 0)));
   if (!t && ctx && ctx.level === 'hard') pigRace(sides, pigGoal(pm), ctx.until);   // (Hard: the race's table is worked on from the turn's first roll, so its first choice already has it)
   if (!t) return r <= target ? { move: 'roll', q: pigReach(sides, 0, r), stay: true } : { move: 'roll', q: 0 };   // within reach: the turn goes for the square (q its chance; a bust leaves it as it was)
   if (pm.bank[me] + t.pot >= pigGoal(pm)) return { move: 'bank', q: 1 };
@@ -145,7 +156,7 @@ function pigHard(pm, me, t, style, until) {
   const a = pm.bank[me], b = pm.bank[other(me)], { P, V, R } = e;
   pigTurn(e, a, b, 1 - P[b * T + a], V, R);
   let S = 0; for (const n of t.rolls) S |= 1 << (n - 1);
-  const shift = ((style && style.rollRisk) || 0) + tune(pm).risk;   // bolder: it banks as if the pot were that much smaller
+  const shift = ((style && style.rollRisk) || 0) + (tune(pm).riskHard || 0);   // bolder: it banks as if the pot were that much smaller
   const pot = t.pot - shift;
   if (pot < 1) return { move: 'roll', q: 0 };
   const bank = a + pot >= T ? 1 : 1 - P[b * T + a + pot];

@@ -13,10 +13,11 @@ export const goAgainText = { on: ' Right? Go again. Miss and your turn ends, but
 export const TUNE = [
   AGAIN_TUNE,
   { k: 'ties', label: 'A tie (equal value) is', def: 'wrong', opts: ['wrong', 'right'], group: 'Rules' },
-  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 100, step: 5, group: 'Computer' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2.5"/><path d="M2.5 10.5h19M8.5 4v6.5M15 4v6.5"/><circle cx="7" cy="18.5" r="2" fill="currentColor"/><circle cx="17" cy="18.5" r="2" fill="currentColor"/></svg>';
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/bus): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Guess red or black, higher or lower, inside or outside, then the suit. Get through all four.';
 export const luckSkill = 1;
 export const format = 'race';
+// The computer's levels (core/tune.js levelTune): Easy and Normal call a hunch against the odds now and then (ai.js worse).
+export const AI_LEVELS = { miss: { easy: 40, normal: 10 } };

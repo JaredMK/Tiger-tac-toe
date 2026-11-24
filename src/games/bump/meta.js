@@ -16,3 +16,5 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export const lineupBlurb = 'Spin and move 1, 2 or 3 spaces. Land on your rival to send them home. Reach the finish first.';
 export const luckSkill = 2;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): no mistakes to make, its one move (bump has no choice), so only the thinking time.
+export const AI_LEVELS = { miss: false };

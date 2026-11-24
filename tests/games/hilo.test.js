@@ -212,7 +212,7 @@ test('hilo, race v2: the computer finds its own number from the public view alon
           r = L.applyMove(m, 'O', b.move, rng); assert.equal(r.ok, true, `${level}: ${b.move}`); n++;
         } while (r.outcome !== 'win' && n < 40);
         assert.equal(r.outcome, 'win'); assert.equal(r.winner, undefined, `${level}: its own number found`);
-        if (level !== 'easy') assert.ok(n <= 5, `${level}: ${n} guesses (halving: 5 at most on 30)`);
+        if (level === 'hard') assert.ok(n <= 5, `${level}: ${n} guesses (halving: 5 at most on 30)`);
       }
     }
     const m = L.newMini('hilo', E.makeRng('hrv2-need')); m.side.O.lo = 10; m.side.O.hi = 12;

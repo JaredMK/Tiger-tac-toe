@@ -15,3 +15,5 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 export const lineupBlurb = 'Flip the coins that aren\'t yours. Win when every coin shows your side.';
 export const luckSkill = 1;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): no mistakes to make, its one move (coins has no choice), so only the thinking time.
+export const AI_LEVELS = { miss: false };

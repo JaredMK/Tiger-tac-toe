@@ -1,6 +1,6 @@
 // Blackjack: the computer's play.
 import { goAgain, tune } from '../../core/tune.js';
-import { bjStrategy, bjValue } from './rules.js';
+import { bjStrategy, bjTotal, bjValue } from './rules.js';
 
 // A hot streak: a hand won keeps the turn (Deal again), so a turn wins hands until one is lost. needs: the
 // turns still needed (the hands lost before the last one won, each ending a turn, and the turn that finishes it).
@@ -26,6 +26,10 @@ export function best(pm, me, rng, style, ctx) {
   const on = goAgain(pm), rest = q1 => (on ? q1 ** Math.max(0, need - 1) : need <= 1 ? 1 : 0);   // (off: a hand a turn, so only the last hand needed takes it now)
   if (!h) { const w = ctx && ctx.level === 'hard' ? pushWorth(tune(pm).stand) : BJ_WIN; return { move: 'deal', q: w * rest(w) }; }
   if (ctx && ctx.level === 'hard') { const v = bjHard(h.cards, h.up, tune(pm).stand); return { move: v.hit > v.stand ? 'hit' : 'stand', q: Math.max(v.hit, v.stand) * rest(pushWorth(tune(pm).stand)) }; }
+  if (ctx && ctx.level === 'easy') {                         // Easy: a nervous player's rule, the dealer's card never looked at: stand from standEasy, else hit
+    const tot = bjTotal(h.cards).total, at = tune(pm).standEasy || 15;
+    return { move: tot >= at ? 'stand' : 'hit', q: 0 };
+  }
   return { move: bjStrategy(h.cards, h.up), q: 0 };
 }
 
