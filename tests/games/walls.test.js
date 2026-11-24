@@ -8,7 +8,7 @@ const M = require('../../src/games/walls/meta.js');
 
 test('walls: Admin only, brain; the deal: a 5x5 board, each pawn in the middle of its own end row, three walls each', () => {
   assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'brain', '1.24.0']);
-  assert.deepEqual(E.gameFields('walls').map(f => f.k), ['size', 'walls']);
+  assert.deepEqual(E.gameFields('walls').map(f => f.k), ['size', 'walls', 'aiLookEasy', 'aiBlockEasy', 'aiLookNormal', 'aiBlockNormal', 'aiLookHard', 'aiBlockHard']);
   const m = E.newMini('walls', E.makeRng('a'));
   assert.deepEqual([m.n, m.at, m.walls, m.left], [5, { X: [4, 2], O: [0, 2] }, [], { X: 3, O: 3 }]);
   assert.deepEqual([R.wallPath(5, [], [4, 2], 'X'), R.wallPath(5, [], [0, 2], 'O')], [4, 4]); assert.equal(E.secretOf(m), null);

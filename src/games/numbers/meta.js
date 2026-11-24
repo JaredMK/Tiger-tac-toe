@@ -10,9 +10,14 @@ export const explainVars = v => ({ modeText: v.mode === 'shared' ? ' There is on
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3.500"/><path d="M7 8.500h4M9 6.500v4M13.500 8.500h4M7.500 14l3 3M10.500 14l-3 3M13.500 14.500h4M13.500 17h4"/></svg>';
 // Its settings (the admin's Games page; core/tune.js): Race (a hidden order each) or Shared (one for both, every guess
 // and answer for both), and how many digits (their orders: 3 digits 6, 4 digits 24, 5 digits 120, 6 digits 720).
+export const AI_LEVELS = { miss: { easy: 40, normal: 0, hard: 0 } };
 export const TUNE = [
   { k: 'mode', label: 'Mode (race: a hidden number each; shared: one for both)', def: 'race', opts: ['race', 'shared'], group: 'Rules' },
   { k: 'n', label: 'Digits', def: 5, min: 3, max: 7, step: 1, group: 'Board' },
+  // The computer's levels (ai.js): how near the middle of what is left it guesses.
+  { k: 'aiHalfEasy', label: 'How near the middle of what is left it guesses (%: 100 halves it every guess)', def: 0, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
+  { k: 'aiHalfNormal', label: 'How near the middle of what is left it guesses (%: 100 halves it every guess)', def: 0, min: 0, max: 100, step: 5, group: 'Computer: Normal' },
+  { k: 'aiHalfHard', label: 'How near the middle of what is left it guesses (%: 100 halves it every guess)', def: 100, min: 0, max: 100, step: 5, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/numbers): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Arrange the digits to guess a hidden number and hear higher or lower. Find the exact order first.';

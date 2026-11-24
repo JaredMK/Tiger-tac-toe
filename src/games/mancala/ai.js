@@ -4,6 +4,7 @@
 // Both know the end by an empty side (`v: 2`, rules.js): a sowing that leaves either side with no seeds ends the
 // square there, every seed left going to its owner's bank, so it is valued by the banks it ends on (a win, a loss or a
 // draw), never by the seeds it banks.
+import { tune } from '../../core/tune.js';
 import { mancCfg, mancFinal, mancMoves, mancSow } from './rules.js';
 
 const other = p => (p === 'X' ? 'O' : 'X');
@@ -22,22 +23,32 @@ function search(pits, bank, p, me, c, depth) {
 // A sowing that ends the square by the sweep: its final banks (null: the square goes on, or the target took it first).
 const sweptBy = (r, p, c) => (c.sweep && r.bank[p] < c.target ? mancFinal(r.pits, r.bank) : null);
 export function needs(pm, p) { const c = mancCfg(pm), left = c.target - pm.bank[p]; return left <= 0 ? 0 : Math.max(1, left / 2); }
+// Each level's play is its settings (meta.js TUNE, Computer: Easy / Normal / Hard): how far it looks (`aiLook<Level>`:
+// 0 any pit, 1 the pit that banks most this turn (a go-again a little more), 2 or more a search over whole turns for
+// each side, that many turns deep) and, at look 1, whether it guards against the other side's best reply
+// (`aiGuard<Level>`: less half what they could bank with one sowing after it, a capture above all).
+const LV = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+export const LOOK = { easy: 1, normal: 1, hard: 3 }, GUARD = { easy: 'off', normal: 'on', hard: 'on' };
+export function levelCfg(pm, level) {
+  const t = tune(pm), L = LV[level] ? level : 'normal', k = LV[L], n = Number(t['aiLook' + k]);
+  return { look: Number.isFinite(n) && t['aiLook' + k] !== '' && t['aiLook' + k] != null ? n : LOOK[L], guard: (t['aiGuard' + k] || GUARD[L]) === 'on' };
+}
 export function best(pm, me, rng, style, ctx) {
-  const c = mancCfg(pm), level = (ctx && ctx.level) || 'normal', moves = mancMoves(pm, me), pick = a => a[Math.floor(rng() * a.length)], o = other(me);
+  const c = mancCfg(pm), level = (ctx && ctx.level) || 'normal', cfg = levelCfg(pm, level), moves = mancMoves(pm, me), pick = a => a[Math.floor(rng() * a.length)], o = other(me);
   if (!moves.length) return { move: 'end', q: 0 };
   const q = c.target - pm.bank[me] <= 3 ? 0.4 : 0.05;
-  if (level === 'easy') return { move: pick(moves), q };
+  if (cfg.look <= 0) return { move: pick(moves), q };
   const scored = moves.map(i => {
     const r = mancSow(pm.pits, pm.bank, me, i, c), fin = sweptBy(r, me, c);
-    if (level === 'hard') {                                      // (a win at once is taken, never a later one; a loss at once only with nothing else left)
-      const now = r.bank[me] >= c.target ? 1 : fin ? Math.sign(fin[me] - fin[o]) : null;
-      return { i, v: now === 1 ? 2 * WIN : now === -1 ? -2 * WIN : now === 0 ? 0 : search(r.pits, r.bank, r.again ? me : o, me, c, r.again ? 3 : 2) };
+    if (cfg.look >= 2) {                                         // (a win at once is taken, never a later one; a loss at once only with nothing else left)
+      const now = r.bank[me] >= c.target ? 1 : fin ? Math.sign(fin[me] - fin[o]) : null, d = cfg.look - 1;
+      return { i, v: now === 1 ? 2 * WIN : now === -1 ? -2 * WIN : now === 0 ? 0 : search(r.pits, r.bank, r.again ? me : o, me, c, r.again ? d + 1 : d) };
     }
     if (fin) return { i, v: fin[me] === fin[o] ? 0 : fin[me] > fin[o] ? 100 : -100 };   // (the square ends here: won, lost or level)
-    // Normal: what it banks now, a go-again a little more, less the most the other side could bank with one sowing after
-    // (a reply that ends the square by the sweep: what the banks it ends on give them over what they give this side)
+    // Look 1: what it banks now, a go-again a little more, and (guarding) less the most the other side could bank with
+    // one sowing after (a reply that ends the square by the sweep: what the banks it ends on give them over this side)
     let reply = 0;
-    if (!r.again) for (const j of r.pits[o].map((v, k) => (v > 0 ? k : -1)).filter(k => k >= 0)) {
+    if (cfg.guard && !r.again) for (const j of r.pits[o].map((v, k) => (v > 0 ? k : -1)).filter(k => k >= 0)) {
       const s = mancSow(r.pits, r.bank, o, j, c), f2 = sweptBy(s, o, c);
       reply = Math.max(reply, f2 ? f2[o] - r.bank[o] - (f2[me] - r.bank[me]) : s.bank[o] - r.bank[o] + (s.again ? 0.5 : 0));
     }
@@ -45,4 +56,11 @@ export function best(pm, me, rng, style, ctx) {
   });
   const top = Math.max(...scored.map(s => s.v));
   return { move: pick(scored.filter(s => s.v >= top - 1e-9)).i, q };
+}
+// A weaker pit a person might sow (the mistake rate, core/ai.js aiSlip): any other pit with seeds, the ones that bank
+// something now first (a pit that looks fine on its face).
+export function worse(pm, me, rng, ctx) {
+  const c = mancCfg(pm), moves = mancMoves(pm, me).filter(i => i !== (ctx && ctx.best));
+  if (!moves.length) return null;
+  return moves[Math.floor(rng() * moves.length)];
 }

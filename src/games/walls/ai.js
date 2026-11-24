@@ -3,6 +3,7 @@
 // and has a wall, it places the wall that lengthens the other pawn's way most, its own way spared.
 // Hard looks ahead: every step and wall, the other side's best reply, its own best answer (within `ctx.until`).
 import { other } from '../../core/util.js';
+import { tune } from '../../core/tune.js';
 import { wallGoal, wallPath, wallSpots, wallSteps } from './rules.js';
 
 const clone = m => ({ n: m.n, at: { X: m.at.X.slice(), O: m.at.O.slice() }, walls: m.walls.map(w => w.slice()), left: { X: m.left.X, O: m.left.O } });
@@ -19,22 +20,40 @@ function search(m, p, me, depth, until) {
   return best;
 }
 export function needs(pm, p) { return Math.max(1, dist(pm, p)); }
+// Each level's play is its settings (meta.js TUNE, Computer: Easy / Normal / Hard): how far it looks (`aiLook<Level>`:
+// 0 or 1 its shortest way, 2 or more every step and wall searched that many moves deep, its own and the other side's
+// in turn) and, below 2, whether it blocks with walls (`aiBlock<Level>`: losing the race with a wall in hand, the wall
+// that lengthens the other way most for the least added to its own). Its stray moves are the mistake rate.
+const LV = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+export const LOOK = { easy: 1, normal: 1, hard: 3 }, BLOCK = { easy: 'off', normal: 'on', hard: 'on' };
+export function levelCfg(pm, level) {
+  const t = tune(pm), L = LV[level] ? level : 'normal', k = LV[L], n = Number(t['aiLook' + k]);
+  return { look: Number.isFinite(n) && t['aiLook' + k] !== '' && t['aiLook' + k] != null ? n : LOOK[L], block: (t['aiBlock' + k] || BLOCK[L]) === 'on' };
+}
 export function best(pm, me, rng, style, ctx) {
-  const level = (ctx && ctx.level) || 'normal', o = other(me), pick = a => a[Math.floor(rng() * a.length)], m = clone(pm);
+  const level = (ctx && ctx.level) || 'normal', cfg = levelCfg(pm, level), o = other(me), pick = a => a[Math.floor(rng() * a.length)], m = clone(pm);
   const steps = wallSteps(m, me), dOf = s => wallPath(m.n, m.walls, s, me), near = Math.min(...steps.map(dOf)), on = steps.filter(s => dOf(s) === near);
   const mine = dist(m, me), theirs = dist(m, o), q = mine <= 1 ? 1 : 0.05;
   if (near === 0) return { move: { s: pick(on) }, q: 1 };          // a step onto the far row
-  if (level === 'easy') { if (rng() < 0.7) return { move: { s: pick(on) }, q }; const all = movesOf(m, me); return { move: pick(all), q }; }
-  if (level === 'hard') {
-    const all = movesOf(m, me).map(mv => ({ mv, v: search(play(m, me, mv), o, me, 2, ctx && ctx.until) + (mv.s ? 0.05 : 0) }));
+  if (cfg.look >= 2) {
+    const all = movesOf(m, me).map(mv => ({ mv, v: search(play(m, me, mv), o, me, cfg.look - 1, ctx && ctx.until) + (mv.s ? 0.05 : 0) }));
     const top = Math.max(...all.map(x => x.v)); return { move: pick(all.filter(x => x.v >= top - 1e-9)).mv, q };
   }
-  // Normal: losing the race as it stands (the other pawn gets home first even with our move in hand): the wall that
+  // Blocking: losing the race as it stands (the other pawn gets home first even with our move in hand): the wall that
   // lengthens their way most for the least added to ours, if it lengthens it at all
-  if (m.left[me] > 0 && mine > theirs) {
+  if (cfg.block && m.left[me] > 0 && mine > theirs) {
     let bestW = null, bestG = 0.9;
     for (const w of wallSpots(m, me)) { const c = play(m, me, { w }), g = (dist(c, o) - theirs) - (dist(c, me) - mine) * 1.5; if (g > bestG + 1e-9) { bestG = g; bestW = [w]; } else if (bestW && Math.abs(g - bestG) <= 1e-9) bestW.push(w); }
     if (bestW) return { move: { w: pick(bestW) }, q };
   }
   return { move: { s: pick(on) }, q };
+}
+// A weaker move a person might make (the mistake rate, core/ai.js aiSlip): a step off its shortest way, or a wall put
+// down that does little (never in place of a step onto the far row).
+export function worse(pm, me, rng, ctx) {
+  const m = clone(pm), b = ctx && ctx.best, same = (x, y) => JSON.stringify(x) === JSON.stringify(y);
+  const all = movesOf(m, me).filter(mv => !(b && same(mv, b)));
+  if (!all.length || (b && b.s && b.s[0] === wallGoal(m.n, me))) return null;
+  const steps = all.filter(mv => mv.s), pool = steps.length && rng() < 0.6 ? steps : all;
+  return pool[Math.floor(rng() * pool.length)];
 }

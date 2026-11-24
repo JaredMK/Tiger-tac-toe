@@ -10,6 +10,7 @@ export const explainVars = v => ({ extraText: v.extra === 'off' ? '' : ' Last se
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="6"/><circle cx="8" cy="12" r="1.900"/><circle cx="12.700" cy="12" r="1.900"/><path d="M17.500 9.500v5"/></svg>';
 // Its settings (the admin's Games page; core/tune.js): the pits a side, the seeds each starts with, the seeds to bank,
 // and the two classic extras: go again when the last seed reaches your bank, and the capture.
+export const AI_LEVELS = { miss: { easy: 12, normal: 0, hard: 0 }, think: { normal: 150, hard: 300 } };
 export const TUNE = [
   { k: 'target', label: 'Seeds to bank to take the square', def: 10, min: 3, max: 30, step: 1, group: 'Rules' },
   { k: 'extra', label: 'Last seed in your bank: go again', def: 'on', opts: ['on', 'off'], group: 'Rules' },
@@ -18,6 +19,13 @@ export const TUNE = [
   { k: 'pits', label: 'Pits a side', def: 6, min: 3, max: 6, step: 1, group: 'Board' },
   { k: 'seeds', label: 'Seeds in each pit at the start (on average)', def: 3, min: 2, max: 6, step: 1, group: 'Board' },
   { k: 'mix', label: 'Uneven pits at the start (the same on both sides)', def: 'on', opts: ['on', 'off'], group: 'Board' },
+  // The computer's levels (ai.js levelCfg): how far it looks, and whether it guards against your reply.
+  { k: 'aiLookEasy', label: 'How far ahead it looks (0 any pit, 1 what banks most now, 2+ turns searched)', def: 1, min: 0, max: 4, step: 1, group: 'Computer: Easy' },
+  { k: 'aiGuardEasy', label: 'Guards against your best reply (a capture) when looking 1 ahead', def: 'off', opts: ['off', 'on'], group: 'Computer: Easy' },
+  { k: 'aiLookNormal', label: 'How far ahead it looks (0 any pit, 1 what banks most now, 2+ turns searched)', def: 1, min: 0, max: 4, step: 1, group: 'Computer: Normal' },
+  { k: 'aiGuardNormal', label: 'Guards against your best reply (a capture) when looking 1 ahead', def: 'on', opts: ['off', 'on'], group: 'Computer: Normal' },
+  { k: 'aiLookHard', label: 'How far ahead it looks (0 any pit, 1 what banks most now, 2+ turns searched)', def: 2, min: 0, max: 4, step: 1, group: 'Computer: Hard' },
+  { k: 'aiGuardHard', label: 'Guards against your best reply (a capture) when looking 1 ahead', def: 'on', opts: ['off', 'on'], group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/mancala): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Sow seeds round the board from your pits into your bank. Bank enough seeds first.';

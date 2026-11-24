@@ -9,7 +9,7 @@ const M = require('../../src/games/numbers/meta.js');
 
 test('numbers: Admin only, brain; its settings; the hidden order is the secret', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder, M.info.name], ['admin', 'brain', '1.28.0', false, 'Number Shuffle']);
-  assert.deepEqual(E.gameFields('numbers').map(f => [f.k, f.def]), [['mode', 'race'], ['n', 5]]);
+  assert.deepEqual(E.gameFields('numbers').filter(f => !/^Computer/.test(f.group)).map(f => [f.k, f.def]), [['mode', 'race'], ['n', 5]]);
   const m = E.newMini('numbers', E.makeRng('a'));
   assert.equal(m.d.length, 5); assert.equal(new Set(m.d).size, 5); assert.deepEqual(m.d, m.d.slice().sort((a, b) => a - b));
   assert.ok(m.tg.X.join('') !== m.tg.O.join(''), 'a race: never the same order');

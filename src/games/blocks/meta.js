@@ -17,6 +17,16 @@ export const TUNE = [
   { k: 'rows', label: 'Board height', def: 8, min: 5, max: 10, step: 1, group: 'Board' },
   { k: 'even', label: 'Equal turns (the other player answers; fewer pieces wins)', def: 'on', opts: ['on', 'off'], group: 'Rules' },
   { k: 'junk', label: 'Junk rows sent to the other player', def: 'off', opts: ['off', 'on'], group: 'Rules' },
+  // The computer's levels (ai.js): how far it thinks ahead, how loosely it judges, how wide it picks.
+  { k: 'aiLookEasy', label: 'How many pieces it thinks ahead (1 or 2)', def: 1, min: 1, max: 2, step: 1, group: 'Computer: Easy' },
+  { k: 'aiLookNormal', label: 'How many pieces it thinks ahead (1 or 2)', def: 1, min: 1, max: 2, step: 1, group: 'Computer: Normal' },
+  { k: 'aiLookHard', label: 'How many pieces it thinks ahead (1 or 2)', def: 2, min: 1, max: 2, step: 1, group: 'Computer: Hard' },
+  { k: 'aiLooseEasy', label: 'How loosely it judges a place (0 exactly)', def: 0, min: 0, max: 20, step: 0.5, group: 'Computer: Easy' },
+  { k: 'aiLooseNormal', label: 'How loosely it judges a place (0 exactly)', def: 6, min: 0, max: 20, step: 0.5, group: 'Computer: Normal' },
+  { k: 'aiLooseHard', label: 'How loosely it judges a place (0 exactly)', def: 0, min: 0, max: 20, step: 0.5, group: 'Computer: Hard' },
+  { k: 'aiShareEasy', label: 'Picks at random among its best places (% of them; 0 the best)', def: 15, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
+  { k: 'aiShareNormal', label: 'Picks at random among its best places (% of them; 0 the best)', def: 0, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'aiShareHard', label: 'Picks at random among its best places (% of them; 0 the best)', def: 0, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/blocks): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Drop your pieces to fill rows on your board. A full row clears. Clear enough rows first.';

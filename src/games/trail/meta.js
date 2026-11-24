@@ -12,10 +12,18 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 // by chance who wins turns on the board's size, and at 7 the second to move took 70% of squares between two Normal
 // computers over 8 turns each), how many squares a trail may grow a turn, and equal turns (rules.js; off: between two
 // strong players it makes every square a draw, as without it the first to move takes every square).
+export const AI_LEVELS = { miss: { easy: 30, normal: 0, hard: 0 } };
 export const TUNE = [
   { k: 'size', label: 'Board size', def: 6, min: 5, max: 9, step: 1, group: 'Board' },
   { k: 'cells', label: 'Squares a turn, at most', def: 2, min: 1, max: 4, step: 1, group: 'Rules' },
   { k: 'even', label: 'Equal turns (the other player answers; the shorter trail wins)', def: 'off', opts: ['off', 'on'], group: 'Rules' },
+  // The computer's levels (ai.js): how far it looks and how loosely it judges.
+  { k: 'aiLookEasy', label: 'How far ahead it looks (1 its own move, 2 your best answer too)', def: 1, min: 1, max: 2, step: 1, group: 'Computer: Easy' },
+  { k: 'aiLookNormal', label: 'How far ahead it looks (1 its own move, 2 your best answer too)', def: 1, min: 1, max: 2, step: 1, group: 'Computer: Normal' },
+  { k: 'aiLookHard', label: 'How far ahead it looks (1 its own move, 2 your best answer too)', def: 2, min: 1, max: 2, step: 1, group: 'Computer: Hard' },
+  { k: 'aiLooseEasy', label: 'How loosely it judges a move (steps: any within that of the best)', def: 0.25, min: 0, max: 5, step: 0.05, group: 'Computer: Easy' },
+  { k: 'aiLooseNormal', label: 'How loosely it judges a move (steps: any within that of the best)', def: 0.25, min: 0, max: 5, step: 0.05, group: 'Computer: Normal' },
+  { k: 'aiLooseHard', label: 'How loosely it judges a move (steps: any within that of the best)', def: 0, min: 0, max: 5, step: 0.05, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/trail): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Grow your trail forward or sideways: trails are walls. Reach the far edge first.';

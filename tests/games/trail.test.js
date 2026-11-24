@@ -9,7 +9,7 @@ const M = require('../../src/games/trail/meta.js');
 const none = () => 0.5;
 test('trail: Admin only, brain; its settings; the deal: each trail starts in the middle of its own edge; nothing hidden', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder], ['admin', 'brain', '1.25.0', false]);
-  assert.deepEqual(E.gameFields('trail').map(f => f.k), ['size', 'cells', 'even']);
+  assert.deepEqual(E.gameFields('trail').map(f => f.k), ['size', 'cells', 'even', 'aiLookEasy', 'aiLookNormal', 'aiLookHard', 'aiLooseEasy', 'aiLooseNormal', 'aiLooseHard']);
   const m = E.newMini('trail', E.makeRng('a'));
   assert.deepEqual([m.n, m.tr, R.trailCfg(m), E.secretOf(m), R.trailFar(m, 'X'), R.trailFar(m, 'O')], [6, { X: [[0, 3]], O: [[5, 3]] }, { cells: 2, even: false }, null, 5, 0]);
   E.setTune('trail', { size: 7 }); try { assert.deepEqual(E.newMini('trail', E.makeRng('b')).tr, { X: [[0, 3]], O: [[6, 3]] }); } finally { E.setTune('trail', null); }
