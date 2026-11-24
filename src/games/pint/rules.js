@@ -5,7 +5,7 @@
 // falls (pintLevel: the share left after t ms, gently at first as the glass tips, then steadily and a little faster
 // as it goes; the same function for the view, the replays and the computer); letting go stops it. The move is
 // `{ lv }`, the level left at the release (0 to 1, kept to 3 places). Within `tol` of the mark's middle is a split
-// (1 point), within `perfect` a perfect split (2); else nothing (stopped too soon, or gone too far; a glass drunk
+// (1 point), within `perfect` a perfect split (2); else nothing (too little drunk, or too much; a glass drunk
 // empty is always a miss). A fresh pint and a fresh mark after every attempt. First to `goal` points takes the
 // square. "Go again on success" (off by default): any split keeps the turn. Nothing is hidden. Where the drink was
 // stopped is the phone's word (the server cannot time a finger letting go, as with Key Drop's stops), so the game is
@@ -36,7 +36,7 @@ export function pintTime(c, lv) {
 }
 export const pintSpeed = (c, t) => (pintDrunk(c, t + 1) - pintDrunk(c, t - 1)) * 500;   // the level's fall, shares a second, t ms into a hold
 const drawMark = (c, rng) => r3(c.lo + (c.hi - c.lo) * needRng(rng)());
-// An attempt judged: 2 a perfect split, 1 a split, 0 neither (d: the level less the mark; above it, stopped too soon).
+// An attempt judged: 2 a perfect split, 1 a split, 0 neither (d: the level less the mark; above it, too little drunk).
 export function pintJudge(c, lv, mark) { const off = Math.abs(lv - mark); return lv <= 0 ? 0 : off <= c.perfect + 1e-9 ? 2 : off <= c.tol + 1e-9 ? 1 : 0; }
 export function create(type, rng) {
   const m = { type, v: 1, mark: { X: 0.5, O: 0.5 }, pts: { X: 0, O: 0 }, n: { X: 0, O: 0 }, last: null }, t = tuneLive(type);
@@ -65,7 +65,10 @@ export function randomMove(mini, p, rng, from, empties) {          // (the tests
 }
 export function moveFlash(m, p, range, bjFrom, mini, flash) { flash.pn = Object.assign({}, mini.last); }
 // A move's picture, from its start: someone else's hold played first (`ms`), then the release: the glass upright
-// and the drink settled (PINT.settle), the verdict (PINT.say), its hold, and the fresh pint sliding in.
+// and the drink settled (PINT.settle), the verdict (PINT.say), its hold, and, only where the same player goes again,
+// the fresh pint sliding in (a turn that passes goes straight back to the board with the glass as it left it: the
+// next pint is shown when the square is next opened).
 export const pintPre = l => Math.max(0, (l && l.ms) || 0);
-export const pintMs = (l, won) => pintPre(l) + PINT.settle + PINT.say + PINT.hold + (won ? 0 : PINT.next);
+export const pintKeep = l => !!l && l.next === l.by;
+export const pintMs = (l, won) => pintPre(l) + PINT.settle + PINT.say + PINT.hold + (won || !pintKeep(l) ? 0 : PINT.next);
 export function flashMs(f, winLen, won) { return pintMs(f && f.pn, won) + (won ? 400 : 0); }

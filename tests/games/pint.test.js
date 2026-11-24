@@ -31,12 +31,12 @@ test('pint: the level falls gently at first, then steadily and a little faster; 
   E.setTune('pint', { rate: 25 }); try { const s = R.pintCfg(E.newMini('pint', E.makeRng('a'))); assert.ok(R.pintTime(s, 0.5) > R.pintTime(c, 0.5) * 1.7, 'a slower drink takes longer'); } finally { E.setTune('pint', null); }
 });
 
-test('pint: within the tolerance of the mark\'s middle is a split (1), very close a perfect split (2); too soon and too far score nothing; a fresh mark after each attempt; first to 3', () => {
+test('pint: within the tolerance of the mark\'s middle is a split (1), very close a perfect split (2); too little and too much score nothing; a fresh mark after each attempt; first to 3', () => {
   const m = E.newMini('pint', E.makeRng('b')); m.mark.X = 0.5; m.mark.O = 0.6;
   let r = E.applyMove(m, 'X', { lv: 0.535 }, E.makeRng('x'));
   assert.deepEqual([r.outcome, r.note, !!r.again, m.pts.X, m.n.X, m.last.pts, m.last.mark, m.last.d, m.last.next], ['continue', 'split', false, 1, 1, 1, 0.5, 0.035, 'O'], 'on the edge of the tolerance, above');
   assert.ok(m.mark.X >= 0.35 && m.mark.X <= 0.7 && m.mark.X !== 0.5, 'a fresh pint, a fresh mark'); assert.equal(m.mark.O, 0.6, 'the other player\'s pint is their own');
-  r = E.applyMove(m, 'O', { lv: 0.636 }, E.makeRng('x')); assert.deepEqual([r.note, m.pts.O, m.last.pts], ['soon', 0, 0], 'just outside, stopped too soon');
+  r = E.applyMove(m, 'O', { lv: 0.636 }, E.makeRng('x')); assert.deepEqual([r.note, m.pts.O, m.last.pts], ['soon', 0, 0], 'just outside, too little drunk');
   m.mark.O = 0.6; r = E.applyMove(m, 'O', { lv: 0.564 }, E.makeRng('x')); assert.deepEqual([r.note, m.pts.O, m.last.d], ['far', 0, -0.036], 'just outside, gone too far');
   m.mark.O = 0.6; r = E.applyMove(m, 'O', { lv: 0.59 }, E.makeRng('x')); assert.deepEqual([r.note, m.pts.O, m.last.from, m.last.to], ['perfect', 2, 0, 2], 'within the perfect tolerance');
   m.mark.O = 0.6; r = E.applyMove(m, 'O', { lv: 0.589 }, E.makeRng('x')); assert.deepEqual([r.outcome, r.note, m.pts.O], ['win', 'won', 3], 'a split takes the third point');

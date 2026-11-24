@@ -10,10 +10,10 @@
 // level falling by the rules' own clock (rules.js pintLevel), a gulp ticking; let go and that is the attempt: it goes
 // in as the level left. Then, from the release: the glass comes back upright and the drink sloshes and settles
 // (PINT.up, PINT.settle); the verdict (PINT.say): a pointer at the level against the bracket of what counted about
-// the mark, the words in the reserved line, the points filling in; and a fresh pint slides up for whoever goes next
-// (PINT.next). The clocks are real time whatever the Animation setting. Someone else's attempt plays the same hold
+// the mark, the words in the reserved line, the points filling in; and, where the same player goes again, a fresh pint
+// slides up (PINT.next); a turn that passes leaves the glass as the attempt left it until the board is back. The clocks are real time whatever the Animation setting. Someone else's attempt plays the same hold
 // first, for the time their level took (the move's `ms`).
-import { PINT, pintCfg, pintLevel, pintPre } from './rules.js';
+import { PINT, pintCfg, pintKeep, pintLevel, pintPre } from './rules.js';
 import { SND, ownPress } from '../../audio/sound.js';
 import { attemptMove } from '../../net/moves.js';
 import { haptic } from '../../net/platform.js';
@@ -230,16 +230,16 @@ const go = stage('canvas.pntcv', (c, W, H, now) => {
   let L = 1, g = 0, pr = 0, phi = 0, drop = 0, mark = mini.mark[src.who], by = src.who, more = false, foam = false, eye = 'open', mouth = 'idle', verdict = null, vk = 0, burst = 0, bob = 0;
   if (a) {
     const s = a.pn, at = fxAt('move', a), pre = pintPre(s), t = (at == null ? Infinity : now - at) + (src.own ? pre : 0), tr = t - pre;
-    const tv = PINT.settle, tn = tv + PINT.say + PINT.hold, half = PINT.next / 2;
+    const tv = PINT.settle, tn = tv + PINT.say + PINT.hold, half = PINT.next / 2, still = src.won || !pintKeep(s);
     mark = s.mark; by = s.by;
     if (tr < 0) { L = Math.max(s.lv, pintLevel(cfg, t)); g = lift(t); pr = pour(L); eye = 'shut'; mouth = 'sip'; }
-    else if (src.won || tr < tn + half) {
+    else if (still || tr < tn + half) {
       L = s.lv; g = 1 - easeIO(tr / PINT.up); pr = pour(L); foam = true;
       phi = PINV.swing * Math.min(1, pr / 1.2) * Math.exp(-tr / PINV.fade) * Math.sin(2 * PI * tr / PINV.wave);
       vk = clamp((tr - tv) / PINV.point); if (vk > 0) { verdict = Object.assign({ tol: cfg.tol, perfect: cfg.perfect }, s); eye = s.pts === 2 ? 'joy' : 'open'; mouth = s.pts === 2 ? 'grin' : s.pts === 1 ? 'smile' : 'glum'; if (s.pts === 2) burst = clamp((tr - tv) / 520); } else mouth = 'oh';
-      if (!src.won && tr >= tn) drop = easeIn((tr - tn) / half);
+      if (!still && tr >= tn) drop = easeIn((tr - tn) / half);
     } else { L = 1; mark = mini.mark[s.next]; by = s.next; drop = 1 - easeOut((tr - tn - half) / half); }
-    more = tr < (src.won ? tv + PINT.say : tn + PINT.next) + 300;
+    more = tr < (still ? tv + PINT.say : tn + PINT.next) + 300;
   } else if (src.fin) {
     const l = mini.last; L = l.lv; mark = l.mark; by = l.by; foam = true; verdict = Object.assign({ tol: cfg.tol, perfect: cfg.perfect }, l); vk = 1;
     eye = l.pts === 2 ? 'joy' : 'open'; mouth = l.pts === 2 ? 'grin' : l.pts === 1 ? 'smile' : 'glum';
@@ -273,7 +273,7 @@ const go = stage('canvas.pntcv', (c, W, H, now) => {
 
 // ---- the view's hooks ----
 const GLASS_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.500 3.500h11l-1.500 17.500h-8z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"/><path d="M7.600 10.500h8.800l-.900 9.500h-7z" fill="currentColor"/></svg>';
-const WORD = l => (l.pts === 2 ? ['ok best', 'Perfect split!'] : l.pts === 1 ? ['ok', 'Split!'] : l.lv > 0 && l.d > 0 ? ['no', 'Too soon'] : ['no', 'Too far']);
+const WORD = l => (l.pts === 2 ? ['ok best', 'Perfect split!'] : l.pts === 1 ? ['ok', 'Split!'] : l.lv > 0 && l.d > 0 ? ['no', 'Too little'] : ['no', 'Too much']);
 const tally = (p, n, goal, from, t) => `<span class="pips" aria-label="${n} of ${goal}">${Array.from({ length: goal }, (_, k) => `<i ${lateAt(k < n ? 'on' : '', t != null && k >= from && k < n ? t + (k - from) * PINV.pip : null, 'fillin')}></i>`).join('')}</span>`;
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   hook();
@@ -282,9 +282,9 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   if (mine && aim && aim.phase === 4 && performance.now() - aim.t0 > PINV.stuck) aim = null;
   if (mine && !(aim && aim.sq === state.zoom && aim.p === turn && aim.n === mini.n[turn])) aim = { sq: state.zoom, p: turn, n: mini.n[turn], phase: 0, t0: performance.now(), tick: 0, lv: 1 };
   if (!mine && aim && s) aim = null;
-  // An attempt made here was seen here: its flash starts at the release and ends with the fresh pint (the hold is not played again).
+  // An attempt made here was seen here: its flash starts at the release and ends with the verdict held, and the fresh pint where the turn is kept (the hold is not played again).
   const base = s && !own ? pintPre(s) : 0, said = base + PINT.settle;
-  if (s && own && skipped !== a && flashAnimating()) { skipped = a; setTimeout(() => { if (state.flash === a) skipFlash(); }, PINT.settle + PINT.say + PINT.hold + (fresh ? 0 : PINT.next)); }
+  if (s && own && skipped !== a && flashAnimating()) { skipped = a; setTimeout(() => { if (state.flash === a) skipFlash(); }, PINT.settle + PINT.say + PINT.hold + (fresh || !pintKeep(s) ? 0 : PINT.next)); }
   const tal = p => arcTally(p, o, tally(p, mini.pts[p], c.goal, s && s.by === p ? s.from : 0, s && s.by === p && s.pts > 0 ? said + PINV.point : null));
   const l = s || ((view || d) && mini.last ? mini.last : null), w = l ? WORD(l) : null;
   const line = l ? `<p ${s ? lateAt('pntline ' + w[0], said) : `class="pntline ${w[0]}"`} role="status">${w[1]}</p>` : '<p class="pntline"></p>';
@@ -305,15 +305,15 @@ export function miniature(mini, final) {
   const art = `<svg class="tpnt" viewBox="12 3 36 56"><path class="tpng" d="M17 7h26l-3.600 48h-18.800z"/>${fill(yf, 53, 'tpnd')}${fill(yl, yf, 'tpnf')}<path class="tpno" d="M17 7h26l-3.600 48h-18.800z"/><path class="tpnr" d="M${(30 - hw(ym) - 1.3).toFixed(1)} ${ym.toFixed(1)}H${(30 + hw(ym) + 1.3).toFixed(1)}"/>${l ? `<g class="tpnm ${l.by}" transform="translate(30 ${ym.toFixed(1)})"><circle class="tpnb" r="6.800"/>${markSvgG(l.by, 3.6)}</g>` : ''}</svg>`;
   return thumbArt(art, pipRows(mini.pts, goal), 'tpntw', `Split It: X ${mini.pts.X}, O ${mini.pts.O} of ${goal} points`);
 }
-export function moveText(f, who) { const l = f.pn; return !l ? '' : l.pts === 2 ? `${who} split it perfectly` : l.pts === 1 ? `${who} split it` : l.lv > 0 && l.d > 0 ? `${who} stopped too soon` : `${who} went too far`; }
+export function moveText(f, who) { const l = f.pn; return !l ? '' : l.pts === 2 ? `${who} split it perfectly` : l.pts === 1 ? `${who} split it` : l.lv > 0 && l.d > 0 ? `${who} drank too little` : `${who} drank too much`; }
 // Someone else's attempt: the gulps through their hold and the gasp as they let go; then, for everyone, the drink
 // sloshing as the glass comes upright, the verdict's sound (a chime for a split, a brighter run for a perfect one, a
-// low note for a miss), and the fresh pint sliding up. An attempt made here had its gulps and its gasp as it was made.
+// low note for a miss), and, where the same player goes again, the fresh pint sliding up. An attempt made here had its gulps and its gasp as it was made.
 export function sounds(f, add, won, mini, last) {
   const l = f.pn; if (!l) return;
   const own = ownMove(f), pre = own ? 0 : pintPre(l), said = pre + PINT.settle;
   if (!own) { for (let t = 0, k = 0; t < pre - 60; t += PINV.gulp, k++) add('pnGulp', t, 0.88 + 0.3 * Math.min(1, t / 1800)); add('pnStop', pre, 1); }
   add('pnSlosh', pre + 40);
   add(l.pts === 2 ? 'pnPerfect' : l.pts === 1 ? 'pnSplit' : 'pnMiss', said);
-  if (!won) add('pnSlide', said + PINT.say + PINT.hold + PINT.next / 2 - 60);
+  if (!won && pintKeep(l)) add('pnSlide', said + PINT.say + PINT.hold + PINT.next / 2 - 60);
 }

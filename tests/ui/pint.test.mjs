@@ -70,19 +70,26 @@ test('an attempt: the words only after the drink has settled, the points after t
   assert.match(own, new RegExp(`<p class="pntline ok best appear" style="--t:${R.PINT.settle}ms" role="status">Perfect split!</p>`));
   assert.match(own, new RegExp(`<i class="on fillin" style="--t:${R.PINT.settle + V.PINV.point}ms"></i><i class="on fillin" style="--t:${R.PINT.settle + V.PINV.point + V.PINV.pip}ms"></i><i class=""></i>`), 'two pips, one after the other, once the verdict is in');
   assert.match(own, /class="big X pntbtn" data-act="pint-hold"[^>]* disabled>/);
-  assert.deepEqual(names(f), [['pnSlosh', 40], ['pnPerfect', R.PINT.settle], ['pnSlide', R.PINT.settle + R.PINT.say + R.PINT.hold + R.PINT.next / 2 - 60]], 'its gulps were heard live');
+  assert.deepEqual(names(f), [['pnSlosh', 40], ['pnPerfect', R.PINT.settle]], 'its gulps were heard live; the turn passes, so no fresh pint slides in');
+  assert.equal(R.flashMs(f, 0, false), R.pintPre(f.pn) + R.PINT.settle + R.PINT.say + R.PINT.hold, 'the turn passes: straight back to the board after the hold, no next glass');
   // the computer's: the same picture after its hold
   match('O'); const mo = state.squares[0].mini; mo.mark.O = 0.5;
   assert.ok(E.playMove(state, 0, { lv: 0.6 }, E.makeRng('s')).ok);
   const g = state.flash, pre = g.pn.ms, html = renderMini(state.squares[0]);
   assert.ok(pre > 500 && pre < 1500);
-  assert.match(html, new RegExp(`<p class="pntline no appear" style="--t:${pre + R.PINT.settle}ms" role="status">Too soon</p>`)); assert.doesNotMatch(html, /fillin/);
+  assert.match(html, new RegExp(`<p class="pntline no appear" style="--t:${pre + R.PINT.settle}ms" role="status">Too little</p>`)); assert.doesNotMatch(html, /fillin/);
   const snd = names(g);
   assert.ok(snd.filter(s => s[0] === 'pnGulp').length >= 3 && snd.filter(s => s[0] === 'pnGulp').every(s => s[1] < pre), 'gulps through the hold');
-  assert.deepEqual(snd.filter(s => s[0] !== 'pnGulp'), [['pnStop', pre], ['pnSlosh', pre + 40], ['pnMiss', pre + R.PINT.settle], ['pnSlide', pre + R.PINT.settle + R.PINT.say + R.PINT.hold + R.PINT.next / 2 - 60]]);
+  assert.deepEqual(snd.filter(s => s[0] !== 'pnGulp'), [['pnStop', pre], ['pnSlosh', pre + 40], ['pnMiss', pre + R.PINT.settle]]);
   assert.ok(RESULT_SOUNDS.has('pnSplit') && RESULT_SOUNDS.has('pnPerfect') && BAD_SOUNDS.has('pnMiss'), 'the verdicts buzz');
-  for (const [lv, words] of [[0.52, 'Split!'], [0.4, 'Too far'], [0, 'Too far']]) { match('O'); state.squares[0].mini.mark.O = 0.5; E.playMove(state, 0, { lv }, E.makeRng('s')); assert.match(renderMini(state.squares[0]), new RegExp(`role="status">${words}</p>`)); }
-  assert.equal(V.moveText({ pn: { pts: 2 } }, 'Xena'), 'Xena split it perfectly'); assert.equal(V.moveText({ pn: { pts: 0, lv: 0.8, d: 0.2 } }, 'Xena'), 'Xena stopped too soon'); assert.equal(V.moveText({ pn: { pts: 0, lv: 0, d: -0.5 } }, 'Xena'), 'Xena went too far');
+  for (const [lv, words] of [[0.52, 'Split!'], [0.4, 'Too much'], [0, 'Too much']]) { match('O'); state.squares[0].mini.mark.O = 0.5; E.playMove(state, 0, { lv }, E.makeRng('s')); assert.match(renderMini(state.squares[0]), new RegExp(`role="status">${words}</p>`)); }
+  assert.equal(V.moveText({ pn: { pts: 2 } }, 'Xena'), 'Xena split it perfectly'); assert.equal(V.moveText({ pn: { pts: 0, lv: 0.8, d: 0.2 } }, 'Xena'), 'Xena drank too little'); assert.equal(V.moveText({ pn: { pts: 0, lv: 0, d: -0.5 } }, 'Xena'), 'Xena drank too much');
+  // Go again on success: a split keeps the turn, and then the fresh pint does slide in for the same player
+  match('X', { again: 'on' }); state.squares[0].mini.mark.X = 0.5;
+  assert.ok(E.playMove(state, 0, { lv: 0.52 }, E.makeRng('s')).ok);
+  const k = state.flash; assert.equal(k.pn.next, 'X');
+  assert.deepEqual(names(k), [['pnSlosh', 40], ['pnSplit', R.PINT.settle], ['pnSlide', R.PINT.settle + R.PINT.say + R.PINT.hold + R.PINT.next / 2 - 60]]);
+  assert.equal(R.flashMs(k, 0, false), R.pintPre(k.pn) + R.PINT.settle + R.PINT.say + R.PINT.hold + R.PINT.next, 'the turn kept: the fresh pint comes in');
 });
 
 test('the miniature: a full glass before any attempt; then the glass as the last attempt left it with the mover\'s mark on its ring, beside the points as pips', () => {
