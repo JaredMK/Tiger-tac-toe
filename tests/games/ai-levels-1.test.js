@@ -82,5 +82,5 @@ test('Codebreaker: Easy uses only some of the feedback, Normal all of it (now an
   const pm = E.publicMini(m), cand = E.mmCandidates(pm).map(c => c.join());
   const off = level => { let n = 0; for (let k = 1; k < 30; k++) if (!cand.includes(pick('mastermind', pm, 'O', level, k).join())) n++; return n; };
   assert.ok(off('easy') > 3, 'Easy: codes already ruled out');
-  pm.tune.aiSplitNormal = 0; assert.equal(off('normal'), 0, 'Normal, never the best split: always a code that fits (the best split may be one that cannot be it)');
+  pm.tune = Object.assign({}, pm.tune, { aiSplitNormal: 0 }); assert.equal(off('normal'), 0, 'Normal, never the best split: always a code that fits (the best split may be one that cannot be it)');
 });
