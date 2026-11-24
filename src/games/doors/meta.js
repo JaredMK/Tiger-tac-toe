@@ -19,7 +19,7 @@ export const TUNE = [
   { k: 'doors', label: 'Doors per floor (one leads down, the rest are dead ends linked to each other)', def: 4, min: 3, max: 6, step: 1, group: 'Board' },
   { k: 'towers', label: 'Towers (separate: one each, built the same; shared: one for both)', def: 'separate', opts: ['separate', 'shared'], group: 'Rules' },
   AGAIN_TUNE,
-  { k: 'forget', label: 'Chance to forget a door it has seen tried, each pick (%)', def: 30, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'forget', label: 'Chance to forget a door it has seen tried, each pick (%)', def: 35, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
   { k: 'forgetHard', label: 'Chance to forget a door it has seen tried, each pick (%)', def: 0, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
   { k: 'forgetEasy', label: 'Chance to forget a door it has seen tried, each pick (%)', def: 70, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
 ];

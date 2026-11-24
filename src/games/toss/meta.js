@@ -24,8 +24,8 @@ export const TUNE = [
   ...FLICK_TUNE,
   { k: 'aiErr', label: 'Aim error (floor units)', def: 8, min: 0, max: 30, step: 0.5, group: 'Computer: Normal' },
   { k: 'aiErrHard', label: 'Aim error (floor units)', def: 6, min: 0, max: 30, step: 0.5, group: 'Computer: Hard' },
-  { k: 'aiErrEasy', label: 'Aim error (floor units)', def: 11, min: 0, max: 30, step: 0.5, group: 'Computer: Easy' },
-  { k: 'aiFanEasy', label: 'How much of the fan it allows for (%)', def: 75, min: 0, max: 150, step: 5, group: 'Computer: Easy' },
+  { k: 'aiErrEasy', label: 'Aim error (floor units)', def: 10, min: 0, max: 30, step: 0.5, group: 'Computer: Easy' },
+  { k: 'aiFanEasy', label: 'How much of the fan it allows for (%)', def: 80, min: 0, max: 150, step: 5, group: 'Computer: Easy' },
   { k: 'aiFanNormal', label: 'How much of the fan it allows for (%)', def: 100, min: 0, max: 150, step: 5, group: 'Computer: Normal' },
   { k: 'aiFanHard', label: 'How much of the fan it allows for (%)', def: 100, min: 0, max: 150, step: 5, group: 'Computer: Hard' },
 ];

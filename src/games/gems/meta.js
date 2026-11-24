@@ -24,7 +24,7 @@ export const TUNE = [
   { k: 'size', label: 'Board size (a side)', def: 7, min: 5, max: 8, step: 1, group: 'Board' },
   { k: 'kinds', label: 'Kinds of gem', def: 6, min: 4, max: 6, step: 1, group: 'Board' },
   { k: 'aiEasy', label: 'Swaps taken at random rather than the best (%)', def: 65, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
-  { k: 'aiNormal', label: 'Swaps taken at random rather than the best (%)', def: 30, min: 0, max: 100, step: 5, group: 'Computer: Normal' },
+  { k: 'aiNormal', label: 'Swaps taken at random rather than the best (%)', def: 35, min: 0, max: 100, step: 5, group: 'Computer: Normal' },
   { k: 'aiHard', label: 'How much it weighs the best swap it would leave you (%)', def: 60, min: 0, max: 100, step: 5, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/gems): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

@@ -40,7 +40,7 @@ export const TUNE = [
   { k: 'aiFullHard', label: 'Goes for a full-hive word (% of bursts)', def: 0, min: 0, max: 100, step: 5, group: 'Computer: Hard' },
   { k: 'aiMinEasy', label: 'Words a burst, at least', def: 1, min: 0, max: 12, step: 1, group: 'Computer: Easy' },
   { k: 'aiMaxEasy', label: 'Words a burst, at most', def: 3, min: 0, max: 12, step: 1, group: 'Computer: Easy' },
-  { k: 'aiShortEasy', label: 'How likely a word one letter longer is, against one shorter (%)', def: 35, min: 5, max: 150, step: 5, group: 'Computer: Easy' },
+  { k: 'aiShortEasy', label: 'How likely a word one letter longer is, against one shorter (%)', def: 45, min: 5, max: 150, step: 5, group: 'Computer: Easy' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/hive): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Tap letters to make words with the centre letter. Longer words score more. Reach the target first.';

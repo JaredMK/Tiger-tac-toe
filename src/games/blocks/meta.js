@@ -25,7 +25,7 @@ export const TUNE = [
   { k: 'aiLooseEasy', label: 'How loosely it judges a place (0 exactly)', def: 0, min: 0, max: 20, step: 0.5, group: 'Computer: Easy' },
   { k: 'aiLooseNormal', label: 'How loosely it judges a place (0 exactly)', def: 6, min: 0, max: 20, step: 0.5, group: 'Computer: Normal' },
   { k: 'aiLooseHard', label: 'How loosely it judges a place (0 exactly)', def: 0, min: 0, max: 20, step: 0.5, group: 'Computer: Hard' },
-  { k: 'aiShareEasy', label: 'Picks at random among its best places (% of them; 0 the best)', def: 15, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
+  { k: 'aiShareEasy', label: 'Picks at random among its best places (% of them; 0 the best)', def: 20, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
   { k: 'aiShareNormal', label: 'Picks at random among its best places (% of them; 0 the best)', def: 0, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
   { k: 'aiShareHard', label: 'Picks at random among its best places (% of them; 0 the best)', def: 0, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
 ];

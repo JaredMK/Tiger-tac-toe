@@ -12,7 +12,7 @@ test('doors: Admin only, luck, 1.35.0; the deal: floors of doors, one way down e
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder], ['admin', 'luck', '1.35.0', false]);
   assert.deepEqual(E.gameFields('doors').map(f => f.k), ['floors', 'doors', 'towers', 'again', 'forget', 'forgetHard', 'forgetEasy']);
   assert.deepEqual(E.gameFields('doors').map(f => f.group), ['Board', 'Board', 'Rules', 'Rules', 'Computer: Normal', 'Computer: Hard', 'Computer: Easy']);
-  assert.deepEqual(['forget', 'forgetHard', 'forgetEasy'].map(k => E.gameFields('doors').find(f => f.k === k).def), [30, 0, 70]);
+  assert.deepEqual(['forget', 'forgetHard', 'forgetEasy'].map(k => E.gameFields('doors').find(f => f.k === k).def), [35, 0, 70]);
   const D = E.gameFields('doors').find(f => f.k === 'doors'); assert.deepEqual([D.def, D.min, D.max], [4, 3, 6]);
   for (const set of [null, { floors: 8, doors: 6 }, { towers: 'shared' }, { floors: 1, doors: 3 }, { doors: 5 }]) {
     E.setTune('doors', set);

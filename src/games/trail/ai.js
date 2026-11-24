@@ -1,7 +1,7 @@
 // Trail Race: the computer's play. A position is how many steps the other player still needs to their far row less
 // how many it needs itself (rules.js trailDist: round both trails, never back; no way at all counts as a long way).
 // Normal takes the move that leaves the best position, any of the best at random; Hard looks at the other player's
-// best answer to each move first (within ctx.until); Easy as Normal, a move at random three times in ten (its mistakes).
+// best answer to each move first (within ctx.until); Easy as Normal, a move at random four times in ten (its mistakes).
 import { tune } from '../../core/tune.js';
 import { trailCfg, trailDist, trailMoves, trailTry } from './rules.js';
 
@@ -13,7 +13,7 @@ const lvNum = (pm, key, level, D) => { const L = LV[level] ? level : 'normal', v
 // Each level's play is its settings (meta.js TUNE, Computer: Easy / Normal / Hard): how far it looks (`aiLook<Level>`:
 // 1 the position its move leaves, 2 the other player's best answer to it too, which blocks their way where it can) and
 // how loosely it judges (`aiLoose<Level>`, steps: any move within that much of the best); its moves at random are its
-// mistakes (`aiMiss<Level>`, Easy 30%).
+// mistakes (`aiMiss<Level>`, Easy 40%).
 export const LOOK = { easy: 1, normal: 1, hard: 2 }, LOOSE = { easy: 0.25, normal: 0.25, hard: 0 };
 export function best(pm, me, rng, style, ctx) {
   const c = trailCfg(pm), level = (ctx && ctx.level) || 'normal', o = me === 'X' ? 'O' : 'X', moves = trailMoves(pm, me, c.cells);

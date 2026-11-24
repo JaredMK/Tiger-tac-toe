@@ -12,7 +12,7 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 // by chance who wins turns on the board's size, and at 7 the second to move took 70% of squares between two Normal
 // computers over 8 turns each), how many squares a trail may grow a turn, and equal turns (rules.js; off: between two
 // strong players it makes every square a draw, as without it the first to move takes every square).
-export const AI_LEVELS = { miss: { easy: 30, normal: 0, hard: 0 }, think: { normal: 150, hard: 300 } };
+export const AI_LEVELS = { miss: { easy: 40, normal: 0, hard: 0 }, think: { normal: 150, hard: 300 } };
 export const TUNE = [
   { k: 'size', label: 'Board size', def: 6, min: 5, max: 9, step: 1, group: 'Board' },
   { k: 'cells', label: 'Squares a turn, at most', def: 2, min: 1, max: 4, step: 1, group: 'Rules' },
