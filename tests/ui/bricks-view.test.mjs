@@ -22,7 +22,7 @@ state.setup = Object.assign({}, state.setup, { names: { X: 'Xena', O: 'Olaf' } }
 const clone = v => JSON.parse(JSON.stringify(v));
 const square = () => E.newMini('bricks', E.makeRng('bv'));
 function play(mini, p, level) {   // a go by the computer's hand: the square after it and the move's flash (what a replay carries)
-  const m = clone(mini), r = R.brkAi(m, p, E.makeRng('pl' + p), R.brkHand(m, level || 'normal')), res = E.applyMove(m, p, r.move, E.makeRng('x'));
+  const m = clone(mini), r = R.brkAi(m, p, E.makeRng('pl' + p), typeof level === 'object' ? level : R.brkHand(m, level || 'normal')), res = E.applyMove(m, p, r.move, E.makeRng('x'));
   assert.equal(res.ok, true);
   const flash = { kind: res.outcome === 'win' ? 'claim' : 'move', by: p, next: p, square: 0, type: 'bricks', note: res.note || null, pass: null, timeout: false };
   GAMES.bricks.rules.moveFlash(r.move, p, null, 0, m, flash);
@@ -94,7 +94,8 @@ test('the miniature: each player\'s wall (standing bricks solid, broken ones fai
 // The polish sweep (November 2026): a go's sounds come from one voice, live and in a replay; the bricks of one flight
 // crack higher and higher; the miniature's walls are each in their player's colour.
 test('a go\'s voice: every brick, bounce and the serve sound once; the bricks of one flight climb, the paddle starts the scale again', () => {
-  const m = square(), r = play(m, 'X', 'hard'), log = R.brkUnlog(r.move.log, r.move.steps), sim = R.brkStart(m, 'X'), voice = V.brkVoice(), heard = [];
+  // (a sharp hand: the Hard of before the levels pass, whose go breaks bricks in flights)
+  const m = square(), r = play(m, 'X', { react: [0.072, 0.12], aim: 0.165, lapse: 0, steer: true }), log = R.brkUnlog(r.move.log, r.move.steps), sim = R.brkStart(m, 'X'), voice = V.brkVoice(), heard = [];
   let k = 0, run = 0, climbed = 0;
   while (sim.n < r.move.steps && !sim.end) {
     let tx = null;
