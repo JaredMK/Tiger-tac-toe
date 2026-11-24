@@ -15,6 +15,7 @@ import { haptic } from '../../net/platform.js';
 import { blocked } from '../../net/room.js';
 import { app, state } from '../../ui/app.js';
 import { fxAt } from '../../ui/fx.js';
+import { pressTime } from '../../ui/press.js';
 import { ownMove } from '../../ui/haptics.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 import { runColours, runInputAt } from '../../ui/runner.js';
@@ -36,16 +37,17 @@ function label() {                                                 // the button
   const b = app && app.querySelector ? app.querySelector('.kydbtn') : null; if (!b || !aim) return;
   b.classList.toggle('up', aim.phase >= 2); b.classList.toggle('held', aim.phase === 1 || aim.phase === 3); b.disabled = aim.phase >= 4;
 }
-function press() {
+// The hold's press and its release, each at `at`: the moment of the finger (or key) itself (ui/press.js pressTime), never when the page got to it.
+function press(at = performance.now()) {
   const m = live(); if (!m || (aim.phase !== 0 && aim.phase !== 2)) return false;
-  aim.phase++; aim.t0 = performance.now(); aim.tick = 0;
+  aim.phase++; aim.t0 = at; aim.tick = 0;
   haptic('tap'); label(); go();
   return true;
 }
-function release() {
+function release(at = performance.now()) {
   if (!aim || (aim.phase !== 1 && aim.phase !== 3)) return false;
   const m = live(); if (!m) { aim.phase--; label(); return false; }  // (the square was left mid-hold: that hold is not spent)
-  const v = keydSpeed(keydCfg(m), m.n[aim.p]), t = performance.now() - aim.t0;
+  const v = keydSpeed(keydCfg(m), m.n[aim.p]), t = Math.max(0, at - aim.t0);
   SND.play('kyStop', { rate: aim.phase === 1 ? 1 : 1.18 }); haptic('tap');
   if (aim.phase === 1) { aim.x = r1(keydAt(KEYD.x0, v.x, t)); aim.phase = 2; label(); go(); return true; }
   aim.y = r1(keydAt(KEYD.y0, v.y, t)); aim.phase = 4; aim.t0 = performance.now(); label();
@@ -58,12 +60,12 @@ function hook() {
   hooked = true;
   app.addEventListener('pointerdown', e => {
     if (state.screen !== 'mini' || !runInputAt(e.target) || !(e.target.closest && e.target.closest('.kydfield.live, .kydbtn:not(:disabled)'))) return;
-    if (press()) { e.preventDefault(); ownPress(); }
+    if (press(pressTime(e))) { e.preventDefault(); ownPress(); }
   }, { passive: false });
-  const up = () => { release(); };
+  const up = e => { release(e && e.type !== 'blur' ? pressTime(e) : performance.now()); };
   if (typeof window !== 'undefined' && window.addEventListener) { ['pointerup', 'pointercancel', 'blur'].forEach(ev => window.addEventListener(ev, up)); }
-  app.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && e.target.closest && e.target.closest('.kydbtn')) { e.preventDefault(); if (!e.repeat) press(); } });
-  app.addEventListener('keyup', e => { if ((e.key === ' ' || e.key === 'Enter') && e.target.closest && e.target.closest('.kydbtn')) { e.preventDefault(); release(); } });
+  app.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && e.target.closest && e.target.closest('.kydbtn')) { e.preventDefault(); if (!e.repeat) press(pressTime(e)); } });
+  app.addEventListener('keyup', e => { if ((e.key === ' ' || e.key === 'Enter') && e.target.closest && e.target.closest('.kydbtn')) { e.preventDefault(); release(pressTime(e)); } });
 }
 export const actions = { 'ky-hold': () => {} };                    // (the hold is the press and the release themselves, above: the click that ends it does nothing)
 

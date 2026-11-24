@@ -10,6 +10,7 @@ import { blocked, moveWait } from '../../net/room.js';
 import { app, cpuPlays, N, NT, REDUCED, state, waitLine } from '../../ui/app.js';
 import { KEY } from '../../ui/config.js';
 import { fx, fxAt } from '../../ui/fx.js';
+import { pressTime } from '../../ui/press.js';
 import { arcTally, gaugeBar, lateAt } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
 import { runCanvas, runColours } from '../../ui/runner.js';
@@ -106,19 +107,21 @@ function bullsLines(now) {
   return { x: aim.x, y: aim.stage === 2 ? bullsWave(now - aim.t1, src.perY) : aim.y };
 }
 // A tap (the press itself, on the wall, the button or anywhere on the game area): the first stops the sideways line, the second the up-down one and throws.
-function bullsTap() {
+// `at`: the moment of the press (ui/press.js pressTime: the finger's own moment, never when the page got to it); the lines stop where they were then.
+function bullsTap(at = performance.now()) {
   const sq = state.squares && state.squares[state.zoom];
   if (!sq || sq.mini.type !== 'bullseye' || sq.owner || state.flash || state.done || blocked() || !src || !src.mine) return false;
   const now = performance.now();
-  if (!aim || aim.key !== src.key) aim = { key: src.key, t0: now, stage: 1 };
+  if (!aim || aim.key !== src.key) aim = { key: src.key, t0: at, stage: 1 };
+  const t = Math.max(at, aim.stage === 2 ? aim.t1 : aim.t0);
   if (aim.stage === 1) {
-    aim.x = r3(bullsWave(now - aim.t0, src.per)); aim.stage = 2; aim.t1 = now;
+    aim.x = r3(bullsWave(t - aim.t0, src.per)); aim.stage = 2; aim.t1 = t;
     SND.play('mark'); haptic('tap');
     render();                                                      // (the button reads Throw! now)
     return true;
   }
   if (aim.stage !== 2) return false;
-  aim.y = r3(bullsWave(now - aim.t1, src.perY)); aim.stage = 3;
+  aim.y = r3(bullsWave(t - aim.t1, src.perY)); aim.stage = 3;
   const move = { x: aim.x, y: aim.y };
   launch = { sq: state.zoom, p: state.turn, at: now, fx: move.x, fy: move.y };
   if (state.online) SND.play('dartThrow');                         // (the whoosh at the tap itself: the server's record, and the flight's sounds, come after)
@@ -362,6 +365,6 @@ export function init() {
     const t = e.target.closest && e.target.closest('.g-arc.bl-live, button[data-act="bulls"]:not(:disabled)');
     if (!t || state.screen !== 'mini') return;
     e.preventDefault(); ownPress();
-    bullsTap();
+    bullsTap(pressTime(e));
   });
 }

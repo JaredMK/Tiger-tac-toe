@@ -13,6 +13,7 @@ import { haptic } from '../../net/platform.js';
 import { blocked } from '../../net/room.js';
 import { app, state } from '../../ui/app.js';
 import { fxAt } from '../../ui/fx.js';
+import { pressTaken, pressTime, pressTook } from '../../ui/press.js';
 import { ownMove } from '../../ui/haptics.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 import { runColours, runInputAt } from '../../ui/runner.js';
@@ -27,10 +28,11 @@ let aim = null, src = null, hooked = false, skipped = null;       // aim: this p
 const WCOL = ['#5aa9e6', '#7bd389', '#b08be8', '#f29e4c', '#58c4c4'];
 const lineAt = (c, t) => CRK.lo + (CRK.hi - CRK.lo) * bullsWave(t, c.sweep);
 const r1 = v => Math.round(v * 10) / 10;
-function stop() {
+// A stop at `at`: the moment of the press itself (ui/press.js pressTime: the finger's own moment, never when the page got to it).
+function stop(at = performance.now()) {
   const sq = state.squares && state.squares[state.zoom], m = sq && sq.mini;
   if (!aim || !m || m.type !== 'cricket' || aim.sq !== state.zoom || aim.phase > 1 || state.flash || state.done || blocked() || !src || !src.mine) return false;
-  const c = cricketCfg(m), now = performance.now(), v = r1(lineAt(c, now - aim.t0)), ph = aim.phase;
+  const c = cricketCfg(m), now = Math.max(at, aim.t0), v = r1(lineAt(c, now - aim.t0)), ph = aim.phase;
   SND.play('mark', { rate: 1 + ph * 0.12 }); haptic('tap');
   if (ph === 0) { aim.x = v; aim.phase = 1; aim.t0 = now; }
   else { const mv = { x: aim.x / 100, y: v / 100 }; aim.y = v; aim.phase = 2; if (state.online) SND.play('dartThrow'); attemptMove(mv); }   // (the move may redraw at once and drop the aim: nothing of it is read after)
@@ -40,12 +42,15 @@ function stop() {
 function hook() {
   if (hooked || !app || typeof app.addEventListener !== 'function') return;
   hooked = true;
+  // the board or the Stop button, on the press itself (a click comes only once the finger lifts); Space or Enter on the button
   app.addEventListener('pointerdown', e => {
-    if (state.screen !== 'mini' || !runInputAt(e.target) || !(e.target.closest && e.target.closest('.ckfield.live'))) return;
-    if (stop()) { e.preventDefault(); ownPress(); }
+    if (state.screen !== 'mini' || !runInputAt(e.target) || !(e.target.closest && e.target.closest('.ckfield.live, .ckbtn:not(:disabled)'))) return;
+    if (e.target.closest('.ckbtn')) pressTook('ck-stop');                    // (the button's press is its tap, taken or not: its click does nothing)
+    if (stop(pressTime(e))) { e.preventDefault(); ownPress(); }
   }, { passive: false });
+  app.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat && e.target.closest && e.target.closest('.ckbtn')) { e.preventDefault(); pressTook('ck-stop'); if (stop(pressTime(e))) ownPress(); } });
 }
-export const actions = { 'ck-stop': () => { ownPress(); stop(); } };
+export const actions = { 'ck-stop': (el, e) => { if (pressTaken('ck-stop')) return; ownPress(); stop(pressTime(e)); } };   // (the click after a press already taken does nothing; any other click, a stop)
 const ease = u => (u <= 0 ? 0 : u >= 1 ? 1 : 1 - (1 - u) * (1 - u));
 function drawDart(c, u, x, y, col, P, k) {                        // k: 0 in the hand (large, low) .. 1 stuck in the board
   const s = (2.6 - 1.6 * k) * u;

@@ -14,6 +14,7 @@ import { blocked } from '../../net/room.js';
 import { N, app, state } from '../../ui/app.js';
 import { clockLeft } from '../../ui/clock.js';
 import { fxAt } from '../../ui/fx.js';
+import { pressTaken, pressTime, pressTook } from '../../ui/press.js';
 import { ownMove } from '../../ui/haptics.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 import { render } from '../../ui/render.js';
@@ -42,9 +43,10 @@ function start() {
   render(); go();
   return true;
 }
-function swing() {
+// A swing at `at`: the moment of the press itself (ui/press.js pressTime: the finger's own moment, never when the page got to it).
+function swing(at = performance.now()) {
   const L = live; if (!L) return false;
-  const t = performance.now() - L.t0, i = L.plan.at.findIndex((q, k) => L.s[k] === undefined && L.res[k] === undefined && t >= q.s + HOMER.wind * HOMER.early && t <= q.c + HOMER.late);
+  const t = at - L.t0, i = L.plan.at.findIndex((q, k) => L.s[k] === undefined && L.res[k] === undefined && t >= q.s + HOMER.wind * HOMER.early && t <= q.c + HOMER.late);
   if (i < 0) return false;
   L.s[i] = Math.max(-HOMER.max, Math.min(HOMER.max, Math.round(t - L.plan.at[i].c)));
   SND.play('hrSwing'); haptic('tap');
@@ -86,11 +88,13 @@ function hook() {                                                  // a tap anyw
   hooked = true;
   app.addEventListener('pointerdown', e => {
     if (!live || state.screen !== 'mini' || !runInputAt(e.target)) return;
-    if (e.target.closest && e.target.closest('button')) return;
-    if (swing()) { e.preventDefault(); ownPress(); }
+    if (e.target.closest && e.target.closest('button:not(.hrbtn)')) return;   // (Swing! is taken here too, on the press: its click comes only once the finger lifts)
+    if (e.target.closest('.hrbtn')) pressTook('hr-go');                    // (the button's press is its tap, taken or not: its click does nothing)
+    if (swing(pressTime(e))) { e.preventDefault(); ownPress(); }
   }, { passive: false });
+  app.addEventListener('keydown', e => { if (live && (e.key === ' ' || e.key === 'Enter') && !e.repeat && e.target.closest && e.target.closest('.hrbtn')) { e.preventDefault(); pressTook('hr-go'); if (swing(pressTime(e))) ownPress(); } });
 }
-export const actions = { 'hr-go': () => { ownPress(); if (live) swing(); else start(); } };
+export const actions = { 'hr-go': (el, e) => { if (pressTaken('hr-go')) return; ownPress(); if (live) swing(pressTime(e)); else start(); } };   // (the click after a swing already taken on the press does nothing)
 
 // ---- the drawing ----
 const lerp = (a, b, u) => a + (b - a) * u, clamp01 = u => Math.max(0, Math.min(1, u));

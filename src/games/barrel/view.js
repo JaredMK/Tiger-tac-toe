@@ -41,6 +41,7 @@ import { blocked } from '../../net/room.js';
 import { N, REDUCED, app, state } from '../../ui/app.js';
 import { hash01 } from '../../ui/art.js';
 import { fx, fxAt } from '../../ui/fx.js';
+import { pressTime } from '../../ui/press.js';
 import { ownMove } from '../../ui/haptics.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 import { runColours, runInputAt } from '../../ui/runner.js';
@@ -76,6 +77,7 @@ let src = null, hooked = false, ended = null;
 // `at`, running on from there), the camera, the clock last shown and the join under way.
 const sc = { key: '', last: -1e9, X: { tau: 0, at: 0 }, O: { tau: 0, at: 0 }, cam: null, shown: null, join: '', slip: null };
 const tauOf = (p, now) => sc[p].tau + (now - sc[p].at);
+export const barrelClock = tauOf;                                  // (for the tests: a column's clock at a moment)
 const live = () => {
   const sq = state.squares && state.squares[state.zoom], m = sq && sq.mini;
   return aim && m && m.type === 'barrel' && aim.sq === state.zoom && !state.flash && !state.done && !blocked() && src && src.mine ? m : null;
@@ -86,11 +88,13 @@ function label() {                                                 // the button
 }
 // This phone's shot: the moment on its column's clock, the aim and the catch worked out here by the rules, the picture
 // from the tap; the move goes in at once.
-function fire() {
+// `at`: the moment of the press (ui/press.js pressTime: the finger's own moment, never when the page got to it): the shot is
+// the column's clock then; its picture starts now.
+function fire(at = performance.now()) {
   const m = live(); if (!m || aim.phase !== 0) return false;
   const now = performance.now(), p = aim.p, c = barrelCfg(m), i = m.at[p];
   if (i >= c.top) return false;
-  const t = Math.max(0, Math.round(tauOf(p, now) - m.c[p])), th = barrelAim(m, c, i, m.c[p] + t), j = barrelJudge(m, c, i, th);
+  const t = Math.max(0, Math.round(tauOf(p, Math.min(at, now)) - m.c[p])), th = barrelAim(m, c, i, m.c[p] + t), j = barrelJudge(m, c, i, th);
   aim.phase = 4; aim.at = now;
   sc[p] = { tau: m.c[p] + t, at: now };
   const sh = shot = { sq: aim.sq, p, at: now, rate: durRate('move', 'barrel', 1), due: false, ok: false, s: { by: p, n: m.n[p], from: i, t, c: m.c[p], th, phi: j.phi, off: Number.isFinite(j.off) ? j.off : 999, hit: j.hit } };
@@ -132,9 +136,9 @@ function hook() {
   hooked = true;
   app.addEventListener('pointerdown', e => {
     if (state.screen !== 'mini' || !runInputAt(e.target) || !(e.target.closest && e.target.closest('.brlfield.live, .brlbtn:not(:disabled)'))) return;
-    if (fire()) { e.preventDefault(); ownPress(); }
+    if (fire(pressTime(e))) { e.preventDefault(); ownPress(); }
   }, { passive: false });
-  app.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && e.target.closest && e.target.closest('.brlbtn')) { e.preventDefault(); if (!e.repeat) fire(); } });
+  app.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && e.target.closest && e.target.closest('.brlbtn')) { e.preventDefault(); if (!e.repeat) fire(pressTime(e)); } });
 }
 export const actions = { 'brl-fire': () => {} };                   // (the shot is the press itself, above: the click that ends it does nothing)
 

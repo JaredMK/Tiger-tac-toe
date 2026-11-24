@@ -13,6 +13,7 @@ import { haptic } from '../../net/platform.js';
 import { blocked } from '../../net/room.js';
 import { app, state } from '../../ui/app.js';
 import { fxAt } from '../../ui/fx.js';
+import { pressTaken, pressTime, pressTook } from '../../ui/press.js';
 import { ownMove } from '../../ui/haptics.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 import { runColours, runInputAt } from '../../ui/runner.js';
@@ -25,10 +26,11 @@ export const replay = { synth: () => [] };                         // the move i
 let aim = null;                                                    // this phone's throw under way: { sq, p, n, phase 0-3, t0, x, y, r }
 let src = null, hooked = false, skipped = null;
 const r1 = v => Math.round(v * 10) / 10;
-function stop() {
+// A stop at `at`: the moment of the press itself (ui/press.js pressTime: the finger's own moment, never when the page got to it).
+function stop(at = performance.now()) {
   const sq = state.squares && state.squares[state.zoom], m = sq && sq.mini;
   if (!aim || !m || m.type !== 'target' || aim.sq !== state.zoom || aim.phase > 2 || state.flash || state.done || blocked() || !src || !src.mine) return false;
-  const c = targetCfg(m), now = performance.now(), t = now - aim.t0;
+  const c = targetCfg(m), now = Math.max(at, aim.t0), t = now - aim.t0;
   const ph = aim.phase;
   SND.play('tpTick', { rate: 1.12 + ph * 0.12 }); haptic('tap');
   if (ph === 0) { aim.x = r1(targetLine(c, t)); aim.phase = 1; aim.t0 = now; }
@@ -40,12 +42,15 @@ function stop() {
 function hook() {
   if (hooked || !app || typeof app.addEventListener !== 'function') return;
   hooked = true;
+  // the field or the Stop button, on the press itself (a click comes only once the finger lifts); Space or Enter on the button
   app.addEventListener('pointerdown', e => {
-    if (state.screen !== 'mini' || !runInputAt(e.target) || !(e.target.closest && e.target.closest('.tpfield.live'))) return;
-    if (stop()) { e.preventDefault(); ownPress(); }
+    if (state.screen !== 'mini' || !runInputAt(e.target) || !(e.target.closest && e.target.closest('.tpfield.live, .tpbtn:not(:disabled)'))) return;
+    if (e.target.closest('.tpbtn')) pressTook('tp-stop');                    // (the button's press is its tap, taken or not: its click does nothing)
+    if (stop(pressTime(e))) { e.preventDefault(); ownPress(); }
   }, { passive: false });
+  app.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat && e.target.closest && e.target.closest('.tpbtn')) { e.preventDefault(); pressTook('tp-stop'); if (stop(pressTime(e))) ownPress(); } });
 }
-export const actions = { 'tp-stop': () => { ownPress(); stop(); } };
+export const actions = { 'tp-stop': (el, e) => { if (pressTaken('tp-stop')) return; ownPress(); stop(pressTime(e)); } };   // (the click after a press already taken does nothing; any other click, a stop)
 
 // ---- the drawing ----
 const ease = u => (u <= 0 ? 0 : u >= 1 ? 1 : 1 - (1 - u) * (1 - u));
