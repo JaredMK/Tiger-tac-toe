@@ -19,12 +19,23 @@ export function needs(pm, p) {   // the steps to the nearest cell it may be in (
   pm = me;
   const c = sniffCands(pm), d = c.length ? Math.min(...c.map(x => sniffSteps(pm.dog, x))) : 1; return Math.max(1, d + Math.log2(Math.max(1, c.length)) * 0.8);
 }
+// The levels: Hard searches (sniffHard) by every step the square keeps (`memory`); Normal and Easy walk plainly by their
+// last `aiMemoryNormal` / `aiMemoryEasy` steps alone (they forget what the older ones said; 8: all of them). Each level's mistakes
+// (aiMiss<Level>) are a step any way (`worse`). The old level-blind `miss` setting still applies where it is set.
 export function best(pm, me, rng, style, ctx) {
-  const miss = tune(pm).miss || 0;                               // (the admin's mistake rate: a step any way)
+  const t = tune(pm), miss = t.miss || 0, level = (ctx && ctx.level) || 'normal';   // (miss: the old level-blind mistake rate, 0 by default)
   const solo = !!pm.dogs || !!pm.race, mine = own(pm, me) || { dog: pm.start, trail: [], not: [] };   // (a race: its own dog; Super Chaos: the same)
   if (miss && rng() * 100 < miss) { const ds = sniffDirs(mine.dog); return { move: ds[randInt(rng, ds.length)], q: 0, shared: !solo }; }
-  if (ctx && ctx.level === 'hard') { const h = sniffHard(pm, mine, ctx, rng); if (h) return h; }
-  const b = sniffPick(mine, rng); return { move: b.move, q: b.q, shared: !solo };   // (Super Chaos, a race: its step walks its own dog only)
+  if (level === 'hard') { const h = sniffHard(pm, mine, ctx, rng); if (h) return h; }
+  const km = level === 'easy' ? t.aiMemoryEasy : t.aiMemoryNormal, keep = km == null || Number(km) >= 8 ? null : Math.max(0, Math.round(Number(km) || 0));
+  const view = keep == null ? mine : Object.assign({}, mine, { trail: keep ? (mine.trail || []).slice(-keep) : [] });
+  const b = sniffPick(view, rng); return { move: b.move, q: b.q, shared: !solo };   // (Super Chaos, a race: its step walks its own dog only)
+}
+// A slip (the level's mistake rate): a step any way.
+export function worse(pm, me, rng) {
+  const mine = own(pm, me) || { dog: pm.start };
+  if (!Number.isInteger(mine.dog)) return null;
+  const ds = sniffDirs(mine.dog); return ds.length ? ds[randInt(rng, ds.length)] : null;
 }
 
 // ---- Hard: the race for the treasure ----
@@ -126,6 +137,10 @@ function sniffHard(pm, me, ctx, rng) {
     move = pick; top = best; alt = pickF; topF = bestF;
   }
   let wait = false;
+  // The shared dog back where the remembered steps had it (the square keeps only its last few steps, so cells stood on
+  // are forgotten and tried again): a deterministic walk round could go on for ever (the audit's square that never
+  // ended), so half the time it takes any forward step instead.
+  if (!solo && (me.trail || []).some(s2 => s2.f === me.dog || s2.t === me.dog) && fwd.length && rng() < 0.5) return (to => ({ move: to.dir, q: C.includes(to.c) ? W[to.c] / sum(C) : 0, shared: true }))((d => ({ dir: d, c: sniffStep(me.dog, d) }))(fwd[randInt(rng, fwd.length)]));
   if (!fwd.includes(move)) {                                     // a step that goes no nearer: only when clearly better, and not every time (two computers would walk round for ever)
     if (top > topF + SH.margin && rng() < SH.wait) wait = true; else move = alt;
   }

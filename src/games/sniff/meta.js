@@ -9,12 +9,16 @@ export const superChaos = true;   // Super Chaos: dealt in simultaneous rounds (
 export const explainer = { name: 'Sniff', play: 'Move the dog one step, any of 8 ways. A diagonal step counts the same as a straight one. You\'ll see if it\'s getting hotter, colder or the same.', win: 'Be the one who finds the treasure.' };
 export const raceExplainer = { name: 'Sniff', play: 'You each have a dog and your own treasure, the same number of steps from where both dogs start. Move yours one step, any of 8 ways (a diagonal counts as one step), to see if it\'s getting hotter, colder or the same. You can watch the other dog.', win: 'Be the first dog onto your treasure.' };   // Race mode (core/race.js, rv 2)
 // Its settings (the admin's Mini-game Settings; core/tune.js): read from the square's own values.
+// The computer's levels (core/tune.js levelTune): see ai.js best; its mistakes are a step any way (ai.js worse).
+export const AI_LEVELS = { miss: { easy: 20 } };
 export const TUNE = [
   MODE_TUNE,
   { k: 'minStart', label: 'Dog starts at least (steps from the treasure, diagonals count one)', def: 3, min: 1, max: 4, step: 1, group: 'Board' },
   { k: 'hold', label: 'Hotter/colder shown for (ms)', def: 1200, min: 600, max: 4000, step: 100, group: 'Timing' },
-  { k: 'memory', label: 'Computer remembers (last steps)', def: 3, min: 1, max: 8, step: 1, group: 'Computer' },
-  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 60, step: 5, group: 'Computer' },
+  { k: 'memory', label: 'Steps the computer goes by (the last few, every level)', def: 3, min: 1, max: 8, step: 1, group: 'Computer' },
+  { k: 'miss', label: 'Every level: mistake rate (%; an older setting: the levels\' own rates below are the ones to use)', def: 0, min: 0, max: 60, step: 5, group: 'Computer' },
+  { k: 'aiMemoryEasy', label: 'Easy: goes by only its last steps (how many; 8: all it has)', def: 0, min: 0, max: 8, step: 1, group: 'Computer: Easy' },
+  { k: 'aiMemoryNormal', label: 'Normal: goes by only its last steps (how many; 8: all it has)', def: 2, min: 0, max: 8, step: 1, group: 'Computer: Normal' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><ellipse cx="12" cy="16" rx="4.8" ry="4"/><ellipse cx="5.4" cy="10.2" rx="2" ry="2.4"/><ellipse cx="9.4" cy="6.2" rx="2" ry="2.5"/><ellipse cx="14.6" cy="6.2" rx="2" ry="2.5"/><ellipse cx="18.6" cy="10.2" rx="2" ry="2.4"/></svg>';
 export const scExplainer = { name: 'Sniff', play: 'You each have a dog, both starting in the middle. Move yours one step, any of 8 ways, to see if it\'s getting hotter, colder or the same.', win: 'Be the first dog onto the treasure.' };
