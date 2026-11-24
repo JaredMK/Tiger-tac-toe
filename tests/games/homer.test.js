@@ -10,7 +10,7 @@ const M = require('../../src/games/homer/meta.js');
 test('homer: Admin only, skill, real time, held out of Find Match; its settings', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.realTime, M.info.name], ['admin', 'skill', '1.24.0', true, 'Home Run Heroes']);
   assert.ok(E.FIND_MATCH_HOLD.includes('homer'), 'the server cannot time a tap');
-  assert.deepEqual(E.gameFields('homer').map(f => f.k), ['goal', 'pitches', 'fastMs', 'slowMs', 'hrMs', 'hitMs', 'aiMs', 'aiMsHard', 'aiMsEasy']);
+  assert.deepEqual(E.gameFields('homer').map(f => f.k), ['goal', 'pitches', 'fastMs', 'slowMs', 'hrMs', 'hitMs', 'aiMs', 'aiMsHard', 'aiMsEasy', 'aiSkipEasy']);
   const c = R.homerCfg(E.newMini('homer', E.makeRng('a')));
   assert.deepEqual([c.goal, c.pitches, c.fast, c.slow, c.hr, c.hit], [4, 3, 430, 780, 30, 90]);
 });

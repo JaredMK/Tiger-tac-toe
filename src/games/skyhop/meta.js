@@ -12,11 +12,21 @@ export const HOP_DEFAULTS = { target: 150, bounce: 22, gap0: 3, gap1: 4.5, wide0
 // Its settings (the admin's Mini-game Settings; core/tune.js; the course's stay in HOP_DEFAULTS): the computer's hand (finger.js: fingHand).
 export const TUNE = [
   { k: 'maxSecs', label: 'Attempt time limit (s)', def: 25, min: 5, max: 60, step: 1, group: 'Timing' },   // (the computer's attempts: p95–p99 about 25 s; the attempt ends at it, progress kept: shared/finger.js fingCap)
-  { k: 'aiReact0', label: 'Computer reaction, fastest (ms)', def: 220, min: 0, max: 800, step: 10, group: 'Computer' },
-  { k: 'aiReact1', label: 'Computer reaction, slowest (ms)', def: 320, min: 0, max: 800, step: 10, group: 'Computer' },
-  { k: 'aiAim', label: 'Computer aim spread (cm)', def: 65, min: 0, max: 300, step: 5, group: 'Computer' },
-  { k: 'aiLapse', label: 'Computer misses a hazard (%)', def: 15, min: 0, max: 100, step: 1, group: 'Computer' },
-  { k: 'aiMisjudge', label: 'Computer misjudges a moving platform (%)', def: 50, min: 0, max: 100, step: 1, group: 'Computer' },
+  { k: 'aiReact0', label: "Normal: reaction, fastest (ms)", def: 220, min: 0, max: 800, step: 10, group: 'Computer: Normal' },
+  { k: 'aiReact1', label: "Normal: reaction, slowest (ms)", def: 320, min: 0, max: 800, step: 10, group: 'Computer: Normal' },
+  { k: 'aiAim', label: "Normal: aim spread (cm)", def: 65, min: 0, max: 300, step: 5, group: 'Computer: Normal' },
+  { k: 'aiLapse', label: "Normal: misses a hazard (%)", def: 15, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'aiMisjudge', label: "Normal: misjudges a moving platform (%)", def: 50, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'aiReact0Easy', label: "Easy: reaction, fastest (ms)", def: 250, min: 0, max: 800, step: 10, group: 'Computer: Easy' },
+  { k: 'aiReact1Easy', label: "Easy: reaction, slowest (ms)", def: 360, min: 0, max: 800, step: 10, group: 'Computer: Easy' },
+  { k: 'aiAimEasy', label: "Easy: aim spread (cm)", def: 75, min: 0, max: 300, step: 5, group: 'Computer: Easy' },
+  { k: 'aiLapseEasy', label: "Easy: misses a hazard (%)", def: 18, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
+  { k: 'aiMisjudgeEasy', label: "Easy: misjudges a moving platform (%)", def: 55, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
+  { k: 'aiReact0Hard', label: "Hard: reaction, fastest (ms)", def: 195, min: 0, max: 800, step: 10, group: 'Computer: Hard' },
+  { k: 'aiReact1Hard', label: "Hard: reaction, slowest (ms)", def: 285, min: 0, max: 800, step: 10, group: 'Computer: Hard' },
+  { k: 'aiAimHard', label: "Hard: aim spread (cm)", def: 55, min: 0, max: 300, step: 5, group: 'Computer: Hard' },
+  { k: 'aiLapseHard', label: "Hard: misses a hazard (%)", def: 12, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
+  { k: 'aiMisjudgeHard', label: "Hard: misjudges a moving platform (%)", def: 44, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
 ];
 export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/skyhop): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

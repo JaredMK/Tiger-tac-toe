@@ -82,11 +82,16 @@ export function fingRecorder() {
 export const FHAND = { skyhop: { react: [0.22, 0.32], aim: 0.65, lapse: 0.15, misjudge: 0.5 }, scoop: { react: [0.26, 0.36], aim: 0.46, lapse: 0.2 } };
 // A square's hand: FHAND (Pinball's: physics-sim.js pinAi's own) with its settings over it (meta.js TUNE:
 // reactions in ms, aim and odds in hundredths), for a square dealt with any.
-export function fingHand(mini) {
-  if (!mini || !mini.tune) return FHAND[mini && mini.type];
-  const t = tune(mini), react = [t.aiReact0 / 1000, t.aiReact1 / 1000];
-  if (mini.type === 'pinball') return { react, jitter: t.aiJitter / 1000 };
-  return Object.assign({}, FHAND[mini.type], { react, aim: t.aiAim / 100, lapse: t.aiLapse / 100 }, mini.type === 'skyhop' ? { misjudge: t.aiMisjudge / 100 } : {});
+// A level's hand (the AI levels pass): Normal's from the settings as they always were (aiReact0, aiAim...), Easy's and
+// Hard's from the same keys with the level's name after them (aiAimEasy, aiLapseHard...: each game's meta.js TUNE, under
+// Computer: Easy / Computer: Hard); a key a level lacks takes Normal's.
+const LV_SFX = { easy: 'Easy', hard: 'Hard' };
+export function fingHand(mini, level) {
+  const sfx = LV_SFX[level] || '';
+  if (!mini || (!mini.tune && !sfx)) return FHAND[mini && mini.type];
+  const t0 = tune(mini), t = k => (t0[k + sfx] != null ? t0[k + sfx] : t0[k]), react = [t('aiReact0') / 1000, t('aiReact1') / 1000];
+  if (mini.type === 'pinball') return { react, jitter: t('aiJitter') / 1000, letGo: t('aiLetGo') / 100, anyPull: t('aiAnyPull') / 100, own: true };
+  return Object.assign({}, FHAND[mini.type], { react, aim: t('aiAim') / 100, lapse: t('aiLapse') / 100 }, mini.type === 'skyhop' ? { misjudge: t('aiMisjudge') / 100 } : {});
 }
 // The finger games' moves: checked (Sky Hop and Scoop Stack played through again from their inputs),
 // then the attempt's result. Returns { why } or { to, sim } (to: the progress after it).
@@ -103,10 +108,10 @@ export function fingCheck(mini, p, m) {
   return { why: null, sim };
 }
 // The computer's attempt (an average player's hand): the move, played through.
-export function fingAi(mini, p, rng, level) {   // level: Pinball's hand alone takes one ('easy' | 'normal' | 'hard': physics-sim.js pinAi)
-  if (mini.type === 'skyhop') return hopAi(mini, p, rng).move;
-  if (mini.type === 'scoop') return scoopAi(mini, p, rng).move;
-  const a = PHYSICS.lib.pinAi(PHYSICS.lib.pinTable(mini), mini.cfg, mini.lit[p], rng, Object.assign({}, fingHand(mini), level ? { level } : {})), r = a.result;
+export function fingAi(mini, p, rng, level) {   // level: 'easy' | 'normal' | 'hard': the level's hand (fingHand); Pinball's play by level too (physics-sim.js pinAi)
+  if (mini.type === 'skyhop') return hopAi(mini, p, rng, level ? fingHand(mini, level) : null).move;
+  if (mini.type === 'scoop') return scoopAi(mini, p, rng, level ? fingHand(mini, level) : null).move;
+  const a = PHYSICS.lib.pinAi(PHYSICS.lib.pinTable(mini), mini.cfg, mini.lit[p], rng, Object.assign({}, fingHand(mini, level), level ? { level } : {})), r = a.result;
   return { hits: r.hits, ms: r.ms, end: r.end, log: a.log, steps: a.steps };
 }
 // Progress: Sky Hop's height, Scoop Stack's stack, Pinball's lit targets; and how far to go.

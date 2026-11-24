@@ -14,9 +14,21 @@ export const PINB_DEFAULTS = { size: 1.3, save: 3, maxBall: 120, g: 1, bump: 1, 
 export const TUNE = [
   { k: 'targets', label: 'Targets to light', def: 7, min: 3, max: 7, step: 1, group: 'Rules' },
   { k: 'maxSecs', label: 'Attempt time limit (s)', def: 30, min: 5, max: 60, step: 1, group: 'Timing' },   // (from Start; at the limit the ball ends as a drain, its targets kept: physics-sim.js pinStep. The computer's balls: median 9.5 s, p95 25 s, p99 30 s)
-  { k: 'aiReact0', label: 'Computer reaction, fastest (ms)', def: 50, min: 0, max: 400, step: 5, group: 'Computer' },
-  { k: 'aiReact1', label: 'Computer reaction, slowest (ms)', def: 90, min: 0, max: 400, step: 5, group: 'Computer' },
-  { k: 'aiJitter', label: 'Computer flip timing error (ms)', def: 50, min: 0, max: 200, step: 5, group: 'Computer' },
+  { k: 'aiReact0', label: "Normal: reaction, fastest (ms)", def: 50, min: 0, max: 400, step: 5, group: 'Computer: Normal' },
+  { k: 'aiReact1', label: "Normal: reaction, slowest (ms)", def: 90, min: 0, max: 400, step: 5, group: 'Computer: Normal' },
+  { k: 'aiJitter', label: "Normal: flip timing error (ms)", def: 50, min: 0, max: 200, step: 5, group: 'Computer: Normal' },
+  { k: 'aiLetGo', label: "Normal: lets a ball go by unflipped (%)", def: 0, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'aiAnyPull', label: "Normal: launches at any strength, not for a target (%)", def: 25, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'aiReact0Easy', label: "Easy: reaction, fastest (ms)", def: 110, min: 0, max: 400, step: 5, group: 'Computer: Easy' },
+  { k: 'aiReact1Easy', label: "Easy: reaction, slowest (ms)", def: 150, min: 0, max: 400, step: 5, group: 'Computer: Easy' },
+  { k: 'aiJitterEasy', label: "Easy: flip timing error (ms)", def: 110, min: 0, max: 200, step: 5, group: 'Computer: Easy' },
+  { k: 'aiLetGoEasy', label: "Easy: lets a ball go by unflipped (%)", def: 20, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
+  { k: 'aiAnyPullEasy', label: "Easy: launches at any strength, not for a target (%)", def: 100, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
+  { k: 'aiReact0Hard', label: "Hard: reaction, fastest (ms)", def: 20, min: 0, max: 400, step: 5, group: 'Computer: Hard' },
+  { k: 'aiReact1Hard', label: "Hard: reaction, slowest (ms)", def: 40, min: 0, max: 400, step: 5, group: 'Computer: Hard' },
+  { k: 'aiJitterHard', label: "Hard: flip timing error (ms)", def: 10, min: 0, max: 200, step: 5, group: 'Computer: Hard' },
+  { k: 'aiLetGoHard', label: "Hard: lets a ball go by unflipped (%)", def: 0, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
+  { k: 'aiAnyPullHard', label: "Hard: launches at any strength, not for a target (%; Hard also aims its flips at an unlit target)", def: 0, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
 ];
 export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/pinball): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

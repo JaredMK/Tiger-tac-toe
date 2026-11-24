@@ -902,8 +902,9 @@ export function makePhysics(Matter) {
   // ball at a target still unlit (pinAim).
   function pinAi(table, cfg, lit, rng, hand) {
     hand = Object.assign({ react: [0.05, 0.09], jitter: 0.05, hold: [0.12, 0.28], launch: [0.3, 1] }, hand);   // (a square's settings over these: finger.js fingHand)
-    const easy = hand.level === 'easy', hard = hand.level === 'hard', jitter = hand.jitter * (easy ? 2.2 : hard ? 0.5 : 1);
-    const w = pinNew(table, cfg, lit), seen = [], react = hand.react[0] + (hand.react[1] - hand.react[0]) * rng() + (easy ? 0.06 : 0), plan = { L: null, R: null };
+    const easy = hand.level === 'easy', hard = hand.level === 'hard', own = !!hand.own;   // own: the hand is the level's own already (finger.js fingHand: its react, jitter, letGo and anyPull from the level's settings)
+    const jitter = own ? hand.jitter : hand.jitter * (easy ? 2.2 : hard ? 0.5 : 1), letGo = own ? hand.letGo : easy ? 0.2 : 0, anyPull = own ? hand.anyPull : easy ? 1 : hard ? 0 : 0.25;
+    const w = pinNew(table, cfg, lit), seen = [], react = hand.react[0] + (hand.react[1] - hand.react[0]) * rng() + (easy && !own ? 0.06 : 0), plan = { L: null, R: null };
     const F = table.flip || PIN.flip, frame = 1000 / 60, R = PIN.ballR, ca = dcos(F.rest), sa = dsin(F.rest);
     const pick = side => { const u = hard ? pinAim(w, side) : null; return u != null ? u : 0.4 + 0.55 * rng(); }, aim = { L: pick('L'), R: pick('R') }, skip = { L: false, R: false };
     let wait = 0.6 + rng() * 0.6;
@@ -911,7 +912,7 @@ export function makePhysics(Matter) {
       if (!w.inPlay) {
         wait -= frame / 1000;
         if (wait <= 0) {
-          const any = hand.launch[0] + (hand.launch[1] - hand.launch[0]) * rng(), good = easy || (!hard && rng() < 0.25) ? [] : pinPlunge(w);
+          const any = hand.launch[0] + (hand.launch[1] - hand.launch[0]) * rng(), good = anyPull >= 1 || (anyPull > 0 && rng() < anyPull) ? [] : pinPlunge(w);
           pinLaunch(w, good.length ? good[Math.min(good.length - 1, Math.floor(rng() * good.length))] + (hard ? 0 : (rng() * 2 - 1) * 0.03) : any); wait = 0.5 + rng() * 0.6;
         }
       }
@@ -925,7 +926,7 @@ export function makePhysics(Matter) {
         const over = along > F.len * 0.12 && along < F.len + 2.5 && above > -1.5 && above < 16;
         if (!over && skip[side]) skip[side] = false;
         const due = over && w.inPlay && !skip[side] && (above < Math.max(1.2, fall * 0.045) && (fall > 45 || along >= F.len * aim[side]));
-        if (!plan[side] && due) { if (easy && rng() < 0.2) skip[side] = true; else plan[side] = { at: w.t + (rng() * 2 - 1) * jitter, until: null }; }   // (easy: one ball in five goes by)
+        if (!plan[side] && due) { if (letGo > 0 && rng() < letGo) skip[side] = true; else plan[side] = { at: w.t + (rng() * 2 - 1) * jitter, until: null }; }   // (easy: one ball in five goes by)
         const p = plan[side];
         if (p && p.until == null && w.t >= p.at) p.until = w.t + hand.hold[0] + (hand.hold[1] - hand.hold[0]) * rng();
         if (p && p.until != null && w.t > p.until) { plan[side] = over ? { at: w.t + 0.3 + rng() * 0.2, until: null } : null; aim[side] = pick(side); }   // (not again at once; the next shot from another place)
