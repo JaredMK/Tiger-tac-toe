@@ -9,7 +9,7 @@
 import { needRng } from '../../core/random.js';
 import { tune, tuneLive } from '../../core/tune.js';
 
-export const NS = { slide: 110, say: 240, hold: 700 };           // ms: a digit sliding into its slot, the answer after the last, the result held
+export const NS = { slide: 110, say: 240, hold: 700, sort: 320 };   // ms: a digit sliding into its slot, the answer after the last, the result held (the guess dropping into its sorted place, `sort`, plays inside it)
 export const nsCfg = mini => { const t = tune(mini); return { mode: t.mode === 'shared' ? 'shared' : 'race', n: Math.max(3, Math.min(7, t.n | 0)) }; };
 export const nsVal = o => o.reduce((v, x) => v * 10 + x, 0);
 // Every order of the digits, smallest number first (n! of them; 7 digits: 5,040).
