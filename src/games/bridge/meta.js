@@ -9,6 +9,10 @@ export const explainer = { name: 'Glass Bridge', play: 'Hop to a platform in the
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3.5" width="7.5" height="6" rx="1.2"/><rect x="13.5" y="3.5" width="7.5" height="6" rx="1.2"/><rect x="3" y="14.5" width="7.5" height="6" rx="1.2"/><path d="M14 15l3 2.5-2 1.5 3.5 2"/></svg>';
 // Its settings (the admin's Games page; core/tune.js): the rows, how many platforms a row has and how many of them
 // break (drawn per row between the two figures; a row always keeps one safe platform), and one bridge for both or one each.
+// The computer's levels (core/tune.js levelTune): its mistake rate here is how often it forgets which glass held and hops
+// onto any pane still there (ai.js worse): Easy 45%, Normal 10%, Hard never. Nothing else can differ: an untried pane is a
+// guess for everyone (luck-bound: Hard v Normal about 57%, Normal v Easy about 63%).
+export const AI_LEVELS = { miss: { easy: 45, normal: 10 } };
 export const TUNE = [
   { k: 'rows', label: 'Rows to cross', def: 6, min: 3, max: 9, step: 1, group: 'Board' },
   { k: 'pmin', label: 'Platforms in a row, at least', def: 3, min: 2, max: 3, step: 1, group: 'Board' },

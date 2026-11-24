@@ -61,7 +61,7 @@ test('piggy: the computer: every level banks what wins and rolls an empty pot; N
   const m = E.newMini('piggy', E.makeRng('g'));
   const best = (level, mm) => E.localBest(E.publicMini(mm), 'X', E.makeRng('r'), {}, { level }).move;
   for (const level of ['easy', 'normal', 'hard']) assert.equal(best(level, m), 'roll', level);
-  m.turn = { by: 'X', pot: 5, n: 2, roll: 3 };
+  m.turn = { by: 'X', pot: 6, n: 2, roll: 3 };
   assert.deepEqual([best('easy', m), best('normal', m)], ['bank', 'roll']);
   m.turn.pot = 9; assert.equal(best('normal', m), 'bank');
   m.bank.X = 20; m.turn.pot = 5; for (const level of ['easy', 'normal', 'hard']) assert.equal(best(level, m), 'bank', level + ' banks the win');

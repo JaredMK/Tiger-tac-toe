@@ -9,10 +9,16 @@ export const explainer = { name: 'Flash', play: 'Cards flash by one at a time. R
 export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 2L5 13.5h6L9.5 22 19 9.5h-6z"/></svg>';
 export const FLASH_DEFAULTS = { n1: 6, n2: 7, n3: 8, ms1: 500, ms2: 500, ms3: 500 };
 // Its settings (the admin's Mini-game Settings; core/tune.js) beyond config/flash: how often the computer gets a round right at each level.
+// The computer's levels (shared/attention.js attOkAt): Normal right as often as the rates above; Easy that share of them;
+// Hard right that share of the rounds Normal would miss as well.
+const AIEASY = { k: 'aiEasyPct', label: "Easy: right this share of Normal's rate (%)", def: 70, min: 0, max: 100, step: 5, group: 'Computer: Easy' };
+const AIHARD = { k: 'aiHardPct', label: "Hard: of the rounds Normal gets wrong, the share it gets right (%)", def: 40, min: 0, max: 100, step: 5, group: 'Computer: Hard' };
 export const TUNE = [
-  { k: 'ai1', label: "Computer's right answers, level 1 (%)", def: 80, min: 0, max: 100, step: 1, group: 'Computer' },
-  { k: 'ai2', label: "Computer's right answers, level 2 (%)", def: 70, min: 0, max: 100, step: 1, group: 'Computer' },
-  { k: 'ai3', label: "Computer's right answers, level 3 (%)", def: 60, min: 0, max: 100, step: 1, group: 'Computer' },
+  { k: 'ai1', label: "Normal: right answers at level 1 (%)", def: 80, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'ai2', label: "Normal: right answers at level 2 (%)", def: 70, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'ai3', label: "Normal: right answers at level 3 (%)", def: 60, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  AIEASY,
+  AIHARD,
 ];
 export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/flash): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

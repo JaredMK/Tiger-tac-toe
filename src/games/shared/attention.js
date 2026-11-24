@@ -141,8 +141,16 @@ export function attentionApply(mini, p, m, rng, idx) {   // one round: right, a 
   const again = correct && type === 'shell' && goAgain(mini);   // Shell Game's "Go again on success": the turn kept, the next level begun with Start
   return Object.assign({ ok: true, outcome: 'continue', note: correct ? 'right' : 'wrong' }, again ? { again: true } : {});
 }
-export function attentionBest(pm, me, rng, style, ctx) {   // right about 85%, 65%, then 45% of the time; else a near miss (one off, a wrong option, a cell out of place)
-  const r = pm.round && pm.round[me], q = attOk(pm.type, pm.right[me], tune(pm));
+// The computer's levels: Normal is right as often as ai1.. say at each level of the game; Easy that share of Normal's rate
+// (aiEasyPct); Hard gets that share of Normal's misses right as well (aiHardPct). Defaults per game in its meta.js TUNE.
+export function attOkAt(type, level, t, diff) {
+  const q = attOk(type, level, t);
+  if (diff === 'easy') return q * Math.max(0, Math.min(100, Number(t && t.aiEasyPct != null ? t.aiEasyPct : 100))) / 100;
+  if (diff === 'hard') return q + (1 - q) * Math.max(0, Math.min(100, Number(t && t.aiHardPct != null ? t.aiHardPct : 0))) / 100;
+  return q;
+}
+export function attentionBest(pm, me, rng, style, ctx) {   // right as often as its level's rate says; else a near miss (one off, a wrong option, a cell out of place)
+  const r = pm.round && pm.round[me], q = attOkAt(pm.type, pm.right[me], tune(pm), (ctx && ctx.level) || 'normal');
   if (!r) return { move: 'auto', q: 0 };
   return { move: rng() < q ? attTruth(pm.type, r) : attWrong(pm.type, r, rng), q };
 }

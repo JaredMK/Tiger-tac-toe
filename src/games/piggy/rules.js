@@ -9,7 +9,7 @@ import { tune } from '../../core/tune.js';
 
 export function piggyCfg(mini) {
   const t = tune(mini), sides = Number(t.sides) === 8 ? 8 : 6;
-  return { target: t.target || 25, bust: Math.min(sides, t.bust || 1), max: t.maxRolls || 0, sides, aiBank: t.aiBank || 9, aiBankEasy: t.aiBankEasy || 4 };
+  return { target: t.target || 25, bust: Math.min(sides, t.bust || 1), max: t.maxRolls || 0, sides, aiBank: t.aiBank || 9, aiBankEasy: t.aiBankEasy || 6 };
 }
 export function create(type, rng) { return { type, bank: { X: 0, O: 0 }, turn: null, last: null }; }   // turn: { by, pot, n } while a turn is under way
 export function apply(mini, p, m, rng, idx) {

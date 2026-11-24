@@ -2,7 +2,7 @@
 // Hard plays the race exactly where the target is small enough to solve (WIN: the chance the side to move wins from
 // its bank, the other's and the pot, by value iteration over every state; a roll limit adds the rolls made): it rolls
 // while rolling wins more often than banking. Normal banks at a fixed pot (`aiBank`, 9), Easy at a smaller one
-// (`aiBankEasy`, 4); both bank what wins, and go for it when the other side would win with its next small turn.
+// (`aiBankEasy`, 6; it never chases a lead); both bank what wins, and go for it when the other side would win with its next small turn.
 import { other } from '../../core/util.js';
 import { piggyCfg } from './rules.js';
 

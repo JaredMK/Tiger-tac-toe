@@ -12,6 +12,9 @@ export const goAgainText = { on: ' Points? Hook again.', off: '' };
 // values (ducks worth 1 to 5 and boots worth 0; a mix short of the pond's size is filled with boots), and the points to
 // win. Tuned by tests/sim/duck.sim.js (November 2026, one shared pond): a pond of 12 (one each of 1 to 4, three 5s, five
 // boots) and 12 to win: 4.5 turns each, the winner's 4.8, the first mover 53.5% (11 to win: 4.2 turns, 56.6%; 10: 3.6, 56.4%).
+// The computer's levels: pure luck (every duck looks the same from above, so a hook is a hook), so Easy, Normal and Hard play alike; no mistake setting (a weaker
+// move does not exist), only each level's thinking time (core/tune.js levelTune).
+export const AI_LEVELS = { miss: false };
 export const TUNE = [
   AGAIN_TUNE,
   { k: 'target', label: 'Points to win', def: 12, min: 4, max: 30, step: 1, group: 'Rules' },

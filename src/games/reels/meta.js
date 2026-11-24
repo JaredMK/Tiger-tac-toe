@@ -11,6 +11,9 @@ export const explainVars = v => ({ starText: v.stars === 'on' ? ' Three stars on
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M8.8 5v14M15.2 5v14"/><circle cx="5.7" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.3" cy="12" r="1.2"/></svg>';
 // Its settings (the admin's Games page; core/tune.js): the target, what each pattern scores, how often each picture
 // comes up on a reel (its weight among the four), and whether three stars win the square outright.
+// The computer's levels: pure luck (a spin is a spin: there is nothing to choose), so Easy, Normal and Hard play alike; no mistake setting (a weaker
+// move does not exist), only each level's thinking time (core/tune.js levelTune).
+export const AI_LEVELS = { miss: false };
 export const TUNE = [
   { k: 'target', label: 'Points to take the square', def: 10, min: 4, max: 60, step: 1, group: 'Rules' },
   { k: 'stars', label: 'Three stars on a line win the square at once', def: 'on', opts: ['on', 'off'], group: 'Rules' },

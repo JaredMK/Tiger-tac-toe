@@ -15,10 +15,16 @@ export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 // pattern: no full row or column, no solid block, no straight run of 4, nothing symmetric.
 export const SNAP_DEFAULTS = { c1: 4, r1: 5, k1: 7, c2: 5, r2: 5, k2: 9, c3: 5, r3: 6, k3: 11, show: 5000, wait: 5000 };
 // Its settings (the admin's Mini-game Settings; core/tune.js) beyond config/snapshot: how often the computer gets a round right at each level.
+// The computer's levels (shared/attention.js attOkAt): Normal right as often as the rates above; Easy that share of them;
+// Hard right that share of the rounds Normal would miss as well.
+const AIEASY = { k: 'aiEasyPct', label: "Easy: right this share of Normal's rate (%)", def: 70, min: 0, max: 100, step: 5, group: 'Computer: Easy' };
+const AIHARD = { k: 'aiHardPct', label: "Hard: of the rounds Normal gets wrong, the share it gets right (%)", def: 25, min: 0, max: 100, step: 5, group: 'Computer: Hard' };
 export const TUNE = [
-  { k: 'ai1', label: "Computer's right patterns, level 1 (%)", def: 65, min: 0, max: 100, step: 1, group: 'Computer' },
-  { k: 'ai2', label: "Computer's right patterns, level 2 (%)", def: 50, min: 0, max: 100, step: 1, group: 'Computer' },
-  { k: 'ai3', label: "Computer's right patterns, level 3 (%)", def: 35, min: 0, max: 100, step: 1, group: 'Computer' },
+  { k: 'ai1', label: "Normal: right patterns at level 1 (%)", def: 65, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'ai2', label: "Normal: right patterns at level 2 (%)", def: 50, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'ai3', label: "Normal: right patterns at level 3 (%)", def: 35, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  AIEASY,
+  AIHARD,
 ];
 export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/snapshot): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

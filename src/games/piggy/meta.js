@@ -16,8 +16,8 @@ export const TUNE = [
   { k: 'bust', label: 'The number that loses the turn\'s points', def: 1, min: 1, max: 6, step: 1, group: 'Rules' },
   { k: 'maxRolls', label: 'Most rolls a turn (0: no limit)', def: 0, min: 0, max: 10, step: 1, group: 'Rules' },
   { k: 'sides', label: 'Die', def: 6, opts: [6, 8], group: 'Rules' },
-  { k: 'aiBank', label: 'Normal computer banks at (points this turn)', def: 9, min: 2, max: 30, step: 1, group: 'Computer' },
-  { k: 'aiBankEasy', label: 'Easy computer banks at (points this turn)', def: 4, min: 2, max: 30, step: 1, group: 'Computer' },
+  { k: 'aiBank', label: 'Normal: banks once this turn\'s points reach', def: 9, min: 2, max: 30, step: 1, group: 'Computer: Normal' },
+  { k: 'aiBankEasy', label: 'Easy: banks once this turn\'s points reach (it never chases a lead)', def: 6, min: 2, max: 30, step: 1, group: 'Computer: Easy' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/piggy): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Roll as often as you dare, then bank. Roll the bust number and lose the turn\'s points. Bank the target first.';

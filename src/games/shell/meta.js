@@ -43,11 +43,17 @@ const level = i => {
     { k: 'sh' + n, label: `Level ${n}: the ball on show before the cups cover it (ms)`, def: d.sh, min: 400, max: 5000, step: 50, group: g },
   ];
 };
+// The computer's levels (shared/attention.js attOkAt): Normal right as often as the rates above; Easy that share of them;
+// Hard right that share of the rounds Normal would miss as well.
+const AIEASY = { k: 'aiEasyPct', label: "Easy: right this share of Normal's rate (%)", def: 70, min: 0, max: 100, step: 5, group: 'Computer: Easy' };
+const AIHARD = { k: 'aiHardPct', label: "Hard: of the rounds Normal gets wrong, the share it gets right (%)", def: 40, min: 0, max: 100, step: 5, group: 'Computer: Hard' };
 export const TUNE = [
   { k: 'levels', label: 'Levels to win', def: 3, min: 1, max: SHELL_MAX, step: 1, group: 'Rules' },
   AGAIN_TUNE,
   ...[0, 1, 2, 3, 4].flatMap(level),
-  ...[0, 1, 2, 3, 4].map(i => ({ k: 'ai' + (i + 1), label: `Computer's right picks, level ${i + 1} (%)`, def: D[i].ai, min: 0, max: 100, step: 1, group: 'Computer' })),
+  ...[0, 1, 2, 3, 4].map(i => ({ k: 'ai' + (i + 1), label: `Normal: right picks at level ${i + 1} (%)`, def: D[i].ai, min: 0, max: 100, step: 1, group: 'Computer: Normal' })),
+  AIEASY,
+  AIHARD,
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/shell): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Watch the ball, then follow its cup as they shuffle. Pick right at every level first.';
