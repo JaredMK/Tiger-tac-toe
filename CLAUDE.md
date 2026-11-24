@@ -194,6 +194,23 @@ Create src/games/<name>/ with rules.js, view.js, ai.js and meta.js, and register
 - Hidden skill rating (December 2026; matchmaking only, never shown): an Elo number per account at `skill/{uid}` (no read rule: no phone, game, result, profile or dashboard sees it; deleted with the account, by the launch reset), start `SKILL_START` 1000, K 32, moved only by finished Find Match matches between two people (`functions/index.js` `finishGame`, `serverRules.js` `skillUpdate`; never friend rooms, the computer or Super Chaos). Find Match pairs the closest skills first (`pairBySkill`: the queue entry carries it, the server's alone), the range 200 widening by 100 every 2 s of the longer wait and anyone at all after `SKILL_OPEN_MS` 10 s, so two people searching together are always paired before the computer is offered. Separate from the old `rating`/leaderboard (`RATINGS_ENABLED`, still off). `tests/server/skill.test.js`, the emulator's Find Match test.
 - My Stats' filter reads Online, vs Computer (the games played on this device while logged in: `localStats`, `localHistory`; the data keeps its old names) and All; every label for those games says "vs Computer", never "Local". Ratings and the leaderboard are off (RATINGS_ENABLED = false). Don't re-enable without being asked.
 
+## Updating the iOS app
+The app carries its own copy of the game: it never loads the site, so a deploy changes nothing on the phone until the app is rebuilt and run again. In the project's folder (Xcode may stay open):
+```bash
+npm run ios:update -- staging
+```
+(what staging has, with the STAGING badge; the default), or, only after a release:
+```bash
+npm run ios:update -- production
+```
+`--open` opens the project in Xcode after; `--here` builds this folder's files as they are, with no git (a change not deployed yet). It fetches, switches this folder to the branch (`staging`, or `main` for production) and fast-forwards it, runs `npm ci` when the lock file changed, builds (`scripts/ios-build.js`: web files, project settings, `cap sync`) and checks the copy inside the Xcode project file by file (`scripts/ios-update.js`, `tests/server/ios-update.test.js`). It stops, touching nothing, at uncommitted changes outside `ios/`; the `ios/` files a build rewrites are put back first (a patch of them is kept in `.git/ios-update/`), so never edit the project's settings by hand in Xcode: they belong in `scripts/ios-setup.js`. It never pushes or releases.
+Then in Xcode (`ios/App/App.xcodeproj`, or `npx cap open ios`):
+1. If Xcode asks about files changed on disk, choose the version on disk (Revert / Use Version on Disk).
+2. Plug in the phone and pick it in the device menu at the top (scheme App).
+3. Press Run (Cmd-R). It installs over the old app; no need to delete it or clean the build.
+4. In the game: Settings, at the bottom, "Build abc1234" is the commit `ios:update` printed.
+Caching (audited November 2026): no service worker, no `server.url` and no live-update plugin, and Capacitor answers every bundled file with `Cache-Control: no-cache`; nothing can keep an old game but an old bundle (`tests/server/ios-update.test.js` holds this). If Xcode ever still shows an old build: Product > Clean Build Folder, then Run. iCloud Drive syncs ~/Documents and leaves conflict copies ("client 2.js"): ignored by git, dropped from the app's build (`build-app.js` `dropConflictCopies`).
+
 ## Workflow
 - When debugging a match issue, ask me for the exported match log (the admin's Matches page → the match → Export JSON) if one isn't attached.
 - Keep changes scoped to what's asked. Touch only the relevant game folders.

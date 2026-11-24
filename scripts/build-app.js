@@ -50,8 +50,18 @@ function npmSdk(v) {
   execSync(`tar -xzf firebase-${v}.tgz ${SDK.map(f => 'package/' + f).join(' ')}`, { cwd: tmp });
   return (npmDir = path.join(tmp, 'package'));
 }
+// iCloud Drive's conflict copies ("client 2.js", "src 3"), which the project's folder gets when iCloud syncs it: never in the app.
+const isConflictCopy = name => / \d+(\.[\w.]+)?$/.test(name);
+function dropConflictCopies(dir) {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (isConflictCopy(e.name)) fs.rmSync(p, { recursive: true, force: true });
+    else if (e.isDirectory()) dropConflictCopies(p);
+  }
+}
 async function buildApp(env, sha, opts) {
   build(env, sha, OUT);
+  dropConflictCopies(OUT);
   for (const f of ['admin.html', 'admin.js', 'styles.html', 'robots.txt', 'version.json']) fs.rmSync(path.join(OUT, f), { force: true });
   fs.rmSync(path.join(OUT, '.well-known'), { recursive: true, force: true });
   const sdk = !(opts && opts.noSdk);
@@ -60,7 +70,7 @@ async function buildApp(env, sha, opts) {
   fs.writeFileSync(p, appHead(fs.readFileSync(p, 'utf8'), env, sdk));
   return { out: OUT, sdk: v };
 }
-module.exports = { appHead, localImports, buildApp, SDK };
+module.exports = { appHead, localImports, isConflictCopy, dropConflictCopies, buildApp, SDK };
 if (require.main === module) {
   const args = process.argv.slice(2), env = envOf(args.find(a => !a.startsWith('--')) || 'production');
   let sha = process.env.GITHUB_SHA || '';
