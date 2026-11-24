@@ -80,7 +80,7 @@ test('mahjong: the hands are secret: never in the public view, an entry or the o
 });
 
 test('mahjong: the computer: it takes a winning discard, throws the tile that leaves it closest (Hard by the tiles left unseen); whole squares end at every level', () => {
-  const m = mini(6);
+  const m = mini(6, { aiMissNormal: 0 });                            // (its careful play: no careless throws)
   m.hand.X = ['b1', 'b2', 'b3', 'd4', 'd4', 'd4', 's2']; m.pile.S = ['s2'];
   assert.equal(E.localBest(pv(m, 'X'), 'X', E.makeRng('a'), {}, { level: 'normal' }).move, 'pile');
   m.pile.S = [];

@@ -8,10 +8,15 @@ export const placeholder = false;   // never on a new state's placeholder board 
 export const explainer = { name: 'Peg Jump Race', play: 'Move one peg towards the far side: one step forward (straight or diagonal), or a jump over any peg next to it, yours or theirs. After a jump you may jump again with the same peg. A peg that reaches the far side is home.', win: 'First to get all {pegs} pegs home.' };
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="18" r="2.600"/><circle cx="12" cy="18" r="2.600" fill="currentColor"/><circle cx="19" cy="18" r="2.600"/><path d="M5 13.500C6 6 18 6 19 13.500"/><path d="M16 11.500l3 2.200 2-3.200"/></svg>';
 // Its settings (the admin's Games page; core/tune.js): the pegs each player has and the board's size.
+// The computer's levels (core/tune.js levelTune): Easy slips (any legal move) 30% of the time and Hard 15% (its look-ahead is otherwise too sharp), see ai.js.
+export const AI_LEVELS = { miss: { easy: 30, hard: 15 } };
 export const TUNE = [
   { k: 'pegs', label: 'Pegs each', def: 3, min: 2, max: 4, step: 1, group: 'Rules' },
   { k: 'rows', label: 'Board length (rows to cross)', def: 4, min: 3, max: 6, step: 1, group: 'Board' },
   { k: 'cols', label: 'Board width (columns)', def: 5, min: 4, max: 6, step: 1, group: 'Board' },
+  { k: 'aiWary', label: 'Normal: avoids moves that hand the other side a jump', def: 'on', opts: ['off', 'on'], group: 'Computer: Normal' },
+  { k: 'aiWaryEasy', label: 'Easy: avoids moves that hand the other side a jump', def: 'off', opts: ['off', 'on'], group: 'Computer: Easy' },
+  { k: 'aiDepthHard', label: 'Hard: how many whole turns it looks ahead', def: 2, min: 1, max: 4, step: 1, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/pegs): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Step or jump your pegs across the board, over any peg in the way. Get all your pegs home first.';

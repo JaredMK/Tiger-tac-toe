@@ -10,7 +10,7 @@ const board = (X, O, rows = 4, cols = 5) => ({ type: 'pegs', v: 1, rows, cols, p
 
 test('pegs: Admin only, brain; the deal: three pegs each on their own end row, in the middle columns', () => {
   assert.deepEqual([M.release, M.category, M.minVersion], ['admin', 'brain', '1.24.0']);
-  assert.deepEqual(E.gameFields('pegs').map(f => f.k), ['pegs', 'rows', 'cols']);
+  assert.deepEqual(E.gameFields('pegs').map(f => f.k), ['pegs', 'rows', 'cols', 'aiWary', 'aiWaryEasy', 'aiDepthHard']);
   const m = E.newMini('pegs', E.makeRng('a'));
   assert.deepEqual([m.rows, m.cols, m.pegs.X, m.pegs.O], [4, 5, [[3, 1], [3, 2], [3, 3]], [[0, 1], [0, 2], [0, 3]]]);
   assert.deepEqual(E.publicMini(m).pegs, m.pegs, 'nothing hidden'); assert.equal(E.secretOf(m), null);
@@ -60,14 +60,14 @@ test('pegs: a forward move always exists: thousands of squares at random and by 
 });
 
 test('pegs: the computer takes a peg home when it can, and Hard beats Easy; the flash carries the move', () => {
-  const m = board([[1, 2], null, null], [[2, 0], [2, 4], null]);
+  const m = Object.assign(board([[1, 2], null, null], [[2, 0], [2, 4], null]), { tune: { aiMissHard: 0 } });   // (its careful play: no slips)
   for (const level of ['normal', 'hard']) { const mv = E.localBest(E.publicMini(m), 'X', E.makeRng(level), {}, { level }).move; assert.deepEqual([mv.k, mv.to[0]], [0, 0], level + ': the last peg, one step from home, goes home'); }
   let hard = 0;
   for (let g = 0; g < 30; g++) {
     const rng = E.makeRng('h' + g), t = E.newMini('pegs', rng), lv = g % 2 ? { X: 'hard', O: 'easy' } : { X: 'easy', O: 'hard' }; let p = 'X';
     for (let k = 0; k < 300; k++) { const r = E.applyMove(t, p, E.localBest(E.publicMini(t), p, rng, {}, { level: lv[p], until: null }).move, rng); if (r.outcome === 'win') { if (lv[p] === 'hard') hard++; break; } if (!r.again) p = p === 'X' ? 'O' : 'X'; }
   }
-  assert.ok(hard >= 26, `Hard beat Easy in ${hard} of 30`);
+  assert.ok(hard >= 23, `Hard beat Easy in ${hard} of 30`);   // (Hard slips too, 15% by default: the AI levels pass)
   const st = E.newMatch(E.makeRng('i'), { games: ['pegs'] }), p = st.turn, q = st.squares[4].mini, mv = R.pegMoves(q, p)[0];
   assert.ok(E.playMove(st, 4, { k: mv.k, to: mv.to }, E.makeRng('s')).ok);
   assert.deepEqual(Object.keys(st.flash.pg).sort(), ['by', 'from', 'home', 'jump', 'k', 'more', 'over', 'to']);

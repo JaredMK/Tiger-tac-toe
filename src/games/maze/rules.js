@@ -110,12 +110,12 @@ export const mazeLeft = (mini, p) => (mini.cap ? Math.max(0, mini.cap - ((mini.e
 // spent finding something (Normal, with none: the way whose frontier is nearest, the runner stopping nearer it for the
 // next turn); Hard among them the way whose frontier lies nearest the flag (then the nearer frontier). Easy pays it no
 // mind.
-export function mazePick(seen, g, cell, rng, level, left = Infinity) {
+export function mazePick(seen, g, cell, rng, level, left = Infinity, stray = 0.3) {   // stray: Easy's chance of any way at all (the computer's aiStrayEasy)
   const ways = DIRS.filter(d => seen[cell] >= 0 && (seen[cell] & BIT[d]));
   const info = ways.map(d => Object.assign({ d }, mazeLive(seen, g, cell, d)));
   const flagWay = info.find(x => x.toFlag);
   if (flagWay) return flagWay.d;
-  if (level === 'easy' && rng() < 0.3) return ways[Math.floor(rng() * ways.length)];
+  if (level === 'easy' && stray > 0 && rng() < stray) return ways[Math.floor(rng() * ways.length)];
   const back = ways.find(d => cell !== g.start && homeward(seen, g, cell, d));
   let live = info.filter(x => x.live && x.d !== back);
   if (!live.length) live = info.filter(x => x.live);

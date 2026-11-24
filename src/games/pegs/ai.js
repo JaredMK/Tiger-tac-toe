@@ -1,9 +1,11 @@
 // Peg Jump Race: the computer's play. A position is worth the rows its pegs have crossed less the other side's
-// (`value`). Easy takes any move. Normal takes the move that gains most now (a jump's chain played on while it gains),
-// and thinks twice about a move that hands the other side a jump. Hard looks ahead: its whole turn, the other side's
-// best reply, its own best turn after (a search over whole turns, chains included), within `ctx.until`.
+// (`value`). Normal takes the move that gains most now (a jump's chain played on while it gains), and thinks twice about a
+// move that hands the other side a jump (`aiWary`). Easy plays the same greedy way without that care (`aiWaryEasy` off)
+// and slips more often (its mistake rate: any legal move). Hard looks ahead: its whole turn, the other side's best reply,
+// its own best turn after (a search over whole turns, chains included, `aiDepthHard` turns deep), within `ctx.until`.
 import { other } from '../../core/util.js';
 import { pegDir, pegMoves } from './rules.js';
+import { tune } from '../../core/tune.js';
 
 const clone = m => ({ rows: m.rows, cols: m.cols, pegs: { X: m.pegs.X.map(q => (q ? q.slice() : null)), O: m.pegs.O.map(q => (q ? q.slice() : null)) }, home: { X: m.home.X, O: m.home.O }, hop: m.hop ? { by: m.hop.by, k: m.hop.k } : null });
 const crossed = (m, p) => m.pegs[p].reduce((s, q) => s + (q ? (p === 'X' ? m.rows - 1 - q[0] : q[0]) : m.rows - 0.4), 0);   // (a peg home: a little more than the far row)
@@ -40,14 +42,14 @@ export function best(pm, me, rng, style, ctx) {
   const level = (ctx && ctx.level) || 'normal', all = pegMoves(pm, me), pick = a => a[Math.floor(rng() * a.length)], q = pm.pegs[me].filter(Boolean).length <= 1 ? 0.5 : 0.05;
   if (!all.length) return { move: pm.hop && pm.hop.by === me ? 'stop' : 'pass', q: 0 };
   const out = m => ({ k: m.k, to: m.to });
-  if (level === 'easy') return { move: out(pick(all)), q };
+  const t = tune(pm), depth = Math.max(1, Math.min(4, Math.round(Number(t.aiDepthHard) || 2))), wary = level === 'easy' ? t.aiWaryEasy === 'on' : t.aiWary !== 'off';
   const base = clone(pm), ts = turns(base, me, null, [], 0);
   let scored;
-  if (level === 'hard') scored = ts.map(t => ({ t, v: search(t.m, other(me), me, 2, ctx && ctx.until) + value(t.m, me) * 0.01 }));
-  else scored = ts.map(t => { const theirs = pegMoves(t.m, other(me)).some(x => x.jump), had = pegMoves(Object.assign(clone(pm), { hop: null }), other(me)).some(x => x.jump); return { t, v: value(t.m, me) - (theirs && !had ? 0.6 : 0) }; });
+  if (level === 'hard') scored = ts.map(t => ({ t, v: search(t.m, other(me), me, depth, ctx && ctx.until) + value(t.m, me) * 0.01 }));
+  else scored = ts.map(t => { const theirs = pegMoves(t.m, other(me)).some(x => x.jump), had = pegMoves(Object.assign(clone(pm), { hop: null }), other(me)).some(x => x.jump); return { t, v: value(t.m, me) - (wary && theirs && !had ? 0.6 : 0) }; });
   const top = Math.max(...scored.map(s => s.v)), bestTurns = scored.filter(s => s.v >= top - 1e-9);
   // mid-chain, stopping here may be the best "turn": the position as it stands
-  if (pm.hop && pm.hop.by === me) { const stay = level === 'hard' ? search(Object.assign(clone(pm), { hop: null }), other(me), me, 2, ctx && ctx.until) + value(pm, me) * 0.01 : value(pm, me); if (stay > top + 1e-9) return { move: 'stop', q }; }
+  if (pm.hop && pm.hop.by === me) { const stay = level === 'hard' ? search(Object.assign(clone(pm), { hop: null }), other(me), me, depth, ctx && ctx.until) + value(pm, me) * 0.01 : value(pm, me); if (stay > top + 1e-9) return { move: 'stop', q }; }
   return { move: out(pick(bestTurns).t.first), q };
 }
 void pegDir;

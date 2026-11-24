@@ -1,6 +1,6 @@
 // Maze Runner: the computer's play, from what its runner has seen alone (rules.js mazePick): the flag's way once it is
 // known; else a way with something left to find, leading on rather than back; Hard takes the way that heads for the
-// flag when several lead on, Easy now and then (three picks in ten) any way at all, a dead branch it knows included.
+// flag when several lead on, Easy now and then (`aiStrayEasy`, three picks in ten) any way at all, a dead branch it knows included.
 // With energy (November 2026: the squares a turn may run), Normal and Hard plan round what is left of it this turn: a
 // way whose next unseen cell it can reach before the energy runs out (Normal, with none such: the nearest frontier, so
 // the runner stops nearer it for the next turn), Hard among them the way whose frontier lies nearest the flag; Easy
@@ -25,5 +25,5 @@ export function needs(pm, p) {
 }
 export function best(pm, me, rng, style, ctx) {
   const level = (ctx && ctx.level) || 'normal', left = mazeLeft(pm, me), fd = flagDist(pm, me);
-  return { move: mazePick(mazeSeen(pm, me), mazeGeo(pm), pm.at[me], rng, level, left), q: fd != null && fd <= left ? 1 : 0.12 };
+  return { move: mazePick(mazeSeen(pm, me), mazeGeo(pm), pm.at[me], rng, level, left, (Number(tune(pm).aiStrayEasy) || 0) / 100), q: fd != null && fd <= left ? 1 : 0.12 };
 }

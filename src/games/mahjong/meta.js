@@ -15,6 +15,8 @@ export const explainVars = v => {
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="6" height="14" rx="1.4"/><rect x="9" y="5" width="6" height="14" rx="1.4"/><rect x="15.5" y="5" width="6" height="14" rx="1.4"/><circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/></svg>';
 // Its settings (the admin's Games page; core/tune.js): read with mjCfg(mini) (rules.js). A hand of 4 wins with a set and
 // a pair, 7 with two sets and a pair, 10 with three. Tuned by tests/sim/mahjong.sim.js.
+// The computer's levels (core/tune.js levelTune): its mistakes are careless throws (ai.js worse): Easy 50%, Normal 25%, Hard never.
+export const AI_LEVELS = { miss: { easy: 50, normal: 25 } };
 export const TUNE = [
   { k: 'mode', label: 'Mode', def: 'shared', opts: ['shared', 'race'], group: 'Rules' },
   { k: 'hand', label: 'Tiles in a hand', def: 7, opts: [4, 7, 10], group: 'Rules' },

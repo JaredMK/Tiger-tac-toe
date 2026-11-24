@@ -19,7 +19,10 @@ export const TUNE = [
   { k: 'target', label: 'Points to win', def: 100, min: 15, max: 150, step: 5, group: 'Rules' },
   { k: 'rack', label: 'Tiles on a rack', def: 7, min: 4, max: 7, step: 1, group: 'Rules' },
   { k: 'bonus', label: 'All seven tiles in one word: extra points', def: 15, min: 0, max: 50, step: 1, group: 'Rules' },
-  { k: 'aiSee', label: 'Computer (Normal): share of the words it sees (%)', def: 3, min: 1, max: 100, step: 1, group: 'Computer' },
+  { k: 'aiSee', label: 'Normal: share of the words on the board it notices, playing the best of them (%)', def: 3, min: 1, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'aiSeeHard', label: 'Hard: share of the words on the board it notices, playing the best of them (%; 100: always the best word)', def: 7, min: 1, max: 100, step: 1, group: 'Computer: Hard' },
+  { k: 'aiSeeEasy', label: 'Easy: share of the words on the board it notices, playing the best of them (%)', def: 2, min: 1, max: 100, step: 1, group: 'Computer: Easy' },
+  { k: 'aiLenEasy', label: 'Easy: longest word it plays (letters; 0: any)', def: 5, min: 0, max: 7, step: 1, group: 'Computer: Easy' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><rect x="2.5" y="8" width="6" height="6" rx="1.2"/><rect x="9" y="8" width="6" height="6" rx="1.2"/><rect x="15.5" y="8" width="6" height="6" rx="1.2"/><path d="M5.5 10v2.5M12 10.2h-1.2v2.3H12M18.5 10v2.5" stroke-linecap="round"/></svg>';
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/wtiles): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

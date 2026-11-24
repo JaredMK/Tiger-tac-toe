@@ -67,9 +67,9 @@ test('faces: shared: one mystery face, every clue goes for both, the first to gu
   } finally { E.setTune('faces', null); }
 });
 
-test('faces: the computer guesses only faces its clues leave possible (Easy strays); Hard takes the guess that leaves fewest; a timeout plays nothing', () => {
+test('faces: the computer guesses only faces its clues leave possible (a slip strays: its mistake rate); Hard takes the guess that leaves fewest; a timeout plays nothing', () => {
   for (const level of ['normal', 'hard']) for (let g = 0; g < 25; g++) {
-    const rng = E.makeRng(level + g), m = E.newMini('faces', rng); let won = false, n = 0;
+    const rng = E.makeRng(level + g); E.setTune('faces', { aiMissNormal: 0 }); const m = E.newMini('faces', rng); E.setTune('faces', null); let won = false, n = 0;
     for (let k = 0; k < 16 && !won; k++) { const mv = E.localBest(E.publicMini(m), 'O', rng, {}, { level }).move; assert.ok(R.faceLeft(m, 'O').includes(mv)); won = E.applyMove(m, 'O', mv, rng).outcome === 'win'; n++; }
     assert.ok(won && n <= 5, `${level}: found in ${n}`);
   }

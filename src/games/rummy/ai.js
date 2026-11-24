@@ -47,16 +47,11 @@ export function needs(pm, p) {
   return miss ? RMY_AI.base + RMY_AI.perCard * miss : 1;
 }
 // needs: the turns a player still needs alone (Normal's play, tests/sim/rummy.sim.js: about 7.5 with one card missing,
-// 10 with two); easySlip: Easy's careless moves (%).
-export const RMY_AI = { base: 5, perCard: 2.5, easySlip: 30 };
+// 10 with two). Each level's careless moves are its mistake rate (aiMiss<Level>: Easy 70%, Normal 20% by default; `worse`).
+export const RMY_AI = { base: 5, perCard: 2.5 };
 export function best(pm, me, rng, style, ctx) {
   const cfg = rmyCfg(pm), lvl = ctx && ctx.level, held = pm.held && pm.held.by === me ? pm.held : null, h = pm.hand[me], top = (pm.pile || []).slice(-1)[0];
   const late = () => (ctx && typeof ctx.until === 'function' ? ctx.until() <= 0 : false);   // (no clock in the engine: without ctx.until, a fixed amount of work, all of it)
-  if (lvl === 'easy' && rng() * 100 < RMY_AI.easySlip) {          // Easy: now and then a careless take or throw (any card outside its melds)
-    if (!held) return { move: top && rng() < 0.5 ? 'pile' : 'deck', q: 0 };
-    const inMeld = new Set(rmyMelds(h).melds.flat()), loose = h.filter(c => !inMeld.has(c)), pick = loose.length ? loose : h;
-    return { move: { d: pick[randInt(rng, pick.length)] }, q: 0 };
-  }
   const pool = rmyUnseen(pm, me), need = cfg.melds;
   const val = lvl === 'hard' ? (h6 => worth(h6, pool, need)) : (h6 => (rmyMelds(h6).n >= need ? 1e6 : rmyShape(h6).score));
   if (held) {
@@ -75,4 +70,13 @@ export function best(pm, me, rng, style, ctx) {
   }
   const vd = n ? sum / n : now;
   return vp > vd ? { move: 'pile', q: 0 } : { move: 'deck', q: n ? wins / n : 0 };
+}
+// A slip (the level's mistake rate): a careless take (the pile or the deck, either) or a careless throw (any card outside
+// its melds).
+export function worse(pm, me, rng) {
+  const held = pm.held && pm.held.by === me, h = pm.hand && pm.hand[me], top = (pm.pile || []).slice(-1)[0];
+  if (!Array.isArray(h)) return null;
+  if (!held) return top && rng() < 0.5 ? 'pile' : 'deck';
+  const inMeld = new Set(rmyMelds(h).melds.flat()), loose = h.filter(c => !inMeld.has(c)), pick = loose.length ? loose : h;
+  return { d: pick[randInt(rng, pick.length)] };
 }

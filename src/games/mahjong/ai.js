@@ -5,11 +5,13 @@
 // 0 one tile away). Normal throws the tile that leaves the fewest steps, ties by how many kinds of tile would bring it a
 // step closer; it takes the pile's tile (Shared) when that wins or brings it a step closer. Hard counts the tiles left
 // unseen that would bring it closer (its outs, by copy), and takes the pile's tile when its hand after the best throw
-// beats the wall's average draw. Easy: Normal's play with a careless throw now and then (`easySlip` %).
+// beats the wall's average draw. Easy: Normal's play, never taking the pile's tile but to win. Each level's mistakes
+// (aiMiss<Level>: Easy 50%, Normal 25% by default) are a careless throw, a tile of its hand at random, or the wall's tile over the
+// pile's (`worse`).
 import { randInt } from '../../core/random.js';
 import { mjCfg, mjComplete, mjKinds, mjShanten, mjTiles } from './rules.js';
 
-export const MJ_AI = { easySlip: 35, base: 2.5, perStep: 2.2 };
+export const MJ_AI = { base: 2.5, perStep: 2.2 };
 const keyOf = (pm, p) => (pm.mode === 'shared' ? 'S' : p);
 // The tiles it has not seen, by copy.
 export function mjUnseen(pm, p) {
@@ -42,7 +44,6 @@ export function best(pm, me, rng, style, ctx) {
   const top = pm.mode === 'shared' ? ((pm.pile && pm.pile[keyOf(pm, me)]) || []).slice(-1)[0] : null;
   const hard = lvl === 'hard', pool = hard ? mjUnseen(pm, me) : new Map(mjKinds(c).map(t => [t, 1]));
   if (held) {
-    if (lvl === 'easy' && rng() * 100 < MJ_AI.easySlip) return { move: { d: h[randInt(rng, h.length)] }, q: 0 };
     const b = bestThrow(h, m, pool, !hard, rng);
     return { move: { d: b.d }, q: b.s === 0 ? 0.15 : 0 };
   }
@@ -62,4 +63,11 @@ export function best(pm, me, rng, style, ctx) {
     }
   }
   return { move: 'wall', q: 0 };
+}
+// A slip (the level's mistake rate): holding a tile, a careless throw (any tile of its hand); else the wall's tile.
+export function worse(pm, me, rng) {
+  const h = pm.hand && pm.hand[me];
+  if (!Array.isArray(h) || !h.length) return null;
+  if (pm.held && pm.held.by === me) return { d: h[randInt(rng, h.length)] };
+  return 'wall';
 }

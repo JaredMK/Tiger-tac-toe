@@ -11,6 +11,8 @@ export const explainVars = v => ({ clueText: CLUE[v.clue] || CLUE.which, boardTe
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M5 9c2-5 12-5 14 0"/><path d="M10.200 16.500c.300-1.600 2.700-2.400 2.800-4 .100-1.800-2.500-2.200-3-.500"/><path d="M12 19.200v.100" stroke-width="2.800"/></svg>';
 // Its settings (the admin's Games page; core/tune.js): how many faces are on the board, how many features tell them
 // apart, how many kinds each feature comes in, and a mystery face each or one for both.
+// The computer's levels (core/tune.js levelTune): its mistake rate is a guess at a face its clues rule out (ai.js worse): Easy 70%, Normal 30%, Hard never.
+export const AI_LEVELS = { miss: { easy: 70, normal: 30 } };
 export const TUNE = [
   { k: 'faces', label: 'Faces on the board', def: 16, min: 9, max: 20, step: 1, group: 'Board' },
   { k: 'traits', label: 'Features (hat, eyes, mouth, colour, collar)', def: 5, min: 3, max: 5, step: 1, group: 'Board' },

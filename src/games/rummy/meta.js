@@ -11,6 +11,8 @@ export const explainer = { name: 'Rummy Lite', play: 'Take the top card of the p
 export const goAgainText = { on: ' Made a new meld? Go again.', off: '' };
 // Its settings (the admin's Mini-game Settings; core/tune.js): read with rmyCfg(mini) (rules.js). `ranks`: the ranks in
 // the shared deck, from the ace up (13: a full deck); a smaller deck makes melds sooner. Tuned by tests/sim/rummy.sim.js.
+// The computer's levels (core/tune.js levelTune): its mistakes are careless takes and throws (ai.js worse): Easy 70%, Normal 20%, Hard never.
+export const AI_LEVELS = { miss: { easy: 70, normal: 20 } };
 export const TUNE = [
   AGAIN_TUNE,
   { k: 'hand', label: 'Cards in a hand', def: 6, min: 6, max: 8, step: 1, group: 'Rules' },
