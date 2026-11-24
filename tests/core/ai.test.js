@@ -56,7 +56,7 @@ test('levels: Hard takes a match-winning square and blocks one, like Normal; els
   const block = board([T('X', 'X', null, 'O', 'O'), 'ttt', 'ttt', 'ttt', 'ttt', T('O', 'O')], [null, null, null, 'O', 'O'], 'X');
   const mb = E.cpuMove(block, lcg(5), null, { level: 'hard' });
   assert.equal(mb.square, 5); assert.equal(mb.move, 2);
-  const st = board(['ttt', 'c4', 'hilo', 'pig', 'coins', 'hunt', 'bs', 'memory', 'snakes'], [], 'X');
+  E.setTune('c4', { aiMissHard: 0 }); const st = board(['ttt', 'c4', 'hilo', 'pig', 'coins', 'hunt', 'bs', 'memory', 'snakes'], [], 'X'); E.setTune('c4', null);   // (Four in a Row's Hard without its own mistakes: they cut the playouts short)
   E.localForget(); const h1 = E.cpuMove(st, lcg(11), null, { level: 'hard' });
   E.localForget(); const h2 = E.cpuMove(st, lcg(11), null, { level: 'hard' });
   assert.deepEqual([h1.square, h1.move, h1.mc], [h2.square, h2.move, h2.mc], 'the same rng, the same choice');
@@ -69,7 +69,7 @@ test('levels: Hard takes a match-winning square and blocks one, like Normal; els
   assert.ok(h3 && h3.mc.n > 0);
 });
 test('levels: Hard keeps to its time budget with a clock, and still answers', () => {
-  const st = board(['ttt', 'c4', 'hilo', 'pig', 'coins', 'hunt', 'bs', 'memory', 'snakes'], [], 'X');
+  E.setTune('c4', { aiMissHard: 0 }); const st = board(['ttt', 'c4', 'hilo', 'pig', 'coins', 'hunt', 'bs', 'memory', 'snakes'], [], 'X'); E.setTune('c4', null);   // (Four in a Row's Hard without its own mistakes: they cut the playouts short)
   const m = E.cpuMove(st, lcg(2), null, { level: 'hard', clock: () => performance.now(), budget: 30 });
   E.localForget();
   assert.ok(m && m.mc && m.mc.n < 9 * E.AI_DEFAULTS.hardSearch, `fewer playouts in 30 ms (${m.mc.n})`);   // (none at all when the squares' own searches used the budget: then the best-scored square, as Normal)
