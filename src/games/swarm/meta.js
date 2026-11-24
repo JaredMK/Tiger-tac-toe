@@ -24,10 +24,18 @@ export const TUNE = [
   { k: 'fireGap', label: 'Seconds between a saucer\'s bolts', def: 1.1, min: 0.5, max: 5, step: 0.1, group: 'Board' },
   { k: 'shotRate', label: 'Ship shots a second', def: 3, min: 1, max: 8, step: 0.5, group: 'Rules' },
   { k: 'maxSecs', label: 'Attempt time limit (s)', def: 40, min: 10, max: 50, step: 1, group: 'Timing' },
-  { k: 'aiReact0', label: 'Computer reaction, fastest (ms)', def: 260, min: 0, max: 800, step: 10, group: 'Computer' },
-  { k: 'aiReact1', label: 'Computer reaction, slowest (ms)', def: 360, min: 0, max: 800, step: 10, group: 'Computer' },
-  { k: 'aiAim', label: 'Computer aim spread (cm)', def: 60, min: 0, max: 300, step: 5, group: 'Computer' },
-  { k: 'aiLapse', label: 'Computer misses a threat (%)', def: 20, min: 0, max: 100, step: 1, group: 'Computer' },
+  { k: 'aiReact0', label: "Normal: reaction, fastest (ms)", def: 260, min: 0, max: 800, step: 10, group: 'Computer: Normal' },
+  { k: 'aiReact1', label: "Normal: reaction, slowest (ms)", def: 360, min: 0, max: 800, step: 10, group: 'Computer: Normal' },
+  { k: 'aiAim', label: "Normal: aim spread (cm)", def: 60, min: 0, max: 300, step: 5, group: 'Computer: Normal' },
+  { k: 'aiLapse', label: "Normal: misses a threat (%)", def: 20, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'aiReact0Easy', label: "Easy: reaction, fastest (ms)", def: 330, min: 0, max: 800, step: 10, group: 'Computer: Easy' },
+  { k: 'aiReact1Easy', label: "Easy: reaction, slowest (ms)", def: 450, min: 0, max: 800, step: 10, group: 'Computer: Easy' },
+  { k: 'aiAimEasy', label: "Easy: aim spread (cm)", def: 80, min: 0, max: 300, step: 5, group: 'Computer: Easy' },
+  { k: 'aiLapseEasy', label: "Easy: misses a threat (%)", def: 28, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
+  { k: 'aiReact0Hard', label: "Hard: reaction, fastest (ms)", def: 170, min: 0, max: 800, step: 10, group: 'Computer: Hard' },
+  { k: 'aiReact1Hard', label: "Hard: reaction, slowest (ms)", def: 255, min: 0, max: 800, step: 10, group: 'Computer: Hard' },
+  { k: 'aiAimHard', label: "Hard: aim spread (cm)", def: 38, min: 0, max: 300, step: 5, group: 'Computer: Hard' },
+  { k: 'aiLapseHard', label: "Hard: misses a threat (%)", def: 11, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
 ];
 export const realTime = true;   // its move plays back in real time (a run): never sped up past the replay's own speed (core/timer.js moveRate)
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/swarm): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

@@ -163,11 +163,11 @@ export function randomMove(mini, p, rng) {
 // Normal's hand sees the ball react seconds late, aims a little off (aim: the spread, in units) and now and then
 // misjudges a return altogether (lapse); Hard reacts faster, aims truer, never lapses, and tilts the paddle to send
 // the ball at the fullest column; Easy is slower and wider still.
+// A level's hand: its settings (Computer: Normal's aiReact0, aiAim...; Easy's and Hard's the same keys with the level after
+// them); Hard may also tilt the paddle to aim (aiSteerHard).
 export function brkHand(mini, level) {
-  const t = brkCfg(mini), react = [t.aiReact0 / 1000, t.aiReact1 / 1000], aim = t.aiAim / 100, lapse = t.aiLapse / 100;
-  if (level === 'hard') return { react: [react[0] * 0.4, react[1] * 0.4], aim: aim * 0.3, lapse: 0, steer: true };
-  if (level === 'easy') return { react: [react[0] * 1.5, react[1] * 1.5], aim: aim * 2, lapse: Math.min(1, lapse * 2.5), steer: false };
-  return { react, aim, lapse, steer: false };
+  const t0 = brkCfg(mini), sfx = level === 'hard' ? 'Hard' : level === 'easy' ? 'Easy' : '', t = k => (t0[k + sfx] != null ? t0[k + sfx] : t0[k]);
+  return { react: [t('aiReact0') / 1000, t('aiReact1') / 1000], aim: t('aiAim') / 100, lapse: Math.min(1, t('aiLapse') / 100), steer: level === 'hard' && t0.aiSteerHard !== 'off' };
 }
 // Where the ball comes down to the paddle's height, flying on as it is (the sides folding it back).
 export function brkLanding(sim) {

@@ -26,12 +26,16 @@ export const TUNE = [
   { k: 'speedUp', label: 'Faster per food eaten in the run (ms)', def: 5, min: 0, max: 30, step: 1, group: 'Timing' },
   { k: 'minTick', label: 'Fastest pace (ms per cell)', def: 100, min: 50, max: 300, step: 10, group: 'Timing' },
   { k: 'runCap', label: 'Attempt time limit (s)', def: 35, min: 10, max: 60, step: 5, group: 'Timing' },
-  { k: 'aiErr', label: 'Computer misses a turn, Normal (%)', def: 2, min: 0, max: 50, step: 0.5, group: 'Computer' },
-  { k: 'aiGrow', label: 'Normal: more per food of the run (%)', def: 0.5, min: 0, max: 30, step: 0.5, group: 'Computer' },
-  { k: 'aiSlip', label: 'Normal: loses track after a food (%)', def: 18, min: 0, max: 60, step: 0.5, group: 'Computer' },
-  { k: 'aiErrHard', label: 'Computer misses a turn, Hard (%)', def: 1, min: 0, max: 50, step: 0.5, group: 'Computer' },
-  { k: 'aiGrowHard', label: 'Hard: more per food of the run (%)', def: 0.5, min: 0, max: 30, step: 0.5, group: 'Computer' },
-  { k: 'aiSlipHard', label: 'Hard: loses track after a food (%)', def: 15, min: 0, max: 60, step: 0.5, group: 'Computer' },
+  { k: 'aiErr', label: 'Normal: misses a turn (%)', def: 2, min: 0, max: 50, step: 0.5, group: 'Computer: Normal' },
+  { k: 'aiGrow', label: 'Normal: misses more for every food of the run (%)', def: 0.5, min: 0, max: 30, step: 0.5, group: 'Computer: Normal' },
+  { k: 'aiSlip', label: 'Normal: loses track after a food (%)', def: 18, min: 0, max: 60, step: 0.5, group: 'Computer: Normal' },
+  { k: 'aiErrHard', label: 'Hard: misses a turn (%)', def: 0.5, min: 0, max: 50, step: 0.5, group: 'Computer: Hard' },
+  { k: 'aiGrowHard', label: 'Hard: misses more for every food of the run (%)', def: 0.5, min: 0, max: 30, step: 0.5, group: 'Computer: Hard' },
+  { k: 'aiSlipHard', label: 'Hard: loses track after a food (%)', def: 12, min: 0, max: 60, step: 0.5, group: 'Computer: Hard' },
+  { k: 'aiTriesHard', label: 'Hard: runs it tries before choosing the best (as its time allows)', def: 1, min: 1, max: 5, step: 1, group: 'Computer: Hard' },
+  { k: 'aiErrEasy', label: 'Easy: misses a turn (%)', def: 3, min: 0, max: 50, step: 0.5, group: 'Computer: Easy' },
+  { k: 'aiGrowEasy', label: 'Easy: misses more for every food of the run (%)', def: 0.5, min: 0, max: 30, step: 0.25, group: 'Computer: Easy' },
+  { k: 'aiSlipEasy', label: 'Easy: loses track after a food (%)', def: 24, min: 0, max: 60, step: 0.5, group: 'Computer: Easy' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/snake): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Swipe to steer and eat your colour. The wall, a bomb or your tail ends the run. Reach the target first.';

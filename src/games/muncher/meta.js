@@ -31,9 +31,16 @@ export const TUNE = [
   { k: 'grace', label: 'The first spook waits at the start (s)', def: 0, min: 0, max: 5, step: 0.5, group: 'Timing' },
   { k: 'release', label: 'Each next spook leaves after (s)', def: 0.5, min: 0, max: 3, step: 0.25, group: 'Timing' },
   { k: 'runSecs', label: 'Attempt time limit (s)', def: 7, min: 4, max: 40, step: 1, group: 'Timing' },
-  { k: 'aiReact', label: 'Computer decides every (ms)', def: 200, min: 50, max: 500, step: 10, group: 'Computer' },
-  { k: 'aiAvoid', label: 'Computer keeps this far from a spook (cells)', def: 2, min: 0, max: 5, step: 1, group: 'Computer' },
-  { k: 'aiLapse', label: 'Computer forgets the spooks (%)', def: 10, min: 0, max: 100, step: 1, group: 'Computer' },
+  { k: 'aiReact', label: 'Normal: decides every (ms)', def: 200, min: 50, max: 500, step: 10, group: 'Computer: Normal' },
+  { k: 'aiAvoid', label: 'Normal: keeps this far from a spook (cells)', def: 2, min: 0, max: 5, step: 1, group: 'Computer: Normal' },
+  { k: 'aiLapse', label: 'Normal: forgets the spooks (%)', def: 10, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'aiReactEasy', label: 'Easy: decides every (ms)', def: 300, min: 50, max: 500, step: 10, group: 'Computer: Easy' },
+  { k: 'aiAvoidEasy', label: 'Easy: keeps this far from a spook (cells)', def: 1, min: 0, max: 5, step: 1, group: 'Computer: Easy' },
+  { k: 'aiLapseEasy', label: 'Easy: forgets the spooks (%)', def: 25, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
+  { k: 'aiReactHard', label: 'Hard: decides every (ms; it also sees where a spook is heading)', def: 40, min: 30, max: 500, step: 10, group: 'Computer: Hard' },
+  { k: 'aiAvoidHard', label: 'Hard: keeps this far from a spook (cells)', def: 2, min: 0, max: 5, step: 1, group: 'Computer: Hard' },
+  { k: 'aiLapseHard', label: 'Hard: forgets the spooks (%)', def: 0, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
+  { k: 'aiTriesHard', label: 'Hard: runs it tries before choosing the best (as its time allows)', def: 6, min: 1, max: 8, step: 1, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/muncher): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Steer round the maze eating dots. Dodge the spooks, or eat them after a power pellet. Eat enough first.';

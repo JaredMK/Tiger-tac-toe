@@ -158,7 +158,7 @@ export function snakeRunMs(mini, p, m) {
 // ticks (SNAKE_LAPSE: no turns at all), which often ends the run, as a person's run so often ends.
 export function snakeHand(mini, level) {
   const t = tune(mini), hard = level === 'hard', easy = level === 'easy';
-  return { err: Math.min(1, (hard ? t.aiErrHard : easy ? t.aiErr * 2 : t.aiErr) / 100), grow: Math.min(1, (hard ? t.aiGrowHard : easy ? t.aiGrow * 1.5 : t.aiGrow) / 100), slip: Math.min(1, (hard ? t.aiSlipHard : easy ? t.aiSlip * 1.5 : t.aiSlip) / 100), safe: hard };
+  return { err: Math.min(1, (hard ? t.aiErrHard : easy ? t.aiErrEasy : t.aiErr) / 100), grow: Math.min(1, (hard ? t.aiGrowHard : easy ? t.aiGrowEasy : t.aiGrow) / 100), slip: Math.min(1, (hard ? t.aiSlipHard : easy ? t.aiSlipEasy : t.aiSlip) / 100), safe: hard };
 }
 // The chance the hand misses a turn this tick: its base, more for every food of the run (a longer, faster snake is harder to steer, as a person finds).
 export const snakeErr = (sim, hand) => Math.min(1, (hand.err + hand.grow * sim.eaten) * (sim.cfg.tick / snakeTickMs(sim)));

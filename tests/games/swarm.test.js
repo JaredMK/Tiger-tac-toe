@@ -116,7 +116,8 @@ test('star swarm: its settings (TUNE) are dealt into the square and read by the 
   assert.deepEqual(m.tune, { target: 12, maxSecs: 10, aiReact0: 100, aiReact1: 100, aiAim: 0, aiLapse: 0 });
   assert.equal(R.swarmGoal(m), 12);
   assert.deepEqual(R.swarmHand(m, 'normal'), { react: [0.1, 0.1], aim: 0, lapse: 0, look: R.SW_HAND.normal.look, sway: false });
-  assert.deepEqual(R.swarmHand(m, 'hard'), R.SW_HAND.hard);
+  assert.deepEqual(R.swarmHand(m, 'hard'), { react: [0.17, 0.255], aim: 0.38, lapse: 0.11, look: R.SW_HAND.hard.look, sway: true }, 'Hard: its own settings, reading the sway');
+  assert.deepEqual(R.swarmHand(m, 'easy'), { react: [0.33, 0.45], aim: 0.8, lapse: 0.28, look: R.SW_HAND.normal.look, sway: false }, 'Easy: its own settings');
   const r = R.swarmAi(m, 'X', E.makeRng('ai'), 'normal');
   assert.ok(r.move.steps <= 10 * 120, 'the run keeps to the square\'s cap');
   assert.equal(E.applyMove(m, 'X', r.move).ok, true);

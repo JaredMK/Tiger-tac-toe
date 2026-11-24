@@ -399,10 +399,14 @@ export const MUN_HANDS = {
   normal: { kind: 'plan', react: 200, avoid: 2, lapse: 0.2, predict: false, explore: 0, pellet: 2, hunt: 4 },
   hard: { kind: 'plan', react: 33, avoid: 2, lapse: 0, predict: true, explore: 0.1, pellet: 3, hunt: 6 },
 };
+// A level's hand: Normal's from aiReact, aiAvoid, aiLapse (munCfg); Easy's and Hard's from the same keys with the level after
+// them (Computer: Easy / Computer: Hard); Hard also looks where a spook is heading, hunts and takes pellets further off.
 export function munHand(mini, level) {
   const cfg = munCfg(mini);
-  if (level === 'hard') return MUN_HANDS.hard;
-  return Object.assign({}, MUN_HANDS.normal, { react: cfg.aiReact, avoid: cfg.aiAvoid, lapse: cfg.aiLapse });
+  if (level !== 'hard' && level !== 'easy') return Object.assign({}, MUN_HANDS.normal, { react: cfg.aiReact, avoid: cfg.aiAvoid, lapse: cfg.aiLapse });
+  const t = tune(mini), sfx = level === 'hard' ? 'Hard' : 'Easy', base = level === 'hard' ? MUN_HANDS.hard : MUN_HANDS.normal;
+  const n = (v, lo, hi, d) => { const x = Number(v); return Number.isFinite(x) ? Math.min(hi, Math.max(lo, x)) : d; };
+  return Object.assign({}, base, { react: n(t['aiReact' + sfx], 30, 1000, base.react), avoid: Math.round(n(t['aiAvoid' + sfx], 0, 6, base.avoid)), lapse: n(t['aiLapse' + sfx], 0, 100, base.lapse * 100) / 100 });
 }
 const danger_ = (sim, hand) => {
   const L = sim.L, danger = new Uint8Array(L.w * L.h);
@@ -475,6 +479,7 @@ export function munPilot(mini, p, rng, hand) {
   return { move: munMove(sim), sim };
 }
 // Hard: a few runs tried, the best kept (within the time it has, when it has a clock).
+export const MUN_UNSTICK = 12;
 export function munBestOf(mini, p, rng, hand, tries, until) {
   let best = null;
   const cfg = munCfg(mini), worth = r => r.move.ate + r.move.gh * cfg.ghostDots;
@@ -482,6 +487,15 @@ export function munBestOf(mini, p, rng, hand, tries, until) {
     if (t > 0 && typeof until === 'function' && until() <= 0) break;
     const r = munPilot(mini, p, makeRng('munai:' + rng()), hand);
     if (!best || worth(r) > worth(best) || (worth(r) === worth(best) && r.move.steps < best.move.steps)) best = r;
+  }
+  // A run that would gain nothing (caught on the way to the first dot): the spooks leave the pen the same way every run, so
+  // the same plan would end the same way for ever (the audit's squares that never ended). As a player would, it tries
+  // another way: a few runs with a wandering choice of dot (or any way at all), the first that gains anything or gets clear.
+  // A run that survives to the time limit gains nothing either, but the next one goes on from where it stopped: as good.
+  for (let t = 0; t < MUN_UNSTICK && best && worth(best) === 0 && best.move.end !== 'time'; t++) {
+    const h = t % 2 ? MUN_HANDS.random : Object.assign({}, hand, { explore: 0.5, lapse: Math.max(hand.lapse || 0, 0.2) });
+    const r = munPilot(mini, p, makeRng('munaix:' + t + ':' + rng()), h);
+    if (worth(r) > 0 || r.move.end === 'time') best = r;
   }
   return best;
 }

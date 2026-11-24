@@ -20,10 +20,19 @@ export const TUNE = [
   { k: 'speedUp', label: 'Ball speeds up (% per second, to 1.6x)', def: 3, min: 0, max: 10, step: 0.5, group: 'Rules' },
   { k: 'paddle', label: 'Paddle width (units, of 10)', def: 2.2, min: 1, max: 5, step: 0.1, group: 'Rules' },
   { k: 'runSecs', label: 'Attempt time limit (s)', def: 25, min: 10, max: 55, step: 1, group: 'Timing' },
-  { k: 'aiReact0', label: 'Computer reaction, fastest (ms)', def: 180, min: 0, max: 800, step: 10, group: 'Computer' },
-  { k: 'aiReact1', label: 'Computer reaction, slowest (ms)', def: 300, min: 0, max: 800, step: 10, group: 'Computer' },
-  { k: 'aiAim', label: 'Computer aim spread (cm)', def: 55, min: 0, max: 300, step: 5, group: 'Computer' },
-  { k: 'aiLapse', label: 'Computer misses a return (%)', def: 13, min: 0, max: 100, step: 1, group: 'Computer' },
+  { k: 'aiReact0', label: "Normal: reaction, fastest (ms)", def: 180, min: 0, max: 800, step: 10, group: 'Computer: Normal' },
+  { k: 'aiReact1', label: "Normal: reaction, slowest (ms)", def: 300, min: 0, max: 800, step: 10, group: 'Computer: Normal' },
+  { k: 'aiAim', label: "Normal: aim spread (cm)", def: 55, min: 0, max: 300, step: 5, group: 'Computer: Normal' },
+  { k: 'aiLapse', label: "Normal: misses a return (%)", def: 13, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'aiReact0Easy', label: "Easy: reaction, fastest (ms)", def: 220, min: 0, max: 800, step: 10, group: 'Computer: Easy' },
+  { k: 'aiReact1Easy', label: "Easy: reaction, slowest (ms)", def: 360, min: 0, max: 800, step: 10, group: 'Computer: Easy' },
+  { k: 'aiAimEasy', label: "Easy: aim spread (cm)", def: 70, min: 0, max: 300, step: 5, group: 'Computer: Easy' },
+  { k: 'aiLapseEasy', label: "Easy: misses a return (%)", def: 17, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
+  { k: 'aiReact0Hard', label: "Hard: reaction, fastest (ms)", def: 150, min: 0, max: 800, step: 10, group: 'Computer: Hard' },
+  { k: 'aiReact1Hard', label: "Hard: reaction, slowest (ms)", def: 250, min: 0, max: 800, step: 10, group: 'Computer: Hard' },
+  { k: 'aiAimHard', label: "Hard: aim spread (cm)", def: 45, min: 0, max: 300, step: 5, group: 'Computer: Hard' },
+  { k: 'aiSteerHard', label: 'Hard: tilts the paddle to send the ball at the fullest column', def: 'on', opts: ['off', 'on'], group: 'Computer: Hard' },
+  { k: 'aiLapseHard', label: "Hard: misses a return (%)", def: 10, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/bricks): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Bounce the ball into your wall of bricks. Broken bricks stay broken. Clear your wall first.';

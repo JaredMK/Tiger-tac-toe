@@ -136,10 +136,12 @@ export const swarmMs = s => Math.min(swarmRaw(s), SW.replayMax);
 // threats and sits under the lowest target it can, and what it decides takes react seconds to reach the
 // finger. Normal's hand is the square's settings (TUNE); Hard's is quicker, surer and looks further ahead.
 export const SW_HAND = { normal: { react: [0.2, 0.3], aim: 0.4, lapse: 0.15, look: 0.55, sway: false }, hard: { react: [0.06, 0.1], aim: 0.08, lapse: 0, look: 0.8, sway: true } };   // sway: it reads a drifter's sway and meets it where it will be
+// A level's hand: its settings (aiReact0, aiAim... for Normal; the same with Easy or Hard after them for those levels);
+// Hard also looks further ahead and reads a drifter's sway (SW_HAND.hard).
 export function swarmHand(mini, level) {
-  if (level === 'hard') return SW_HAND.hard;
-  const t = tune(mini);
-  return { react: [t.aiReact0 / 1000, t.aiReact1 / 1000], aim: t.aiAim / 100, lapse: t.aiLapse / 100, look: SW_HAND.normal.look, sway: false };
+  const t0 = tune(mini), sfx = level === 'hard' ? 'Hard' : level === 'easy' ? 'Easy' : '', t = k => (t0[k + sfx] != null ? t0[k + sfx] : t0[k]);
+  const base = level === 'hard' ? SW_HAND.hard : SW_HAND.normal;
+  return { react: [t('aiReact0') / 1000, t('aiReact1') / 1000], aim: t('aiAim') / 100, lapse: t('aiLapse') / 100, look: base.look, sway: base.sway };
 }
 const driftX = (f, t) => swClampX(f.cx + f.amp * tri((t - f.T) / f.P + f.ph));   // where a drifter is at time t
 export function swarmPlan(sim, hand, rng, memo) {
