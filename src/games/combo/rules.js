@@ -15,7 +15,7 @@ import { goAgain, tune } from '../../core/tune.js';
 // kind; four of a kind is also three), a large straight is also a small one; a full house is three of one value
 // and two of another (five alike is not a full house). A timeout mid-move claims nothing (the move simply ends:
 // the next player's move, or this player's next, starts afresh: `cur` is the mover's move under way).
-export const COMBO = { kinds: ['3k', '4k', 'fh', 'ss', 'ls', '5k'], dice: 5, roll: 700 + DIE_MORE, land: 520 + DIE_MORE, stag: 45, sort: 280, hold: 450, claim: 900, stamp: 170 };   // ms: roll, a roll's result on show (its words); land, its last die landing (each one before it `stag` sooner); hold, the dice on show after; claim, a claim's whole time; stamp, from the mark's start to its hit on the card
+export const COMBO = { kinds: ['3k', '4k', 'fh', 'ss', 'ls', '5k'], dice: 5, roll: 700 + DIE_MORE, land: 520 + DIE_MORE, stag: 45, gather: 260, sort: 280, hold: 450, claim: 900, stamp: 170, auto: 600 };   // ms: roll, a roll's result on show (its words); land, its last die landing (each one before it `stag` sooner); gather, a re-roll's held dice sliding to the left first; sort, the dice sliding into order after; hold, the dice on show after; claim, a claim's whole time; stamp, from the mark's start to its hit on the card; auto, the one combo a last roll leaves lit before it claims itself (the view)
 export const COMBO_NAMES = { '3k': 'Three of a kind', '4k': 'Four of a kind', fh: 'Full house', ss: 'Small straight', ls: 'Large straight', '5k': 'Five alike' };
 export const COMBO_SHORT = { '3k': '3 alike', '4k': '4 alike', fh: 'Full house', ss: 'Sm straight', ls: 'Lg straight', '5k': '5 alike' };
 export const comboCfg = mini => tune(mini);
@@ -90,13 +90,24 @@ export function randomMove(mini, p, rng, from, empties) {
 export function moveFlash(m, p, range, bjFrom, mini, flash) {
   flash.combo = Object.assign(JSON.parse(JSON.stringify(mini.last)), { claimed: { X: mini.claimed.X.slice(), O: mini.claimed.O.slice() } });
 }
-// The move's moments: a roll throws the dice not held (the last landing at COMBO.land; `land`: its result on show), then
-// holds a moment; a claim rings the dice that make it, then stamps the card (`mark`: the stamp starts; `hit`: it lands).
+// A re-roll's gather: where each die (by its place before the roll, 0 to 4) stands while the others roll: the held ones
+// at the left in the order they lay, the ones thrown again closed up to their right.
+export function comboGather(held) {
+  const k = [0, 1, 2, 3, 4], at = [];
+  k.filter(i => held && held[i]).concat(k.filter(i => !(held && held[i]))).forEach((i, p) => { at[i] = p; });
+  return at;
+}
+// The move's moments: a re-roll first slides its held dice to the left (`gather`, none when they are there already),
+// then throws the dice not held into the right part (from `toss`, the last landing at toss + COMBO.land), then slides all
+// five into order (from `sortAt`; `land`: its result on show), then holds a moment; a claim rings the dice that make it,
+// then stamps the card (`mark`: the stamp starts; `hit`: it lands).
 export function comboTimes(c) {
   if (!c || c.kind === 'end') return { land: 0, end: 300 };
   if (c.kind === 'claim') return { land: 0, mark: 120, hit: 120 + COMBO.stamp, end: COMBO.claim };
-  const land = c.order ? Math.max(COMBO.roll, COMBO.land + COMBO.sort) : COMBO.roll;   // (the dice land, then slide into order, smallest first: COMBO.sort after the last lands)
-  return { land, end: land + (c.none ? COMBO.claim : COMBO.hold) };
+  if (!c.order) return { gather: 0, toss: 0, sortAt: COMBO.land, land: COMBO.roll, end: COMBO.roll + (c.none ? COMBO.claim : COMBO.hold) };   // (a flash from before the sort)
+  const g = comboGather(c.held), G = g.some((p, i) => p !== i) ? COMBO.gather : 0;
+  const land = G + Math.max(COMBO.roll, COMBO.land + COMBO.sort);
+  return { gather: G, toss: G, sortAt: G + COMBO.land, land, end: land + (c.none ? COMBO.claim : COMBO.hold) };
 }
 export function flashMs(f, winLen, won) { return comboTimes(f.combo).end + (won ? 600 : 0); }
 // A timeout with a move under way (core/board.js timeoutClose): it ends as it stands, nothing claimed ('auto'), so the

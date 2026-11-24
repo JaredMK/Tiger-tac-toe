@@ -1,12 +1,17 @@
 // Dice Combo: the screen, the miniature, the move's words and sounds, and the inputs (November 2026).
 import { tune } from '../../core/tune.js';
-import { COMBO, COMBO_NAMES, COMBO_SHORT, comboCounts, comboOpen, comboTimes } from './rules.js';
+import { COMBO, COMBO_NAMES, COMBO_SHORT, comboCounts, comboGather, comboOpen, comboTimes } from './rules.js';
 import { N, REDUCED, mv, state, waitLine } from '../../ui/app.js';
 import { DIE_BOUNCE, die3d } from '../../ui/dice.js';
+import { fxAttr } from '../../ui/fx.js';
 import { arcTally, lateAt, pips } from '../../ui/progress.js';
 import { markSvgG } from '../../ui/thumbs.js';
 import { render } from '../../ui/render.js';
+import { repActive } from '../../ui/replay.js';
+import { attemptMove } from '../../net/moves.js';
+import { blocked } from '../../net/room.js';
 import { SND } from '../../audio/sound.js';
+import { dur } from '../../core/timer.js';
 
 // The table: both players' combo cards side by side (a band in the player's colour with their mark, then the six
 // combos, each a little picture of its dice over its name; a claimed one filled in its player's colour and stamped
@@ -48,17 +53,18 @@ export function comboDice(dice, kind) {
 }
 // When die i of a roll lands (ms into the move): the last one thrown at COMBO.land, each one before it a little sooner.
 export const comboLand = (i, held) => { const thrown = [0, 1, 2, 3, 4].filter(j => !held[j]), k = thrown.indexOf(i); return k < 0 ? 0 : COMBO.land - (thrown.length - 1 - k) * COMBO.stag; };
-function card(mini, p, o, open, tap, f, tim) {
+function card(mini, p, o, open, tap, f, tim, auto) {
   const mine = mini.claimed[p] || [], newest = mine[mine.length - 1];
   const stampNow = f && f.kind === 'claim' && f.by === p ? f.combo : null;
-  const litAt = f && f.kind === 'roll' ? COMBO.land + (f.order ? COMBO.sort : 0) + 40 : null;      // (a roll playing: the combos it makes light up as its last die lands, never before)
+  const litAt = f && f.kind === 'roll' ? (f.order ? tim.sortAt + COMBO.sort : COMBO.land) + 40 : null;      // (a roll playing: the combos it makes light up once its dice are in order, never before)
   const cells = COMBO.kinds.map(k => {
     const got = mine.includes(k), can = open.includes(k) && !got, stamp = stampNow === k;
-    const cls = `cmbc${got ? ' got ' + p : ''}${got && k === newest ? ' new' : ''}${can ? ' can' : ''}${can && litAt != null ? ' soon' : ''}${stamp ? ' stamp' : ''}`;
+    const isAuto = !!(auto && can && auto.k === k);
+    const cls = `cmbc${got ? ' got ' + p : ''}${got && k === newest ? ' new' : ''}${can ? ' can' : ''}${can && litAt != null ? ' soon' : ''}${stamp ? ' stamp' : ''}${isAuto ? ' auto' : ''}`;
     const inner = `${got ? markSvg(p) : comboPic(k)}<span class="cmbn">${COMBO_SHORT[k]}</span>`;
     const label = `${COMBO_NAMES[k]}${got ? ', claimed' : can ? ': claim it' : ''}`;
     const st = stamp ? ` style="--t:${tim.mark}ms"` : can && litAt != null ? ` style="--t:${litAt}ms"` : '';
-    return can && tap ? `<button class="${cls}" data-act="move" ${mv('c:' + k)} aria-label="${label}">${inner}</button>`
+    return can && tap ? `<button class="${cls}" data-act="move" ${mv('c:' + k)}${isAuto ? fxAttr(Math.round(auto.at)) : ''} aria-label="${label}">${inner}</button>`
       : `<span class="${cls}"${st} aria-label="${label}">${inner}</span>`;
   }).join('');
   const cheer = o.won && stampNow;                                   // (the square won: the card hops once its last stamp is down)
@@ -79,15 +85,27 @@ function comboTable(mini, a, o) {
   const made = seen && seen.kind === 'claim' && !cur ? comboDice(seen.dice, seen.combo) : [];   // the dice that made the combo just claimed
   const dull = !!(seen && !cur && (seen.none || seen.kind === 'end'));                           // a move that ended with nothing: its dice greyed
   const pc = f ? f.by : turn;
-  const sorting = rolling && Array.isArray(f.order) && !REDUCED;   // a roll on show: each die thrown in its old place, then sliding to its sorted one
+  // A roll on show (December 2026): a re-roll first slides its held dice to the left in the order they lay and closes the
+  // others up to their right (tim.gather), throws those in from the right (from tim.toss), then slides all five into
+  // order, smallest first (from tim.sortAt). Each die is one element from start to end: its place in the markup is where
+  // it ends up; .cmbs carries it from where it was rolled to there (the sort), .cmbg from where it lay before the move to
+  // where it was rolled (the gather), and the held pad is .cmbg's own, so it travels with its die and never sits under a
+  // die being thrown. A die's resting tilt is by its number (die3d's v), so nothing re-tilts when the move is over.
+  // (Reduced motion: no wrapper moves, each die shown where it ends up.)
+  const order = rolling && Array.isArray(f.order) ? f.order : null;
+  const gat = order ? comboGather(f.held) : null, moving = !!order && !REDUCED;
+  const reroll = rolling && f.held.some(Boolean);
   const die = i => {
-    const v = dice ? dice[i] : null, cls = ['cmbd'], st = [], ri = sorting ? f.order[i] : i;
+    const v = dice ? dice[i] : null, cls = ['cmbd'], st = [], ri = order ? order[i] : i;
     if (held[ri]) cls.push('held');
     if (made.includes(i)) { cls.push('mk'); if (f) { cls.push('late'); st.push(`--tk:${made.indexOf(i) * 45}ms`); } }
     if (dull && v) { cls.push('dull'); if (f) { cls.push('late'); st.push(`--tz:${tim.land}ms`); } }
-    const d3 = die3d(v, { roll: rolling && !held[ri] ? comboLand(ri, held) : 0, v: ri });
-    const body = sorting && ri !== i ? `<span class="cmbs" style="--dx:${ri - i};--tq:${COMBO.land}ms">${d3}</span>` : d3;
-    const lab = v ? `Die ${i + 1}: ${v}${held[i] ? ', held' : ''}` : `Die ${i + 1}`;
+    const thrown = rolling && !held[ri];
+    const d3 = die3d(v, { roll: thrown ? comboLand(ri, held) : 0, t: thrown ? tim.toss : 0, v: v || 0 });
+    const s1 = gat ? gat[ri] : i;
+    const g = `<span class="cmbg${moving && tim.gather && ri !== s1 ? ' mv' : ''}${thrown && reroll ? ' fr' : ''}"${moving && tim.gather && ri !== s1 ? ` style="--gx:${ri - s1};--gd:${tim.gather}ms"` : ''}>${d3}</span>`;
+    const body = moving && s1 !== i ? `<span class="cmbs mv" style="--dx:${s1 - i};--tq:${tim.sortAt}ms">${g}</span>` : `<span class="cmbs">${g}</span>`;
+    const lab = v ? `Die ${i + 1}: ${v}${held[ri] ? ', held' : ''}` : `Die ${i + 1}`;
     return canHold ? `<button class="${cls.join(' ')}" data-act="cmbhold" data-k="${i}" aria-pressed="${!!held[i]}" aria-label="${lab}">${body}</button>`
       : `<span class="${cls.join(' ')}"${st.length ? ` style="${st.join(';')}"` : ''} role="img" aria-label="${lab}">${body}</span>`;
   };
@@ -104,9 +122,39 @@ function comboTable(mini, a, o) {
   const nRoll = rolling && f.by === turn ? f.held.filter(h => !h).length : cur && cur.rolls ? held.filter(h => !h).length : 5;   // (a roll playing: the button reads as it did when pressed; between rolls it counts the dice not held, live)
   const btn = o.view ? '' : `<div class="cbtns one"><button class="big ${turn}" data-act="move" ${mv(rollM)}${canRoll ? '' : ' disabled'}>Roll ${nRoll} ${nRoll === 1 ? 'die' : 'dice'}</button></div>`;
   const tray = `<div class="cmbtray${dice ? '' : ' idle'}${canHold ? ' pick' : ''}" aria-label="The dice"><div class="cmbdice">${[0, 1, 2, 3, 4].map(die).join('')}</div></div>`;
-  const C = p => card(mini, p, o, turn === p ? open : [], mover && !f, f, tim);
+  const mine = state.online ? state.online.me === turn : state.cpu !== turn;   // (this phone's own side: never the computer's)
+  const autoK = mover && mine && cur && !f && cur.rolls >= R && open.length === 1 ? open[0] : null;   // (a last roll that leaves one combo: it claims itself after a beat)
+  const auto = autoK ? armAuto(o.zoom, mini, cur, autoK) : null;
+  const C = p => card(mini, p, o, turn === p ? open : [], mover && !f, f, tim, turn === p ? auto : null);
   return `<div class="g-arc g-cmb pc-${pc}"><div class="ctals">${tal('X')}${tal('O')}</div><div class="cmb"><div class="cmbcards">${C('X')}${C('O')}</div>${tray}${res}</div>${btn}</div>`;
 }
+// The last roll of a turn leaves exactly one combo to claim (December 2026): it lights up (.cmbc.auto, a beat of
+// COMBO.auto) and then claims itself, a move sent from this phone as a tap would send it. Armed once for the roll it
+// follows (its key: the square, the mover, the roll's number and dice), on this phone's own turn alone (never the
+// computer's, never the other side's online, never a replay); the claim goes only if the square is still that roll's,
+// in front, with nothing playing, so a timeout, a tap on the combo, leaving or a second render never sends it twice.
+let auto = null;
+const autoKey = (sq, cur, k) => [sq, cur.by, cur.rolls, cur.dice.join(''), k].join('|');
+function armAuto(sq, mini, cur, k) {
+  const key = autoKey(sq, cur, k);
+  if (auto && auto.key === key) return auto;
+  const a = auto = { key, k, sq, by: cur.by, at: performance.now(), sent: false };
+  SND.play('marker');
+  setTimeout(() => fireAuto(a), dur(COMBO.auto));
+  return a;
+}
+export function fireAuto(a) {
+  if (!a || auto !== a || a.sent) return false;
+  const sq = state.squares && state.squares[a.sq], m = sq && sq.mini;
+  if (state.screen !== 'mini' || state.zoom !== a.sq || !m || m.type !== 'combo' || !m.cur || autoKey(a.sq, m.cur, a.k) !== a.key) return false;
+  if (state.turn !== a.by || state.winner || state.flash || repActive() || blocked()) return false;
+  if (state.online ? state.online.me !== a.by : state.cpu === a.by) return false;
+  a.sent = true;
+  attemptMove('c:' + a.k);
+  render();
+  return true;
+}
+export const autoArmed = () => auto;
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   g = comboTable(mini, a, { view, locked: locked || (!!f && !view), turn, zoom: state.zoom, done: a ? null : d, won: !!fresh }); return g;
 }
@@ -170,12 +218,13 @@ export function sounds(f, add, won, mini, last) {
   const c = f.combo;
   if (!c) return;
   if (c.kind === 'roll') {
-    const thrown = [0, 1, 2, 3, 4].filter(i => !c.held[i]);
-    add('rattle', 0);
-    add('diceTap', Math.round(comboLand(thrown[0], c.held) * DIE_BOUNCE));
-    if (thrown.length > 2) add('diceTap', comboLand(thrown[Math.floor(thrown.length / 2) - 1], c.held));
-    add('thunk', COMBO.land);
-    if (c.none) add('thud', comboTimes(c).land + 100);
+    const thrown = [0, 1, 2, 3, 4].filter(i => !c.held[i]), t = comboTimes(c), g = t.toss || 0;
+    if (t.gather) add('pieceSlide', 0);                              // (the held dice sliding to the left first)
+    add('rattle', g);
+    add('diceTap', g + Math.round(comboLand(thrown[0], c.held) * DIE_BOUNCE));
+    if (thrown.length > 2) add('diceTap', g + comboLand(thrown[Math.floor(thrown.length / 2) - 1], c.held));
+    add('thunk', g + COMBO.land);
+    if (c.none) add('thud', t.land + 100);
     return;
   }
   if (c.kind === 'claim') { const t = comboTimes(c); add('stamp', t.hit - 30); add('ding', t.hit + 120); }

@@ -5267,6 +5267,8 @@ main.scr.mini:has(.brkw.run) .back { visibility: hidden; pointer-events: none; }
 .cmbc.can { background: #fff7c2; box-shadow: 0 0 0 3px var(--green) inset; animation: cmbglow 1.2s ease-in-out infinite alternate; }
 button.cmbc.can { cursor: pointer; } button.cmbc.can:active { transform: translateY(2px) scale(.97); }
 .cmbc.can.soon { animation: cmbsoon .24s var(--t, 0ms) cubic-bezier(.3, 1.5, .5, 1) both; }   /* a roll playing: what it makes lights up as its last die lands */
+.cmbc.can.auto { z-index: 1; background: #ffe680; box-shadow: 0 0 0 3px var(--gold) inset, 0 0 0 3px var(--ink); animation: cmbauto 600ms cubic-bezier(.3, 1.5, .5, 1) both; }   /* a last roll's one combo, lit for a beat before it claims itself (COMBO.auto, the view's armAuto) */
+@keyframes cmbauto { 0% { transform: none; background: #fff7c2; box-shadow: 0 0 0 3px var(--green) inset, 0 0 0 0 var(--ink); } 30% { transform: scale(1.08); } 60% { transform: scale(.98); } 100% { transform: none; } }
 @keyframes cmbglow { from { box-shadow: 0 0 0 2px var(--green) inset; } to { box-shadow: 0 0 0 4px var(--green) inset; } }
 @keyframes cmbsoon { 0% { background: var(--paper); box-shadow: 0 0 0 0 var(--green) inset; transform: none; } 1% { background: #fff7c2; transform: scale(.94); } 100% { transform: none; } }
 /* a claim: the mark comes down on the cell and hits (the cell takes its colour and gives a little) */
@@ -5281,14 +5283,17 @@ button.cmbc.can { cursor: pointer; } button.cmbc.can:active { transform: transla
 .cmbtray { --ds: clamp(36px, min(14cqw, 11cqh), 58px); position: relative; flex: none; box-sizing: border-box; padding: calc(var(--ds) * .36) 4px calc(var(--ds) * .22); border: 3px solid var(--ink); border-radius: 18px; background: radial-gradient(circle at 50% 40%, #58a05a, #2f7046); box-shadow: inset 0 5px 0 rgba(22, 18, 16, .25); overflow: hidden; }
 .cmbdice { display: flex; justify-content: center; }
 .cmbd { position: relative; flex: 1 1 0; min-width: 0; max-width: 74px; height: calc(var(--ds) + 16px); margin: 0; padding: 0; display: grid; place-items: center; border: 0; background: none; line-height: 0; touch-action: manipulation; }
-.cmbs { display: grid; place-items: center; width: 100%; height: 100%; animation: cmbsort 280ms var(--tq, 0ms) cubic-bezier(.4, 0, .2, 1) both; }   /* a die just thrown sliding from where it landed to its sorted place (COMBO.sort) */
+.cmbs, .cmbg { position: relative; display: grid; place-items: center; width: 100%; height: 100%; }
+.cmbs.mv { animation: cmbsort 280ms var(--tq, 0ms) cubic-bezier(.4, 0, .2, 1) both; }   /* a roll: each die sliding from where it was rolled to its sorted place (COMBO.sort) */
+.cmbg.mv { animation: cmbsort var(--gd, 260ms) 0ms cubic-bezier(.4, 0, .2, 1) both; --dx: var(--gx); }   /* a re-roll first: from where it lay to where it is rolled (the held at the left, COMBO.gather); the held pad is this element's own, so it goes with its die */
 @keyframes cmbsort { from { translate: calc(var(--dx) * 100%) 0; } }
+.cmbd .cmbg.fr .d3 { --fx: 160%; }   /* a re-roll's dice thrown in from the right, never across the held ones */
 .cmbd .d3 { --ds: inherit; transition: transform .16s cubic-bezier(.4, 0, .2, 1); }
 button.cmbd { cursor: pointer; } button.cmbd:active .d3 { transform: scale(.93); }
 .cmbtray.idle .cmbd { opacity: .5; }
-.cmbd::before { content: ''; position: absolute; left: 50%; top: 50%; width: calc(var(--ds) + 16px); height: calc(var(--ds) + 18px); margin: calc(var(--ds) * -.5 - 13px) 0 0 calc(var(--ds) * -.5 - 8px); border-radius: 24%; background: var(--pc); border: 2.5px solid var(--ink); box-shadow: 0 3px 0 rgba(22, 18, 16, .4); opacity: 0; transform: translateY(6px) scale(.8); transition: opacity .12s, transform .16s cubic-bezier(.3, 1.5, .5, 1); pointer-events: none; }   /* a held die: lifted onto a pad in the mover's colour */
-.cmbtray.pick .cmbd:not(.held)::before { opacity: 1; transform: none; background: rgba(255, 255, 255, .07); border: 2px dashed rgba(255, 248, 232, .42); box-shadow: none; }   /* between rolls: a place under each die it can be held on */
-.cmbd.held::before { opacity: 1; transform: none; }
+.cmbg::before { content: ''; position: absolute; left: 50%; top: 50%; width: calc(var(--ds) + 16px); height: calc(var(--ds) + 18px); margin: calc(var(--ds) * -.5 - 13px) 0 0 calc(var(--ds) * -.5 - 8px); border-radius: 24%; background: var(--pc); border: 2.5px solid var(--ink); box-shadow: 0 3px 0 rgba(22, 18, 16, .4); opacity: 0; transform: translateY(6px) scale(.8); transition: opacity .12s, transform .16s cubic-bezier(.3, 1.5, .5, 1); pointer-events: none; }   /* a held die: lifted onto a pad in the mover's colour */
+.cmbtray.pick .cmbd:not(.held) .cmbg::before { opacity: 1; transform: none; background: rgba(255, 255, 255, .07); border: 2px dashed rgba(255, 248, 232, .42); box-shadow: none; }   /* between rolls: a place under each die it can be held on */
+.cmbd.held .cmbg::before { opacity: 1; transform: none; }
 .cmbd.held .d3 { transform: translateY(-6px); } button.cmbd.held:active .d3 { transform: translateY(-6px) scale(.93); }
 .cmbd.held .d3sh { opacity: 0; }
 .cmbd.mk::after { content: ''; position: absolute; left: 50%; top: 50%; width: calc(var(--ds) + 11px); height: calc(var(--ds) + 11px); margin: calc(var(--ds) * -.5 - 6px) 0 0 calc(var(--ds) * -.5 - 6px); border-radius: 26%; border: 3.5px solid var(--gold); box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px var(--ink); pointer-events: none; }   /* the dice that made the combo claimed: ringed in gold */
@@ -5297,11 +5302,9 @@ button.cmbd { cursor: pointer; } button.cmbd:active .d3 { transform: scale(.93);
 @keyframes cmbring { from { opacity: 0; transform: scale(1.5); } }
 @keyframes cmbdhop { 0%, 100% { transform: none; } 40% { transform: translateY(-9px); } }
 .cmbd.dull .d3hop { filter: grayscale(1) brightness(.74); }   /* a move that ended with nothing: its dice greyed, with a shake */
-.cmbd.dull.late { animation: cmbno .42s var(--tz, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
 .cmbd.dull.late .d3hop { animation: cmbdull .3s var(--tz, 0ms) both; }
 .cmbd.dull.late .d3.roll .d3hop { animation: d3hop var(--dur, 560ms) var(--t, 0ms) linear both, cmbdull .3s var(--tz, 0ms) both; }   /* (a die thrown this roll: its hop first; a die's own times are --t and --dur, never ours) */
 @keyframes cmbdull { from { filter: none; } }
-@keyframes cmbno { 0%, 100% { transform: none; } 20% { transform: translateX(-4px); } 45% { transform: translateX(4px); } 70% { transform: translateX(-2px); } }
 .cmb .arcres, .cmb .arcnote { flex: none; height: 30px; min-height: 0; margin: 0; display: block; line-height: 30px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* the miniature: five little dice over the two combo cards (a band in each player's colour with their mark; a claimed cell filled in their colour) */
 .tcmb { width: 100%; height: 100%; display: grid; place-items: center; }
