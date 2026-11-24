@@ -18,7 +18,7 @@ export const AI_DEFAULTS = {
   margin: 2,        // tempo play: a lead safe enough to leave a square for now (turns the other side needs beyond the computer's)
   budget: 300,      // ms a decision may take where there is a clock (the page's worker, the server's bots)
   hardSearch: 1200, hardSharp: 100, hardMistake: 0, hardRisk: 0,      // Hard: the full search, always its strongest tactics
-  normalSearch: 300, normalSharp: 85, normalMistake: 0, normalRisk: 0,   // Normal: a lighter search, its strongest tactics most of the time (about the old Hard's strength)
+  normalSearch: 300, normalSharp: 0, normalMistake: 0, normalRisk: 0,   // Normal: a lighter search and each game's own Normal tactics (Sharpness 0, November 2026: the owner's choice, so the games' tuned levels show; it was 85, about the old Hard's strength)
   easySearch: 0, easySharp: 0, easyMistake: 30, easyRisk: 0,          // Easy
 };
 const LV = { Search: [0, 4000, 10], Sharp: [0, 100, 1], Mistake: [0, 80, 1], Risk: [-6, 8, 1] };

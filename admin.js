@@ -1032,7 +1032,7 @@ function botsCard() {
 // (its own copy of the defaults and limits: tests/core/admin-sync.test.js holds it to AI_DEFAULTS and AI_LIMITS)
 const AI_LEVELS = [['hard', 'Hard'], ['normal', 'Normal'], ['easy', 'Easy']];
 const AI_LV = [['Search', 'Search (playouts a square)', 0, 4000, 10], ['Sharp', 'Sharpness (%)', 0, 100, 1], ['Mistake', 'Mistakes (%)', 0, 80, 1], ['Risk', 'Risk appetite', -6, 8, 1]];
-const AI_DEF = { attack: 1, defend: 1, explore: 0.25, prog: 0.8, fresh: 3.5, drop: 2.5, margin: 2, budget: 300, hardSearch: 1200, hardSharp: 100, hardMistake: 0, hardRisk: 0, normalSearch: 300, normalSharp: 85, normalMistake: 0, normalRisk: 0, easySearch: 0, easySharp: 0, easyMistake: 30, easyRisk: 0 };
+const AI_DEF = { attack: 1, defend: 1, explore: 0.25, prog: 0.8, fresh: 3.5, drop: 2.5, margin: 2, budget: 300, hardSearch: 1200, hardSharp: 100, hardMistake: 0, hardRisk: 0, normalSearch: 300, normalSharp: 0, normalMistake: 0, normalRisk: 0, easySearch: 0, easySharp: 0, easyMistake: 30, easyRisk: 0 };
 const AI_W = [['attack', 'Line value (own lines)', 0.2, 3, 0.05], ['defend', 'Defence priority', 0.2, 3, 0.05], ['explore', 'Playout exploring', 0, 0.8, 0.05], ['prog', 'Playout progress chance', 0.3, 1, 0.05], ['fresh', 'Turns needed in a reset square', 1.5, 6, 0.25], ['drop', 'Search: let go of a square (standard errors)', 0, 6, 0.25], ['margin', 'Tempo play: safe lead (turns)', 1, 5, 0.5], ['budget', 'Time a decision (ms)', 50, 1000, 10]];
 const aiFields = () => AI_LEVELS.flatMap(([l]) => AI_LV.map(([k, , lo, hi, step]) => [l + k, lo, hi, step])).concat(AI_W.map(([k, , lo, hi, step]) => [k, lo, hi, step]));
 function aiCard() {
