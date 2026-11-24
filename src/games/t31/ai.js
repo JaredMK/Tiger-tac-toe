@@ -62,12 +62,15 @@ export function needs(pm, p) {
   if (b.cards.length < 3) return k * (b.score >= 20 ? N.pair : N.start);
   return k * Math.max(N.least, Math.min(N.flush, N.flush - N.perPoint * (b.score - 24) + N.perPoint * Math.max(0, target - 30)));
 }
+// Each level: Hard by expected value over the cards it has not seen; Normal the pile's card when it raises its score and
+// its best three kept; Easy Normal's play but for its mistakes (aiMiss<Level>, `worse`: a careless take or throw, 45% of
+// Easy's choices by default; it was 30%, T31_AI.easy, now read by nothing). A win on show is taken at every level. The old
+// level-blind `miss` is folded into the levels' mistake rates.
 export function best(pm, me, rng, style, ctx) {
   const lvl = ctx && ctx.level, target = t31Cfg(pm).target, h = pm.hand[me], held = pm.held && pm.held.by === me;
-  const miss = tune(pm).miss, pile = pm.pile || [];
+  const pile = pm.pile || [];
   const top = pile.length ? pile[pile.length - 1] : null;
   if (!held) {
-    if ((lvl === 'easy' && rng() * 100 < T31_AI.easy) || (miss && rng() * 100 < miss)) return { move: top && rng() < 0.5 ? 'pile' : 'deck', q: 0 };
     const unseen = t31Unseen(pm, me);
     const pileBest = top ? best3(h.concat(top)).score : -1;
     if (top && t31Won(pileBest, target)) return { move: 'pile', q: 1 };
@@ -84,9 +87,17 @@ export function best(pm, me, rng, style, ctx) {
   }
   // a winning discard first, at every level
   for (let i = 0; i < h.length; i++) if (t31Won(t31Score(h.filter((_, j) => j !== i)), target)) return { move: 'd' + i, q: 1 };
-  if ((lvl === 'easy' && rng() * 100 < T31_AI.easy) || (miss && rng() * 100 < miss)) return { move: 'd' + randInt(rng, h.length), q: 0 };   // (a slip: any card)
   if (lvl === 'hard') { const suits = new Set(((pm.seen && pm.seen[other(me)]) || []).map(c => c[1])); return { move: 'd' + hardDrop(h, t31Unseen(pm, me), target, suits).k, q: 0 }; }
   let b = -1, ks = [];
   for (let i = 0; i < h.length; i++) { const s = t31Score(h.filter((_, j) => j !== i)); if (s > b) { b = s; ks = [i]; } else if (s === b) ks.push(i); }
   return { move: 'd' + ks[randInt(rng, ks.length)], q: 0 };
+}
+// A weaker move (the level's mistakes, core/ai.js aiSlip), from its own hand: the deck or the pile at a toss, or any card
+// thrown; never where a win is on show (the pile's card or a discard that wins).
+export function worse(pm, me, rng, ctx) {
+  const target = t31Cfg(pm).target, h = pm.hand && pm.hand[me], pile = pm.pile || [], top = pile.length ? pile[pile.length - 1] : null;
+  if (!Array.isArray(h)) return null;
+  if (!(pm.held && pm.held.by === me)) { if (top && t31Won(best3(h.concat(top)).score, target)) return null; return top && rng() < 0.5 ? 'pile' : 'deck'; }
+  for (let i = 0; i < h.length; i++) if (t31Won(t31Score(h.filter((_, j) => j !== i)), target)) return null;
+  return 'd' + randInt(rng, h.length);
 }

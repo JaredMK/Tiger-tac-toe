@@ -18,10 +18,11 @@ export const goAgainText = { on: ' Raised your score? Go again.', off: '' };
 export const TUNE = [
   AGAIN_TUNE,
   { k: 'target', label: 'Score to win', def: 30, min: 24, max: 31, step: 1, group: 'Rules' },
-  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 100, step: 5, group: 'Computer' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><rect x="2.4" y="6" width="9" height="13" rx="1.8" transform="rotate(-14 6.9 12.5)"/><rect x="7.5" y="4.6" width="9" height="13" rx="1.8"/><rect x="12.6" y="6" width="9" height="13" rx="1.8" transform="rotate(14 17.1 12.5)"/><path d="M12 9.2v3.4M10.3 10.9h3.4"/></svg>';
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/t31): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Take a card, let one go. Only your best suit counts. Reach the target in one suit first.';
 export const luckSkill = 2;
 export const format = 'shared';
+// The computer's levels (core/tune.js levelTune): its mistakes by level (a careless take or throw).
+export const AI_LEVELS = { miss: { easy: 45, normal: 0, hard: 0 } };

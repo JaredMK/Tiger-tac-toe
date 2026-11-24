@@ -98,13 +98,21 @@ export function needs(pm, p) {
 // q: the chance this move takes the square: the chance its hand scores at least what is left (a rough table of the
 // plain player's hands, tests/sim/poker.sim.js: at least 1 point 75%, 2 points 25%, 3 points 11%, 4 points 4%).
 const AT_LEAST = [1, 0.75, 0.245, 0.11, 0.037, 0.024, 0.016, 0.003, 0.002, 0.001, 0.001];
+// Each level: Hard every throw by its expected points (pokBest); Normal and Easy the plain keeps (pokPlain), but for their
+// mistakes (aiMiss<Level>, `worse`: a careless throw; Easy's by default 70% of its draws, Normal's 35%). The old Normal-only
+// `miss` is folded into the levels' mistake rates.
 export function best(pm, me, rng, style, ctx) {
   const t = tune(pm), lvl = ctx && ctx.level, left = Math.max(0, t.target - pm.score[me]);
   const q = AT_LEAST[Math.min(AT_LEAST.length - 1, left)] || 0;
   const cur = pm.cur && pm.cur.by === me ? pm.cur : null;
   if (!cur) return { move: 'deal', q };
-  if (lvl === 'easy') return { move: 'draw:' + Array.from({ length: 5 }, () => (rng() < 0.5 ? 1 : 0)).join(''), q };
   if (lvl === 'hard') return { move: 'draw:' + pokBest(cur.hand, pokPoints(pm), rng, ctx && ctx.until).mask, q };
-  if (t.miss && rng() * 100 < t.miss) return { move: 'draw:' + Array.from({ length: 5 }, () => (rng() < 0.5 ? 1 : 0)).join(''), q };
   return { move: 'draw:' + pokPlain(cur.hand), q };
+}
+// A weaker draw (the level's mistakes, core/ai.js aiSlip): a careless throw, any cards but the plain keep's.
+export function worse(pm, me, rng, ctx) {
+  const b = ctx && ctx.best, cur = pm.cur && pm.cur.by === me ? pm.cur : null;
+  if (!cur || typeof b !== 'string' || !b.startsWith('draw:')) return null;
+  for (let k = 0; k < 8; k++) { const m = 'draw:' + Array.from({ length: 5 }, () => (rng() < 0.5 ? 1 : 0)).join(''); if (m !== b) return m; }
+  return null;
 }

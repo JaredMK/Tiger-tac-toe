@@ -25,10 +25,11 @@ export const TUNE = [
   { k: 'full', label: 'Points: full house', def: 6, min: 0, max: 20, step: 1, group: 'Rules' },
   { k: 'four', label: 'Points: four of a kind', def: 8, min: 0, max: 30, step: 1, group: 'Rules' },
   { k: 'sf', label: 'Points: straight flush', def: 10, min: 0, max: 30, step: 1, group: 'Rules' },
-  { k: 'miss', label: 'Computer mistake rate, Normal (%)', def: 0, min: 0, max: 100, step: 5, group: 'Computer' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5.5" width="9" height="13" rx="1.6" transform="rotate(-12 7.5 12)"/><rect x="8" y="4" width="9" height="13" rx="1.6"/><rect x="12.5" y="5.5" width="9" height="13" rx="1.6" transform="rotate(12 17 12)"/><path d="M17 9.5l1.6 2.2L17 13.9l-1.6-2.2z" fill="currentColor" stroke="none"/></svg>';
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/poker): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Deal five cards, throw any away and draw once. Your hand scores what it makes. Reach the target first.';
 export const luckSkill = 2;
 export const format = 'race';
+// The computer's levels (core/tune.js levelTune): its mistakes by level (a careless throw).
+export const AI_LEVELS = { miss: { easy: 70, normal: 35, hard: 0 } };

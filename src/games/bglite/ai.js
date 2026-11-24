@@ -71,14 +71,14 @@ function rollout(start, me, c, r) {
 export function bglChoose(pm, me, rng, level, until) {
   const plans = bglPlans(pm, me), c = cfgOf(pm);
   if (!plans.length || !plans[0].steps.length) return null;
-  if (level === 'easy') return plans[randInt(rng, plans.length)];
   let scored = plans.map(pl => ({ pl, s: staticOf(pl, me, c) }));
   if (level === 'hard' && scored.length > 1) {
     const stop = typeof until === 'function' ? () => until() <= 0 : () => false;
     scored.sort((a, b) => b.s - a.s);
     const seed = 'bglr:' + Math.floor(rng() * 1e9), wins = scored.map(() => 0);
     let k = 0;
-    for (; k < BGL_AI.rollouts; k++) {                             // round by round, every plan the same dice (seed + k): the comparison is fair
+    const R = Number(tune(pm).aiRollouts) > 0 ? Number(tune(pm).aiRollouts) : BGL_AI.rollouts;   // (Hard's playouts a plan: TUNE aiRollouts, Computer: Hard)
+    for (; k < R; k++) {                             // round by round, every plan the same dice (seed + k): the comparison is fair
       if (k >= BGL_AI.minRollouts && stop()) break;
       scored.forEach((x, i) => { wins[i] += rollout(x.pl.end, me, c, makeRng(seed + ':' + k)); });
     }
@@ -98,14 +98,22 @@ function rollWins(pm, me) {
   for (const r of ROLLS) { const m = lite(pm), v = bglRollDice(m, r.v[0], r.v[1]); m.dice = { by: me, v, used: v.map(() => false), off: 0 }; if (bglPlans(m, me).some(pl => pl.end.pos[me].every(a => a > m.n))) q += r.w; }
   return q;
 }
+// Each level: Hard plays each candidate turn out (aiRollouts times, against the same dice); Normal weighs race, hits,
+// blots and blocks (aiHit, aiBlot, aiBlock); Easy Normal's turn but for its mistakes (aiMiss<Level>, `worse`: any other
+// legal turn; Easy's 100% by default: any turn, as it always played). The old level-blind `miss` is folded in.
 export function best(pm, me, rng, style, ctx) {
   const level = ctx && ctx.level ? ctx.level : 'normal';
   if (!bglDice(pm, me)) return { move: 'roll', q: Math.min(1, rollWins(pm, me)) };
-  const miss = tune(pm).miss;
   const whole = pl => ({ move: { steps: pl.steps.map(s => [s.d, s.k]) }, q: pl.end.pos[me].every(a => a > pl.end.n) ? 1 : 0 });
-  if (miss && rng() * 100 < miss) { const ps = bglPlans(pm, me).filter(pl => pl.steps.length); if (ps.length) return Object.assign(whole(ps[randInt(rng, ps.length)]), { q: 0 }); }
   const pl = bglChoose(pm, me, rng, level, ctx && ctx.until);
   if (!pl) return { move: 'roll', q: 0 };
   return whole(pl);
 }
 export { BGL };
+// A weaker turn (the level's mistakes, core/ai.js aiSlip): any other legal plan of the dice.
+export function worse(pm, me, rng, ctx) {
+  if (!bglDice(pm, me)) return null;
+  const b = ctx && ctx.best, key = m => JSON.stringify(m && m.steps), bk = key(b);
+  const ps = bglPlans(pm, me).filter(pl => pl.steps.length).map(pl => ({ steps: pl.steps.map(s => [s.d, s.k]) })).filter(m => key(m) !== bk);
+  return ps.length ? ps[randInt(rng, ps.length)] : null;
+}

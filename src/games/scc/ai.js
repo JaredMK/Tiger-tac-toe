@@ -1,5 +1,5 @@
 // Ship, Captain & Crew: the computer's play. The only choice is once all three are in: keep the cargo, or roll it
-// again with the rolls left (the new cargo replacing it). Easy keeps a cargo of easyKeep (6) or more, Normal one of
+// again with the rolls left (the new cargo replacing it). Easy keeps a cargo of easyKeep (3: cautious) or more, Normal one of
 // normalKeep (8) or more (the average of a reroll is 7), both keep at once what reaches the target. Hard plays the
 // race exactly: the chance of winning the square from every pair of totals (sccRace: each side's points still
 // needed, the mover to roll; a turn's outcomes enumerated die by die), and keeps or rerolls by whichever wins more.
@@ -87,7 +87,7 @@ export function needs(pm, p) {
 }
 export function best(pm, me, rng, style, ctx) {
   const cf = sccCfg(pm), t = pm.turn && pm.turn.by === me ? pm.turn : null, need = cf.target - pm.score[me], lvl = ctx && ctx.level;
-  const k = lvl === 'easy' ? tune(pm).easyKeep || 6 : tune(pm).normalKeep || 8;
+  const k = lvl === 'easy' ? tune(pm).easyKeep || 3 : tune(pm).normalKeep || 8;
   if (!t) return { move: 'roll', q: sccTurn(cf.rolls, need, (c, nd) => c >= nd).fin };
   if (t.lv < 3 || t.n >= cf.rolls) return { move: 'roll', q: 0 };
   const c = sccSum(t.cargo), left = cf.rolls - t.n;

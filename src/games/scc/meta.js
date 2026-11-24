@@ -15,8 +15,8 @@ export const TUNE = [
   AGAIN_TUNE,
   { k: 'target', label: 'Cargo to win', def: 22, min: 8, max: 60, step: 1, group: 'Rules' },
   { k: 'rolls', label: 'Rolls a turn', def: 3, min: 2, max: 5, step: 1, group: 'Rules' },
-  { k: 'normalKeep', label: 'Computer (Normal) keeps a cargo of at least', def: 8, min: 2, max: 12, step: 1, group: 'Computer' },
-  { k: 'easyKeep', label: 'Computer (Easy) keeps a cargo of at least', def: 6, min: 2, max: 12, step: 1, group: 'Computer' },
+  { k: 'easyKeep', label: 'Risk appetite: keeps a cargo of at least (a lower cargo it rolls again)', def: 3, min: 2, max: 12, step: 1, group: 'Computer: Easy' },
+  { k: 'normalKeep', label: 'Risk appetite: keeps a cargo of at least (a lower cargo it rolls again)', def: 8, min: 2, max: 12, step: 1, group: 'Computer: Normal' },   // (Hard: the exact race table)
 ];
 // A little ship with a mast and a crate on deck.
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15h18l-2.6 4.5H5.6z"/><path d="M12 3v12"/><path d="M12 4.5l6 6.5h-6"/><rect x="5.5" y="11" width="4.5" height="4" rx=".6"/></svg>';
