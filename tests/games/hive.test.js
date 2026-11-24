@@ -23,7 +23,7 @@ test('hive: Admin only, brain, a timed burst, a 60 s turn, held out of Find Matc
   assert.ok(E.FIND_MATCH_HOLD.includes('hive'), 'what a phone found in its burst is the phone\'s word');
   assert.deepEqual(E.gameFields('hive').map(f => f.k), ['again', 'secs', 'target', 'four', 'bonus', 'aiRare', 'aiMin', 'aiMax', 'aiShort', 'aiMinHard', 'aiMaxHard', 'aiShortHard', 'aiFullHard', 'aiMinEasy', 'aiMaxEasy', 'aiShortEasy']);
   const c = R.hiveCfg(fresh('a'));
-  assert.deepEqual([c.target, c.secs, c.four, c.bonus, c.rare, c.ai.normal, c.ai.hard, c.ai.easy], [40, 20, 1, 7, 20, [1, 4, 45, 0], [2, 5, 50, 10], [1, 3, 35, 0]]);
+  assert.deepEqual([c.target, c.secs, c.four, c.bonus, c.rare, c.ai.normal, c.ai.hard, c.ai.easy], [40, 20, 1, 7, 20, [1, 4, 45, 0], [2, 5, 45, 0], [1, 3, 35, 0]]);
   for (const bad of ['slot', 'jackpot', 'bet', 'queen bee', 'genius', 'pangram']) assert.ok(!JSON.stringify([M.info, M.explainer, M.goAgainText]).toLowerCase().includes(bad), bad);
   assert.match(M.explainer.play, /new letters, hidden until you tap Go!/, 'the explainer says the letters are new each turn and come with Go!');
 });

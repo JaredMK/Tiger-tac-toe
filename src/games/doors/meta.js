@@ -19,9 +19,9 @@ export const TUNE = [
   { k: 'doors', label: 'Doors per floor (one leads down, the rest are dead ends linked to each other)', def: 4, min: 3, max: 6, step: 1, group: 'Board' },
   { k: 'towers', label: 'Towers (separate: one each, built the same; shared: one for both)', def: 'separate', opts: ['separate', 'shared'], group: 'Rules' },
   AGAIN_TUNE,
-  { k: 'forget', label: 'Computer (Normal): chance to forget a door it has seen tried, each pick (%)', def: 10, min: 0, max: 100, step: 1, group: 'Computer' },
-  { k: 'forgetHard', label: 'Computer (Hard): chance to forget a door it has seen tried, each pick (%)', def: 0, min: 0, max: 100, step: 1, group: 'Computer' },
-  { k: 'forgetEasy', label: 'Computer (Easy): chance to forget a door it has seen tried, each pick (%)', def: 40, min: 0, max: 100, step: 1, group: 'Computer' },
+  { k: 'forget', label: 'Chance to forget a door it has seen tried, each pick (%)', def: 30, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'forgetHard', label: 'Chance to forget a door it has seen tried, each pick (%)', def: 0, min: 0, max: 100, step: 1, group: 'Computer: Hard' },
+  { k: 'forgetEasy', label: 'Chance to forget a door it has seen tried, each pick (%)', def: 70, min: 0, max: 100, step: 1, group: 'Computer: Easy' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/doors): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Pick a door on each floor: one drops you down. Nothing is marked, so remember! First to the ground wins.';

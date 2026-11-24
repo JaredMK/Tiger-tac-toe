@@ -19,7 +19,7 @@ const withTune = (t, fn) => { E.setTune('gems', Object.assign({}, OFF, t)); try 
 
 test('gems: Admin only, brain; a 7x7 board of six kinds, 32 to win, nothing hidden', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder], ['admin', 'brain', '1.30.0', false]);
-  assert.deepEqual(E.gameFields('gems').map(f => f.k), ['again', 'againAt', 'target', 'even', 'size', 'kinds', 'aiEasy', 'aiHard']);
+  assert.deepEqual(E.gameFields('gems').map(f => f.k), ['again', 'againAt', 'target', 'even', 'size', 'kinds', 'aiEasy', 'aiNormal', 'aiHard']);
   E.setTune('gems', null); const m = E.newMini('gems', E.makeRng('a')); E.setTune('gems', OFF);
   assert.deepEqual([m.n, m.kinds, m.b.length, m.pts, m.last, m.tune], [7, 6, 49, { X: 0, O: 0 }, null, undefined]);
   assert.equal(R.gemsCfg(m).even, true, 'Equal turns on by default');
@@ -184,6 +184,7 @@ test('gems: Equal turns (a setting, on by default): the first to move reaching t
 test('gems: the computer: always a legal swap at every level; Normal the swap sure of most; Hard takes a win, leaves less behind, and keeps to its time', () => {
   const known = (m, mv) => R.gemsResolve(arr(m.b), m.n, m.kinds, mv.a, mv.b, null);
   const bestKnown = g => Math.max(0, ...R.gemsMoves(g, 7).map(x => R.gemsResolve(g, 7, 6, x[0], x[1], null).pts));
+  E.setTune('gems', { aiNormal: 0 });                               // (Normal's swaps at random off: its own choice tested here)
   let left = { normal: 0, hard: 0 }, n = 0;
   for (let g = 0; g < 60; g++) {
     const rng = E.makeRng('ai' + g), m = E.newMini('gems', rng); let p = 'X';
@@ -199,6 +200,7 @@ test('gems: the computer: always a legal swap at every level; Normal the swap su
       const r = E.applyMove(m, p, E.randomLegalMove(m, p, rng), rng); if (r.outcome !== 'continue') break; p = other(p);
     }
   }
+  E.setTune('gems', null);
   assert.ok(left.hard < left.normal, `Hard leaves the other side less (${left.hard} against ${left.normal})`);
   // a win on the board is taken at once, at every level that thinks
   const w = square(['0102345', '1021534', '2345012', '3450123', '4501234', '5012345', '0123450'], { X: 29, O: 0 });

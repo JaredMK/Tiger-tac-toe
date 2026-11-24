@@ -11,8 +11,8 @@ const wrong = (m, r) => (m.good[r] + 1) % m.d[r];
 test('doors: Admin only, luck, 1.35.0; the deal: floors of doors, one way down each, hidden; plain JSON', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder], ['admin', 'luck', '1.35.0', false]);
   assert.deepEqual(E.gameFields('doors').map(f => f.k), ['floors', 'doors', 'towers', 'again', 'forget', 'forgetHard', 'forgetEasy']);
-  assert.deepEqual(E.gameFields('doors').map(f => f.group), ['Board', 'Board', 'Rules', 'Rules', 'Computer', 'Computer', 'Computer']);
-  assert.deepEqual(['forget', 'forgetHard', 'forgetEasy'].map(k => E.gameFields('doors').find(f => f.k === k).def), [10, 0, 40]);
+  assert.deepEqual(E.gameFields('doors').map(f => f.group), ['Board', 'Board', 'Rules', 'Rules', 'Computer: Normal', 'Computer: Hard', 'Computer: Easy']);
+  assert.deepEqual(['forget', 'forgetHard', 'forgetEasy'].map(k => E.gameFields('doors').find(f => f.k === k).def), [30, 0, 70]);
   const D = E.gameFields('doors').find(f => f.k === 'doors'); assert.deepEqual([D.def, D.min, D.max], [4, 3, 6]);
   for (const set of [null, { floors: 8, doors: 6 }, { towers: 'shared' }, { floors: 1, doors: 3 }, { doors: 5 }]) {
     E.setTune('doors', set);
@@ -237,13 +237,13 @@ test('doors: v 3: the computer remembers by level: Hard everything it saw, Norma
   const a = JSON.parse(JSON.stringify(m)); E.applyMove(a, 'O', g, E.makeRng('o'));
   const took = lv => (pick(a, lv, 400, 'w')[g] || 0) / 400;
   assert.equal(took('hard'), 1, 'Hard never forgets a way down it saw');
-  assert.ok(took('normal') > 0.9 && took('normal') < 1, `Normal mostly remembers it: ${took('normal')}`);
-  assert.ok(took('easy') < 0.75 && took('easy') > 0.4, `Easy often forgets it: ${took('easy')}`);
+  assert.ok(took('normal') > 0.6 && took('normal') < 0.9, `Normal mostly remembers it: ${took('normal')}`);
+  assert.ok(took('easy') < 0.5 && took('easy') > 0.15, `Easy often forgets it: ${took('easy')}`);
   // X tried a dead end itself: Hard never tries it again; Normal now and then; Easy often
   const b = JSON.parse(JSON.stringify(m)), w = dead[0]; E.applyMove(b, 'X', w, E.makeRng('x')); const out = b.last.out;
   const again = lv => { const c = pick(b, lv, 600, 'd'); return ((c[w] || 0) + (c[out] || 0)) / 600; };
   assert.equal(again('hard'), 0);
-  assert.ok(again('normal') > 0 && again('normal') < 0.12, `Normal: ${again('normal')}`);
+  assert.ok(again('normal') > 0.05 && again('normal') < 0.3, `Normal: ${again('normal')}`);
   assert.ok(again('easy') > again('normal') + 0.1, `Easy: ${again('easy')}`);
   // nothing seen: no level knows the way down (a uniform pick among all four)
   for (const lv of ['easy', 'normal', 'hard']) { const c = pick(m, lv, 800, 'u'); assert.ok((c[g] || 0) / 800 > 0.18 && (c[g] || 0) / 800 < 0.32, `${lv}: ${c[g]}`); }

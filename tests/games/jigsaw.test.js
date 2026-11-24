@@ -136,7 +136,7 @@ test('jigsaw: the settings: the grid\'s size and its centre piece (an even grid 
   assert.deepEqual(keys, ['again', 'size', 'centre', 'edges', 'rotate', 'secs', 'aiEasy', 'aiNormal', 'aiHard', 'aiTurnEasy', 'aiTurnNormal', 'aiTurnHard']);
   for (const k of ['edges', 'rotate']) { const f = E.gameFields('jigsaw').find(x => x.k === k); assert.deepEqual([f.def, f.opts], ['off', ['off', 'on']], `${k}: off by default`); }
   assert.deepEqual(['edges', 'rotate'].map(k => E.gameFields('jigsaw').find(x => x.k === k).label), ['Flat edge pieces', 'Pieces drawn rotated']);
-  assert.ok(M.TUNE.every(f => ['Board', 'Rules', 'Timing', 'Computer'].includes(f.group)));
+  assert.ok(M.TUNE.every(f => E.TUNE_GROUPS.includes(f.group)));
   const again = E.gameFields('jigsaw').find(f => f.k === 'again'); assert.deepEqual([again.label, again.def, again.opts], ['Go again on success', 'off', ['off', 'on']]);
   let m = mini('s4', { size: 4 });
   assert.deepEqual([m.n, m.placed, R.jigTotal(m), R.jigNeed(m)], [4, '.'.repeat(16), 16, 9]); assert.equal(R.jigEdge(m).length, 16, 'an empty board: any piece may come first');

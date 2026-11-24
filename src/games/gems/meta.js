@@ -22,8 +22,9 @@ export const TUNE = [
   { k: 'even', label: 'Equal turns (the other player answers; the higher score wins)', def: 'on', opts: ['off', 'on'], group: 'Rules' },   // (on by default, December 2026: first to the target outright gave the first mover 60-61%; with the answer, 48%)
   { k: 'size', label: 'Board size (a side)', def: 7, min: 5, max: 8, step: 1, group: 'Board' },
   { k: 'kinds', label: 'Kinds of gem', def: 6, min: 4, max: 6, step: 1, group: 'Board' },
-  { k: 'aiEasy', label: 'Easy: swaps taken at random (%)', def: 60, min: 0, max: 100, step: 5, group: 'Computer' },
-  { k: 'aiHard', label: 'Hard: weight on the best swap left for the other side (%)', def: 60, min: 0, max: 100, step: 5, group: 'Computer' },
+  { k: 'aiEasy', label: 'Swaps taken at random rather than the best (%)', def: 65, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
+  { k: 'aiNormal', label: 'Swaps taken at random rather than the best (%)', def: 30, min: 0, max: 100, step: 5, group: 'Computer: Normal' },
+  { k: 'aiHard', label: 'How much it weighs the best swap it would leave you (%)', def: 60, min: 0, max: 100, step: 5, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/gems): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Swap two gems to line up three or more. Every gem burst is a point. Reach the target first.';

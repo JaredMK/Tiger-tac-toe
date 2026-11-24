@@ -13,7 +13,7 @@ const dice = (...v) => { let k = 0; return () => (v[k++ % v.length] - 0.5) / 6; 
 test('proll: Admin only, luck; no gambling words; its settings; every number worth about the same a turn', () => {
   assert.deepEqual([M.release, M.category, M.minVersion, M.placeholder], ['admin', 'luck', '1.25.0', false]);
   assert.doesNotMatch(`${M.info.name} ${M.info.hint} ${M.explainer.play} ${M.explainer.win}`, /bet|payout|pays|casino|gambl|wager|craps|odds/i);
-  assert.deepEqual(E.gameFields('proll').map(f => f.k), ['target', 'p2', 'p3', 'p4', 'p5', 'p6', 'shown']);
+  assert.deepEqual(E.gameFields('proll').map(f => f.k), ['target', 'p2', 'p3', 'p4', 'p5', 'p6', 'shown', 'aiLongEasy', 'aiLongNormal', 'aiLongHard']);
   const c = R.prollCfg(E.newMini('proll', E.makeRng('a')));
   assert.deepEqual([c.target, c.pts[2], c.pts[12], c.pts[3], c.pts[11], c.pts[4], c.pts[10], c.pts[5], c.pts[9], c.pts[6], c.pts[8]], [10, 14, 14, 8, 8, 6, 6, 5, 5, 4, 4]);
   assert.deepEqual([2, 3, 4, 5, 6].map(n => Math.round(R.prollChance(n) * 1000)), [143, 250, 333, 400, 455]);

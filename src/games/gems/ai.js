@@ -1,9 +1,10 @@
 // Gem Swap: the computer's play, from the board both players see. A swap is worth the gems it is sure to remove: its
 // own line and every cascade the gems already on the board decide (the new gems are not known yet: a cell filled from
 // the top lines up with nothing, `gemsResolve` with no rng). Easy takes any swap that makes a line `aiEasy` % of the
-// time and the one worth most otherwise. Normal takes the swap worth most now. Hard takes a swap that wins at once;
+// time and the one worth most otherwise. Normal takes the swap worth most now, but for `aiNormal` % taken at random. Hard takes a swap that wins at once;
 // else the swap worth most less `aiHard` % of the best swap it would leave the other side on the board it knows (a
 // swap that keeps the turn, "Go again" on, counts its own next swap instead), within `ctx.until`.
+import { tune } from '../../core/tune.js';
 import { GEMS_DEF, gemsArr, gemsCfg, gemsMoves, gemsResolve } from './rules.js';
 
 // What a turn brings on average with the best swap on show taken (tests/sim/gems.sim.js), by the kinds of gem.
@@ -19,6 +20,7 @@ export function best(pm, me, rng, style, ctx) {
   const out = e => ({ move: { a: e.m[0], b: e.m[1] }, q: e.pts >= left ? 1 : left - e.pts <= 2 ? 0.25 : 0 });
   const top = (list, val) => { let b = -Infinity, pick = []; for (const e of list) { const v = val(e); if (v > b + 1e-9) { b = v; pick = [e]; } else if (Math.abs(v - b) <= 1e-9) pick.push(e); } return pick[Math.floor(rng() * pick.length)]; };
   if (level === 'easy') return out(rng() * 100 < c.aiEasy ? all[Math.floor(rng() * all.length)] : top(all, e => e.pts));
+  if (level === 'normal' && rng() * 100 < (Number.isFinite(Number(tune(pm).aiNormal)) ? Number(tune(pm).aiNormal) : 0)) return out(all[Math.floor(rng() * all.length)]);
   if (level !== 'hard') return out(top(all, e => e.pts));
   all.sort((x, y) => y.pts - x.pts);
   if (all[0].pts >= left || fin) return out(top(all, e => e.pts));  // (a swap that wins; an answer is one turn: all it can get)

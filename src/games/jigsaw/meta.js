@@ -28,12 +28,12 @@ export const TUNE = [
   { k: 'edges', label: 'Flat edge pieces', def: 'off', opts: ['off', 'on'], group: 'Board' },   // (the sides on the picture's outer border cut straight, as on a real jigsaw)
   { k: 'rotate', label: 'Pieces drawn rotated', def: 'off', opts: ['off', 'on'], group: 'Rules' },   // (a quarter, half or three-quarter turn; Rotate turns it on the player's phone and it fits only the right way up)
   { k: 'secs', label: 'Piece timer (seconds to place a piece)', def: 8, min: 3, max: 30, step: 1, group: 'Timing' },
-  { k: 'aiEasy', label: 'Easy computer: right placements (%)', def: 55, min: 5, max: 100, step: 1, group: 'Computer' },
-  { k: 'aiNormal', label: 'Normal computer: right placements (%)', def: 75, min: 5, max: 100, step: 1, group: 'Computer' },
-  { k: 'aiHard', label: 'Hard computer: right placements (%)', def: 92, min: 5, max: 100, step: 1, group: 'Computer' },
-  { k: 'aiTurnEasy', label: 'Easy computer: rotated pieces turned the right way up (%)', def: 75, min: 5, max: 100, step: 1, group: 'Computer' },   // (with "Pieces drawn rotated" on)
-  { k: 'aiTurnNormal', label: 'Normal computer: rotated pieces turned the right way up (%)', def: 90, min: 5, max: 100, step: 1, group: 'Computer' },
-  { k: 'aiTurnHard', label: 'Hard computer: rotated pieces turned the right way up (%)', def: 97, min: 5, max: 100, step: 1, group: 'Computer' },
+  { k: 'aiEasy', label: 'Right placements (% where four or more places would do)', def: 55, min: 5, max: 100, step: 1, group: 'Computer: Easy' },
+  { k: 'aiNormal', label: 'Right placements (% where four or more places would do)', def: 75, min: 5, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'aiHard', label: 'Right placements (% where four or more places would do)', def: 92, min: 5, max: 100, step: 1, group: 'Computer: Hard' },
+  { k: 'aiTurnEasy', label: 'Rotated pieces turned the right way up (%)', def: 75, min: 5, max: 100, step: 1, group: 'Computer: Easy' },   // (with "Pieces drawn rotated" on)
+  { k: 'aiTurnNormal', label: 'Rotated pieces turned the right way up (%)', def: 90, min: 5, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'aiTurnHard', label: 'Rotated pieces turned the right way up (%)', def: 97, min: 5, max: 100, step: 1, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/jigsaw): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Build one picture puzzle together, a piece a go. Place more than half the pieces to win.';
