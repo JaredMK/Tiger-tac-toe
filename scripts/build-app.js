@@ -1,5 +1,5 @@
 'use strict';
-// The iOS app's web files (docs/ios-plan.md): the same build as the site (scripts/build-site.js), into _app/ for Capacitor's
+// The iOS app's web files (docs/ios-plan.md): the same build as the site (scripts/build-site.js), into _app.nosync/ for Capacitor's
 // webDir, with what a page served from inside the app needs and a page on the web does not:
 //   - <meta name="ttc-env">: the Firebase project (src/env.js: the app's own address, capacitor://localhost, cannot say),
 //   - the Firebase SDK copied in (vendor/firebase/, <meta name="ttc-sdk">: src/net/connect.js), so the app runs its own copy of
@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
 const { build, envOf } = require('./build-site.js');
-const ROOT = path.join(__dirname, '..'), OUT = path.join(ROOT, '_app');
+const ROOT = path.join(__dirname, '..'), OUT = path.join(ROOT, '_app.nosync');
 const SDK = ['firebase-app.js', 'firebase-database.js', 'firebase-auth.js', 'firebase-functions.js', 'firebase-app-check.js'];
 function versionOfSdk() {
   const m = fs.readFileSync(path.join(ROOT, 'src', 'net', 'connect.js'), 'utf8').match(/FIREBASE_VERSION = '([\d.]+)'/);
@@ -75,6 +75,6 @@ if (require.main === module) {
   const args = process.argv.slice(2), env = envOf(args.find(a => !a.startsWith('--')) || 'production');
   let sha = process.env.GITHUB_SHA || '';
   if (!sha) try { sha = execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim(); } catch (e) { sha = 'unknown'; }
-  buildApp(env, sha, { noSdk: args.includes('--no-sdk') }).then(r => console.log(`Built _app/ for ${env} at ${sha.slice(0, 7)}${r.sdk ? ` with Firebase ${r.sdk}` : ' (the SDK from the CDN)'}.`))
+  buildApp(env, sha, { noSdk: args.includes('--no-sdk') }).then(r => console.log(`Built _app.nosync/ for ${env} at ${sha.slice(0, 7)}${r.sdk ? ` with Firebase ${r.sdk}` : ' (the SDK from the CDN)'}.`))
     .catch(e => { console.error('Could not build the app: ' + e.message); process.exit(1); });
 }

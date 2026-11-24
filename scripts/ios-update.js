@@ -19,8 +19,7 @@ const crypto = require('node:crypto');
 const { execSync, execFileSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 const BRANCH = { staging: 'staging', production: 'main' };
-// What cap sync adds beside the build's own files.
-const CAP_FILES = ['cordova.js', 'cordova_plugins.js'];
+const { OUT, PUBLIC, CAP_FILES } = require('./ios-web.js');
 
 function parseArgs(args) {
   const known = ['staging', 'production', 'open', 'here'], got = args.map(a => a.replace(/^--/, ''));
@@ -81,7 +80,7 @@ function main() {
   const lock = crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, 'package-lock.json'))).digest('hex'), mark = path.join(ROOT, 'node_modules', '.ttc-lock');
   if (!fs.existsSync(mark) || fs.readFileSync(mark, 'utf8') !== lock) { run('npm ci --no-audit --no-fund'); fs.writeFileSync(mark, lock); }
   run(`node scripts/ios-build.js ${env}`);
-  const sha = git('rev-parse', 'HEAD'), bad = copyProblems(path.join(ROOT, '_app'), path.join(ROOT, 'ios', 'App', 'App', 'public'), env, sha);
+  const sha = git('rev-parse', 'HEAD'), bad = copyProblems(OUT, PUBLIC, env, sha);
   if (bad.length) throw new Error(`the copy inside the Xcode project is not this build (${bad.length}; run it again):\n  ${bad.slice(0, 10).join('\n  ')}`);
   const v = fs.readFileSync(path.join(ROOT, 'src', 'core', 'client.js'), 'utf8').match(/CLIENT_VERSION = '([\d.]+)'/)[1];
   console.log(`\nChecked: the Xcode project holds ${env} ${v}, build ${sha.slice(0, 7)}. Now press Run in Xcode; the game's Settings then say "Build ${sha.slice(0, 7)}".`);

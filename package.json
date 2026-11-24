@@ -22,6 +22,7 @@
     "check:headers": "node scripts/check-headers.js",
     "ios:build": "node scripts/ios-build.js",
     "ios:update": "node scripts/ios-update.js",
+    "capacitor:copy:after": "node scripts/ios-web.js",
     "icon-options": "node scripts/make-icon-options.js",
     "check:minitext": "node scripts/check-miniature-text.js",
     "check:minifit": "node scripts/check-miniature-fit.js 360x640,375x667,430x932"
