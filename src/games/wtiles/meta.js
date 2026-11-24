@@ -20,7 +20,7 @@ export const TUNE = [
   { k: 'rack', label: 'Tiles on a rack', def: 7, min: 4, max: 7, step: 1, group: 'Rules' },
   { k: 'bonus', label: 'All seven tiles in one word: extra points', def: 15, min: 0, max: 50, step: 1, group: 'Rules' },
   { k: 'aiSee', label: 'Normal: share of the words on the board it notices, playing the best of them (%)', def: 3, min: 1, max: 100, step: 1, group: 'Computer: Normal' },
-  { k: 'aiSeeHard', label: 'Hard: share of the words on the board it notices, playing the best of them (%; 100: always the best word)', def: 7, min: 1, max: 100, step: 1, group: 'Computer: Hard' },
+  { k: 'aiSeeHard', label: 'Hard: share of the words on the board it notices, playing the best of them (%; 100: always the best word)', def: 6, min: 1, max: 100, step: 1, group: 'Computer: Hard' },
   { k: 'aiSeeEasy', label: 'Easy: share of the words on the board it notices, playing the best of them (%)', def: 2, min: 1, max: 100, step: 1, group: 'Computer: Easy' },
   { k: 'aiLenEasy', label: 'Easy: longest word it plays (letters; 0: any)', def: 5, min: 0, max: 7, step: 1, group: 'Computer: Easy' },
 ];

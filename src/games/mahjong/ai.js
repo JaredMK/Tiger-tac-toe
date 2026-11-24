@@ -6,7 +6,7 @@
 // step closer; it takes the pile's tile (Shared) when that wins or brings it a step closer. Hard counts the tiles left
 // unseen that would bring it closer (its outs, by copy), and takes the pile's tile when its hand after the best throw
 // beats the wall's average draw. Easy: Normal's play, never taking the pile's tile but to win. Each level's mistakes
-// (aiMiss<Level>: Easy 50%, Normal 25% by default) are a careless throw, a tile of its hand at random, or the wall's tile over the
+// (aiMiss<Level>: Easy 42%, Normal 25% by default) are a careless throw, a tile of its hand at random, or the wall's tile over the
 // pile's (`worse`).
 import { randInt } from '../../core/random.js';
 import { mjCfg, mjComplete, mjKinds, mjShanten, mjTiles } from './rules.js';
