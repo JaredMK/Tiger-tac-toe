@@ -243,3 +243,19 @@ test('templates rules: an admin\'s game templates (templates/{uid}/{id}: name, g
   await me.write(`templates/${me.uid}/t1abc`, null);                                        // deleted by its owner
   assert.equal(await me.read(`templates/${me.uid}/t1abc`), null);
 });
+test('release rules: Deprioritized (releases/depri/{type}) is the admin\'s alone, a flag true or nothing; anyone reads it', async () => {
+  const app = initializeApp({ apiKey: 'test', projectId: PROJECT, databaseURL: `https://${NS}.firebaseio.com`, appId: '1:1:web:1' }, 'c' + (++n));
+  const db = D.getDatabase(app);
+  D.connectDatabaseEmulator(db, HOST, PORT, { mockUserToken: { sub: 'uid-admin', user_id: 'uid-admin', admin: true } });
+  const admin = { app, db, write: (p, v) => D.set(D.ref(db, p), v) };
+  clients.push(admin);
+  const me = client('uid-player'), anon = client(null);
+  await admin.write('releases/depri/hex', true);
+  assert.equal(await anon.read('releases/depri/hex'), true, 'a public read');
+  await denied(me.write('releases/depri/maze', true), 'a player deprioritizing a game');
+  await denied(admin.write('releases/depri/maze', false), 'a flag that is not true');
+  await denied(admin.write('releases/depri/maze', '2026-12-01'), 'a date');
+  await denied(admin.write('releases/depri/Not-A-Game', true), 'a name that is not a type');
+  await admin.write('releases/depri/hex', null);
+  assert.equal(await anon.read('releases/depri/hex'), null, 'cleared');
+});

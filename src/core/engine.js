@@ -8,7 +8,7 @@ export { cpuEcho, STYLE0, AI_CLOCK, localForget, AI, needsOf, winChance, localBe
 export { lineOpen, majorityResult, LINES, timeoutMove, mainResult, playMove, endFlash, leaveSquare, sqEntry, SQ_GAP_MS } from './board.js';
 export { SC, scTypes, isChaos, scHuman, scSquareMini, startChaos, scBegin, scCpu, chaosPlay, chaosTimeout, chaosResolve, chaosNext, scPool, scMainResult, SC_ONLINE, startChaosOnline, scMoveOf, chaosResolveOnline, scRoundStart, scRecapOrder } from './chaos.js';
 export { cfgKit, lohi, SUPER_CHAOS_ENABLED } from './config.js';
-export { isReleased, releasedTypes, allowedTypes, restrictGames, FIND_MATCH_HOLD, findMatchTypes, inRotation, retireDate, retiredOn, retireList } from './games.js';
+export { isReleased, releasedTypes, allowedTypes, restrictGames, FIND_MATCH_HOLD, findMatchTypes, inRotation, retireDate, retiredOn, retireList, depriOn, gameStatus } from './games.js';
 export { CLIENT_VERSION, PLATFORMS, BASE_CLIENT, versionOk, cmpVersion, normClient, minVersionOf, clientHas, platformOff, clientTypes, lackedTypes, normMins, needsUpdate } from './client.js';
 export { dealable, normLocal, seatLocal, NAME_MAX, pickType, pickReset, dealNine, newSquare, CPU_NAME, defaultSetup, cpuSide, normSetup, syncNames, enabledGames, playerName, newState, startMatch, normCpu, startCpu, newMatch } from './match.js';
 export { canMove, upgradeMini, anyMove, newMini, withTune, applyMove, publicMini, randomLegalMove } from './minis.js';

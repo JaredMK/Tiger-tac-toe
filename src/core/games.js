@@ -5,7 +5,16 @@ export function isReleased(t, releases) { return releases && typeof releases[t] 
 export function releasedTypes(releases) { return TYPES.filter(t => isReleased(t, releases)); }
 // The games a setup may deal (admin: every game; anyone else: the released ones), and the setup's
 // games list cut down to them (in place), so a match never draws a game its players may not see.
-export function allowedTypes(releases, admin) { return admin ? TYPES.slice() : releasedTypes(releases); }
+// (the admin: every game but the ones they have deprioritized, depriOn below)
+export function allowedTypes(releases, admin) { return admin ? TYPES.filter(t => !depriOn(t, releases)) : releasedTypes(releases); }
+// A game's status on the admin's Games page: 'released', 'testing' (admin only, as the code or the switch has it) or
+// 'depri' (Deprioritized, December 2026: releases/depri/{type} true on a game that is not released). A deprioritized
+// game stays in the code and the registry (its admin page, its stats, Test play), but is dealt to nobody, the admin
+// included: off the admin's Mini-games checklists, templates, How to Play and Practice, the Game lineup (Coming soon too)
+// and the server's deal (allowedTypes). Only a game not released can be deprioritized: releasing one clears the flag (the
+// admin's page), and a flag left on a released game is ignored.
+export function depriOn(t, releases) { const d = releases && releases.depri; return !!(d && typeof d === 'object' && d[t] === true) && !isReleased(t, releases); }
+export const gameStatus = (t, releases) => (isReleased(t, releases) ? 'released' : depriOn(t, releases) ? 'depri' : 'testing');
 // Find Match deals only games whose result the server can verify (security review F3). A game is held
 // back here while its result still rests on what the phone says: it stays in local play and friend rooms
 // (where the players know each other) until its family is hardened (a run re-simulated from its inputs,
@@ -39,7 +48,7 @@ export function releasedOn(t, releases, p) {
 const soonVal = (t, releases) => { const s = releases && releases.soon; return s && typeof s === 'object' ? s[t] : undefined; };
 export function soonFlag(t, releases) { const v = soonVal(t, releases); return v === true || (typeof v === 'string' && SOON_DATE.test(v)); }
 export function soonDate(t, releases) { const v = soonVal(t, releases); return typeof v === 'string' && SOON_DATE.test(v) ? v : null; }
-export function soonOn(t, releases, p) { return soonFlag(t, releases) && !releasedOn(t, releases, p); }
+export function soonOn(t, releases, p) { return soonFlag(t, releases) && !releasedOn(t, releases, p) && !depriOn(t, releases); }
 // { now, soon }: the games in rotation and coming soon on platform p (has(t): this client has the game); in rotation by
 // shown name, coming soon by date (the soonest first, undated and past dates last), then name.
 // (today: the viewer's 'YYYY-MM-DD'; a date before it sorts with the undated, as its sticker reads "Coming soon")

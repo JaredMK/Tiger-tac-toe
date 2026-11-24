@@ -93,15 +93,17 @@ test('the Games list: every mini-game once, alphabetical, with its icon, categor
   const html = draw('#games');
   for (const t of E.TYPES) assert.equal((html.match(new RegExp(`class="grow" href="#games/${t}"`, 'g')) || []).length, 1, `${t} listed once`);
   assert.equal((html.match(/class="grow" href="#games\//g) || []).length, E.TYPES.length, 'the pool and nothing else (the retired games are not listed)');
-  const names = [...html.matchAll(/class="grow" href="#games\/(\w+)"/g)].map(m => E.GAMES[m[1]].meta.info.name);
-  assert.deepEqual(names, names.slice().sort((a, b) => a.localeCompare(b)), 'alphabetical by the shown name');
+  for (const seg of html.split('<h3 class="ggrp"').slice(1)) {
+    const names = [...seg.matchAll(/class="grow" href="#games\/(\w+)"/g)].map(m => E.GAMES[m[1]].meta.info.name);
+    assert.deepEqual(names, names.slice().sort((a, b) => a.localeCompare(b)), 'alphabetical by the shown name, within each status');
+  }
   const row = t => (html.match(new RegExp(`<li><a class="grow" href="#games/${t}"[\\s\\S]*?</a></li>`)) || [''])[0];
   assert.match(row('ttt'), /class="gico"[^>]*><svg/, 'the icon');
   assert.match(row('ttt'), /Brain · 1 setting</, 'the category and the settings count');
   assert.match(row('ttt'), /badge rel">Released</); assert.doesNotMatch(row('ttt'), /badge chg/);
   assert.match(row('hex'), /badge rel">Released</, 'released in the database although admin only in the code');
-  assert.match(row('pig'), /badge adm">Admin only</, 'un-released in the database'); assert.match(row('pig'), /badge chg">changed</, 'a TUNE value saved');
-  assert.match(row('dash'), /badge adm">Admin only</); assert.doesNotMatch(row('dash'), /badge chg/);
+  assert.match(row('pig'), /badge adm">Testing</, 'un-released in the database'); assert.match(row('pig'), /badge chg">changed</, 'a TUNE value saved');
+  assert.match(row('dash'), /badge adm">Testing</); assert.doesNotMatch(row('dash'), /badge chg/);
   assert.match(row('c4'), /badge ios">iOS off</); assert.doesNotMatch(row('ttt'), /badge ios/);
   assert.match(row('wordle'), /badge race">Race</); assert.match(row('wordle'), /badge chg/, 'the mode is a saved setting');
   assert.doesNotMatch(row('hangman'), /badge race/, 'a race game in Shared: no badge');
@@ -154,7 +156,7 @@ test('a game that is not a race game has no Mode switch; a game with a tuning ca
   A.ctl = Object.assign(ctl0(), { pigCfg: { sides: 6, target: 60 }, releases: { pig: false, platform: { ios: { pig: false } } } });
   let html = draw('#games/pig');
   assert.doesNotMatch(html, /id="modeCard"|name="mode"/);
-  assert.match(html, /data-rel="pig">[\s\S]*?>Admin only</); assert.match(html, /data-relios="pig">[\s\S]*?>iOS off</);
+  assert.match(html, /value="testing" data-rel="pig" checked><b>Testing</); assert.match(html, /data-relios="pig">[\s\S]*?>iOS off</);
   assert.match(html, /id="pigCard"/, 'Risky Rolls\' own card'); assert.match(html, /data-pigcfg="target" value="60"/); assert.match(html, /<option value="6" selected>/);
   assert.equal((html.match(/>Save</g) || []).length, 1, 'one Save on the page'); assert.equal((html.match(/>Test play</g) || []).length, 1, 'one Test play');
   assert.doesNotMatch(html, /data-pigsave|data-runsave|data-fingsave|data-attsave|data-tunesave/);
@@ -321,6 +323,41 @@ test('Players: people and their devices together; a person\'s page has their dev
   assert.equal(kpiOf(draw('#overview'), 'active'), '4', 'counted again at once');
 });
 
+test('statuses: the Games list in three groups (Released, Testing, Deprioritized, each alphabetical); a game\'s page sets its status; Deprioritized only for a game not released', async () => {
+  await A.loadMetas();
+  const db = mockDb(); A.fb = db.fb;
+  A.ctl = Object.assign(ctl0(), { releases: { hex: false, maze: false, ttt: true, depri: { hex: true, ttt: true }, soon: { maze: true } } });
+  let list = draw('#games');
+  const hR = list.indexOf('id="ggrp-released"'), hT = list.indexOf('id="ggrp-testing"'), hD = list.indexOf('id="ggrp-depri"');
+  assert.ok(hR > 0 && hR < hT && hT < hD, 'Released, then Testing, then Deprioritized');
+  const at = t => list.indexOf(`class="grow" href="#games/${t}"`);
+  assert.ok(at('ttt') > hR && at('ttt') < hT, 'a released game flagged: still Released');
+  assert.ok(at('maze') > hT && at('maze') < hD); assert.ok(at('hex') > hD, 'hex deprioritized');
+  assert.match(list, /id="ggrp-depri">Deprioritized <small>1<\/small>/);
+  for (const k of ['released', 'testing', 'depri']) {
+    const seg = list.slice(list.indexOf(`id="ggrp-${k}"`)).split('<h3 class="ggrp"')[0];
+    const names = [...seg.matchAll(/class="grow" href="#games\/(\w+)"/g)].map(m => E.GAMES[m[1]].meta.info.name);
+    assert.deepEqual(names, names.slice().sort((a, b) => a.localeCompare(b)), `${k}: alphabetical`);
+  }
+  assert.equal((list.match(/class="grow" href="#games\//g) || []).length, E.TYPES.length, 'every game once');
+  assert.match(list, /href="#games\/hex"[\s\S]*?badge dep">Deprioritized</);
+  let html = draw('#games/hex');
+  assert.match(html, /role="radiogroup" aria-label="Status"/);
+  assert.match(html, /value="depri" data-rel="hex" checked><b>Deprioritized</);
+  // Deprioritize a Testing game with Coming soon on: releases/{t} false, the flag set, Coming soon cleared
+  const radio = (t, v) => ({ type: 'radio', value: v, dataset: { rel: t }, closest: () => null, insertAdjacentElement() {} });
+  await A.saveRelease(radio('maze', 'depri'));
+  assert.deepEqual(db.writes.splice(0), [['releases/maze', false], ['releases/depri/maze', true], ['releases/soon/maze', null]]);
+  assert.equal(A.statusOf('maze'), 'depri');
+  // Release it: the flag cleared
+  await A.saveRelease(radio('maze', 'released'));
+  assert.deepEqual(db.writes.splice(0), [['releases/maze', true], ['releases/depri/maze', null]]);
+  assert.equal(A.statusOf('maze'), 'released');
+  await A.saveRelease(radio('maze', 'testing'));
+  assert.deepEqual(db.writes.splice(0), [['releases/maze', false]]);
+  assert.equal(A.statusOf('maze'), 'testing');
+  await A.saveRelease(radio('maze', 'bogus')); assert.equal(db.writes.length, 0, 'an unknown status: nothing written');
+});
 test('Coming soon: a switch and a release date beside Released and iOS; never for a game released everywhere; a date passed warns', async () => {
   await A.loadMetas();
   A.ctl = Object.assign(ctl0(), { releases: { pig: false, ttt: true, war: true, platform: { ios: { war: false } }, soon: { pig: '2020-01-02', war: true, ttt: true } } });

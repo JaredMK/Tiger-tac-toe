@@ -737,7 +737,7 @@ async function makeGame(key, id, X, O, opts) {
   if (Q.chaos) {                                                  // Super Chaos, run here (core/scgame.js): the released Super Chaos games (every one when both players are admins, or in the admin's room)
     if (friend && !(SC_OK() && (friend.admin || rel.superchaos === true))) return false;   // (Super Chaos not open to this room's host, or off everywhere)
     const admins = !bot && !friend && (await isAdminUser(X.uid)) && (await isAdminUser(O.uid));
-    const pool = friend ? allowed : both(E.findMatchTypes(admins ? E.TYPES : E.releasedTypes(rel)));   // (Find Match: only games whose result the server can verify, core/games.js FIND_MATCH_HOLD)
+    const pool = friend ? allowed : both(E.findMatchTypes(admins ? E.allowedTypes(rel, true) : E.releasedTypes(rel)));   // (Find Match: only games whose result the server can verify, core/games.js FIND_MATCH_HOLD)
     const types = E.scTypes().filter(g => pool.includes(g) && on(g));
     if (!types.length) { logger.error('chaos game', id, 'no Super Chaos game released'); return false; }
     const g = E.newScGame({ names: { X: X.e.name, O: O.e.name }, games: Object.fromEntries(E.scTypes().map(x => [x, types.includes(x)])) }, rng, id, t, MATCH_GRACE_MS);
