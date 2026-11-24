@@ -16,8 +16,8 @@ export const TUNE = [
   { k: 'aiPowEasy', label: 'Easy: power error (%)', def: 6, min: 0, max: 20, step: 0.5, group: 'Computer: Easy' },
   { k: 'aiAim', label: 'Normal: aim error (thousandths of a radian)', def: 20, min: 0, max: 150, step: 1, group: 'Computer: Normal' },
   { k: 'aiPow', label: 'Normal: power error (%)', def: 2.5, min: 0, max: 20, step: 0.5, group: 'Computer: Normal' },
-  { k: 'aiAimHard', label: 'Hard: aim error (thousandths of a radian)', def: 10, min: 0, max: 150, step: 1, group: 'Computer: Hard' },
-  { k: 'aiPowHard', label: 'Hard: power error (%)', def: 1.5, min: 0, max: 20, step: 0.5, group: 'Computer: Hard' },
+  { k: 'aiAimHard', label: 'Hard: aim error (thousandths of a radian)', def: 5, min: 0, max: 150, step: 1, group: 'Computer: Hard' },
+  { k: 'aiPowHard', label: 'Hard: power error (%)', def: 1, min: 0, max: 20, step: 0.5, group: 'Computer: Hard' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="9" cy="15" r="4"/><circle cx="16.5" cy="8" r="3.5"/><path d="M3 21l3.5-3.5"/><circle cx="9" cy="15" r="1" fill="currentColor" stroke="none"/></svg>';
 export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)
