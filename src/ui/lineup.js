@@ -62,7 +62,8 @@ export function gameArt(t) {
   let html = '';
   try {
     const rng = makeRng('lineup-' + t), mini = newMini(t, rng, { shared: true });
-    for (const p of ['X', 'O']) {                                       // a move each where a random one plays cleanly and leaves the game open
+    if (typeof view.preview === 'function') view.preview(mini, rng);   // (a view's own example move where a random one would read oddly: Five Letters' CHAOS)
+    else for (const p of ['X', 'O']) {                                  // a move each where a random one plays cleanly and leaves the game open
       try {
         const copy = JSON.parse(JSON.stringify(mini)), m = randomLegalMove(copy, p, rng);
         if (m == null) break;

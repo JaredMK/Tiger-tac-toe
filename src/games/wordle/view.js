@@ -5,7 +5,7 @@ import { toon } from '../../ui/art.js';
 import { fxAt, fxAttr, startFx } from '../../ui/fx.js';
 import { keyboard } from '../../ui/keyboard.js';
 import { raceBoards, raceMe, raceThumb } from '../../ui/race.js';
-import { wordleBest, wordleGuesses, wordleLeft, wordleLimit, wordlePart, wordleTarget } from './rules.js';
+import { apply as applyGuess, wordleBest, wordleGuesses, wordleLeft, wordleLimit, wordlePart, wordleTarget } from './rules.js';
 
 // Race mode (core/race.js, `rv: 2`): each player their own word; both players' rows are open, so the square is two
 // boards (ui/race.js): this phone's own rows, the row being typed and the keyboard, large; the other player's rows,
@@ -13,6 +13,11 @@ import { wordleBest, wordleGuesses, wordleLeft, wordleLimit, wordlePart, wordleT
 // Each player's guesses left, as dots (filled: left; hollow: used), as Higher/Lower's. A square from before the limit: none.
 const pips = (mini, p) => { const k = wordleLimit(mini), left = wordleLeft(mini, p); return `<i class="hpips ${p}" aria-label="${p}: ${left} guess${left === 1 ? '' : 'es'} left">${Array.from({ length: k }, (_, j) => `<i class="${j < left ? 'on' : ''}"></i>`).join('')}</i>`; };
 const MARK = { g: 'green', y: 'yellow', x: 'grey' };
+// The game's picture away from play (the Game lineup's card, ui/lineup.js gameArt): a fresh square of its own (dealt for the
+// picture alone, never a real square) with one example guess, always CHAOS (a fixed word, never one drawn from the
+// list), coloured against that throwaway square's word. Real play's miniature shows its own guesses only.
+export const PREVIEW_WORD = 'CHAOS';
+export function preview(mini, rng) { if (!mini.race) applyGuess(mini, 'X', PREVIEW_WORD, rng); }
 
 // The miniature: the latest guess in its coloured tiles, its letters as large as the board's other text, the guesses
 // before it (two, or three without the dots) as thin strips of their colours above it, and each player's guesses left.
