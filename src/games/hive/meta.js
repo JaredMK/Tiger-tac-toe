@@ -36,7 +36,7 @@ export const TUNE = [
   { k: 'aiShort', label: 'How likely a word one letter longer is, against one shorter (%)', def: 45, min: 5, max: 150, step: 5, group: 'Computer: Normal' },
   { k: 'aiMinHard', label: 'Words a burst, at least', def: 2, min: 0, max: 12, step: 1, group: 'Computer: Hard' },
   { k: 'aiMaxHard', label: 'Words a burst, at most', def: 5, min: 0, max: 12, step: 1, group: 'Computer: Hard' },
-  { k: 'aiShortHard', label: 'How likely a word one letter longer is, against one shorter (%)', def: 45, min: 5, max: 150, step: 5, group: 'Computer: Hard' },
+  { k: 'aiShortHard', label: 'How likely a word one letter longer is, against one shorter (%)', def: 35, min: 5, max: 150, step: 5, group: 'Computer: Hard' },
   { k: 'aiFullHard', label: 'Goes for a full-hive word (% of bursts)', def: 0, min: 0, max: 100, step: 5, group: 'Computer: Hard' },
   { k: 'aiMinEasy', label: 'Words a burst, at least', def: 1, min: 0, max: 12, step: 1, group: 'Computer: Easy' },
   { k: 'aiMaxEasy', label: 'Words a burst, at most', def: 3, min: 0, max: 12, step: 1, group: 'Computer: Easy' },

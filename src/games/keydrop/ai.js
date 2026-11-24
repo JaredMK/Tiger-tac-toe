@@ -1,6 +1,6 @@
 // Key Drop: the computer's play. It picks a prize still on its shelf and lets go of each slide when the key should
 // be level with that keyhole, early or late by a timing error of its level's size (ms, a normal spread: `aiMs` 70 at
-// Normal, 55 at Hard, 95 at Easy), so where the key stops is off by that time at the key's speed: a stand-in for a
+// Normal, 50 at Hard, 95 at Easy), so where the key stops is off by that time at the key's speed: a stand-in for a
 // finger, never a perfect release.
 import { gaussOf } from '../../core/random.js';
 import { KEYD, keydAt, keydCfg, keydHole, keydSpeed } from './rules.js';

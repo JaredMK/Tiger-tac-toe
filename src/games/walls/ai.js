@@ -1,7 +1,7 @@
 // Wall Race: the computer's play. A position is the other pawn's shortest way home less its own (`lead`). Easy steps
 // along its shortest way most of the time, else any move. Normal steps along its shortest way; when it is losing the race
 // and has a wall, it places the wall that lengthens the other pawn's way most, its own way spared.
-// Hard looks ahead: every step and wall, the other side's best reply, its own best answer (within `ctx.until`).
+// Hard looks ahead: every step and wall and the other side's best reply (within `ctx.until`; deeper by its setting).
 import { other } from '../../core/util.js';
 import { tune } from '../../core/tune.js';
 import { wallGoal, wallPath, wallSpots, wallSteps } from './rules.js';
@@ -25,7 +25,7 @@ export function needs(pm, p) { return Math.max(1, dist(pm, p)); }
 // in turn) and, below 2, whether it blocks with walls (`aiBlock<Level>`: losing the race with a wall in hand, the wall
 // that lengthens the other way most for the least added to its own). Its stray moves are the mistake rate.
 const LV = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
-export const LOOK = { easy: 1, normal: 1, hard: 3 }, BLOCK = { easy: 'off', normal: 'on', hard: 'on' };
+export const LOOK = { easy: 1, normal: 1, hard: 2 }, BLOCK = { easy: 'on', normal: 'on', hard: 'on' };
 export function levelCfg(pm, level) {
   const t = tune(pm), L = LV[level] ? level : 'normal', k = LV[L], n = Number(t['aiLook' + k]);
   return { look: Number.isFinite(n) && t['aiLook' + k] !== '' && t['aiLook' + k] != null ? n : LOOK[L], block: (t['aiBlock' + k] || BLOCK[L]) === 'on' };

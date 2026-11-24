@@ -2,9 +2,10 @@
 // It never enters more words than a person could in a burst: a number of words by its level (`aiMin`..`aiMax`: Easy 1
 // to 3, Normal 1 to 4, Hard 2 to 5), drawn from the words of the letters just drawn that nobody has found yet, with a
 // lean to short ones (each extra letter makes a word `aiShort` % as likely as one a letter shorter: Easy keeps to the
-// 4-letter words, Hard reaches for the long ones) and to everyday ones (the puzzles mark them; a word that is not one
-// is `aiRare` % as likely, so what the computer finds looks like what a person would), and Hard goes looking for a
-// full-hive word `aiFullHard` % of its bursts. Nothing is searched (a fixed, small amount of work whatever `ctx.until`
+// 4-letter words; Hard, with more words a burst, keeps to shorter ones than Normal: tuned so Hard beats Normal about
+// 70%, the AI levels pass) and to everyday ones (the puzzles mark them; a word that is not one
+// is `aiRare` % as likely, so what the computer finds looks like what a person would), and Hard can go looking for a
+// full-hive word `aiFullHard` % of its bursts (0 by default). Nothing is searched (a fixed, small amount of work whatever `ctx.until`
 // says). `needs` is the points still needed over what a Normal burst is worth: on the letters drawn, when its Go! is
 // made; else on new letters (every burst gets them), the average over the puzzles.
 import { randInt } from '../../core/random.js';

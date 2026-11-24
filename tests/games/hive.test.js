@@ -23,7 +23,7 @@ test('hive: Admin only, brain, a timed burst, a 60 s turn, held out of Find Matc
   assert.ok(E.FIND_MATCH_HOLD.includes('hive'), 'what a phone found in its burst is the phone\'s word');
   assert.deepEqual(E.gameFields('hive').map(f => f.k), ['again', 'secs', 'target', 'four', 'bonus', 'aiRare', 'aiMin', 'aiMax', 'aiShort', 'aiMinHard', 'aiMaxHard', 'aiShortHard', 'aiFullHard', 'aiMinEasy', 'aiMaxEasy', 'aiShortEasy']);
   const c = R.hiveCfg(fresh('a'));
-  assert.deepEqual([c.target, c.secs, c.four, c.bonus, c.rare, c.ai.normal, c.ai.hard, c.ai.easy], [40, 20, 1, 7, 20, [1, 4, 45, 0], [2, 5, 45, 0], [1, 3, 35, 0]]);
+  assert.deepEqual([c.target, c.secs, c.four, c.bonus, c.rare, c.ai.normal, c.ai.hard, c.ai.easy], [40, 20, 1, 7, 20, [1, 4, 45, 0], [2, 5, 35, 0], [1, 3, 35, 0]]);
   for (const bad of ['slot', 'jackpot', 'bet', 'queen bee', 'genius', 'pangram']) assert.ok(!JSON.stringify([M.info, M.explainer, M.goAgainText]).toLowerCase().includes(bad), bad);
   assert.match(M.explainer.play, /new letters, hidden until you tap Go!/, 'the explainer says the letters are new each turn and come with Go!');
 });
@@ -200,7 +200,7 @@ test('hive: the computer: Go! first, then legal bursts no bigger than a person\'
   const e = stat('easy'), n = stat('normal'), h = stat('hard');
   assert.ok(e.pts < n.pts && n.pts < h.pts, `points a burst: easy ${e.pts.toFixed(1)} < normal ${n.pts.toFixed(1)} < hard ${h.pts.toFixed(1)}`);
   assert.deepEqual([e.min, e.max, n.min, n.max, h.min, h.max], [1, 3, 1, 4, 2, 5]);
-  assert.ok(n.plain > 0.6 && e.len < n.len && n.len < h.len, `everyday words ${n.plain.toFixed(2)}; letters a word ${e.len.toFixed(2)} < ${n.len.toFixed(2)} < ${h.len.toFixed(2)}`);
+  assert.ok(n.plain > 0.6 && e.len < n.len, `everyday words ${n.plain.toFixed(2)}; letters a word ${e.len.toFixed(2)} < ${n.len.toFixed(2)} (Hard: more words, shorter on the whole, the AI levels pass)`);
   const pm = E.publicMini(fresh('n'), 'X'); assert.ok(A.needs(pm, 'X') > 3 && A.needs(pm, 'X') < 9, `needs ${A.needs(pm, 'X')}`); pm.pts.X = 39; assert.equal(A.needs(pm, 'X'), 1); pm.pts.X = 40; assert.equal(A.needs(pm, 'X'), 0);
   const fresh7 = A.hiveBurst(E.publicMini(fresh('n'), 'X'), 'normal', 'X'); assert.ok(fresh7 > 5 && fresh7 < 10, `a Normal burst on new letters is worth about 7 (${fresh7.toFixed(2)})`);
   let wins = 0, first = 99;

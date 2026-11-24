@@ -1,5 +1,5 @@
 // Target Practice: the computer's play. It picks one of its standing targets and aims at its middle, each slider off
-// by an error of its level's size (field units, a normal spread: `aiErr` 7 at Normal, 4 at Hard, 11 at Easy), and stops
+// by an error of its level's size (field units, a normal spread: `aiErr` 7 at Normal, 5.5 at Hard, 9 at Easy), and stops
 // the circle near its smallest (off by a share of the same error). Where the dart lands inside the circle is the
 // throw's own chance.
 import { gaussOf } from '../../core/random.js';

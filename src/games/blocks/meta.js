@@ -10,6 +10,7 @@ export const explainVars = v => ({ evenText: v.even !== 'off' ? ' If the first p
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6v6H9zM3 15h6v6H3zM9 15h6v6H9zM15 15h6v6h-6z"/><path d="M12 10.500v2.500"/></svg>';
 // Its settings (the admin's Games page; core/tune.js): the pieces a turn, the rows to win, the board's size, equal
 // turns (rules.js: on, the second player always gets as many turns as the first), and junk rows (two or more rows cleared by one piece send one fewer to the other player's board).
+export const AI_LEVELS = { think: { normal: 150, hard: 300 } };
 export const TUNE = [
   { k: 'pieces', label: 'Pieces a turn', def: 3, min: 1, max: 6, step: 1, group: 'Rules' },
   { k: 'lines', label: 'Rows to take the square', def: 4, min: 1, max: 10, step: 1, group: 'Rules' },

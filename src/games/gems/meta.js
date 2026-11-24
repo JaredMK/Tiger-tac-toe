@@ -15,6 +15,7 @@ export const explainVars = v => ({ goAgain: v.again === 'on' ? ` Burst ${v.again
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4.500h10l4 5-9 10.500-9-10.500z"/><path d="M3 9.500h18M9.500 9.500 12 20l2.500-10.500M7 4.500l2.500 5 2.500-5 2.500 5 2.500-5"/></svg>';
 // Its settings (the admin's Games page; core/tune.js): read with gemsCfg(mini); the board's size and the kinds of gem
 // are taken as a square is dealt and stay with it (mini.n, mini.kinds). Chosen by tests/sim/gems.sim.js: see its header.
+export const AI_LEVELS = { think: { normal: 150, hard: 300 } };
 export const TUNE = [
   AGAIN_TUNE,
   { k: 'againAt', label: 'Go again: gems burst by one swap', def: 6, min: 4, max: 20, step: 1, group: 'Rules' },
