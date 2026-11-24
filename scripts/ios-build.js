@@ -1,9 +1,9 @@
 'use strict';
 // Every step from the web files to an Xcode project that is ready to run or archive (docs/ios-plan.md), the same each time:
-//   1. npm run build:app: the web files into _app.nosync/ (the Firebase SDK is copied in, so this needs the network),
+//   1. npm run build:app: the web files into _app/ (the Firebase SDK is copied in, so this needs the network),
 //   2. npx cap add ios, the first time only,
 //   3. scripts/ios-setup.js: signing, entitlements, the Firebase plist, icon, launch screen,
-//   4. npx cap sync ios: the web files and the plugins into the project (scripts/ios-web.js places them, out of iCloud's reach).
+//   4. npx cap sync ios: the web files and the plugins into the project.
 //   npm run ios:build [-- production|staging] [--open] [--run] [--build N] [--plists DIR]
 // production (the default) is the build for TestFlight and the App Store; staging talks to the staging project (a tester's
 // build of the staging site's game). --open opens the project in Xcode after; --run runs it in the iOS Simulator (npx cap run).

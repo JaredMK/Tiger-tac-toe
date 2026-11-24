@@ -3,7 +3,6 @@ node_modules
 functions/deploy-stamp.txt
 _site
 _app
-_app.nosync
 .claude/
 _shots
 
