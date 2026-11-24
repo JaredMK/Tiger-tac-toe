@@ -1,5 +1,5 @@
 // Shape Split: the computer's play. It picks a direction for its line at random and aims for half and half, off by an
-// error of its level's size (points of a percent of the shape, a normal spread: `aiErr` 6 at Normal, 3 at Hard, 10 at
+// error of its level's size (points of a percent of the shape, a normal spread: `aiErr` 6 at Normal, 4 at Hard, 9 at
 // Easy): the line that leaves 50% plus that error on one side (rules.js splitAim).
 import { gaussOf } from '../../core/random.js';
 import { splitAim, splitCfg, splitShape } from './rules.js';

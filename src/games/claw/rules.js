@@ -24,7 +24,7 @@ export const CLAW = { W: 100, rest: 8, lo: 18, hi: 97, gap: 1, chute: 15, hz: 12
 export const CLAW_KINDS = { ball: { w: 5, wt: 0.8 }, blob: { w: 6.5, wt: 1 }, star: { w: 6, wt: 1.1 }, box: { w: 7, wt: 1.3 } };
 const KINDS = Object.keys(CLAW_KINDS);
 export const CLAW_COLS = 6;                                       // colours to deal from (the view's palette)
-export const CLAW_DEF = { goal: 3, prizes: 6, speed: 34, swing: 55, damp: 22, gripMax: 75, gripEdge: 15, slip: 20, slipPoor: 34, aiMs: 70, aiMsHard: 40, aiMsEasy: 140 };
+export const CLAW_DEF = { goal: 3, prizes: 6, speed: 34, swing: 55, damp: 22, gripMax: 75, gripEdge: 15, slip: 20, slipPoor: 34, aiMs: 100, aiMsHard: 25, aiMsEasy: 180 };
 export const clawCfg = mini => Object.assign({}, CLAW_DEF, tune(mini));
 const r1 = v => Math.round(v * 10) / 10;
 // A case of n prizes: kinds at random, packed left to right on the floor with the free room shared out at random.

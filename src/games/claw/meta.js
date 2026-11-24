@@ -26,9 +26,9 @@ export const TUNE = [
   { k: 'gripEdge', label: 'Grip at the prize\'s edge (%)', def: 15, min: 0, max: 100, step: 1, group: 'Rules' },
   { k: 'slip', label: 'Slip on the way, a good grip (%)', def: 20, min: 0, max: 60, step: 1, group: 'Rules' },
   { k: 'slipPoor', label: 'Slip, added at the edge (%)', def: 34, min: 0, max: 80, step: 1, group: 'Rules' },
-  { k: 'aiMsEasy', label: 'Timing error tapping Drop (ms, a typical miss)', def: 140, min: 0, max: 600, step: 5, group: 'Computer: Easy' },
-  { k: 'aiMs', label: 'Timing error tapping Drop (ms, a typical miss)', def: 70, min: 0, max: 400, step: 5, group: 'Computer: Normal' },
-  { k: 'aiMsHard', label: 'Timing error tapping Drop (ms, a typical miss)', def: 40, min: 0, max: 400, step: 5, group: 'Computer: Hard' },
+  { k: 'aiMsEasy', label: 'Timing error tapping Drop (ms, a typical miss)', def: 180, min: 0, max: 600, step: 5, group: 'Computer: Easy' },
+  { k: 'aiMs', label: 'Timing error tapping Drop (ms, a typical miss)', def: 100, min: 0, max: 400, step: 5, group: 'Computer: Normal' },
+  { k: 'aiMsHard', label: 'Timing error tapping Drop (ms, a typical miss)', def: 25, min: 0, max: 400, step: 5, group: 'Computer: Hard' },
 ];
 // The icon: a claw on its cable over a ball.
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h16M12 3v6"/><path d="M12 9c-2.6 0-4 1.6-4 3.4l1.6 2M12 9c2.6 0 4 1.6 4 3.4l-1.6 2"/><circle cx="12" cy="18.5" r="3"/></svg>';

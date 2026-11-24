@@ -26,10 +26,10 @@ export const TUNE = [
   { k: 'friction', label: 'Coins keep of their speed (%)', def: 30, min: 0, max: 90, step: 5, group: 'Board' },
   { k: 'starPct', label: 'Star coins (% of coins)', def: 10, min: 0, max: 50, step: 1, group: 'Rules' },
   { k: 'starWorth', label: 'A star coin is worth', def: 3, min: 1, max: 10, step: 1, group: 'Rules' },
-  { k: 'aiErr', label: 'Computer timing error, Normal (ms)', def: 110, min: 0, max: 600, step: 10, group: 'Computer' },
-  { k: 'aiErrHard', label: 'Computer timing error, Hard (ms)', def: 50, min: 0, max: 600, step: 10, group: 'Computer' },
-  { k: 'aiErrEasy', label: 'Computer timing error, Easy (ms)', def: 300, min: 0, max: 900, step: 10, group: 'Computer' },
-  { k: 'aiTries', label: 'Hard: columns tried', def: 14, min: 4, max: 40, step: 1, group: 'Computer' },
+  { k: 'aiErr', label: 'Normal: timing error dropping a coin (ms)', def: 110, min: 0, max: 600, step: 10, group: 'Computer: Normal' },
+  { k: 'aiErrHard', label: 'Hard: timing error dropping a coin (ms)', def: 50, min: 0, max: 600, step: 10, group: 'Computer: Hard' },
+  { k: 'aiErrEasy', label: 'Easy: timing error dropping a coin (ms; it also drops at random columns)', def: 300, min: 0, max: 900, step: 10, group: 'Computer: Easy' },
+  { k: 'aiTries', label: 'Hard: columns it tries through the real push before choosing', def: 14, min: 4, max: 40, step: 1, group: 'Computer: Hard' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3" width="17" height="18" rx="2.5"/><path d="M3.5 8.5h17"/><circle cx="9" cy="14" r="2.2"/><circle cx="15" cy="15.5" r="2.2"/><path d="M8 5.7h8"/></svg>';
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/pusher): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
