@@ -22,4 +22,4 @@ export const lineupBlurb = 'Call a ball from the ones that roll out: it marks ev
 export const luckSkill = 2;
 export const format = 'shared';
 // The computer's levels (core/tune.js levelTune): its mistakes by level (another offered ball). Mostly luck.
-export const AI_LEVELS = { miss: { easy: 70, normal: 0, hard: 0 } };
+export const AI_LEVELS = { miss: { easy: 40, normal: 0, hard: 0 } };
