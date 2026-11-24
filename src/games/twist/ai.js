@@ -17,6 +17,8 @@ function ranked(cells, n, L, p) {
   for (const m of moves(cells, n)) { const r = twistTry(cells, n, L, p, m); if (!r) continue; out.push({ m, r, v: r.end === 'win' ? 1e6 : r.end === 'lose' ? -1e6 : score(r.cells, n, L, p) }); }
   out.sort((x, y) => y.v - x.v); return out;
 }
+// Whether p has a move that wins at once (looked for move by move, stopping at the first).
+function canWin(cells, n, L, p) { for (const m of moves(cells, n)) { const r = twistTry(cells, n, L, p, m); if (r && r.end === 'win') return true; } return false; }
 export function needs(pm, p) { let most = 0; const o = other(p); for (const w of twistLines(pm.n, pm.L)) { let a = 0, b = 0; for (const i of w) { if (pm.cells[i] === p) a++; else if (pm.cells[i] === o) b++; } if (!b) most = Math.max(most, a); } return Math.max(1, pm.L - most); }
 // Each level's play is its settings (meta.js TUNE, Computer: Easy / Normal / Hard): how it picks (`aiLook<Level>`: 0
 // any move that does not lose at once, 1 its best move by score after it), whether it blocks (`aiBlock<Level>`: passes
@@ -36,9 +38,16 @@ export function best(pm, me, rng, style, ctx) {
   if (all[0].r.end === 'win') return out(all[0]);
   let live = all.filter(x => x.r.end !== 'lose');
   if (!live.length) return out(all[0]);
-  if (cfg.block) { const safe = live.filter(x => { if (x.r.end === 'draw') return true; const rep = ranked(x.r.cells, n, L, o)[0]; return !(rep && rep.r.end === 'win'); }); if (safe.length) live = safe; }
-  if (cfg.look <= 0) return out(live[Math.floor(rng() * live.length)]);
-  const top = live.filter(x => x.v >= live[0].v - 1e-9);
+  const pieces = pm.cells.filter(v => v === o).length;
+  const safe = x => !cfg.block || x.r.end === 'draw' || pieces < L - 1 || !canWin(x.r.cells, n, L, o);   // (fewer than L - 1 pieces of theirs: no line next move)
+  if (cfg.look <= 0) {                                             // any move that does not lose at once (blocking: the first safe one in a random order)
+    const order = live.map(x => ({ x, k: rng() })).sort((a, b) => a.k - b.k).map(e => e.x);
+    return out(order.find(safe) || order[0]);
+  }
+  // its best move by score among the safe ones (walked best first: a block is looked for only as far as it must be)
+  let top = [], v0 = null;
+  for (const x of live) { if (v0 != null && x.v < v0 - 1e-9) break; if (safe(x)) { if (v0 == null) v0 = x.v; top.push(x); } }
+  if (!top.length) top = live.filter(x => x.v >= live[0].v - 1e-9);
   return out(top[Math.floor(rng() * top.length)]);
 }
 // A weaker move a person might make (the mistake rate, core/ai.js aiSlip): a move that looked good on its face (among
