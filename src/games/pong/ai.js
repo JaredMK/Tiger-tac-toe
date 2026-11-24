@@ -24,7 +24,8 @@ export function pongMakeOdds(cups, x, y, eAim, ePower, t, rng, n = 160) {
 export function best(pm, me, rng, style, ctx) {
   const up = pm.cups[me].map((c, k) => (c ? k : -1)).filter(k => k >= 0), t = tune(pm), level = ctx && ctx.level;
   if (!up.length) return { move: pongAimAt(0), q: 0 };
-  const loose = level === 'easy' ? 6 : level === 'hard' ? 0.5 : 1, eAim = t.aiAim * loose, ePower = t.aiPower * loose;
+  const mul = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) / 100 : d);
+  const loose = level === 'easy' ? mul(t.aiLooseEasy, 6) : level === 'hard' ? mul(t.aiLooseHard, 0.5) : 1, eAim = t.aiAim * loose, ePower = t.aiPower * loose;
   let target, q = MAKE;
   if (level === 'hard') {
     const pts = up.map(k => PONG.cups[k]);

@@ -12,9 +12,11 @@ export const PLINKO_DEFAULTS = { target: 12 };
 // Its settings besides the target (the admin's Mini-game Settings; core/tune.js): read with tune(mini).
 export const TUNE = [
   { k: 'bonus', label: 'Bonus peg points', def: 2, min: 1, max: 5, step: 1, group: 'Rules' },
-  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 100, step: 5, group: 'Computer' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/plinko): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Drop a disc down through the pegs and score the bin it lands in. Reach the target first.';
 export const luckSkill = 1;
 export const format = 'race';
+// The computer's levels (core/tune.js levelTune): Easy drops into any open slot now and then (a random legal move), never
+// weighing the bins; Hard weighs the race (plinkoDeep).
+export const AI_LEVELS = { miss: { easy: 50 } };

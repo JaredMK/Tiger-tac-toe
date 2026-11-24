@@ -18,13 +18,31 @@ export function needs(pm, p) {
   if (!g) { const n = huntSize(pm); return 1 + Math.log2(n * n) / k; }   // (a part this copy has not got: a fresh grid)
   const n = huntCandidates(pm, p).length; return n <= 1 ? 1 : 1 + Math.log2(n) / k;
 }
+const num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
+function huntLoose(g, rng, heed) {                               // the open cells that fit the clues kept in mind (each dig's band with the chance heed %)
+  const kept = g.clues.map((k, d) => (k != null && rng() * 100 < heed ? k : null)), out = [];
+  for (let c = 0; c < g.dug.length; c++) if (!g.dug[c] && kept.every((k, d) => k == null || huntBand(huntDist(c, d, g.n), g.hints) === k)) out.push(c);
+  return out;
+}
+// A level's mistake (aiMiss<Level>): a dig that fits only about half the clues, never the cell it meant.
+export function worse(pm, me, rng, ctx) {
+  const g = huntGrid(pm, me); if (!g) return null;
+  const fit = huntLoose(g, rng, 50).filter(c => c !== (ctx && ctx.best));
+  return fit.length ? fit[randInt(rng, fit.length)] : null;
+}
 export function best(pm, me, rng, style, ctx) {
   const shared = !pm.race, cand = huntCandidates(pm, me), g = huntGrid(pm, me) || { n: huntSize(pm), hints: huntHints(pm), dug: new Array(huntSize(pm) ** 2).fill(null) };
   if (!cand.length) { const open = g.dug.map((d, i) => (d ? -1 : i)).filter(i => i >= 0); return { move: open[0], q: 0, shared }; }
   if (cand.length === 1) return { move: cand[0], q: 1, shared };
-  const miss = tune(pm).miss || 0;                               // (the admin's mistake rate: a dig anywhere it could be)
+  const miss = tune(pm).miss || 0;                               // (the old level-blind rate, for squares dealt with it; the levels' own is aiMiss<Level>, worse below)
   if (miss && rng() * 100 < miss) return { move: cand[randInt(rng, cand.length)], q: 1 / cand.length, shared };
   if (ctx && ctx.level === 'hard') return shared ? huntHard(pm, cand, ctx, g, rng) : huntSolo(cand, ctx, g);
+  const T = tune(pm);
+  if (ctx && ctx.level === 'easy') {                             // Easy: from some of the clues (aiHeedEasy % of the digs it keeps in mind), any cell they leave
+    const fit = huntLoose(g, rng, num(T.aiHeedEasy, 60));
+    if (fit.length) { const c = fit[randInt(rng, fit.length)]; return { move: c, q: cand.includes(c) ? 1 / cand.length : 0, shared }; }
+  }
+  if (!(rng() * 100 < num(T.aiSplitNormal, 100))) return { move: cand[randInt(rng, cand.length)], q: 1 / cand.length, shared };   // (Normal: now and then any cell the clues leave)
   let best = cand[0], bestSplit = Infinity;        // the dig that, if it misses, leaves the fewest candidates on average (by the band it would show)
   const n = g.n;
   for (const c of cand) {

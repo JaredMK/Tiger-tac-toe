@@ -13,10 +13,12 @@ export const TUNE = [
   { k: 'start', label: 'First pattern (steps)', def: 4, min: 3, max: 6, step: 1, group: 'Rules' },
   { k: 'add', label: 'Steps added each pattern', def: 2, min: 1, max: 3, step: 1, group: 'Rules' },
   { k: 'step', label: 'Pattern pace (ms a step)', def: 450, min: 350, max: 700, step: 50, group: 'Timing' },
-  { k: 'ai1', label: 'Computer beats pattern 1 (%)', def: 95, min: 10, max: 100, step: 5, group: 'Computer' },
-  { k: 'ai2', label: 'Computer beats pattern 2 (%)', def: 85, min: 10, max: 100, step: 5, group: 'Computer' },
-  { k: 'ai3', label: 'Computer beats pattern 3 (%)', def: 70, min: 10, max: 100, step: 5, group: 'Computer' },
-  { k: 'ai4', label: 'Computer beats pattern 4 (%)', def: 55, min: 10, max: 100, step: 5, group: 'Computer' },
+  { k: 'aiSkillEasy', label: "Easy: repeats a pattern right this share of Normal's rate (%)", def: 75, min: 10, max: 200, step: 5, group: 'Computer: Easy' },
+  { k: 'ai1', label: 'Normal: repeats pattern 1 right (%)', def: 95, min: 10, max: 100, step: 5, group: 'Computer: Normal' },
+  { k: 'ai2', label: 'Normal: repeats pattern 2 right (%)', def: 85, min: 10, max: 100, step: 5, group: 'Computer: Normal' },
+  { k: 'ai3', label: 'Normal: repeats pattern 3 right (%)', def: 70, min: 10, max: 100, step: 5, group: 'Computer: Normal' },
+  { k: 'ai4', label: 'Normal: repeats pattern 4 right (%)', def: 55, min: 10, max: 100, step: 5, group: 'Computer: Normal' },
+  { k: 'aiSkillHard', label: "Hard: repeats a pattern right this share of Normal's rate (%, at most 99% a pattern)", def: 115, min: 10, max: 200, step: 5, group: 'Computer: Hard' },
 ];
 export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/echo): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

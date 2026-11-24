@@ -12,10 +12,12 @@ export function needs(pm, p) {
   if (!v) return 1 + 9 / 2;                                      // (a part this copy has not got: nothing seen)
   const known = v.seen.filter(i => v.cards[i]); return memoryPair(v, known) ? 1 : 1 + (9 - v.seen.length) / 2;
 }
+const num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
 export function best(pm, me, rng, style, ctx) {
   const shared = !pm.race, v = memoryKnown(pm, me) || { seen: [], cards: [] };
   let known = v.seen.filter(i => v.cards[i]);
-  const mem = tune(pm).mem, forgot = [];
+  const T = tune(pm), lv = ctx && ctx.level, forgot = [];
+  const mem = lv === 'easy' ? num(T.memEasy, 60) : lv === 'hard' ? num(T.memHard, 100) : num(T.mem, 100);   // its memory, by level (TUNE)
   if (mem < 100) known = known.filter(i => rng() * 100 < mem || !forgot.push(i));   // its memory (TUNE): a card seen may be forgotten, as good as unseen
   const pair = memoryPair(v, known);
   if (pair) return { move: pair, q: 1, shared };
@@ -71,7 +73,8 @@ function memoryOdds(m, k) {
 }
 function memoryHard(pm, known, unseen, rng) {
   const o = memoryOdds(Math.max(1, Math.min(3, tune(pm).pairs || 1)), known.length);
-  if (known.length >= 2 && o.v < 0.5 - MH.margin && rng() < MH.wait) {   // nothing to gain by showing a card: two seen ones again
+  const wait = (v => (v != null && v !== "" && Number.isFinite(Number(v)) ? Number(v) / 100 : MH.wait))(tune(pm).aiWaitHard);
+  if (known.length >= 2 && o.v < 0.5 - MH.margin && rng() < wait) {   // nothing to gain by showing a card: two seen ones again
     const a = randInt(rng, known.length); let b = randInt(rng, known.length - 1); if (b >= a) b++;
     return { move: [known[a], known[b]], q: 0, qLose: 0, after: pm, shared: true };
   }

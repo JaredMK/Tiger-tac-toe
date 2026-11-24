@@ -40,8 +40,9 @@ function raceRight(pm, me) {
   const k = q ? a.opts.indexOf(q.a) : -1;
   return k >= 0 ? k : null;
 }
-export function best(pm, me, rng, style, ctx) {   // it knows it about half the time, else guesses among the options still standing (never one crossed out; a race: on its own question)
-  const t = tune(pm), know = t.know / 100, n = pm.race ? ((a => (a && Array.isArray(a.opts) ? a.opts.length : a && a.n) || optsOf(pm))(askOf(pm, me))) : optsOf(pm), crossed = pm.race ? triviaCrossed(pm, me) : pm.crossed || [];
+export function best(pm, me, rng, style, ctx) {   // it knows it some of the time, by level (knowEasy / know / knowHard), else guesses among the options still standing (never one crossed out; a race: on its own question)
+  const t = tune(pm), lv = ctx && ctx.level, kn = lv === 'easy' ? t.knowEasy : lv === 'hard' ? t.knowHard : t.know;
+  const know = (Number.isFinite(Number(kn)) && kn !== '' && kn != null ? Number(kn) : t.know) / 100, n = pm.race ? ((a => (a && Array.isArray(a.opts) ? a.opts.length : a && a.n) || optsOf(pm))(askOf(pm, me))) : optsOf(pm), crossed = pm.race ? triviaCrossed(pm, me) : pm.crossed || [];
   const right = pm.race ? raceRight(pm, me) : pm.answer;
   const left = Array.from({ length: n }, (_, k) => k).filter(k => !crossed.includes(k));
   if (!Number.isInteger(right)) {                                // (its answer unknown here: a guess among those standing)

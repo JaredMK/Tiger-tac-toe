@@ -1,6 +1,7 @@
 // Tic-Tac-Toe: the computer's play.
 import { LINES } from '../../core/board.js';
 import { randInt } from '../../core/random.js';
+import { tune } from '../../core/tune.js';
 import { other } from '../../core/util.js';
 import { lineNeeds, pickValued, slip } from '../shared/lines.js';
 import { tttMinimax, tttOpen } from './rules.js';
@@ -63,8 +64,43 @@ export function needs(pm, p) {
   if (k) return k[p];
   return lineNeeds(pm.cells, 3, 3, 3, p);
 }
+// Easy and Normal look only so many marks ahead (the settings' aiDepth<Level>: 1 sees a win of its own, 2 a win of the
+// other side's to block too, 3 a fork, 9 the whole game); Easy blocks only aiBlockEasy % of the time it could see to.
+// Among moves of the same value Normal takes the one with the most lines building (pickValued), Easy any.
+export function tttLook(cells, me, depth) {
+  const o = other(me), c = cells.slice();
+  const val = (p, d) => {                                        // the value for p to move, d marks deep (10 a win now; 0 nothing seen)
+    if (d <= 0) return 0;
+    let top = -Infinity, any = false;
+    for (let i = 0; i < 9; i++) {
+      if (c[i]) continue;
+      any = true; c[i] = p;
+      const v = lineOf(c, p) ? 10 : ended(c) ? 0 : -val(other(p), d - 1) * 0.9;
+      c[i] = null;
+      if (v > top) top = v;
+    }
+    return any ? top : 0;
+  };
+  const out = [];
+  for (let i = 0; i < 9; i++) {
+    if (c[i]) continue;
+    c[i] = me;
+    out.push({ i, v: lineOf(c, me) ? 10 : ended(c) ? 0 : -val(o, depth - 1) * 0.9 });
+    c[i] = null;
+  }
+  return out;
+}
+const num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
 export function best(pm, me, rng, style, ctx) {
-  if (!(ctx && ctx.level === 'hard')) return pickValued(pm, me, slip(pm, tttMinimax(pm.cells, me), rng), (cells, i) => i);
+  const lv = ctx && ctx.level, T = tune(pm);
+  if (lv === 'easy' || lv === 'normal' || !lv) {
+    let depth = lv === 'easy' ? num(T.aiDepthEasy, 1) : num(T.aiDepthNormal, 2);
+    if (lv === 'easy' && depth < 2 && rng() * 100 < num(T.aiBlockEasy, 70)) depth = 2;   // (Easy sees the other side's line only now and then)
+    const moves = slip(pm, depth >= 9 ? tttMinimax(pm.cells, me) : tttLook(pm.cells, me, depth), rng);
+    if (lv !== 'easy') return pickValued(pm, me, moves, (cells, i) => i);
+    const top = Math.max(...moves.map(m => m.v)), pool = moves.filter(m => m.v >= top - 1e-9);
+    return pickValued(pm, me, [pool[randInt(rng, pool.length)]], (cells, i) => i);
+  }
   const moves = slip(pm, moveValues(pm.cells.slice(), me), rng);   // (the same values as tttMinimax, kept from call to call)
   if (moves.length < 2) return pickValued(pm, me, moves, (cells, i) => i);
   const top = Math.max(...moves.map(m => m.v)), bt = Math.max(...moves.filter(m => m.v === top).map(m => m.t)), pool = moves.filter(m => m.v === top && m.t > bt - 1e-9);

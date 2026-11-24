@@ -200,14 +200,42 @@ export function needs(pm, p) {
   if (k) return k[p];
   return lineNeeds(pm.cells, C4.cols, C4.rows, tune(pm).k, p, c4Playable(pm.cells));
 }
+// Easy: a short look (aiDepthEasy moves), a win taken, the other side's next win blocked only aiBlockEasy % of the
+// time it is there to see, else one of its aiPoolEasy likeliest-looking columns at random.
+const num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
+function c4Easy(pm, me, rng, t) {
+  const moves = c4Moves(pm.cells, me, Math.max(1, num(t.aiDepthEasy, 2)), t.k), WINV = 5000;
+  const wins = moves.filter(m => m.v >= WINV);
+  if (wins.length) return pickValued(pm, me, [wins[0]], c4Drop);
+  const sees = rng() * 100 < num(t.aiBlockEasy, 60);
+  let pool = sees ? moves.filter(m => m.v > -WINV) : moves.slice();
+  if (!pool.length) pool = moves.slice();
+  if (!sees) pool = pool.map(m => ({ i: m.i, v: m.v <= -WINV ? 0 : m.v }));   // (it does not see the other side's line coming)
+  pool.sort((a, b) => b.v - a.v);
+  const k = Math.max(1, Math.min(pool.length, num(t.aiPoolEasy, 3)));
+  return pickValued(pm, me, [pool[Math.floor(rng() * k)]], c4Drop);
+}
 export function best(pm, me, rng, style, ctx) {
   const t = tune(pm), hard = !!(ctx && ctx.level === 'hard'), deep = hard && t.k === K4 && pm.cells.length === NC;
   const booked = deep && pm.cells.filter(Boolean).length <= C4_BOOK_PLIES ? c4Book(pm.cells, me) : -1;   // (the empty board: the middle, the one opening that wins the solved game)
-  const moves = booked >= 0 ? ORDER.filter(c => !pm.cells[c]).map(c => ({ i: c, v: c === booked ? 1 : 0 })) : deep ? c4Deep(pm.cells, me, ctx.until).moves : hard ? c4Hard(pm.cells, me, t.k, ctx.until).moves : c4Moves(pm.cells, me, t.depth, t.k);   // (Hard: the deep search, as the time allows)
-  const b = pickValued(pm, me, slip(pm, moves, rng), c4Drop);
+  if (ctx && ctx.level === 'easy') return c4Easy(pm, me, rng, t);
+  const hardCap = deep && num(t.aiNodesHard, 45) !== 45 ? Object.assign({}, C4_DEEP, { nodes: num(t.aiNodesHard, 45) * 1000 }) : C4_DEEP;
+  const moves = booked >= 0 ? ORDER.filter(c => !pm.cells[c]).map(c => ({ i: c, v: c === booked ? 1 : 0 })) : deep ? c4Deep(pm.cells, me, ctx.until, hardCap).moves : hard ? c4Hard(pm.cells, me, t.k, ctx.until).moves : c4Moves(pm.cells, me, num(t.depth, 5), t.k);   // (Hard: the deep search, as the time allows)
+  let mv = slip(pm, moves, rng);
+  if (!hard && mv.length > 1) { const top = Math.max(...mv.map(m => m.v)), eq = mv.filter(m => m.v >= top); if (eq.length > 1) mv = [eq[Math.floor(rng() * eq.length)]]; }   // (Normal: between columns it values the same, any)
+  const b = pickValued(pm, me, mv, c4Drop);
   if (deep && !b.win && Math.abs(b.v) >= C4_DEEP.win - NC) {    // a forced line found: the winner's own pieces still to play, the other side far more
     const plies = C4_DEEP.win - Math.abs(b.v), w = b.v > 0 ? me : other(me), mine = Math.max(0.5, b.v > 0 ? (plies - 1) / 2 : plies / 2);
     KNOWN.set(b.after, { [w]: mine, [other(w)]: mine * SURE });
   }
   return b;
+}
+
+// A level's mistake (aiMiss<Level>): a column that looks fine two moves ahead (it hands over no four at once) but is not
+// the one it chose, else any other column.
+export function worse(pm, me, rng, ctx) {
+  const t = tune(pm), not = ctx && ctx.best, all = c4Moves(pm.cells.slice(), me, 2, t.k).filter(m => m.i !== not);
+  if (!all.length) return null;
+  const ok = all.filter(m => m.v > -5000), pool = ok.length ? ok : all;
+  return pool[Math.floor(rng() * pool.length)].i;
 }

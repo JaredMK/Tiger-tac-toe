@@ -20,9 +20,11 @@ export const TUNE = [
   { k: 'n2', label: 'Grid size, level 2 (tiles across)', def: 4, min: 3, max: 6, step: 1, group: 'Board' },
   { k: 'n3', label: 'Grid size, level 3 (tiles across)', def: 5, min: 3, max: 6, step: 1, group: 'Board' },
   { k: 'secs', label: 'Time to pick (s)', def: 5, min: 2, max: 15, step: 1, group: 'Timing' },
-  { k: 'ai1', label: "Computer's finds, level 1 (%)", def: 75, min: 0, max: 100, step: 1, group: 'Computer' },
-  { k: 'ai2', label: "Computer's finds, level 2 (%)", def: 60, min: 0, max: 100, step: 1, group: 'Computer' },
-  { k: 'ai3', label: "Computer's finds, level 3 (%)", def: 45, min: 0, max: 100, step: 1, group: 'Computer' },
+  { k: 'aiSkillEasy', label: "Easy: finds the odd one this share of Normal's rate (%)", def: 75, min: 10, max: 200, step: 5, group: 'Computer: Easy' },
+  { k: 'ai1', label: "Normal: finds it, level 1 (%)", def: 75, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'ai2', label: "Normal: finds it, level 2 (%)", def: 60, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'ai3', label: "Normal: finds it, level 3 (%)", def: 45, min: 0, max: 100, step: 1, group: 'Computer: Normal' },
+  { k: 'aiSkillHard', label: "Hard: finds the odd one this share of Normal's rate (%, at most 99%)", def: 125, min: 10, max: 200, step: 5, group: 'Computer: Hard' },
 ];
 export const realTime = true;   // its move plays back in real time (a run, a recording, a timed round): never sped up past the replay's own speed (core/timer.js moveRate)
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/oddone): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

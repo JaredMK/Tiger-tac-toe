@@ -256,7 +256,36 @@ export function best(pm, me, rng, style, ctx) {
     if (h && !b.win) KNOWN.set(b.after, settled(b.after.cells, other(me)));
     return b;
   }
-  const moves = hard ? hexHard(pm.cells, me, until).moves : hexMoves(pm.cells, me);   // (Hard: the deep search, as the time allows)
-  return pickValued(pm, me, slip(pm, moves, rng), (cells, i) => i);
+  const T = tune(pm), lv = ctx && ctx.level;
+  if (hard) { const n = num(T.aiNodesHard, 2); return pickValued(pm, me, slip(pm, hexHard(pm.cells, me, until, n === 12 ? undefined : Object.assign({}, HEX_HARD, { nodes: n * 1000 })).moves, rng), (cells, i) => i); }   // (Hard: the deep search, as the time allows)
+  const moves = slip(pm, lv === 'easy' && !(rng() * 100 < num(T.aiLookEasy, 90)) ? hexGreedy(pm.cells, me) : hexMoves(pm.cells, me), rng);
+  // Easy: a reply weighed only aiLookEasy % of the time (a win taken, the other side's next win blocked aiBlockEasy % of the time), one of its
+  // aiPoolEasy best-looking cells at random; Normal: one reply ahead, the best (ties: any).
+  if (lv === 'easy') {
+    const win = moves.find(m => m.v >= 1000); if (win) return pickValued(pm, me, [win], (cells, i) => i);
+    const blk = rng() * 100 < num(T.aiBlockEasy, 90) ? hexBlock(pm.cells, me) : -1;
+    if (blk >= 0) return pickValued(pm, me, [{ i: blk, v: 0 }], (cells, i) => i);
+    const srt = moves.slice().sort((a, b) => b.v - a.v), k = Math.max(1, Math.min(srt.length, num(T.aiPoolEasy, 2)));
+    return pickValued(pm, me, [srt[randInt(rng, k)]], (cells, i) => i);
+  }
+  const top = Math.max(...moves.map(m => m.v)), pool = moves.filter(m => m.v >= top);
+  return pickValued(pm, me, pool.length > 1 ? [pool[randInt(rng, pool.length)]] : moves, (cells, i) => i);
+}
+const num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
+function hexGreedy(cells, me) {                                  // each cell by what it does now: its own distance against the other side's
+  const o = other(me), c = cells.slice(), out = [];
+  for (let i = 0; i < c.length; i++) { if (c[i]) continue; c[i] = me; const d = hexDist(c, me); out.push({ i, v: d === 0 ? 1000 : hexDist(c, o) - d }); c[i] = null; }
+  return out;
+}
+function hexBlock(cells, me) {                                   // a cell where the other side would win next, or -1
+  const o = other(me), c = cells.slice();
+  for (let i = 0; i < c.length; i++) { if (c[i]) continue; c[i] = o; const w = hexDist(c, o) === 0; c[i] = null; if (w) return i; }
+  return -1;
 }
 export { HEX_HARD };
+// A level's mistake (aiMiss<Level>): a cell that looks good one reply ahead but is not the one it chose (one of the next
+// few by hexMoves), never a stone thrown away.
+export function worse(pm, me, rng, ctx) {
+  const not = ctx && ctx.best, srt = hexMoves(pm.cells.slice(), me).filter(m => m.i !== not && m.v < 1000).sort((a, b) => b.v - a.v).slice(0, 4);
+  return srt.length ? srt[randInt(rng, srt.length)].i : null;
+}

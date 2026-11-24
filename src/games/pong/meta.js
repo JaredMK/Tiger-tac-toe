@@ -19,8 +19,10 @@ export const TUNE = [
   { k: 'flickMin', label: 'Flick speed for a short throw (px/ms)', def: 0.4, min: 0.1, max: 1.5, step: 0.05, group: 'Rules' },
   { k: 'flickMax', label: 'Flick speed for the longest throw (px/ms)', def: 1.7, min: 0.6, max: 4, step: 0.05, group: 'Rules' },
   { k: 'angleGain', label: 'Flick angle gain', def: 1, min: 0.5, max: 2, step: 0.05, group: 'Rules' },
-  { k: 'aiAim', label: "Computer's aim error", def: 0.012, min: 0, max: 0.1, step: 0.001, group: 'Computer' },
-  { k: 'aiPower', label: "Computer's power error", def: 0.018, min: 0, max: 0.1, step: 0.001, group: 'Computer' },
+  { k: 'aiLooseEasy', label: "Easy: aim and power error (% of Normal's; it throws at any cup)", def: 600, min: 10, max: 1500, step: 10, group: 'Computer: Easy' },
+  { k: 'aiAim', label: "Normal: aim error (it throws at any cup)", def: 0.012, min: 0, max: 0.1, step: 0.001, group: 'Computer: Normal' },
+  { k: 'aiPower', label: "Normal: power error", def: 0.018, min: 0, max: 0.1, step: 0.001, group: 'Computer: Normal' },
+  { k: 'aiLooseHard', label: "Hard: aim and power error (% of Normal's; it aims where a throw is likeliest to sink one)", def: 50, min: 0, max: 200, step: 5, group: 'Computer: Hard' },
 ];
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/pong): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).
 export const lineupBlurb = 'Flick to throw the ball into the cups. Sink all three of your cups first.';

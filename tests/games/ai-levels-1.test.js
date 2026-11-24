@@ -84,3 +84,50 @@ test('Codebreaker: Easy uses only some of the feedback, Normal all of it (now an
   assert.ok(off('easy') > 3, 'Easy: codes already ruled out');
   pm.tune = Object.assign({}, pm.tune, { aiSplitNormal: 0 }); assert.equal(off('normal'), 0, 'Normal, never the best split: always a code that fits (the best split may be one that cannot be it)');
 });
+
+test('Tic-Tac-Toe: Easy may miss a block, Normal always blocks but walks into a fork, Hard plays the solved game', () => {
+  const pm = withT({ type: 'ttt', cells: ['X', 'X', null, null, 'O', null, null, null, null] });
+  let missed = 0; for (let k = 1; k < 60; k++) if (pick('ttt', pm, 'O', 'easy', k) !== 2) missed++;
+  assert.ok(missed > 3, 'Easy: sometimes misses the block');
+  for (let k = 1; k < 20; k++) assert.equal(pick('ttt', Object.assign(pm, { tune: Object.assign({}, pm.tune, { aiMissNormal: 0 }) }), 'O', 'normal', k), 2);
+  assert.equal(pick('ttt', pm, 'O', 'hard'), 2);
+  const look = require('../../src/games/ttt/ai.js').tttLook;
+  assert.ok(look(['X', null, null, null, 'O', null, null, null, 'X'], 'O', 2).every(m => m.v <= 0), 'two marks ahead it does not see the fork coming');
+});
+
+test('Four in a Row and Hex: Easy looks a short way and picks loosely; Hard thinks hardest (its settings)', () => {
+  for (const t of ['c4', 'hex']) {
+    const keys = E.tuneFields(t).map(f => f.k);
+    assert.ok(keys.includes('aiBlockEasy') && keys.includes('aiPoolEasy') && keys.includes('aiNodesHard'), t);
+  }
+  const m = E.newMini('hex', lcg(12)); withT(m); const pm = E.publicMini(m);
+  const easy = new Set(); for (let k = 1; k < 30; k++) easy.add(pick('hex', pm, 'X', 'easy', k));
+  assert.ok(easy.size > 1, 'Easy: varies');
+});
+
+test('Find the Pair: Easy forgets cards it has seen; Normal and Hard remember', () => {
+  const d = E.tuneDefaults('memory'); assert.ok(d.memEasy < d.mem && d.mem <= d.memHard);
+});
+
+test('Treasure Hunt and Sea Battle: Easy digs or fires from some of the clues alone', () => {
+  const m = E.newMini('hunt', lcg(13)); withT(m);
+  const dig = c => E.applyMove(m, 'X', c, lcg(14));
+  dig(0); dig(35);
+  const pm = E.publicMini(m), cand = E.huntCandidates(pm, 'O');
+  let off = 0; for (let k = 1; k < 40; k++) if (!cand.includes(pick('hunt', pm, 'O', 'easy', k))) off++;
+  for (let k = 1; k < 10; k++) assert.ok(cand.includes(pick('hunt', pm, 'O', 'normal', k)));
+  assert.ok(off > 2, 'Easy: cells the clues rule out');
+  const s = E.newMini('bs', lcg(15)); withT(s); const sp = E.publicMini(s);
+  assert.ok(Number.isInteger(pick('bs', sp, 'X', 'easy')));
+});
+
+test('Trivia, Bullseye, Cup Pong, Echo, Odd One Out, Dash, Pool: the levels\' own rates and errors, Easy below Normal below Hard', () => {
+  const d = t => E.tuneDefaults(t);
+  assert.ok(d('trivia').knowEasy < d('trivia').know && d('trivia').know < d('trivia').knowHard);
+  for (const t of ['bullseye', 'echo', 'oddone']) assert.ok(d(t).aiSkillEasy < 100 && d(t).aiSkillHard > 100, t);
+  assert.ok(d('pong').aiLooseEasy > 100 && d('pong').aiLooseHard < 100);
+  assert.ok(d('dash').aiRunsEasy > d('dash').aiRuns && d('dash').aiRuns > d('dash').aiRunsHard);
+  assert.ok(d('pool').aiAimEasy > d('pool').aiAim && d('pool').aiAim > d('pool').aiAimHard);
+  const A = require('../../src/games/bullseye/ai.js'), t = d('bullseye');
+  const r = l => A.bullsRates(1, t, l); assert.ok(r('easy').bull < r('normal').bull && r('normal').bull < r('hard').bull);
+});

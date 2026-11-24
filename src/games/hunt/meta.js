@@ -25,7 +25,8 @@ export const TUNE = [
   MODE_TUNE,
   { k: 'hints', label: 'Hint difficulty (normal: Hot 1 step, Warm 2–3, Cool 4–5, Cold 6+; hard: Hot 1–2, Warm 3–5, Cool 6–8, Cold 9+; harder: Hot 1–3, Warm 4–6, Cold 7+)', def: 'normal', opts: ['normal', 'hard', 'harder'], group: 'Rules' },
   { k: 'n', label: 'Grid size (cells across)', def: 6, min: 4, max: 8, step: 1, group: 'Board' },
-  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 60, step: 5, group: 'Computer' },
+  { k: 'aiHeedEasy', label: "Easy: how many of the earlier digs' clues it keeps in mind (%; it digs any cell those leave)", def: 60, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
+  { k: 'aiSplitNormal', label: 'Normal: how often it digs the cell whose clue would tell most (%; else any cell the clues leave)', def: 100, min: 0, max: 100, step: 5, group: 'Computer: Normal' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12l4 6-10 12L2 9z"/></svg>';
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/hunt): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

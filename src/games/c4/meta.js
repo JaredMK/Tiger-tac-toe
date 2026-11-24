@@ -8,8 +8,11 @@ export const explainer = { name: 'Four in a Row', play: 'Drop a piece into a col
 // Its settings (the admin's Mini-game Settings; core/tune.js): read through tune(mini).
 export const TUNE = [
   { k: 'k', label: 'Pieces in a row to win', def: 4, min: 3, max: 5, step: 1, group: 'Rules' },
-  { k: 'depth', label: 'Computer look-ahead (moves)', def: 5, min: 1, max: 6, step: 1, group: 'Computer' },
-  { k: 'miss', label: 'Computer mistake rate (%)', def: 0, min: 0, max: 50, step: 1, group: 'Computer' },
+  { k: 'aiDepthEasy', label: 'Easy: how many moves ahead it looks', def: 2, min: 1, max: 4, step: 1, group: 'Computer: Easy' },
+  { k: 'aiBlockEasy', label: "Easy: how often it notices the other side's four coming and blocks it (%)", def: 60, min: 0, max: 100, step: 5, group: 'Computer: Easy' },
+  { k: 'aiPoolEasy', label: 'Easy: picks at random among this many of the columns that look best', def: 3, min: 1, max: 7, step: 1, group: 'Computer: Easy' },
+  { k: 'depth', label: 'Normal: how many moves ahead it looks', def: 5, min: 1, max: 6, step: 1, group: 'Computer: Normal' },
+  { k: 'aiNodesHard', label: 'Hard: how hard it thinks (thousands of positions a move, within its time on a phone)', def: 45, min: 1, max: 200, step: 1, group: 'Computer: Hard' },
 ];
 export const icon = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="19" r="3"/><circle cx="12" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 2v9M8.5 8 12 11.5 15.5 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 // Its Game lineup card's back (ui/lineup.js; the admin's Lineup card overrides them, config/lineup/c4): what it is and how to win, where it sits from luck (1) to skill (5), and race (each their own) or shared (head-to-head).

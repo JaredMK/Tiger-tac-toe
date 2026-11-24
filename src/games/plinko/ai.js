@@ -9,7 +9,7 @@ export function needs(pm, p) {
 }
 export function best(pm, me, rng, style, ctx) {   // the open slot with the most points to expect (the bonus peg counted); level, the likelier to finish. Hard: the likelier to win the square (plinkoDeep)
   const need = pm.target - pm.pts[me], q = k => Object.entries(plinkoDist(pm, k)).reduce((t, [v, c]) => t + (Number(v) >= need ? c : 0), 0);
-  const miss = tune(pm).miss;
+  const miss = tune(pm).miss;   // (the old level-blind rate, for squares dealt with it; the levels' own: aiMiss<Level>)
   if (miss && rng() * 100 < miss) { const open = plinkoOpen(pm), k = open[randInt(rng, open.length)]; return { move: k, q: q(k), exp: plinkoExp(pm, k) }; }   // (now and then, the admin's mistake rate, any open slot)
   if (ctx && ctx.level === 'hard') { const x = plinkoDeep(pm, me), k = x ? x.move : plinkoHard(pm, me); return { move: k, q: q(k), exp: plinkoExp(pm, k) }; }
   let move = -1, top = -1, tq = -1;

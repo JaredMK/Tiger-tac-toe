@@ -7,7 +7,10 @@ const aiPass = pm => { const t = tune(pm); return t.ai1 ? [t.ai1, t.ai2, t.ai3, 
 export function needs(pm, p) {
   const q = aiPass(pm); let n = 0; for (let l = pm.level[p]; l < ECHO.lengths.length; l++) n += 1 / q[l]; return Math.max(1, n);
 }
+const num = (v, d) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
+// By level: Easy and Hard beat each pattern that share of Normal's rate (aiSkillEasy / aiSkillHard %, at most 99%).
+const skill = (pm, lv) => (lv === 'easy' ? num(tune(pm).aiSkillEasy, 75) : lv === 'hard' ? num(tune(pm).aiSkillHard, 115) : 100) / 100;
 export function best(pm, me, rng, style, ctx) {   // it beats a pattern as often as its length allows (its taps come from the pattern itself: see cpuEcho)
-  const a = aiPass(pm), q = a[Math.min(pm.level[me], a.length - 1)];
+  const a = aiPass(pm), q = Math.min(0.99, a[Math.min(pm.level[me], a.length - 1)] * skill(pm, ctx && ctx.level));
   return { move: { echo: rng() < q ? 'pass' : 'fail', at: rng() }, q };
 }
