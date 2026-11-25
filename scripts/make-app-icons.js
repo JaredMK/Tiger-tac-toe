@@ -1,18 +1,18 @@
 'use strict';
 // The iOS app's artwork, drawn like the share images (scripts/make-share-images.js: the game's fonts, colours and X and O
 // characters) and rendered with the Chromium that Playwright carries. Writes assets/app/*:
-//   icon-1024.png        the App Store icon: Patchwork (scripts/icon-options.js, picked October 2026; full-bleed, no transparency;
+//   icon-1024.png        the App Store icon: Face-off (scripts/icon-options.js APP_ICON, picked November 2026; full-bleed, no transparency;
 //                        Apple rounds the corners), also copied into ios/'s AppIcon set (its one Single Size slot), and
 //   icons/icon-<n>.png   the same at the iPhone sizes (180, 120, 87, 80, 60, 58, 40) for checking it small
 //   launch-2048.png      the launch screen's image: the title (TIC TAC CHAOS!) centred on the cream background
 //   jarhad-mark-512.png  a small JarHad Labs mark (the studio's logo, assets/brand/jarhad-labs-logo.svg, without its background)
 // docs/ios-plan.md ("App icon and launch screen") says where each goes in Xcode.
-//   node scripts/make-app-icons.js        (npm run app-icons)
+//   node scripts/make-app-icons.js [icon]        (npm run app-icons; icon: the icon alone, the launch screen and the mark left as they are)
 const fs = require('node:fs');
 const path = require('node:path');
 const { INK, CREAM, O, X, fonts, toonX, toonO, svg, chaos } = require('./make-share-images.js');
-const { OPTIONS } = require('./icon-options.js');
-const ICON_SVG = OPTIONS.find(o => o.id === 'patchwork').draw();   // the app's icon (the icon options' round 1, /icons.html)
+const { APP_ICON } = require('./icon-options.js');
+const ICON_SVG = APP_ICON();
 const IOS_ICON = path.join(__dirname, '..', 'ios', 'App', 'App', 'Assets.xcassets', 'AppIcon.appiconset', 'AppIcon-512@2x.png');
 const SIZES = [180, 120, 87, 80, 60, 58, 40];
 const OUT = path.join(__dirname, '..', 'assets', 'app');
@@ -24,7 +24,7 @@ body{background:${bg};position:relative;font-family:'Patrick Hand',cursive;color
 .rays{position:absolute;inset:0;background:repeating-conic-gradient(from 0deg at 50% 50%, rgba(246,194,27,.20) 0 7.5deg, transparent 7.5deg 15deg)}
 .vig{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%, transparent 55%, rgba(22,18,16,.14))}
 ${css}</style>${body}`;
-// The icon: the Patchwork drawing at any size (an SVG, so every size is drawn, not scaled down from a picture).
+// The icon: the drawing at any size (an SVG, so every size is drawn, not scaled down from a picture).
 const ICON = s => `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;width:${s}px;height:${s}px;overflow:hidden}svg{display:block;width:${s}px;height:${s}px}</style>${ICON_SVG}`;
 // The launch screen: the game's logo as the main menu draws it (Comic Chaos, December 2026: TIC TAC in Bangers, yellow in
 // an ink outline with a hard shadow, over the white CHAOS! burst with its red word: the share image's own burst), with the
@@ -56,8 +56,10 @@ async function main() {
   fs.mkdirSync(path.join(OUT, 'icons'), { recursive: true });
   for (const n of SIZES) await shot(ICON(n), n, n, path.join('icons', `icon-${n}.png`));
   if (fs.existsSync(path.dirname(IOS_ICON))) fs.copyFileSync(path.join(OUT, 'icon-1024.png'), IOS_ICON);   // (ios/ committed: in step without a full npm run ios:build)
-  await shot(LAUNCH(2048), 2048, 2048, 'launch-2048.png');
-  await shot(MARK(512), 512, 512, 'jarhad-mark-512.png', true);
+  if (process.argv[2] !== 'icon') {
+    await shot(LAUNCH(2048), 2048, 2048, 'launch-2048.png');
+    await shot(MARK(512), 512, 512, 'jarhad-mark-512.png', true);
+  }
   await b.close();
   console.log('Wrote', fs.readdirSync(OUT).join(', '));
 }

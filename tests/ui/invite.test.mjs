@@ -91,8 +91,8 @@ test('the web: firebase.json sends /join/CODE to /?room=CODE; the app: Universal
 });
 test('one source of truth: no other file builds an invite', () => {
   const files = [];
-  const walk = d => { for (const f of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, f.name); if (f.isDirectory()) walk(p); else if (/\.(m?js|swift|html)$/.test(f.name)) files.push(p); } };
-  walk(path.join(ROOT, 'src'));
+  const walk = d => { for (const f of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, f.name); if (f.isDirectory()) { if (p !== path.join(ROOT, 'ios/App/App/public')) walk(p); } else if (/\.(m?js|swift|html)$/.test(f.name)) files.push(p); } };
+  walk(path.join(ROOT, 'src'));                                    // (the app's built copy of src, ios/App/App/public, is left out: there only after an app build)
   for (const d of ['ios/App/App']) if (fs.existsSync(path.join(ROOT, d))) walk(path.join(ROOT, d));
   const bad = files.filter(f => !f.endsWith(path.join('net', 'invite.js'))).filter(f => {
     const t = fs.readFileSync(f, 'utf8');

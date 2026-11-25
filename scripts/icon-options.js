@@ -278,4 +278,10 @@ const FACEOFF = [
   { id: 'fo-blue', name: 'Blue corner', draw: () => faceoff({ bg: 'blue' }), why: 'One sea-blue sunburst in place of the red and yellow halves: both characters stand out fully, and it is the only blue among the red and yellow game icons.' },
   { id: 'fo-pals', name: 'Pals', draw: () => faceoff({ friendly: 1 }), why: 'The same meeting with open smiles and no frowns: friendlier, for a game played with friends.' },
 ];
-module.exports = { OPTIONS, PATCHWORK, COMIC, FACEOFF, INK };
+// The icon in use (picked November 2026: Face-off, as round 3 drew it): the app's (scripts/make-app-icons.js) and the web's
+// (scripts/make-share-images.js). Both draw it at each size from this, never scaled down from a picture.
+const APP_ICON = ccFaceoff;
+// The same at a browser tab's 16 and 32 px, where two faces are a blur: the two marks on the two halves, no faces, rays or dots.
+const APP_ICON_SMALL = () => wrap(CC.O, `<polygon points="102,0 1024,0 1024,1024 922,1024" fill="${CC.X}"/>`
+  + oMark(706, 318, 176, CC.O, 108, 108) + xMark(316, 704, 176, CC.X, 124, 108));
+module.exports = { OPTIONS, PATCHWORK, COMIC, FACEOFF, APP_ICON, APP_ICON_SMALL, INK };

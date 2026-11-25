@@ -1,8 +1,8 @@
 'use strict';
-// The link-preview image (1200x630), the home-screen icon (180x180) and the favicons, drawn in the game's own
+// The link-preview image (1200x630), the home-screen icon (180x180) and the favicons (the app's icon), drawn in the game's own
 // style (its fonts, colours and X and O characters; src/ui/art.js, fx.js, styles.css) and rendered with the
 // Chromium that Playwright carries. Writes assets/share/*; the site build copies them in.
-//   node scripts/make-share-images.js        (npm run share-images)
+//   node scripts/make-share-images.js [icons]        (npm run share-images; icons: the icons alone)
 const fs = require('node:fs');
 const path = require('node:path');
 const { hashSvg } = require('../src/ui/hash.js');   // the board's # (one drawing with the page's board)
@@ -87,8 +87,10 @@ const SHARE = page(`<div class="pnl"><div class="rays"></div><div class="dots"><
 <div class="pal l">${svg(toonX())}</div><div class="pal r">${svg(toonO())}</div>
 <div class="bpan"><div class="board">${ccells}${hashSvg('hash', 9)}</div></div>
 <div class="tag"><span>Tic-tac-toe, but every square is a mini-game.</span></div></div>`, CCSS);
-// The icon: the X character on a cream square (a phone rounds the corners itself, so it fills the square).
-const ICON = size => `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;width:${size}px;height:${size}px;overflow:hidden}body{background:${CREAM};display:grid;place-items:center}svg{width:${Math.round(size * .86)}px;height:${Math.round(size * .86)}px;overflow:visible}</style>${svg(`<circle cx="50" cy="50" r="46" fill="${O}" stroke="${INK}" stroke-width="5"/><g transform="translate(50 50) scale(.78) translate(-50 -50)">${toonX()}</g>`)}`;
+// The icon: the app's own (scripts/icon-options.js APP_ICON, Face-off; a phone rounds the corners itself, so it fills the
+// square), its pared-down form at a browser tab's 16 and 32 px.
+const { APP_ICON, APP_ICON_SMALL } = require('./icon-options.js');
+const ICON = size => `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;width:${size}px;height:${size}px;overflow:hidden}svg{display:block;width:${size}px;height:${size}px}</style>${size <= 32 ? APP_ICON_SMALL() : APP_ICON()}`;
 // An .ico holding PNGs (16, 32, 48).
 function ico(pngs) {
   const head = Buffer.alloc(6); head.writeUInt16LE(1, 2); head.writeUInt16LE(pngs.length, 4);
@@ -101,7 +103,7 @@ async function main() {
   fs.mkdirSync(OUT, { recursive: true });
   const b = await chromium.launch();
   const shot = async (html, w, h, file) => { const p = await b.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 1 }); await p.setContent(html); await p.evaluate(() => document.fonts.ready); await p.waitForTimeout(200); const buf = await p.screenshot({ type: 'png' }); await p.close(); if (file) fs.writeFileSync(path.join(OUT, file), buf); return buf; };
-  await shot(SHARE, 1200, 630, 'og-image.png');
+  if (process.argv[2] !== 'icons') await shot(SHARE, 1200, 630, 'og-image.png');
   await shot(ICON(180), 180, 180, 'apple-touch-icon.png');
   await shot(ICON(512), 512, 512, 'icon-512.png');
   const p32 = await shot(ICON(32), 32, 32, 'favicon-32.png'), p16 = await shot(ICON(16), 16, 16, 'favicon-16.png'), p48 = await shot(ICON(48), 48, 48);
