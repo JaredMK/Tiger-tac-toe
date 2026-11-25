@@ -1,6 +1,7 @@
 // The main menu.
 import { acct, loggedIn, pendingMe } from '../../net/accounts.js';
 import { activeElsewhere, findVisible, resumable, resumeBusy } from '../../net/matchmaking.js';
+import { holdingLocal } from '../../net/tracking.js';
 import { privacyUrl } from '../../net/platform.js';
 import { esc, menuNote } from '../app.js';
 import { toon } from '../art.js';
@@ -19,12 +20,13 @@ export function renderMenu() {
   // either side of a speech bubble, a skewed panel for each way to play with its caption tag and a line of what it is,
   // Find Match a small "soon" tag while the admin has it off, How to Play and Settings as small panels. The order of
   // the controls (and their data-act) is the menu's as ever.
-  const first = !resumable && !activeElsewhere() && !acctLoading && !(acct.user && !acct.ready) && firstVisit(loggedIn() ? acct.profile : null);   // a first visit: one big Play, straight into the starter board (ui/onboard.js)
+  const held = holdingLocal();
+  const first = !held && !resumable && !activeElsewhere() && !acctLoading && !(acct.user && !acct.ready) && firstVisit(loggedIn() ? acct.profile : null);   // a first visit: one big Play, straight into the starter board (ui/onboard.js)
   return `<main class="scr menu cc loud${first ? ' first' : ''}">${rays()}${menuTop(first)}<div class="menu-card">
     <h1 class="title ccpunch"><span class="sr">Tic Tac Chaos</span><span class="ttop wob" aria-hidden="true">${'TIC TAC'.split('').map((c, k) => c === ' ' ? '<span>&nbsp;</span>' : `<span style="animation-delay:${(k * .09).toFixed(2)}s">${c}</span>`).join('')}</span><span class="chaos wob">${burstSvg('CHAOS!', 'w', 300, 150, 54)}</span></h1>
     <div class="ccpals" aria-hidden="true"><span class="pal X">${toon('X')}</span>${bubble(first ? 'First time?' : "Who's playing?", '', 'ccpunch')}<span class="pal O">${toon('O')}</span></div>${menuNote ? `<div class="notice" role="status">${esc(menuNote)}</div>` : ''}
     ${first ? `${panel('first-go', 'Play!', { tag: 'start here', cls: 'k firstgo', k: 2, aria: 'Play: you against the computer' })}
-    ${panel('friend-go', 'Play a Friend', { tag: '2 players', cls: 'r fr', k: 3 })}` : `${resumable ? panel('resume', 'Resume match', { tag: 'live', cls: 'g', k: 1, attrs: resumeBusy ? ' disabled' : '' }) : ''}
+    ${panel('friend-go', 'Play a Friend', { tag: '2 players', cls: 'r fr', k: 3 })}` : `${resumable ? panel('resume', 'Resume match', { tag: 'live', cls: 'g', k: 1, attrs: resumeBusy ? ' disabled' : '' }) : held ? panel('continue', 'Continue match', { tag: 'saved', cls: 'g', k: 1 }) : ''}
     ${panel('cpu-go', 'Play Computer', { tag: '1 player', cls: 'k', k: 2 })}
     ${panel('friend-go', 'Play a Friend', { tag: '2 players', cls: 'r fr', k: 3 })}
     ${findBtn()}`}

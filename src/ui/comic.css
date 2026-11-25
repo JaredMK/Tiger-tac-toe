@@ -38,8 +38,9 @@ main.board-scr::before, main.scr.mini::before { content: ''; position: absolute;
 .hdr .tside .pclk.low { background: var(--x); color: #fff; }
 .hdr .hdrrow2 { margin-top: 2px; }
 .hdr .turn { position: relative; height: 26px; display: flex; align-items: center; justify-content: center; padding: 0 12px; background: #fff; border: 2.5px solid var(--ink); border-radius: 13px; }
-.hdr .turn::before { content: ''; position: absolute; top: -10px; left: 26px; border: 5px solid transparent; border-bottom: 8px solid var(--ink); border-top: 0; transform: skewX(24deg); }
-.hdr.t-O .turn::before { left: auto; right: 26px; transform: skewX(-24deg); }
+.hdr .turn::before { content: ''; position: absolute; top: -10px; left: var(--tail, 26px); border: 5px solid transparent; border-bottom: 8px solid var(--ink); border-top: 0; transform: skewX(24deg); }
+.hdr.t-O .turn::before { left: var(--tail, auto); right: auto; transform: skewX(-24deg); }
+.hdr.t-O .turn:not([style*="--tail"])::before { right: 26px; }
 .hdr .turn .who, .hdr .turn .tswap > .flres { font: 400 17px/1 'Bangers', 'Luckiest Guy', sans-serif; letter-spacing: .05em; padding-top: 2px; }
 .hdr .turn .who .cpui { width: .9em; height: .9em; }
 .hdr .turn .tswap { height: auto; }

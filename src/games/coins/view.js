@@ -62,8 +62,12 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
         <button class="big ${turn}" data-act="move" ${mv('flip')}${locked ? ' disabled' : ''}${view ? ' style="visibility:hidden" aria-hidden="true"' : ''}>Flip${view ? '' : ' ' + n}</button></div>`;   // (a finished square: nothing left to flip; its room kept, so the row stands where it stood)
   return g;
 }
+// The move's words, in the header's line as the last coin lands (ui/turnbar.js resultLine): how many turned to the
+// mover's side, or a plain miss ("Missed, still O"), never a bare count of the coins thrown.
 export function moveText(f, who) {
-  return `${who} flipped ${f.n}`;
+  const fl = Array.isArray(f.flipped) ? f.flipped : [], was = f.was || [], res = f.results || [];
+  const got = fl.filter((i, j) => res[j] === f.by && was[j] !== f.by).length;
+  return got ? `${who} got ${got}!` : `Missed, still ${other(f.by)}`;
 }
 // The thumb's flick and the coins' ring as they go up; a clink as each one lands.
 export function sounds(f, add, won, mini, last) {

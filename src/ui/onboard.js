@@ -29,9 +29,14 @@ export function matchDone(key) {
 }
 export const matchesDone = () => ob.n;
 // The "?" card shown once a game: true the first time (and marks it).
+// (November 2026: a tester saw Rock Paper Scissors' card on three visits of one match. Its own key besides the onboarding
+// record, read every time, and this visit's own memory, so a failed write, a stale copy or another tab never brings it back.)
+const RULES_KEY = KEY + '.rules', shown = new Set();
+const rulesSeen = () => { try { const v = JSON.parse(localStorage.getItem(RULES_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } };
 export function seenOnce(t) {
-  if (!t || ob.quiet || ob.seen[t]) return false;
-  ob.seen[t] = 1; save();
+  if (!t || ob.quiet || ob.seen[t] || shown.has(t) || rulesSeen()[t]) { if (t) shown.add(t); return false; }
+  shown.add(t); ob.seen[t] = 1; save();
+  try { const v = rulesSeen(); v[t] = 1; localStorage.setItem(RULES_KEY, JSON.stringify(v)); } catch (e) { /* no storage: this visit's memory holds it */ }
   return true;
 }
 // The Speed offer (CL-2): once, after the first match.

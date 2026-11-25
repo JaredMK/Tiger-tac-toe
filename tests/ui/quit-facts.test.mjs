@@ -78,20 +78,29 @@ test('sent to the background: a provisional quit report (r bg) once a stretch of
   T.quitShow(); assert.equal(state.stats.hid, undefined);
 });
 
-test('the next open: a match left behind by a reload, a close or a time in the background is ended as closed with its facts; nothing for a finished or practice match', async () => {
+test('the next open: a match left behind by a reload, a close or a time in the background is held for Continue match, and ended as closed with its facts only once something else starts; nothing for a finished or practice match', async () => {
   const at = partWay('boot', 5); sent = [];
-  let q = T.quitOnBoot('reload'); await settle();
+  assert.equal(T.quitOnBoot('reload'), null); await settle();
+  assert.ok(T.holdingLocal(), 'held for the menu\'s Continue match');
+  assert.equal(sent.filter(c => c.name === 'track' && c.data.ev === 'end').length, 0, 'nothing reported yet');
+  T.abandonHeld(); await settle();                          // another match started instead
   let end = sent.find(c => c.name === 'track' && c.data.ev === 'end');
-  assert.equal(end.data.reason, 'closed'); assert.equal(end.data.q.r, 'reload'); assert.deepEqual(end.data.q, q); assert.equal(state.stats.sent, true);
-  assert.equal(T.quitOnBoot('reload'), null, 'once');
-  partWay('boot2', 5); sent = []; state.stats.hid = 50000; state.stats.ph = 50500;
-  assert.equal(T.quitOnBoot('navigate').r, 'closed', 'hidden and gone together: closed');
-  partWay('boot3', 5); state.stats.hid = 50000; state.stats.ph = 900000;
-  assert.equal(T.quitOnBoot('navigate').r, 'bg', 'gone long after it went to the background');
-  partWay('boot4', 5); state.stats.hid = 50000; delete state.stats.ph;
-  q = T.quitOnBoot('navigate'); assert.equal(q.r, 'bg', 'never came back to the front (an app killed in the background)'); assert.equal(q.idle, 50000 - state.lastAt);
+  assert.equal(end.data.reason, 'closed'); assert.equal(end.data.q.r, 'reload'); assert.equal(state.stats.sent, true);
+  assert.ok(!T.holdingLocal());
+  assert.equal(T.quitOnBoot('reload'), null); assert.ok(!T.holdingLocal(), 'once: an ended match is not held');
+  partWay('boot1', 5); sent = []; T.quitOnBoot('reload');
+  assert.ok(T.continueHeld(), 'continued'); assert.ok(!T.holdingLocal()); assert.equal(state.stats.sent, false, 'still under way: nothing reported');
+  T.abandonHeld(); await settle(); assert.equal(sent.filter(c => c.name === 'track' && c.data.ev === 'end').length, 0, 'a continued match is not given up by the next start');
+  const held = async (reason, set) => { set(); T.quitOnBoot(reason); sent = []; T.abandonHeld(); await settle(); return sent.find(c => c.name === 'track' && c.data.ev === 'end'); };
+  partWay('boot2', 5);
+  assert.equal((await held('navigate', () => { state.stats.hid = 50000; state.stats.ph = 50500; })).data.q.r, 'closed', 'hidden and gone together: closed');
+  partWay('boot3', 5);
+  assert.equal((await held('navigate', () => { state.stats.hid = 50000; state.stats.ph = 900000; })).data.q.r, 'bg', 'gone long after it went to the background');
+  partWay('boot4', 5);
+  const e4 = await held('navigate', () => { state.stats.hid = 50000; delete state.stats.ph; });
+  assert.equal(e4.data.q.r, 'bg', 'never came back to the front (an app killed in the background)'); assert.equal(e4.data.q.idle, 50000 - state.lastAt);
   partWay('boot5', 3); state.practice = { type: 'ttt' };
-  assert.equal(T.quitOnBoot('reload'), null, 'practice: nothing');
+  assert.equal(T.quitOnBoot('reload'), null); assert.ok(!T.holdingLocal(), 'practice: nothing');
   assert.ok(at > 0);
 });
 

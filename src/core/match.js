@@ -16,10 +16,22 @@ export const dealOpts = state => ({ shared: !!(state && state.setup && state.set
 export function newSquare(games, rng, opts) { return { owner: null, mini: newMini(pickType(games, rng), rng, opts) }; }
 // The nine starting squares: nine different games when the match has nine or more to deal from (fewer:
 // each square any of them, as ever).
-export function dealNine(games, rng, opts) {
+// recent (November 2026, the rotation): the games this player was dealt lately, most recent first (ui/rotation.js); the
+// nine come first from the games not among them, at random, then from the least recent of them, so a player with
+// 18 games to deal from meets them all before the same nine come round again. None given: nine at random, as ever.
+export function dealNine(games, rng, opts, recent) {
   if (games.length < 9) return Array.from({ length: 9 }, () => newSquare(games, rng, opts));
-  const bag = games.slice();
-  return Array.from({ length: 9 }, () => ({ owner: null, mini: newMini(bag.splice(randInt(rng, bag.length), 1)[0], rng, opts) }));
+  if (!Array.isArray(recent) || !recent.length) {               // (as ever: the seeded deals of the tests stay as they were)
+    const bag = games.slice();
+    return Array.from({ length: 9 }, () => ({ owner: null, mini: newMini(bag.splice(randInt(rng, bag.length), 1)[0], rng, opts) }));
+  }
+  const rank = new Map((Array.isArray(recent) ? recent : []).map((t, k) => [t, k]));
+  const fresh = games.filter(t => !rank.has(t)), seen = games.filter(t => rank.has(t)).sort((a, b) => rank.get(b) - rank.get(a));
+  const pick = [];
+  while (pick.length < 9 && fresh.length) pick.push(fresh.splice(randInt(rng, fresh.length), 1)[0]);
+  while (pick.length < 9 && seen.length) pick.push(seen.splice(randInt(rng, Math.min(seen.length, 3)), 1)[0]);   // (the rest from the least recent, a little at random among the three least recent left)
+  for (let k = pick.length - 1; k > 0; k--) { const j = randInt(rng, k + 1); [pick[k], pick[j]] = [pick[j], pick[k]]; }   // (their places on the board at random)
+  return pick.map(t => ({ owner: null, mini: newMini(t, rng, opts) }));
 }
 // A reset square's new game, from the match's list (pool): first one not yet used this match (dealt at
 // the start, played, or on the board now), then one not on the board now (the open squares and the one
@@ -188,7 +200,7 @@ export function startMatch(state, rng, only) {   // only: the games this kind of
   state.endPick = null;                                       // the match-end message is picked afresh
   state.timer = newTimer(state.setup.mode === 'online' ? timerSpec(state.setup.timer) : 0);   // (a code, 't30' or 'm5+2'; an older room's number of seconds too)
   state.spot = null;
-  state.squares = dealNine(games, rng, dealOpts(state));
+  state.squares = dealNine(games, rng, dealOpts(state), state.online ? null : state.recent);   // (a local match: the games this phone was dealt lately last, ui/rotation.js)
   for (const sq of state.squares) if (sq.mini.type === 'trivia') triviaDeal(state, sq, rng);   // a question each, no two squares alike
   state.screen = 'board'; state.turn = 'X';
   state.zoom = null; state.flash = null; state.done = null; state.stamp = null; state.drawStamp = null; state.lock = null;

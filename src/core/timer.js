@@ -81,7 +81,7 @@ export function turnOpen(st, i) {
 // The phones and the server use the same figures (Normal: the server never knows a player's Animation choice).
 export const PLAY = {
   spot: 600,                                                              // the square glows on the board before the zoom
-  flash: { move: 600, again: 350, claim: 800, draw: 1100, match: 900, card: 900 },   // the result stays up this long once its animation is over (a win: the game's own winning moment; the square's stamp follows on the board)
+  flash: { move: 1000, again: 350, claim: 800, draw: 1100, match: 900, card: 900 },   // the result stays up this long once its animation is over (a move's 1 s, November 2026: a tester's Coin Flip was gone before its result could be read; a win: the game's own winning moment; the square's stamp follows on the board)
   flip: 500,                                                              // Find the Pair's cards turn back over
   die: 600 + DIE_MORE, spin: 1000, hop: 130,                                          // a die's tumble, the candy wheel's spin, each hop of a token
   spin3: 700, slide: 750, knock: 650,                                     // Bump's 1-2-3 spinner; a ladder climb or a snake slide; a piece knocked Home

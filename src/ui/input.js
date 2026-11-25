@@ -3,7 +3,8 @@
 import { startChaos } from '../core/chaos.js';
 import { restrictGames } from '../core/games.js';
 import { levelOf } from '../core/aiw.js';
-import { NAME_MAX, normCpu, normLocal, normSetup, seatLocal, startCpu, startMatch } from '../core/match.js';
+import { NAME_MAX, dealable, normCpu, normLocal, normSetup, seatLocal, startCpu, startMatch } from '../core/match.js';
+import { fillNine, noteBoard, prepDeal } from './rotation.js';
 import { resignLocal } from '../core/records.js';
 import { normTimer, speedMode, timerSpec, turnOpen, turnSecs } from '../core/timer.js';
 import { hpSel, setHpSel } from '../games/hexapawn/view.js';
@@ -26,7 +27,7 @@ import {
 import { liveSquare, liveUnwatch, liveWatch, setWatch } from '../net/live.js';
 import { flipCard, lineupOpen, setLineupOpen } from './lineup.js';
 import { askAct } from './acctask.js';
-import { devAct, devStep, noteHelp, noteLeave, noteRematch, reportLocal, trackEnd, trackLeft, trackStart } from '../net/tracking.js';
+import { continueHeld, devAct, devStep, noteHelp, noteLeave, noteRematch, reportLocal, trackEnd, trackLeft, trackStart } from '../net/tracking.js';
 import { markMine } from '../net/owner.js';
 import {
   RNG, advOpen, app, commit, cpuPlan, cpuTimer, flashReady, menuNote, menuOpen, menuStep, save, setAdvOpen,
@@ -109,15 +110,22 @@ function revealSides() {
 export function playStarter(coach, then) {
   const s = state.setup, keep = { games: s.games, vsCpu: s.vsCpu, vs: s.vs, mode: s.mode };
   s.vs = 'cpu'; s.mode = 'two';
-  s.games = Object.fromEntries(TYPES.map(t => [t, STARTER.includes(t)]));
+  const vis = visibleTypes();
+  // The first match: the starter's nine, topped up from the rest where one of them cannot be dealt here (not released
+  // yet as this page has it, off on this platform), never a game twice (ui/rotation.js fillNine). Its rematches: every
+  // game this player may play, as Play Computer deals (November 2026: a tester's rematches were the same nine each time).
+  s.games = Object.fromEntries(TYPES.map(t => [t, coach ? STARTER.includes(t) : true]));
   s.vsCpu = { pick: 'X', level: 'easy' };
   const name = (loggedIn() ? acct.profile.username : '') || 'You';
   setMode('classic');
-  restrictGames(s.games, visibleTypes());
+  restrictGames(s.games, vis);
+  fillNine(s.games, vis, t => dealable(t), RNG);
+  prepDeal(state);
   const ok = startCpu(state, RNG, name);
   Object.assign(s, keep);
   if (!ok) return false;
   state.starter = true; state.guided = coach ? { step: 0 } : null;
+  noteBoard(state);
   if (then) then();
   trackStart(); revealSides(); commit();
   return true;
@@ -126,7 +134,9 @@ export function playComputer(then) {
   const name = (loggedIn() ? acct.profile.username : '') || 'You';
   setMode('classic');
   restrictGames(state.setup.games, visibleTypes());           // never a game this player may not see
+  prepDeal(state);                                            // (the games dealt here lately last: ui/rotation.js)
   if (!startCpu(state, RNG, name)) return false;
+  noteBoard(state);
   if (typeof then === 'function') then();
   trackStart(); revealSides(); commit();
   return true;
@@ -226,6 +236,10 @@ export function init() {
       state.screen = 'board'; state.zoom = null; state.draft = ''; state.sel = []; state.notice = null; state.stamp = null;
       if (!state.online) { state.pick = null; state.pickSq = null; }
       commit();
+    } else if (act === 'continue') {             // the main menu: back into the local match this phone was playing at its last visit (net/tracking.js heldLocal)
+      if (!continueHeld()) { commit(); return; }
+      if (state.lock != null && !state.winner) { state.screen = 'mini'; state.zoom = state.lock; } else { state.screen = 'board'; state.zoom = null; }
+      SND.play('tap'); commit();
     } else if (act === 'resume') {               // the main menu: back into the online match this phone was playing (held at the page's load)
       resumeMatch();
     } else if (act === 'first-go') {             // a first visit's one big Play (ui/onboard.js): the starter board, at once
@@ -278,7 +292,8 @@ export function init() {
       if (state.starter && !state.sc) { playStarter(false, carry); return; }   // (the starter board's: another, no tips)
       if (state.quick && !state.sc) { playComputer(carry); return; }   // (Play Computer's: another, the side drawn again)
       seatLocal(state.setup, RNG);
-      if (state.sc ? startChaos(state, RNG) : startMatch(state, RNG)) { carry(); trackStart(); if (!state.sc) revealSides(); commit(); }   // (a Super Chaos match: another)
+      prepDeal(state);
+      if (state.sc ? startChaos(state, RNG) : startMatch(state, RNG)) { noteBoard(state); carry(); trackStart(); if (!state.sc) revealSides(); commit(); }   // (a Super Chaos match: another)
     } else if (act === 'rematch-cancel') {        // the rematch asked for, taken back
       rematchCancel();
     } else if (act === 'friend-go') {             // the main menu: Play a Friend (Host, Join, or Same phone)
@@ -395,7 +410,8 @@ export function init() {
       normLocal(state.setup).p2 = chaosSetup() ? 'cpu' : 'human';   // (Same phone: two people; Super Chaos, were it on: against the computer)
       seatLocal(state.setup, RNG);
       restrictGames(state.setup.games, visibleTypes());           // never a game this player may not see
-      if (chaosSetup() ? startChaos(state, RNG) : startMatch(state, RNG)) { trackStart(); if (!state.sc) revealSides(); commit(); }
+      prepDeal(state);
+      if (chaosSetup() ? startChaos(state, RNG) : startMatch(state, RNG)) { noteBoard(state); trackStart(); if (!state.sc) revealSides(); commit(); }
     } else {                                       // a mini-game's own control: its view's actions
       const own = gameAction(act);
       if (own) own(el, e, act);

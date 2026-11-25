@@ -205,7 +205,7 @@ test('Pieces drawn rotated: the piece comes out turned as it was drawn; on this 
   const heard = []; V.sounds(state.flash, (n, at) => heard.push([n, at])); assert.deepEqual(heard.filter(([n]) => n === 'jgTurn'), [], 'no turning to hear');
   const pre = R.jigTimes(state.flash.jig).pre;
   assert.equal(pre, ((4 - rot) % 4) * R.JIG.turn, 'the move\'s time keeps the other phone\'s turning');
-  assert.equal(V.hold(state.flash), Math.max(0, 600 - pre), 'and this phone\'s hold gives it back');
+  assert.equal(V.hold(state.flash), Math.max(0, E.PLAY.flash.move - pre), 'and this phone\'s hold gives it back');
 }));
 
 test('Pieces drawn rotated: someone else\'s placement first turns their piece on the tray from how it was drawn to how they placed it, a quarter at a time with a click each, then it travels; their own cell turned wrong lands turned, shakes and goes back: "Turn it"', () => withTune({ rotate: 'on' }, () => {

@@ -75,3 +75,19 @@ export function netBar() {
   const b = netInfo();
   return b ? `<div class="netbar ${b.cls}" role="status"${fxAttr(fxAt('net', b.cls + ':' + b.html), 'rt')}>${b.html}</div>` : '';
 }
+// The turn bubble's tail points at the side on the move (November 2026: a tester saw it come out of the Menu button):
+// at the centre of that side's character in the VS bar above, measured after each render (the Menu button's width and
+// the bar's layout change with the screen and the language); the bubble's own ends hold it in, so O's tail (whose
+// character sits over the clock's box) points from the bubble's right end towards it.
+export function aimTail(root) {
+  const hdr = root && root.querySelector('.hdr'), turn = hdr && hdr.querySelector('.turn');
+  if (!turn) return;
+  const side = /\bt-O\b/.test(hdr.className) ? 'O' : 'X', tg = hdr.querySelector(`.tside.${side} .tg`);
+  if (!tg) { turn.style.removeProperty('--tail'); return; }
+  const a = turn.getBoundingClientRect(), b = tg.getBoundingClientRect();
+  if (!a.width) return;
+  const k = turn.offsetWidth / a.width;                          // (mid-zoom the page is scaled: back to the bubble's own px)
+  const x = Math.max(18, Math.min(turn.offsetWidth - 22, ((b.left + b.width / 2) - a.left) * k - 5));
+  turn.style.setProperty('--tail', Math.round(x) + 'px');
+}
+

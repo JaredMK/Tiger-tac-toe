@@ -1,4 +1,5 @@
 // The "?" explainer pop-up and How to Play (each game's meta.js: explainer).
+import { abandonHeld } from '../net/tracking.js';
 import { dealOpts, startPractice } from '../core/match.js';
 import { isRace, raceDealt } from '../core/race.js';
 import { shipWords } from '../games/bs/meta.js';
@@ -96,6 +97,7 @@ export function practiceStart(t) {
   if (!GAMES[t] || !visibleTypes().includes(t)) return false;
   closeExplain(true);
   closeIntro();
+  abandonHeld();                                                  // (a local match held from the last visit, not continued: given up now, net/tracking.js)
   const human = startPractice(state, RNG, t, practiceName());
   if (!human) return false;
   const n = p => { const v = state.setup.names[p]; return v && v !== p ? v : p; };

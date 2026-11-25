@@ -28,7 +28,7 @@ import { renderGameSheet, renderSetup } from './screens/setup.js';
 import { fitLineupArt, renderLineup } from './lineup.js';
 import { matchStale, renderStale } from './screens/stale.js';
 import { renderWin } from './screens/win.js';
-import { renderHeader, renderReactDock } from './turnbar.js';
+import { aimTail, renderHeader, renderReactDock } from './turnbar.js';
 import { reactOn } from '../net/reactions.js';
 import { matchEnded, menuShown } from '../net/statscache.js';
 import { matchDone } from './onboard.js';
@@ -95,6 +95,7 @@ function renderNow() {
   if (wl) wl.scrollTop = wl.scrollHeight;
   animate();
   busFly();
+  try { aimTail(app); } catch (e) { /* (no layout here: the tail at its default) */ }                                             // the turn bubble's tail at the side on the move (ui/turnbar.js)
   fitLineupArt(app);                                          // the Game lineup's art: each board miniature scaled to its card (ui/lineup.js)
   cardFly();                                                  // cards and tiles a move moves: each from where it was (ui/cardfly.js), before anchorFx sets their time
   anchorFx();

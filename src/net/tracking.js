@@ -152,17 +152,36 @@ export function quitHide() {
 export function quitShow() { if (state.stats && state.stats.hid) { delete state.stats.hid; saveNow(); } }
 export function quitPageHide() { if (liveLocal()) { state.stats.ph = Date.now(); saveNow(); } }
 const saveNow = () => { try { save(); } catch (e) { /* no storage */ } };
+// Continue match (November 2026, a tester's reload lost a match against the computer): a local match still under way at
+// the page's load is no longer ended there. It is held (heldLocal: how it was left, worked out now) for the main menu's
+// Continue match (ui/screens/menu.js, ui/input.js 'continue': continueHeld), and only reported as given up ('closed' with
+// its quit facts, as before) once the player starts something else instead (abandonHeld: every local start, Practice).
+// A match that ends, or is left through the menu, is over as ever and no longer held.
+export let heldLocal = null;
 export function quitOnBoot(navType) {
   if (!liveLocal()) return null;
   const s = state.stats, hid = Number(s.hid) || 0, ph = Number(s.ph) || 0;
   const reason = navType === 'reload' ? 'reload' : hid && (!ph || ph - hid > 3000) ? 'bg' : 'closed';
   const at = ph || hid || Number(state.lastAt) || Date.now();
+  heldLocal = { reason, at, id: s.id, sq: state.screen === 'mini' && Number.isInteger(state.zoom) ? state.zoom : -1 };
+  return null;
+}
+export const holdingLocal = () => !!(heldLocal && liveLocal() && state.stats.id === heldLocal.id);
+export function continueHeld() {
+  if (!holdingLocal()) { heldLocal = null; return false; }
+  heldLocal = null;
+  delete state.stats.hid; delete state.stats.ph;
+  return true;
+}
+export function abandonHeld() {
+  const h = heldLocal;
+  heldLocal = null;
+  if (!h || !liveLocal() || state.stats.id !== h.id) return;
   let q = null;
-  try { q = quitFacts(state, quitSide(), reason, at, state.screen === 'mini' && Number.isInteger(state.zoom) ? state.zoom : -1); } catch (e) { q = null; }
-  s.sent = true;
+  try { q = quitFacts(state, quitSide(), h.reason, h.at, h.sq); } catch (e) { q = null; }
+  state.stats.sent = true;
   endReport('closed', q);
-  delete s.hid; delete s.ph;
-  return q;
+  delete state.stats.hid; delete state.stats.ph;
 }
 const leftAt = g => (leftOn && leftOn.g === g ? leftOn.sq : undefined);
 export function trackStart() {

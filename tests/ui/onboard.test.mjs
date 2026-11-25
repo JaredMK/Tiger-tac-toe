@@ -27,15 +27,19 @@ test('a first visit: one big Play (and Play a Friend), no setup to decide; a ret
   assert.ok(!OB.firstVisit({ wins: 2, losses: 1, draws: 0 }), 'an account that has played elsewhere: no first visit');
 });
 
-test('Play: the starter board, the player X moving first, the computer on Easy, logged out too; the setup untouched', () => {
+test('Play: the starter board, the player X moving first, the computer on Easy, logged out too; the setup untouched', async () => {
   const before = JSON.stringify({ games: state.setup.games, vsCpu: state.setup.vsCpu });
   assert.ok(playStarter(true));
   assert.equal(state.setup.human, 'X');
   assert.equal(state.turn, 'X');
   assert.equal(state.cpu, 'O');
   assert.equal(state.cpuLevel, 'easy');
-  assert.ok(state.squares.every(q => OB.STARTER.includes(q.mini.type)), state.squares.map(q => q.mini.type).join(' '));
-  assert.ok(state.games.every(t => OB.STARTER.includes(t)));
+  // the starter's nine where they can all be dealt; one not released here (Rock Paper Scissors, before the page has the
+  // releases: Admin only in the code) is topped up from the rest, never a game twice (November 2026)
+  const types = state.squares.map(q => q.mini.type), vis = (await import('../../src/net/releases.js')).visibleTypes();
+  assert.equal(new Set(types).size, 9, types.join(' '));
+  for (const t of OB.STARTER.filter(t => vis.includes(t))) assert.ok(types.includes(t), t + ' on the board');
+  assert.ok(types.every(t => vis.includes(t)), 'every one a game this player may play');
   assert.equal(JSON.stringify({ games: state.setup.games, vsCpu: state.setup.vsCpu }), before, "the player's own setup is left as it was");
   assert.equal(OB.STARTER.length, 9);
 });
@@ -64,3 +68,13 @@ test('each game\'s "?" opens once, the first time; a finished match ends the fir
   state.screen = 'menu';
   assert.doesNotMatch(renderMenu(), /data-act="first-go"/);
 });
+
+test('the starter board\'s rematch: every game this player may play, the ones just dealt last (the rotation, November 2026)', () => {
+  const first = state.squares.map(q => q.mini.type);
+  assert.ok(playStarter(false));
+  const next = state.squares.map(q => q.mini.type);
+  assert.equal(new Set(next).size, 9);
+  assert.ok(next.filter(t => first.includes(t)).length <= Math.max(0, 18 - 9 - 9 + 9), 'mostly new games');
+  assert.ok(next.some(t => !OB.STARTER.includes(t)), 'not the starter\'s nine again: ' + next.join(' '));
+});
+
