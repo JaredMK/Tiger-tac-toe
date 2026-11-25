@@ -54,20 +54,20 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
   const side = p => `<div class="hpside ${p}${h === p ? ' hold' : ''}${boom && boom.holder === p ? ' lost' : ''}">${tok(p)}<b class="${p} hpnm">${N(p)}</b></div>`;
   const at = s ? `fly from${s.by} to${s.to}` : h ? 'at' + h : 'mid';
   const bomb = boom ? `<div class="hpboom">${`<svg viewBox="-32 -32 64 64" aria-hidden="true">${BURST}</svg>`}<b>BOOM!</b></div>` : `<div class="hpwhere ${at}">${bombSvg(s ? 'toss' : '')}</div>`;
-  const words = boom ? `${N(boom.winner)} wins it` : s ? `Tossed to ${N(s.to)}!` : '';
+  const words = boom ? 'BOOM!' : s ? `Tossed to ${N(s.to)}!` : '';   // (the square's winner is the header's to say: ui/mini.js)
   const line = s ? `<p ${lateAt('hpline', HPT.toss)} role="status">${words}</p>` : `<p class="hpline">${words}</p>`;
-  const info = `<div class="hpinfo"><span class="hpchip">Tick <b>${mini.n}</b></span><span class="hpchip${mini.holder ? '' : ' off'}">Next <b>${nextPct(mini)}%</b></span></div>`;
+  const info = `<div class="hpinfo${boom ? ' gone' : ''}"><span class="hpchip">Tick <b>${mini.n}</b></span><span class="hpchip${mini.holder ? '' : ' off'}">Next <b>${nextPct(mini)}%</b></span></div>`;
   const btn = view ? '' : `<div class="cbtns one"><button class="big ${turn} hpgo" data-act="move" ${mv('toss')}${!may || locked ? ' disabled' : ''}>Toss!</button></div>`;
   return `<div class="g-hp"><div class="hptable">${side('X')}${side('O')}${bomb}</div>${info}${line}${btn}</div>`;
 }
 // The miniature: the two marks at the foot of a little table, the bomb over the holder's (in the middle before the
 // first toss; a burst once it has gone off) and the next tick's chance beside it.
 export function miniature(mini, final) {
-  const h = mini.holder, x = h === 'X' ? 25 : h === 'O' ? 75 : 50, t = mini.tick, at = tickAt(mini);
+  const h = mini.holder, x = h === 'X' ? 27 : h === 'O' ? 73 : 50, t = mini.tick, at = tickAt(mini);
   const boom = mini.boom;
   const tk = !final && at != null ? ` class="hptk${t && t.boom ? ' bm' : ''}"${fxAttr(at)}` : '';
-  const bombG = boom ? `<g class="hpmboom" transform="translate(${boom.holder === 'X' ? 25 : 75} 30) scale(.8)">${BURST}</g>` : `<g transform="translate(${x} 32) scale(.82)"><g${tk}>${BOMB}</g></g>`;
-  const art = `<svg class="thp" viewBox="0 0 100 72">${tokSvg('X', 25, 62, 8)}${tokSvg('O', 75, 62, 8)}${bombG}</svg>`;
+  const bombG = boom ? `<g class="hpmboom" transform="translate(${boom.holder === 'X' ? 27 : 73} 36) scale(1.2)">${BURST}</g>` : `<g transform="translate(${x} 37) scale(1.18)"><g${tk}>${BOMB}</g></g>`;
+  const art = `<svg class="thp" viewBox="0 0 100 88">${tokSvg('X', 24, 76, 11)}${tokSvg('O', 76, 76, 11)}${bombG}</svg>`;
   const rows = boom ? `<div class="hppct boom">BOOM</div>` : `<div class="hppct">${h ? nextPct(mini) + '%' : '—'}</div>`;
   return thumbArt(art, rows, 'thpw', `Hot Potato: ${boom ? `exploded on ${boom.holder}` : h ? `${h} holds the bomb, next tick ${nextPct(mini)}%` : 'nobody holds the bomb yet'}`);
 }
