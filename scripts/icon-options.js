@@ -210,15 +210,34 @@ function mascot(t, cx, cy, size, rot, o = {}) {
     + eyeAt(50 - mx) + eyeAt(50 + mx) + (o.brows ? brow(50 - mx, -1) + brow(50 + mx, 1) : '') + mouth;
   return `<g transform="translate(${cx} ${cy}) rotate(${rot}) scale(${f(size / 100 * 1000) / 1000}) translate(-50 -50)">${body}</g>`;
 }
-// 1. Face-off: X and O head to head across the page's own red and yellow, a clash burst where they meet.
-function ccFaceoff() {
-  return wrap(CC.O, `<polygon points="102,0 1024,0 1024,1024 922,1024" fill="${CC.X}"/>`
-    + sunburst(512, 512, 12, '#fff', 0.17, 0.13)
-    + halftone(0, 0, 520, INK, 0.22) + halftone(1024, 1024, 520, INK, 0.26)
-    + line(102, -20, 922, 1044, INK, 16)
-    + ccBurst(512, 512, 205, 205, 11, 4, '#fff', 16, 0.2)
-    + mascot('O', 688, 360, 484, 9, { look: [-2.2, 2.4], brows: 1, mouth: 'grin', shadow: 2.6, eyes: 1.12 })
-    + mascot('X', 348, 648, 504, -8, { look: [2.3, -0.6], brows: 1, mouth: 'grin', shadow: 2.6 }));
+// 1. Face-off: X and O head to head across the page's own red and yellow, a clash burst where they meet. One drawing
+// for it and its variations (FACEOFF, round 4). o: x / o ([cx, cy, size, turn] of each character), eyes (their size),
+// friendly (smiles, no brows), burst (the clash burst's radius), grid (the board's # behind them), bg ('blue': one
+// sea-blue sunburst in place of the red and yellow halves), noLine (no ink line between the halves).
+function faceoff(o = {}) {
+  const X = o.x || [348, 648, 504, -8], O = o.o || [688, 360, 484, 9], es = o.eyes || 1;
+  const mood = o.friendly ? { mouth: 'grin' } : { brows: 1, mouth: 'grin' };
+  const blue = o.bg === 'blue';
+  const back = blue ? sunburst(512, 512, 14, '#58a8cf', 0.85, 0.13) + halftone(0, 0, 520, INK, 0.2) + halftone(1024, 1024, 520, INK, 0.2)
+    : `<polygon points="102,0 1024,0 1024,1024 922,1024" fill="${CC.X}"/>` + sunburst(512, 512, 12, '#fff', 0.17, 0.13)
+      + halftone(0, 0, 520, INK, 0.22) + halftone(1024, 1024, 520, INK, 0.26) + (o.noLine ? '' : line(102, -20, 922, 1044, INK, 16));
+  const grid = o.grid ? g('rotate(-5 512 512)', [[300, -160, 300, 1184], [724, -160, 724, 1184], [-160, 300, 1184, 300], [-160, 724, 1184, 724]].map(p => line(...p, INK, 44)).join('')) : '';
+  const br = o.burst || 205;
+  return wrap(blue ? '#3f8fbf' : CC.O, back + grid
+    + ccBurst(512, 512, br, br, o.burstN || 11, 4, '#fff', 16, 0.2)
+    + mascot('O', O[0], O[1], O[2], O[3], { look: o.friendly ? [-1.6, 1.6] : [-2.2, 2.4], shadow: 2.6, eyes: 1.12 * es, ...mood })
+    + mascot('X', X[0], X[1], X[2], X[3], { look: o.friendly ? [1.8, 0.4] : [2.3, -0.6], shadow: 2.6, eyes: 1.25 * es, ...mood }));
+}
+function ccFaceoff() { return faceoff(); }
+// Face-off side by side: X on yellow at the left, O on red at the right, a white lightning bolt down the join.
+function foBolt() {
+  const bolt = '628,56 424,528 552,528 396,972 640,438 512,438 736,56';
+  return wrap(CC.O, `<polygon points="700,-20 1044,-20 1044,1044 372,1044 596,483 468,483" fill="${CC.X}"/>`
+    + sunburst(512, 500, 12, '#fff', 0.17, 0.13)
+    + halftone(0, 1024, 500, INK, 0.22) + halftone(1024, 0, 500, INK, 0.26)
+    + `<polygon points="${bolt}" fill="#fff" stroke="${INK}" stroke-width="18" stroke-linejoin="round"/>`
+    + mascot('O', 742, 470, 452, 9, { look: [-2.4, 1], brows: 1, mouth: 'grin', shadow: 2.6, eyes: 1.12 })
+    + mascot('X', 280, 560, 452, -9, { look: [2.4, -0.4], brows: 1, mouth: 'grin', shadow: 2.6 }));
 }
 // 2. Stamp: the board's # running off the icon, and the X stamped into its middle square on a white burst.
 function ccStamp() {
@@ -249,4 +268,14 @@ const COMIC = [
   { id: 'cc-stamp', name: 'Stamp', draw: ccStamp, why: 'The board\'s # with the X stamped into its middle square on a comic burst: tic-tac-toe at a glance, with a punch.' },
   { id: 'cc-popout', name: 'Pop-out', draw: ccPopout, why: 'The O grown too big for its square and bursting out of it, the # snapped round it: one big face, the boldest at 60 px.' },
 ];
-module.exports = { OPTIONS, PATCHWORK, COMIC, INK };
+// Face-off's variations (round 4, November 2026): the same two characters head to head, one change each.
+const FACEOFF = [
+  { id: 'fo-original', name: 'Original', draw: ccFaceoff, why: 'Round 3\'s Face-off as it was, the reference.' },
+  { id: 'fo-closeup', name: 'Close-up', draw: () => faceoff({ x: [338, 664, 640, -8], o: [694, 352, 600, 9], eyes: 1.1, burst: 250 }), why: 'Zoomed in: both characters a quarter bigger, their arms running towards the edges, so the two faces carry the icon at 40 px.' },
+  { id: 'fo-bolt', name: 'Bolt', draw: foBolt, why: 'Side by side instead of corner to corner, a white lightning bolt down the join: the classic versus card.' },
+  { id: 'fo-board', name: 'On the board', draw: () => faceoff({ grid: 1, noLine: 1, burst: 215 }), why: 'The board\'s # behind them: the one thing the original lacks, a tic-tac-toe cue.' },
+  { id: 'fo-burst', name: 'Big burst', draw: () => faceoff({ burst: 420, burstN: 14, noLine: 1 }), why: 'A big white comic burst behind both: each character on white, so red and yellow pop the same and the clash is the picture.' },
+  { id: 'fo-blue', name: 'Blue corner', draw: () => faceoff({ bg: 'blue' }), why: 'One sea-blue sunburst in place of the red and yellow halves: both characters stand out fully, and it is the only blue among the red and yellow game icons.' },
+  { id: 'fo-pals', name: 'Pals', draw: () => faceoff({ friendly: 1 }), why: 'The same meeting with open smiles and no frowns: friendlier, for a game played with friends.' },
+];
+module.exports = { OPTIONS, PATCHWORK, COMIC, FACEOFF, INK };

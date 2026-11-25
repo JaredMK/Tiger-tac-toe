@@ -3,12 +3,13 @@
 // <id>.png (1024x1024, opaque) with the Chromium that Playwright carries, and the comparison page icons.html (served
 // on staging only, scripts/build-site.js): every option on an iPhone home screen among plain stand-in icons, on a
 // light and a dark wallpaper, in an App Store search result, at 60 and 180 px, with its rationale.
-//   node scripts/make-icon-options.js [concepts|patchwork|comic]        (npm run icon-options; a round's name: that round alone)
+//   node scripts/make-icon-options.js [concepts|patchwork|comic|faceoff]        (npm run icon-options; a round's name: that round alone)
 const fs = require('node:fs');
 const path = require('node:path');
-const { OPTIONS, PATCHWORK, COMIC } = require('./icon-options.js');
+const { OPTIONS, PATCHWORK, COMIC, FACEOFF } = require('./icon-options.js');
 // The pages: round 1 (six concepts) and round 2 (Patchwork's variations), each linking to the other.
 const ROUNDS = [
+  { key: 'faceoff', file: 'icons-faceoff.html', set: FACEOFF, full: true, title: 'Face-off variations', intro: 'Round 4: Face-off, the favourite of round 3, in seven takes, each changing one thing. Same rules: full-bleed 1024 px, no transparency, no words, nothing that matters in the outer tenth; iOS rounds the corners itself, as shown here. Nothing is installed until one is picked.', other: ['icons-comic.html', '← Round 3: the three Comic Chaos icons'] },
   { key: 'comic', file: 'icons-comic.html', set: COMIC, full: true, title: 'Comic Chaos icon options', intro: 'Round 3: three icons in the game\'s own Comic Chaos look: its X and O characters, red, yellow and ink, the sunburst, the halftone and the comic burst. Same rules: full-bleed 1024 px, no transparency, no words, nothing that matters in the outer tenth; iOS rounds the corners itself, as shown here. Nothing is installed until one is picked.', other: ['icons.html', '← Round 1: the first six concepts'] },
   { key: 'concepts', file: 'icons.html', set: OPTIONS, title: 'App icon options', intro: 'Six concepts for the Tic Tac Chaos icon. Each is a full-bleed 1024 px square with no transparency; iOS rounds the corners itself, as shown here. The current icon stays until one is picked.', other: ['icons-patchwork.html', 'Round 2: Patchwork variations →'] },
   { key: 'patchwork', file: 'icons-patchwork.html', set: PATCHWORK, title: 'Patchwork variations', intro: 'Round 2: Patchwork, picked from round 1, in seven takes, each changing one thing. Same rules: full-bleed 1024 px, no transparency, iOS rounds the corners.', other: ['icons.html', '← Round 1: all six concepts'] },
