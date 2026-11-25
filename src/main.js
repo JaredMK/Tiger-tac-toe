@@ -42,7 +42,7 @@ import { tick } from './ui/clock.js';
 import { KEY } from './ui/config.js';
 import { init as debugInit } from './ui/debug.js';
 import { init as fingerInit } from './ui/finger.js';
-import { init as inputInit, joinAsk, linkCode, matchUnderway, setJoinAsk } from './ui/input.js';
+import { init as inputInit, guardNew, joinAsk, linkCode, matchUnderway, setJoinAsk } from './ui/input.js';
 import { init as physicsInit, loadPhysics } from './ui/physics.js';
 import { render } from './ui/render.js';
 import { fetchRunConfig, init as runnerInit } from './ui/runner.js';
@@ -126,10 +126,10 @@ function boot() {
   if (state.online) resumeOnline();
   else if (hadAccount() || redirectPending()) {             // logged in before, or back from Google's sign-in page: the account, in the background
     setAcctLoading(true); render();
-    connectQuiet().then(() => { setAcctLoading(false); finishLogin(); commit(); if (play && !joinAsk) openFind(); });
+    connectQuiet().then(() => { setAcctLoading(false); finishLogin(); commit(); if (play && !joinAsk) guardNew(openFind); });
   }
-  else if (play) openFind();
-  if (autoJoin) joinRoom(autoJoin, joinName.trim() || 'Friend', false);
+  else if (play) guardNew(openFind);                          // (a saved local match: the question first, ui/input.js guardNew)
+  if (autoJoin) guardNew(() => joinRoom(autoJoin, joinName.trim() || 'Friend', false));
   onAppLink(openLink);                                        // the app: a link opened while it runs (a Universal Link to tictacchaos.com/join/CODE or /?room=CODE)
 }
 const playLink = url => { try { return new URL(url, 'https://tictacchaos.com/').searchParams.get('play') === 'find'; } catch (e) { return false; } };
@@ -146,8 +146,8 @@ function roomLink(link) {
 // the alert's Find Match link opens Find Match.
 function openLink(url) {
   const link = linkCode(url);
-  if (link) { const code = roomLink(link); commit(); if (code) joinRoom(code, joinName.trim() || 'Friend', false); return; }
-  if (playLink(url) && !matchUnderway()) openFind();
+  if (link) { const code = roomLink(link); commit(); if (code) guardNew(() => joinRoom(code, joinName.trim() || 'Friend', false)); return; }
+  if (playLink(url) && !matchUnderway()) guardNew(openFind);
 }
 
 SND.load();                                                // renders the sounds now, in the background

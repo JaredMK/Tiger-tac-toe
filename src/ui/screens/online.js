@@ -11,7 +11,7 @@ import { advOpen, esc, state } from '../app.js';
 import { byName, gamesCount } from './setup.js';
 import { CHEV, ICONS, gameIcon, toon } from '../art.js';
 import { bubble, panel } from '../comic.js';
-import { joinAsk } from '../input.js';
+import { joinAsk, newAsk } from '../input.js';
 
 /* ----- online screens ----- */
 // Play a Friend: host a room and share its code, or join one; or Same phone, two people taking turns on this phone.
@@ -62,3 +62,12 @@ export function renderJoinAsk() {
     <p>You're in a match with <b>${opp}</b>. Leave it and join this one?${leaveLoses() ? ' <b>Leaving counts as a loss.</b>' : ''}</p>
     <div class="row"><button class="btn" data-act="ask-stay">Stay</button><button class="btn go" data-act="ask-leave">Leave &amp; Join</button></div></div></div>`;
 }
+// "Start a new game?" (ui/input.js guardNew): a saved local match is lost by starting another. Keep playing, the default and
+// the big button, goes back into it; Start new gives it up. A flat ink-framed card like the other dialogs.
+export function renderNewAsk() {
+  if (!newAsk) return '';
+  return `<div class="flash pause ask newask" role="dialog" aria-modal="true" aria-label="Start a new game?"><div class="card"><h2>Start a new game?</h2>
+    <p>Your current match will be lost.</p>
+    <div class="row"><button class="btn go" data-act="new-keep" autofocus>Keep playing</button><button class="btn" data-act="new-start">Start new</button></div></div></div>`;
+}
+

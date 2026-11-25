@@ -15,7 +15,7 @@ import {
   acct, afterLogin, askDelete, cancelDelete, connectQuiet, deleteAccount, gateAct, gateOn, loggedIn, loginMail, loginMsg, loginPass, loginReset, loginWith, logout,
   needAccount, saveUsername, setAfterLogin, setLoginMail, setLoginMsg, setLoginPass, setUnameDraft, unameDraft, unverified, verifyAct
 } from '../net/accounts.js';
-import { searchBot, cancelSearch, closeIntro, findAgain, isMM, onIntroClosed, openFind, resignMM, resumeMatch, search, showSides, startSearch } from '../net/matchmaking.js';
+import { activeElsewhere, searchBot, cancelSearch, closeIntro, findAgain, isMM, onIntroClosed, openFind, resignMM, resumeMatch, search, showSides, startSearch } from '../net/matchmaking.js';
 import { attemptMove, dbOpen, setTapEl, tapEl } from '../net/moves.js';
 import { reactCooling, rx, sendReact } from '../net/reactions.js';
 import { scMode, scPicked, setMode, visibleTypes } from '../net/releases.js';
@@ -27,7 +27,7 @@ import {
 import { liveSquare, liveUnwatch, liveWatch, setWatch } from '../net/live.js';
 import { flipCard, lineupOpen, setLineupOpen } from './lineup.js';
 import { askAct } from './acctask.js';
-import { continueHeld, devAct, devStep, noteHelp, noteLeave, noteRematch, reportLocal, trackEnd, trackLeft, trackStart } from '../net/tracking.js';
+import { abandonHeld, continueHeld, holdingLocal, devAct, devStep, noteHelp, noteLeave, noteRematch, reportLocal, trackEnd, trackLeft, trackStart } from '../net/tracking.js';
 import { markMine } from '../net/owner.js';
 import {
   RNG, advOpen, app, commit, cpuPlan, cpuTimer, flashReady, menuNote, menuOpen, menuStep, save, setAdvOpen,
@@ -81,6 +81,22 @@ export function matchUnderway() {
 // The result on show is this phone's own move (not the computer's, not the other player's played back here).
 function ownResult() { return !repActive() && !cpuTurn() && !remoteTurn() && !(state.sc); }
 export let joinAsk = null;                             // a shared link opened during a match: { code }, until Leave & Join or Stay
+// "Start a new game?" (November 2026): a local match saved from the last visit (net/tracking.js heldLocal, the menu's
+// Continue match) is lost by anything that starts another match. Every new-match path goes through guardNew: with a saved
+// match, the question first; Keep playing (the default) goes back into the saved match, Start new gives it up (reported
+// as closed, as before) and then starts. Paths: Play (the first visit's), Play Computer's Start and Same phone's Start,
+// Practice, Find Match, hosting a room, joining a room (the form and a link), the alert's Find Match link.
+export let newAsk = null;                              // { go }: what Start new goes on to do
+export const setNewAsk = v => { newAsk = v; };
+export function guardNew(go) {
+  if (!holdingLocal()) { go(); return; }
+  newAsk = { go }; SND.play('tap'); render();
+}
+function resumeHeld() {
+  if (!continueHeld()) return false;
+  if (state.lock != null && !state.winner) { state.screen = 'mini'; state.zoom = state.lock; } else { state.screen = 'board'; state.zoom = null; }
+  return true;
+}
 // Leave & Join: the match is left as from the menu (a loss where it counts, recorded), then the join form for the link's code.
 async function leaveAndJoin(code) {
   joinAsk = null;
@@ -177,6 +193,8 @@ export function init() {
     if (act === 'explain') { e.preventDefault(); noteHelp(); openExplain(el.dataset.t); return; }   // (a "?" tapped in a square: counted for its play, net/tracking.js)    // never a move: open over anything, even mid-turn
     if (act === 'explain-close') { closeExplain(); return; }
     if (act === 'intro-close') { closeIntro(); return; }
+    if (act === 'new-keep') { newAsk = null; if (resumeHeld()) SND.play('tap'); commit(); return; }
+    if (act === 'new-start') { const go = newAsk && newAsk.go; newAsk = null; abandonHeld(); if (go) go(); else commit(); return; }
     if (act === 'ask-stay') { joinAsk = null; render(); scheduleCpu(); return; }
     if (act === 'ask-leave') { if (joinAsk) leaveAndJoin(joinAsk.code); return; }
     if (act === 'dismiss') { if (Date.now() >= flashReady) dismissFlash(); return; }   // not before the animation is over
@@ -237,13 +255,12 @@ export function init() {
       if (!state.online) { state.pick = null; state.pickSq = null; }
       commit();
     } else if (act === 'continue') {             // the main menu: back into the local match this phone was playing at its last visit (net/tracking.js heldLocal)
-      if (!continueHeld()) { commit(); return; }
-      if (state.lock != null && !state.winner) { state.screen = 'mini'; state.zoom = state.lock; } else { state.screen = 'board'; state.zoom = null; }
-      SND.play('tap'); commit();
+      if (resumeHeld()) SND.play('tap');
+      commit();
     } else if (act === 'resume') {               // the main menu: back into the online match this phone was playing (held at the page's load)
       resumeMatch();
     } else if (act === 'first-go') {             // a first visit's one big Play (ui/onboard.js): the starter board, at once
-      playStarter(true);
+      guardNew(() => playStarter(true));
     } else if (act === 'cpu-go') {               // the main menu: Play Computer, its setup (You vs Computer, your side, mini-games, level), then Start
       state.setup.mode = 'two'; state.setup.vs = 'cpu'; normSetup(state.setup); normCpu(state.setup); state.screen = 'setup'; setAdvOpen(false); commit();
     } else if (act === 'same-go') {              // Play a Friend: Same phone, two people on this phone (its setup: names, sides, mini-games)
@@ -268,7 +285,7 @@ export function init() {
     } else if (act === 'results') {
       if (state.winner) { state.screen = 'win'; state.zoom = null; render(); }
     } else if (act === 'practice') {               // How to Play's Practice: that mini-game alone against the computer on Easy (ui/explainer.js)
-      practiceStart(el.dataset.t);
+      guardNew(() => practiceStart(el.dataset.t));
     } else if (act.startsWith('tpl-')) {           // the setup's Templates row, admin only (ui/screens/setup.js)
       tplAct(act, el);
     } else if (act === 'howto') {
@@ -300,7 +317,7 @@ export function init() {
       state.screen = 'friend'; setNet('idle', ''); commit();
       connectQuiet();
     } else if (act === 'find-go') {               // the main menu: Find Match (or back to the match in progress)
-      openFind();
+      if (activeElsewhere()) openFind(); else guardNew(openFind);
     } else if (act === 'search-bot') {           // the search screen's offer, about 20 s alone: the computer (net/matchmaking.js searchBot)
       searchBot();
     } else if (act === 'search-go') {
@@ -354,7 +371,7 @@ export function init() {
     } else if (act === 'host') {                  // hosting needs an account: logged out, the login first, then straight back to Host
       setAdvOpen(false);
       if (!loggedIn()) { needAccount('host'); return; }
-      hostRoom(null, false);
+      guardNew(() => hostRoom(null, false));
     } else if (act === 'share-result') {          // the win screen: the result card, through the share sheet (ui/sharecard.js)
       shareResult();
     } else if (act === 'host-retry') {
@@ -365,7 +382,7 @@ export function init() {
       const nameEl = document.getElementById('jname'), codeEl = document.getElementById('jcode');
       if (loggedIn()) setJoinName(acct.profile.username);          // (a logged-in player always plays under their username)
       else setJoinName((nameEl ? nameEl.value : joinName).trim().slice(0, NAME_MAX) || 'Friend'); setJoinCode((codeEl ? codeEl.value : joinCode).toUpperCase().replace(/[^A-Z]/g, ''));
-      joinRoom(joinCode, joinName, false);
+      guardNew(() => joinRoom(joinCode, joinName, false));
     } else if (act === 'rejoin') {
       if (state.online) joinRoom(null, null, true);
     } else if (act === 'share') {
@@ -406,12 +423,14 @@ export function init() {
       state.confirm = null; commit();
     } else if (act === 'start') {
       if (state.online) { startOnline(); return; }
-      if (state.setup.vs === 'cpu') { playComputer(); return; }
+      if (state.setup.vs === 'cpu') { guardNew(() => playComputer()); return; }
       normLocal(state.setup).p2 = chaosSetup() ? 'cpu' : 'human';   // (Same phone: two people; Super Chaos, were it on: against the computer)
-      seatLocal(state.setup, RNG);
-      restrictGames(state.setup.games, visibleTypes());           // never a game this player may not see
-      prepDeal(state);
-      if (chaosSetup() ? startChaos(state, RNG) : startMatch(state, RNG)) { noteBoard(state); trackStart(); if (!state.sc) revealSides(); commit(); }
+      guardNew(() => {
+        seatLocal(state.setup, RNG);
+        restrictGames(state.setup.games, visibleTypes());           // never a game this player may not see
+        prepDeal(state);
+        if (chaosSetup() ? startChaos(state, RNG) : startMatch(state, RNG)) { noteBoard(state); trackStart(); if (!state.sc) revealSides(); commit(); }
+      });
     } else {                                       // a mini-game's own control: its view's actions
       const own = gameAction(act);
       if (own) own(el, e, act);

@@ -50,3 +50,25 @@ test('each game\'s rules once on this phone: kept under their own key, never aga
   OB.obState.seen = {};                                  // (the onboarding record lost or stale: the rules' own key holds)
   assert.equal(OB.seenOnce('rps'), false);
 });
+
+test('Start a new game?: every new-match path goes through guardNew; the dialog offers Keep playing (the default) and Start new', async () => {
+  const src = readFileSync(new URL('../../src/ui/input.js', import.meta.url), 'utf8');
+  for (const path of ["guardNew(() => playStarter(true))", "guardNew(() => playComputer())", "guardNew(() => practiceStart(", "guardNew(openFind)", "guardNew(() => hostRoom(null, false))", "guardNew(() => joinRoom(joinCode, joinName, false))"]) assert.ok(src.includes(path), path);
+  assert.match(src, /guardNew\(\(\) => \{\s*seatLocal/, 'Same phone\'s Start');
+  const main = readFileSync(new URL('../../src/main.js', import.meta.url), 'utf8');
+  assert.equal((main.match(/guardNew\(/g) || []).length, 5, 'the links: Find Match and a room, at the start and while it runs');
+  const { renderNewAsk } = await import('../../src/ui/screens/online.js');
+  const I = await import('../../src/ui/input.js');
+  assert.equal(renderNewAsk(), '');
+  Object.assign(state, E.newMatch(E.makeRng('na'), { games: ['ttt', 'c4', 'coins', 'hilo', 'pig', 'bs', 'hangman', 'snakes', 'wordle'] }));
+  state.online = null; state.practice = null; state.winner = null; state.stats = { id: 'na1', mode: 'cpu', sent: false };
+  T.quitOnBoot('reload');
+  let went = 0; I.guardNew(() => { went++; });
+  assert.equal(went, 0, 'asked first');
+  const html = renderNewAsk();
+  assert.match(html, /Start a new game\?/); assert.match(html, /Your current match will be lost\./);
+  assert.match(html, /class="btn go" data-act="new-keep"[^>]*>Keep playing/); assert.match(html, /data-act="new-start">Start new/);
+  I.setNewAsk(null); T.continueHeld();
+  I.guardNew(() => { went++; });
+  assert.equal(went, 1, 'no saved match: straight on');
+});
