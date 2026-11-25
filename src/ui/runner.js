@@ -246,7 +246,7 @@ export function runColours() {
   const cs = getComputedStyle(document.documentElement), v = (n, d) => (cs.getPropertyValue(n) || '').trim() || d;
   runPal = { ink: v('--ink', '#161210'), paper: v('--paper', '#fff8e8'), X: v('--x', '#e5432a'), O: v('--o', '#f6c21b'), green: v('--green', '#4e9d3a'), sky: v('--sky', '#58a8cf'),
     // the art tokens (styles.css :root): a canvas scene takes its tables, rooms and machines from these, flat
-    stone: v('--stone', '#d9c7a6'), gold: v('--gold', '#f2b01e'), sea: v('--sea', '#3f8fbf'), wood: v('--wood', '#b98250'), wood2: v('--wood-2', '#8f5f36'), wall: v('--wall', '#4f8794'), cabinet: v('--cabinet', '#5b6fb5'), glass: v('--glass', '#d9eef7'), feltGreen: v('--felt-green', '#5fa86d'), feltBlue: v('--felt-blue', '#4a63ad') };
+    stone: v('--stone', '#d9c7a6'), gold: v('--gold', '#f2b01e'), sea: v('--sea', '#3f8fbf'), wood: v('--wood', '#b98250'), wood2: v('--wood-2', '#8f5f36'), wall: v('--wall', '#4f8794'), cabinet: v('--cabinet', '#5b6fb5'), glass: v('--glass', '#d9eef7'), feltGreen: v('--felt-green', '#4a9259'), feltBlue: v('--felt-blue', '#4a63ad'), pink: v('--felt-pink', '#f58aa8'), teal: v('--felt-teal', '#3f9a95'), purple: v('--purple', '#9a7fd1') };
   return runPal;
 }
 export function runCanvas(cv) {                                           // the canvas at its box's size, in device pixels

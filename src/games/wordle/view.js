@@ -1,4 +1,5 @@
 // Five Letters: the screen, the miniature, the move's words and sounds, and the inputs.
+import { arcTally } from '../../ui/progress.js';
 import { noticeSeq } from '../../net/moves.js';
 import { N, esc, state } from '../../ui/app.js';
 import { toon } from '../../ui/art.js';
@@ -12,7 +13,7 @@ import { apply as applyGuess, wordleBest, wordleGuesses, wordleLeft, wordleLimit
 // letters and colours, smaller under it, their new row turning there as it lands.
 // Each player's guesses left, as dots (filled: left; hollow: used), as Higher/Lower's. A square from before the limit: none.
 const pips = (mini, p) => { const k = wordleLimit(mini), left = wordleLeft(mini, p); return `<i class="hpips ${p}" aria-label="${p}: ${left} guess${left === 1 ? '' : 'es'} left">${Array.from({ length: k }, (_, j) => `<i class="${j < left ? 'on' : ''}"></i>`).join('')}</i>`; };
-const MARK = { g: 'green', y: 'yellow', x: 'grey' };
+const MARK = { g: 'green', y: 'blue', x: 'grey' };
 // The game's picture away from play (the Game lineup's card, ui/lineup.js gameArt): a fresh square of its own (dealt for the
 // picture alone, never a real square) with one example guess, always CHAOS (a fixed word, never one drawn from the
 // list), coloured against that throwaway square's word. Real play's miniature shows its own guesses only.
@@ -61,7 +62,7 @@ function board(own, locked, a, view, race, extra, who) {
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   if (!mini.race) {
-    const left = wordleLimit(mini) ? `<div class="hleft">${['X', 'O'].map(p => `<span class="${p}"><b class="${p}">${N(p)}</b>${pips(mini, p)}</span>`).join('')}</div>` : '';   // each player's guesses left (always there: nothing moves)
+    const left = wordleLimit(mini) ? `<div class="ctals hleft">${['X', 'O'].map(p => arcTally(p, { view, turn }, pips(mini, p))).join('')}</div>` : '';   // each player's guesses left (always there: nothing moves)
     return board(mini.guesses, locked, a, view, false, { left }, turn === 'O' ? 'O' : 'X');   // (the row being typed carries the mark of the player on the move)
   }
   const me = raceMe(), them = me === 'X' ? 'O' : 'X';

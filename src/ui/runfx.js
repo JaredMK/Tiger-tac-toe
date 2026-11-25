@@ -14,7 +14,7 @@ export const easeOut = k => 1 - (1 - clamp01(k)) ** 3;
 export const backOut = k => { const t = clamp01(k) - 1; return t * t * (2.70158 * t + 1.70158) + 1; };   // a pop: past its size, then back
 export const hash = n => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };   // 0..1 from a number: scenery placed along a course, the same wherever it is drawn
 export const FONT = px => `400 ${Math.round(px)}px 'Luckiest Guy', 'Arial Black', sans-serif`;
-export const SMALL = px => `800 ${Math.round(px)}px Nunito, Arial, sans-serif`;
+export const SMALL = px => `800 ${Math.round(px)}px Comic Neue, Patrick Hand, sans-serif`;
 // The timings of a run's end on its scene (ms from the moment it ended): the impact's burst, the scene's jolt, the
 // banner's pop. (The tumble or the spin-out itself plays 700 ms, the finish's flourish 500: ui/runner.js.)
 export const RUNFX = { burst: 340, jolt: 280, pop: 380, puff: 420, squash: 170 };

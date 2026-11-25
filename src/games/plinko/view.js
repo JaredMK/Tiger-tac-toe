@@ -107,7 +107,7 @@ function plinkoTable(mini, a, o) {
   const res = pl ? `<p ${lateAt('arcres' + (pl.pts >= 3 ? ' ok' : ''), inBin)} role="status">+${pl.pts}${pl.hit ? ` (bonus +${bp})` : ''}: ${pl.total} of ${tg}${a.kind === 'claim' || a.kind === 'match' ? '!' : ''}${pl.reset ? '<br><small>All seven used: every slot opens again</small>' : ''}</p>`
     : l && o.view ? `<p class="arcres"><b class="${l.by}">${N(l.by)}</b> reached ${mini.pts[l.by]}</p>`
     : '<p class="arcnote"></p>';
-  return `<div class="g-arc g-plk"><div class="ctals">${tal('X')}${tal('O')}</div><div class="plinko"><div class="pboard pc-${(by || turn) === 'O' ? 'O' : 'X'}">${style}<svg viewBox="0 0 ${PK.w} ${PK.h}" aria-hidden="true">${posts}${bins}${pegs.join('')}${bonus}${chip}${burst}</svg>${slots}</div>${res}</div></div>`;
+  return `<div class="g-arc g-plk"><div class="ctals two">${tal('X')}${tal('O')}</div><div class="plinko"><div class="pboard pc-${(by || turn) === 'O' ? 'O' : 'X'}">${style}<svg viewBox="0 0 ${PK.w} ${PK.h}" aria-hidden="true">${posts}${bins}${pegs.join('')}${bonus}${chip}${burst}</svg>${slots}</div>${res}</div></div>`;
 }
 // The miniature: the board small (its pegs, the gold bonus peg, the bins shaded by their points, the last drop's chip in its
 // bin in the dropper's colour), and under it each player's mark, a bar to the target and their points.

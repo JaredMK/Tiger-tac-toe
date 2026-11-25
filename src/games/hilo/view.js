@@ -1,4 +1,5 @@
 // Higher/Lower: the screen, the miniature, the move's words and sounds, and the inputs.
+import { arcTally } from '../../ui/progress.js';
 import { HILO, hiloLeft, hiloLimit, hiloOpen, hiloPart, hiloTarget, hiloTop } from './rules.js';
 import { N, esc, mv } from '../../ui/app.js';
 import { cfAnchor, cfFrom } from '../../ui/cardfly.js';
@@ -65,7 +66,7 @@ function board(part, mini, p, locked, a, d, view, turn) {
     : Number.isInteger(t) ? `<div class="hist">The number was <b class="n">${t}</b></div>`  // (a finished square: the number, revealed; a race: this side's own)
     : `<div class="hist">${hist || 'No guesses yet'}</div>`;
   const out = n => !!(was && lastG && n !== lastG.n && n >= was[0] && n <= was[1] && (n < lo || n > hi));   // numbers this guess ruled out
-  const left = hiloLimit(mini) ? `<div class="hleft">${['X', 'O'].map(q => `<span class="${q}"><b class="${q}">${N(q)}</b>${pips(mini, q, !!a && a.by === q)}</span>`).join('')}</div>` : '';   // each player's guesses left (always there: the pad never moves; a race has no limit)
+  const left = hiloLimit(mini) ? `<div class="ctals hleft">${['X', 'O'].map(q => arcTally(q, { view, turn }, pips(mini, q, !!a && a.by === q))).join('')}</div>` : '';   // each player's guesses left (always there: the pad never moves; a race has no limit)
   // The pad: a number still possible is a raised key (pressed flat while it is not this phone's move); one ruled out is
   // shut (a fresh one shuts in its turn, away from the guess: --d); a guessed one carries its guesser's colour and its answer.
   const key = n => {
@@ -73,8 +74,8 @@ function board(part, mini, p, locked, a, d, view, turn) {
     const cls = g ? `${g.by} ${RES[g.res] || ''}${fresh ? ' me' : ''}` : out(n) ? 'shut out' : n < lo || n > hi ? 'shut' : '';
     return `<button class="${cls}" data-act="move" ${mv(n)}${n < lo || n > hi || g || locked ? ' disabled' : ''}${!g && out(n) ? ` style="--d:${Math.min(22, Math.abs(n - lastG.n))}"` : ''}${fresh ? cfAnchor('hpad:' + n) : ''}>${n}</button>`;
   };
-  return `<div class="g-hilo${top > 20 ? ' t30' : ''}${mini.race ? ' race' : ''}${turn && !locked ? ' t' + turn : ''}" style="--cols:${top <= 20 ? 5 : top <= 30 ? 6 : top <= 40 ? 8 : top <= 60 ? 10 : 11}"><div class="range">${head(part, a)}${numLine(part, mini, a, { pad: true, p: mini.race ? p : null })}</div>
-        ${left}${result}
+  return `<div class="g-hilo${top > 20 ? ' t30' : ''}${mini.race ? ' race' : ''}${turn && !locked ? ' t' + turn : ''}" style="--cols:${top <= 20 ? 5 : top <= 30 ? 6 : top <= 40 ? 8 : top <= 60 ? 10 : 11}">${left}<div class="range">${head(part, a)}${numLine(part, mini, a, { pad: true, p: mini.race ? p : null })}</div>
+        ${result}
         <div class="pad">${Array.from({ length: top }, (_, k) => k + 1).map(key).join('')}</div></div>`;
 }
 // The other player's board in a race (read-only, smaller): their range on the number line, narrowing with each guess, their

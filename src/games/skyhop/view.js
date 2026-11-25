@@ -142,7 +142,7 @@ export function drawHop(c, W, H, v, now) {
   }
   c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
   const px = Math.max(10, Math.round(k * 0.34));                   // a tag every 10 m: on the left tower where it is wide enough, else on its face, in the sky
-  c.font = `800 ${px}px Nunito, Arial, sans-serif`;
+  c.font = `800 ${px}px Comic Neue, Patrick Hand, sans-serif`;
   for (let m = Math.max(10, Math.ceil((cam - 1) / 10) * 10); m <= top + 1; m += 10) {
     if (m >= cfg.target) break;
     const y = Y(m), tw = Math.max(px * 2.1, c.measureText(String(m)).width + 9), th = px + 6, x0 = faceL >= tw + 7 ? faceL - tw - 5 : faceL + 4;

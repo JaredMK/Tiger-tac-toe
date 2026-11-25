@@ -207,7 +207,7 @@ export function physBall(g, x, y, r, fill, label, ink) {
   const c = g.c, X = g.X(x), Y = g.Y(y), R = r * g.k;
   c.beginPath(); c.arc(X, Y, R, 0, Math.PI * 2); c.fillStyle = fill; c.fill(); c.lineWidth = Math.max(1.5, R * 0.2); c.strokeStyle = ink; c.stroke();
   c.beginPath(); c.arc(X - R * 0.36, Y - R * 0.36, R * 0.22, 0, Math.PI * 2); c.fillStyle = 'rgba(255,255,255,.6)'; c.fill();
-  if (label) { c.fillStyle = ink; c.font = `800 ${Math.max(7, Math.round(R * 1.15))}px Nunito, Arial, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(label, X, Y + R * 0.1); }
+  if (label) { c.fillStyle = ink; c.font = `800 ${Math.max(7, Math.round(R * 1.15))}px Comic Neue, Patrick Hand, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(label, X, Y + R * 0.1); }
 }
 export function physSkull(g, x, y, r) {                                 // the black ball's mark: a little skull
   const c = g.c, X = g.X(x), Y = g.Y(y), R = r * g.k;

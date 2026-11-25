@@ -343,7 +343,7 @@ function needle(c, x, y, len, fill, P, unit, dir) {             // a marker acro
   c.fillStyle = fill; c.fill(); c.lineWidth = 1.5 * unit; c.strokeStyle = P.ink; c.stroke();
 }
 function label(c, t, x, y, fill, unit, align) {
-  c.save(); c.font = `800 ${Math.round(10 * unit)}px Nunito, Arial, sans-serif`; c.textAlign = align; c.textBaseline = 'bottom';
+  c.save(); c.font = `800 ${Math.round(10 * unit)}px Comic Neue, Patrick Hand, sans-serif`; c.textAlign = align; c.textBaseline = 'bottom';
   c.lineWidth = 3; c.strokeStyle = 'rgba(8,9,14,.8)'; c.strokeText(t, x, y); c.fillStyle = fill; c.fillText(t, x, y); c.restore();
 }
 // Each player's rolls as score boxes on the board over the pins (X's on the left, O's on the right): their mark and
@@ -361,7 +361,7 @@ function drawFrames(c, G, mini, settled, P) {
     if (!fs.length) fs = [{ r: [], total: 0, strike: false }];     // no roll yet: the first box, empty, so the board is there from the start
     const x0 = p === 'X' ? pad : pad * 2 + pw, y0 = top;
     rr(c, x0, y0, pw, 18 + BH + 8, 7); c.fillStyle = 'rgba(8,9,14,.62)'; c.fill(); c.lineWidth = 1.5; c.strokeStyle = 'rgba(255,255,255,.14)'; c.stroke();
-    c.font = '800 13px Nunito, Arial, sans-serif'; c.fillStyle = P[p]; c.textAlign = 'left';
+    c.font = '800 13px Comic Neue, Patrick Hand, sans-serif'; c.fillStyle = P[p]; c.textAlign = 'left';
     c.fillText(p, x0 + 8, y0 + 11);
     c.textAlign = 'right'; c.fillStyle = '#fff'; c.fillText(`${Math.min(pins, 999)}/${bowlTarget(mini)}`, x0 + pw - 8, y0 + 11);
     c.textAlign = 'center';
@@ -373,9 +373,9 @@ function drawFrames(c, G, mini, settled, P) {
       rr(c, x, y0 + 20, bw, BH, 4); c.fillStyle = 'rgba(255,255,255,.94)'; c.fill();
       if (f.r.length) {
         const sym = f.strike ? 'X' : f.r[0] === 0 ? '-' : String(f.r[0]);
-        c.fillStyle = f.strike ? P.X : P.ink; c.font = '800 12px Nunito, Arial, sans-serif'; c.fillText(sym, x + bw / 2, y0 + 20 + 8.5);
+        c.fillStyle = f.strike ? P.X : P.ink; c.font = '800 12px Comic Neue, Patrick Hand, sans-serif'; c.fillText(sym, x + bw / 2, y0 + 20 + 8.5);
         c.fillStyle = 'rgba(0,0,0,.2)'; c.fillRect(x + 3, y0 + 20 + 15, bw - 6, 1);
-        c.fillStyle = P.ink; c.font = '700 11px Nunito, Arial, sans-serif'; c.fillText(String(run), x + bw / 2, y0 + 20 + 23);
+        c.fillStyle = P.ink; c.font = '700 11px Comic Neue, Patrick Hand, sans-serif'; c.fillText(String(run), x + bw / 2, y0 + 20 + 23);
       }
       x += bw + gap;
     }

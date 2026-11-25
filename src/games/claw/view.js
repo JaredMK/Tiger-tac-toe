@@ -23,7 +23,11 @@ import { markSvgG } from '../../ui/thumbs.js';
 // prize rattles down the chute, drops out of the door in the machine's base and hops onto its winner's shelf there
 // (each player's prizes won, beside their mark: `got`); a slip drops it back part way, with a bounce; a miss rides
 // back to the chute empty. The moments are rules.js clawTimes (CLAWT); the machine itself is a kept layer (machineLayer).
-export const PRIZE_COL = ['#e5605a', '#4e9de0', '#7cc457', '#f2b33d', '#b07fe0', '#f08bb8'];
+// A prize's colour: one of the shared tokens (styles.css :root), never a player's red or yellow. On the canvas from the
+// palette (ui/runner.js runColours), in the miniature as the token itself.
+export const PRIZE_TOK = ['green', 'sea', 'pink', 'purple', 'teal', 'stone'];
+const PRIZE_VAR = { green: '--green', sea: '--sea', pink: '--felt-pink', purple: '--purple', teal: '--felt-teal', stone: '--stone' };
+export const PRIZE_COL = PRIZE_TOK.map(k => `var(${PRIZE_VAR[k]})`);
 let sweep = null;              // this phone's turn's sweep: { key, t0 } (the square and the grabs made: a new turn, a new sweep)
 let press = null;              // a finger down on the case: { id, x0, y0 }
 let sent = null;               // the grab just sent from here: { key, k, at } (the claw holds where it was dropped until the move's own play starts: online, the record's round trip)
@@ -53,7 +57,7 @@ function clawTable(mini, a, o) {
   const left = clawCase(mini).length;
   return `<div class="g-arc g-claw"><div class="ctals">${tal('X')}${tal('O')}</div>
     <div class="claw${mine ? ' live' : ''}" data-claw="area"><canvas class="clawcv" data-claw="cv" aria-label="The claw machine: ${left} prizes"></canvas></div>
-    ${res}<div class="cbtns one${mine ? '' : ' hold'}"><button class="big ${o.turn}" data-act="claw-drop"${mine ? '' : ' disabled tabindex="-1" aria-hidden="true"'}>Drop</button></div></div>`;
+    ${res}<div class="cbtns one"><button class="big ${o.turn}" data-act="claw-drop"${mine ? '' : ' disabled tabindex="-1"'}>Drop</button></div></div>`;
 }
 export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, turn, g) {
   hook();
@@ -94,9 +98,9 @@ function prizeArt(c, k, w, h, col, P, s) {
     const t = -h / 2, lid = h * 0.26;
     c.beginPath(); c.rect(-w, t, 2 * w, h); c.fill();
     c.fillStyle = 'rgba(22,18,16,.16)'; c.fillRect(w * 0.5, t, w * 0.5, h); c.fillRect(-w, t + lid, 2 * w, h * 0.06);
-    c.fillStyle = '#fff8e8'; c.fillRect(-w * 0.17, t, w * 0.34, h);                                      // the ribbon
+    c.fillStyle = P.paper; c.fillRect(-w * 0.17, t, w * 0.34, h);                                      // the ribbon
     c.beginPath(); c.rect(-w, t, 2 * w, h); c.moveTo(-w * 0.17, t); c.lineTo(-w * 0.17, t + h); c.moveTo(w * 0.17, t); c.lineTo(w * 0.17, t + h); c.moveTo(-w, t + lid); c.lineTo(w, t + lid); c.stroke();
-    c.fillStyle = '#fff8e8'; c.beginPath(); c.ellipse(-w * 0.32, t - w * 0.17, w * 0.32, w * 0.19, -0.4, 0, 7); c.fill(); c.stroke(); c.beginPath(); c.ellipse(w * 0.32, t - w * 0.17, w * 0.32, w * 0.19, 0.4, 0, 7); c.fill(); c.stroke();   // its bow
+    c.fillStyle = P.paper; c.beginPath(); c.ellipse(-w * 0.32, t - w * 0.17, w * 0.32, w * 0.19, -0.4, 0, 7); c.fill(); c.stroke(); c.beginPath(); c.ellipse(w * 0.32, t - w * 0.17, w * 0.32, w * 0.19, 0.4, 0, 7); c.fill(); c.stroke();   // its bow
     c.fillStyle = col; c.beginPath(); c.arc(0, t - w * 0.06, w * 0.13, 0, 7); c.fill(); c.stroke();
   } else if (k === 'star') {
     const R = Math.min(w, h / 1.9), path = () => { c.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? R * 0.5 : R, an = -Math.PI / 2 + i * Math.PI / 5, px = Math.cos(an) * r * 1.05, py = Math.sin(an) * r; if (i) c.lineTo(px, py); else c.moveTo(px, py); } c.closePath(); };
@@ -119,7 +123,7 @@ function drawPrize(c, G, p, px, py, P, o) {
   c.save(); if (o.a != null) c.globalAlpha = clamp(o.a, 0, 1);
   c.translate(px, py - h / 2); if (o.rot) c.rotate(o.rot);
   if (sq) { c.translate(0, h / 2); c.scale(1 + sq, 1 - sq); c.translate(0, -h / 2); }
-  prizeArt(c, p.k, w, h, PRIZE_COL[p.c % PRIZE_COL.length], P, G.s * k);
+  prizeArt(c, p.k, w, h, P[PRIZE_TOK[p.c % PRIZE_TOK.length]], P, G.s * k);
   c.restore();
 }
 const shadow = (c, x, y, rx, ry, a) => { c.fillStyle = `rgba(22,18,16,${a})`; c.beginPath(); c.ellipse(x, y, Math.max(0.5, rx), Math.max(0.5, ry), 0, 0, 7); c.fill(); };
@@ -140,47 +144,40 @@ function basePlan(G, goal) {
   const shelf = (p, i) => { const x = x0 + i * (w + gap), mk = Math.min(h * 0.4, 3.8), pitch = (w - 2 * mk - 3) / goal; return { p, x, y: y0, w, h, mk, pitch, k: z => Math.min(1, pitch * 0.94 / (2 * z.w), (h - 2) / (prizeH(z.k) + 2.6)), slot: n => ({ x: x + 2 * mk + 2.4 + pitch * (n + 0.5), y: y0 + h - 1.1 }) }; };
   return { door, X: shelf('X', 0), O: shelf('O', 1) };
 }
-const CAB = { body: '#5b4a8c', dark: '#3d3163', lite: '#7d6bb3', glass: '#d6edf7', glass2: '#eaf6fb', floor: '#f2d6a8', lip: '#d7b47c', metal: '#c9cdd6', metalD: '#8a919d', hole: '#262338' };
+// The machine's colours: the shared tokens (the art audit: flat, no gloss, no shaded sides), from the palette.
+const cab = P => ({ body: P.cabinet, glass: P.glass, floor: P.stone, lip: P.wood, metal: P.paper, metalD: P.stone, hole: P.ink });
 function chuteFront(c, G, P) {                                      // the chute's front panel (drawn again over a prize falling into it)
   const s = G.s, x = G.X(0.6), w = (CLAW.chute - 0.6) * s, y = G.Y(G.floor - 7.5), h = (G.gb - G.floor + 7.5) * s;
-  c.fillStyle = '#4a5162'; c.strokeStyle = P.ink; c.lineWidth = lw(s, 0.55);
+  c.fillStyle = P.wood2; c.strokeStyle = P.ink; c.lineWidth = lw(s, 0.55);
   c.beginPath(); c.roundRect(x, y, w, h, [1.2 * s, 1.2 * s, 0, 0]); c.fill(); c.stroke();
-  c.fillStyle = 'rgba(255,255,255,.14)'; c.fillRect(x + 0.6 * s, y + 0.6 * s, w - 1.2 * s, 1 * s);
-  const ax = G.X(CLAW.rest), ay = y + h * 0.5; c.fillStyle = '#ffd34d'; c.lineWidth = lw(s, 0.4); c.lineJoin = 'round';
+  const ax = G.X(CLAW.rest), ay = y + h * 0.5; c.fillStyle = P.gold; c.lineWidth = lw(s, 0.4); c.lineJoin = 'round';
   c.beginPath(); c.moveTo(ax - 3.4 * s, ay - 1.8 * s); c.lineTo(ax + 3.4 * s, ay - 1.8 * s); c.lineTo(ax, ay + 2.2 * s); c.closePath(); c.fill(); c.stroke();
 }
 function paintMachine(c, G, P, goal) {
-  const s = G.s, X = G.X, Y = G.Y, L = X(-FRAME), R = X(CLAW.W + FRAME), T = Y(0), B = Y(G.bottom), ink = lw(s, 0.7);
+  const s = G.s, X = G.X, Y = G.Y, L = X(-FRAME), R = X(CLAW.W + FRAME), T = Y(0), B = Y(G.bottom), ink = lw(s, 0.8), CAB = cab(P);
   // the cabinet
   c.fillStyle = 'rgba(22,18,16,.14)'; c.beginPath(); c.roundRect(L + 1.2 * s, T + 1.6 * s, R - L, B - T, 3 * s); c.fill();
   c.fillStyle = CAB.body; c.strokeStyle = P.ink; c.lineWidth = ink; c.beginPath(); c.roundRect(L, T, R - L, B - T - 0.6 * s, 3 * s); c.fill();
-  c.fillStyle = CAB.dark; c.fillRect(X(CLAW.W) + 1.2 * s, Y(G.head), FRAME * s - 1.2 * s, (G.bottom - G.head - 2) * s);   // the side away from the light
-  c.fillStyle = CAB.lite; c.fillRect(L + 0.9 * s, Y(1.6), 0.9 * s, (G.bottom - 4) * s);
   c.beginPath(); c.roundRect(L, T, R - L, B - T - 0.6 * s, 3 * s); c.stroke();
   // its head: a row of bulbs
   const n = 9, by = Y(G.head / 2 + 0.2), br = Math.min(1.5, G.head * 0.26) * s;
-  for (let i = 0; i < n; i++) { const bx = X(6 + i * 88 / (n - 1)); c.fillStyle = i % 2 ? '#fff3c4' : '#ffd34d'; c.lineWidth = lw(s, 0.4); c.beginPath(); c.arc(bx, by, br, 0, 7); c.fill(); c.stroke(); c.fillStyle = 'rgba(255,255,255,.8)'; c.beginPath(); c.arc(bx - br * 0.3, by - br * 0.3, br * 0.3, 0, 7); c.fill(); }
+  for (let i = 0; i < n; i++) { const bx = X(6 + i * 88 / (n - 1)); c.fillStyle = i % 2 ? P.paper : P.gold; c.lineWidth = lw(s, 0.4); c.beginPath(); c.arc(bx, by, br, 0, 7); c.fill(); c.stroke(); }
   // the case: its back wall, the floor seen from a little above, the shade under the head
   const gy = Y(G.head), gh = G.Hc * s, gx = X(0), gw = CLAW.W * s, fy = Y(G.floor - 5);
-  const gr = c.createLinearGradient(0, gy, 0, fy); gr.addColorStop(0, CAB.glass); gr.addColorStop(1, CAB.glass2);
-  c.fillStyle = gr; c.fillRect(gx, gy, gw, gh);
+  c.fillStyle = CAB.glass; c.fillRect(gx, gy, gw, gh);
   c.fillStyle = CAB.floor; c.fillRect(gx, fy, gw, Y(G.gb) - fy);
-  c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(gx, fy, gw, 0.7 * s);
+  c.fillStyle = P.ink; c.fillRect(gx, fy - 0.2 * s, gw, 0.4 * s);                             // the floor's far edge: an ink line
   c.fillStyle = CAB.lip; c.fillRect(gx, Y(G.gb - 1.6), gw, 1.6 * s);
-  c.fillStyle = 'rgba(22,18,16,.10)'; c.fillRect(gx, gy, gw, 2.2 * s); c.fillRect(X(CLAW.W) - 1.6 * s, gy, 1.6 * s, gh);
   // the chute: its mouth in the floor (the front panel goes over what falls in)
   c.fillStyle = CAB.hole; c.strokeStyle = P.ink; c.lineWidth = lw(s, 0.55);
   c.beginPath(); c.roundRect(X(0.6), Y(G.floor - 10.2), (CLAW.chute - 0.6) * s, (G.gb - G.floor + 10.2) * s, [1.4 * s, 1.4 * s, 0, 0]); c.fill(); c.stroke();
   chuteFront(c, G, P);
   // the rail
   c.fillStyle = CAB.metal; c.lineWidth = lw(s, 0.5); c.beginPath(); c.rect(gx, Y(G.rail - 1.3), gw, 2.6 * s); c.fill(); c.stroke();
-  c.fillStyle = 'rgba(255,255,255,.6)'; c.fillRect(gx, Y(G.rail - 0.9), gw, 0.6 * s);
-  c.fillStyle = 'rgba(22,18,16,.16)'; c.fillRect(gx, Y(G.rail + 0.5), gw, 0.6 * s);
   c.lineWidth = ink; c.strokeRect(gx, gy, gw, gh);
   // the base: the prize door and the two shelves
   const pl = basePlan(G, goal), d = pl.door;
   c.fillStyle = CAB.hole; c.lineWidth = lw(s, 0.55); c.beginPath(); c.roundRect(X(d.x), Y(d.y), d.w * s, d.h * s, 1.4 * s); c.fill(); c.stroke();
-  c.fillStyle = 'rgba(255,255,255,.08)'; c.fillRect(X(d.x) + 0.7 * s, Y(d.y + d.h) - 1.6 * s, d.w * s - 1.4 * s, 0.9 * s);
   for (const p of ['X', 'O']) {
     const sh = pl[p];
     c.fillStyle = P.paper; c.strokeStyle = P.ink; c.lineWidth = lw(s, 0.55); c.beginPath(); c.roundRect(X(sh.x), Y(sh.y), sh.w * s, sh.h * s, 1.6 * s); c.fill(); c.stroke();
@@ -209,32 +206,30 @@ function machineLayer(c, G, P, goal) {
 // carriage at xc: the cable leaning as it lags and swings, the arms' tips coming together as it shuts.
 function drawClaw(c, G, x, y, shut, P, xc, col, held) {
   const cx = G.X(x), cy = G.Y(y), s = G.s, open = 4.6 * s, tight = (held ? clamp(held * 0.62, 1.8, 4) : 1.5) * s, sp = lerp(open, tight, shut), kx = G.X(xc == null ? x : xc), ry = G.Y(G.rail);
+  const CAB = cab(P);
   c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
   // the carriage on the rail: its wheels, its lamp in the mover's colour
   c.fillStyle = CAB.metalD; c.strokeStyle = P.ink; c.lineWidth = lw(s, 0.5);
   for (const d of [-1, 1]) { c.beginPath(); c.arc(kx + d * 2.5 * s, ry - 1.5 * s, 1.1 * s, 0, 7); c.fill(); c.stroke(); }
-  c.fillStyle = '#6f7785'; c.beginPath(); c.roundRect(kx - 4.2 * s, ry - 1.5 * s, 8.4 * s, 4.2 * s, 1.1 * s); c.fill(); c.stroke();
-  c.fillStyle = 'rgba(255,255,255,.3)'; c.fillRect(kx - 3.4 * s, ry - 0.9 * s, 6.8 * s, 0.6 * s);
-  if (col) { c.fillStyle = col; c.lineWidth = lw(s, 0.4); c.beginPath(); c.arc(kx, ry + 0.9 * s, 1.15 * s, 0, 7); c.fill(); c.stroke(); c.fillStyle = 'rgba(255,255,255,.75)'; c.beginPath(); c.arc(kx - 0.35 * s, ry + 0.55 * s, 0.35 * s, 0, 7); c.fill(); }
+  c.fillStyle = P.wood2; c.beginPath(); c.roundRect(kx - 4.2 * s, ry - 1.5 * s, 8.4 * s, 4.2 * s, 1.1 * s); c.fill(); c.stroke();
+  if (col) { c.fillStyle = col; c.lineWidth = lw(s, 0.4); c.beginPath(); c.arc(kx, ry + 0.9 * s, 1.15 * s, 0, 7); c.fill(); c.stroke(); }
   // the cable
-  c.strokeStyle = P.ink; c.lineWidth = lw(s, 0.75); c.beginPath(); c.moveTo(kx, ry + 2.7 * s); c.lineTo(cx, cy - 3.4 * s); c.stroke();
-  c.strokeStyle = '#aab0bb'; c.lineWidth = Math.max(0.8, s * 0.28); c.stroke();
+  c.strokeStyle = P.ink; c.lineWidth = lw(s, 0.95); c.beginPath(); c.moveTo(kx, ry + 2.7 * s); c.lineTo(cx, cy - 3.4 * s); c.stroke();   // (an ink line: bold enough to read)
   // the arm behind, the two at the sides (a tube: ink, then metal over it), the head
-  const arm = (pts, w) => { for (const [k, colr] of [[w, P.ink], [w * 0.5, CAB.metal]]) { c.strokeStyle = colr; c.lineWidth = k; c.beginPath(); c.moveTo(pts[0], pts[1]); c.quadraticCurveTo(pts[2], pts[3], pts[4], pts[5]); c.stroke(); } };
-  arm([cx, cy, cx, cy + 3 * s, cx, cy + 5.4 * s], lw(s, 1.25));
+  const arm = (pts, w) => { for (const [k, colr] of [[w, P.ink], [w * 0.42, CAB.metal]]) { c.strokeStyle = colr; c.lineWidth = k; c.beginPath(); c.moveTo(pts[0], pts[1]); c.quadraticCurveTo(pts[2], pts[3], pts[4], pts[5]); c.stroke(); } };
+  arm([cx, cy, cx, cy + 3 * s, cx, cy + 5.4 * s], lw(s, 1.7));
   for (const d of [-1, 1]) {
-    arm([cx + d * 2.1 * s, cy - 0.4 * s, cx + d * (sp + 2.1 * s), cy + 3.3 * s, cx + d * sp * 0.62, cy + 6.6 * s], lw(s, 1.5));
+    arm([cx + d * 2.1 * s, cy - 0.4 * s, cx + d * (sp + 2.1 * s), cy + 3.3 * s, cx + d * sp * 0.62, cy + 6.6 * s], lw(s, 2));
     c.fillStyle = P.ink; c.beginPath(); c.arc(cx + d * sp * 0.62, cy + 6.6 * s, 0.85 * s, 0, 7); c.fill();
   }
   c.fillStyle = CAB.metal; c.strokeStyle = P.ink; c.lineWidth = lw(s, 0.55);
   c.beginPath(); c.roundRect(cx - 3.3 * s, cy - 3.4 * s, 6.6 * s, 3.6 * s, 1.3 * s); c.fill(); c.stroke();
-  c.fillStyle = 'rgba(255,255,255,.65)'; c.fillRect(cx - 2.4 * s, cy - 2.8 * s, 3 * s, 0.7 * s);
   c.fillStyle = CAB.metalD; c.beginPath(); c.arc(cx, cy - 1.3 * s, 0.75 * s, 0, 7); c.fill(); c.stroke();
   c.restore();
 }
 function sparkles(c, x, y, u, s, n, R) {                             // a burst of little four-point stars, u 0..1 of its life
   if (u <= 0 || u >= 1) return;
-  c.save(); c.globalAlpha = 1 - u * u; c.fillStyle = '#ffd34d'; c.strokeStyle = 'rgba(22,18,16,.55)'; c.lineWidth = Math.max(0.8, s * 0.25);
+  c.save(); c.globalAlpha = 1 - u * u; c.fillStyle = runColours().gold; c.strokeStyle = 'rgba(22,18,16,.55)'; c.lineWidth = Math.max(0.8, s * 0.25);
   for (let i = 0; i < n; i++) {
     const an = -Math.PI / 2 + (i - (n - 1) / 2) * (Math.PI * 1.5 / n) + (i % 2) * 0.2, d = R * (0.35 + 0.65 * (1 - (1 - u) * (1 - u))), px = x + Math.cos(an) * d, py = y + Math.sin(an) * d - R * 0.1 * u, r = s * (i % 2 ? 1.3 : 1.9) * (1 - u * 0.5);
     c.beginPath(); for (let k = 0; k < 8; k++) { const rr = k % 2 ? r * 0.38 : r, a2 = k * Math.PI / 4 + u * 2; if (k) c.lineTo(px + Math.cos(a2) * rr, py + Math.sin(a2) * rr); else c.moveTo(px + Math.cos(a2) * rr, py + Math.sin(a2) * rr); }
@@ -330,9 +325,6 @@ function frame(c, G, W, H, now) {
     c.restore();
   }
   drawClaw(c, G, cx, cy, shut, P, xc, sc.by === 'O' ? P.O : sc.by === 'X' ? P.X : null, held ? held.w : loose && shut > 0.2 ? loose.p.w : rock && shut > 0.2 ? f.pz.w : 0);
-  // the glass in front of it all: two gleams
-  c.fillStyle = 'rgba(255,255,255,.2)';
-  for (const [a, b] of [[58, 70], [74, 78]]) { c.beginPath(); c.moveTo(X(a + 14), Y(G.head)); c.lineTo(X(b + 14), Y(G.head)); c.lineTo(X(b - 16), Y(G.gb)); c.lineTo(X(a - 16), Y(G.gb)); c.fill(); }
   c.restore();
   // the base: the prize in the door, the prizes won on their shelves, the one just won hopping onto its own
   const pl = basePlan(G, goal), d = pl.door, doorK = pz => Math.min(1, (d.h - 1.2) / (prizeH(pz.k) + 2.6), (d.w - 1.5) / (2 * pz.w));

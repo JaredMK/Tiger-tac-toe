@@ -222,13 +222,13 @@ Lineup card: Flip two cards at a time. Find a matching pair to win.
 
 ## Five Letters [wordle]
 Category: More brain
-Play: Guess a 5-letter word. Green: right spot. Yellow: wrong spot. Grey: not in the word.
+Play: Guess a 5-letter word. Green: right spot. Blue: wrong spot. Grey: not in the word.
 Win: Guess the word. Use up {limit} guesses and you lose the square.
 Super Chaos Play: Guess a 5-letter word.
 Super Chaos Win: Guess the word. Use up {limit} guesses and you lose the square.
-Race Play: You each have your own 5-letter word. Green: right spot. Yellow: wrong spot. Grey: not in the word.
+Race Play: You each have your own 5-letter word. Green: right spot. Blue: wrong spot. Grey: not in the word.
 Race Win: Guess your word first. No guess limit.
-Lineup card: Guess the five-letter word. Green is the right spot, yellow the wrong spot. Guess it to win.
+Lineup card: Guess the five-letter word. Green is the right spot, blue the wrong spot. Guess it to win.
 
 ## Flap [flap]
 Category: More skill

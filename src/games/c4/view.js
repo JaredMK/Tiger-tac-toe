@@ -1,4 +1,5 @@
 // Four in a Row: the screen, the miniature, the move's words and sounds, and the inputs.
+import { markSvgG } from '../../ui/thumbs.js';
 import { C4, c4Drop } from './rules.js';
 import { mv } from '../../ui/app.js';
 
@@ -10,7 +11,7 @@ export const C4_T = { fall: 145, land: 220 };
 export const c4FallMs = k => Math.round(C4_T.fall * Math.sqrt(Math.floor(k / C4.cols) + 1.3));   // the fall to cell k, from the rail
 
 // A piece: a disc in its player's colour with their mark on it (the disc itself is the cell's or the falling piece's).
-const disc = p => `<svg class="c4d ${p}" viewBox="0 0 40 40" aria-hidden="true"><circle class="c4rim" cx="20" cy="20" r="14.6"/>${p === 'X' ? '<path class="c4m" d="M14.2 14.2 25.8 25.8M25.8 14.2 14.2 25.8"/>' : '<circle class="c4m" cx="20" cy="20" r="6.4"/>'}</svg>`;
+const disc = p => `<svg class="c4d ${p}" viewBox="0 0 40 40" aria-hidden="true"><circle class="c4rim" cx="20" cy="20" r="14.6"/><g transform="translate(20 20)">${markSvgG(p, p === 'X' ? 5.8 : 8)}</g></svg>`;   // (the shared drawn mark, ui/thumbs.js: one player token in every game)
 // The winning line, drawn through the four (as a stroke when the win is fresh). One unit a cell's pitch.
 function c4Line(run, animate) {
   const c = k => [k % C4.cols + 0.5, Math.floor(k / C4.cols) + 0.5];

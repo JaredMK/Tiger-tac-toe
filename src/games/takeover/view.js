@@ -1,4 +1,5 @@
 // Takeover: the screen, the miniature, the move's words and sounds, and the inputs.
+import { markSvgG } from '../../ui/thumbs.js';
 import { other } from '../../core/util.js';
 import { TAKEOVER_MS, takeCount, takeSide } from './rules.js';
 import { esc, mv, state, waitLine } from '../../ui/app.js';
@@ -13,7 +14,7 @@ export const takeWave = (tk, n) => takeRing(tk.at, n).filter(k => tk.took.includ
 const flipAt = k => T.place + k * T.step;                           // the k-th cell's turn begins (its colour changes half way through)
 const endAt = T.place + 3 * T.step + T.flip;                        // the ripple over: a full board's payoff begins
 // A cell's mark, drawn (Four in a Row's discs carry the same ones): white strokes for X, an ink ring for O.
-const mark = p => `<svg class="tkm ${p}" viewBox="0 0 40 40" aria-hidden="true">${p === 'X' ? '<path d="M13 13 27 27M27 13 13 27"/>' : '<circle cx="20" cy="20" r="7.2"/>'}</svg>`;
+const mark = p => `<svg class="tkm ${p}" viewBox="0 0 40 40" aria-hidden="true"><g transform="translate(20 20)">${markSvgG(p, p === 'X' ? 7 : 9)}</g></svg>`;   // (the shared drawn mark, ui/thumbs.js)
 function takeTable(mini, a, o) {
   const tk = a && a.take ? a.take : null, turn = o.turn === 'O' ? 'O' : 'X', by = tk ? a.by : null;
   const n = takeSide(mini.cells), wave = tk ? takeWave(tk, n) : [];
