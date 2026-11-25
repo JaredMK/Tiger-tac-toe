@@ -160,11 +160,12 @@ function launchPos(l, dt) {
 const dartLen = w => LEN / (1 + DEPTH * w);                      // its length as drawn (wall units) at that depth
 // A dart: its tip at (X, Y) pixels, pointing along dir, L pixels long: the point, the barrel, the shaft and the flights
 // in its player's colour. shade: a flat shadow of it instead.
-function drawDart(c, X, Y, dir, L, col, ink, shade, alpha) {
+function drawDart(c, X, Y, dir, L, col, ink, shade, alpha, Pal) {
+  Pal = Pal || runColours();
   c.save();
   c.translate(X, Y); c.rotate(Math.atan2(-dir[1], -dir[0]) - Math.PI / 2);   // (its own y runs from the tip back to the flights)
   if (alpha != null) c.globalAlpha = alpha;
-  const lw = Math.max(1.1, L * 0.035), bw = L * 0.12;
+  const lw = Math.max(1.6, L * 0.045), bw = L * 0.12;
   c.lineCap = 'round'; c.lineJoin = 'round';
   const flights = () => { c.beginPath(); c.moveTo(0, L * 0.6); c.lineTo(L * 0.19, L * 0.8); c.lineTo(L * 0.16, L); c.lineTo(0, L * 0.9); c.lineTo(-L * 0.16, L); c.lineTo(-L * 0.19, L * 0.8); c.closePath(); };
   const barrel = () => { c.beginPath(); c.moveTo(-bw * 0.3, L * 0.17); c.lineTo(bw * 0.3, L * 0.17); c.lineTo(bw / 2, L * 0.24); c.lineTo(bw / 2, L * 0.46); c.lineTo(bw * 0.25, L * 0.52); c.lineTo(-bw * 0.25, L * 0.52); c.lineTo(-bw / 2, L * 0.46); c.lineTo(-bw / 2, L * 0.24); c.closePath(); };
@@ -175,55 +176,44 @@ function drawDart(c, X, Y, dir, L, col, ink, shade, alpha) {
     c.restore(); return;
   }
   c.strokeStyle = ink; c.lineWidth = Math.max(1.6, L * 0.05) + lw; c.beginPath(); c.moveTo(0, L * 0.02); c.lineTo(0, L * 0.2); c.stroke();   // the point, outlined
-  c.strokeStyle = '#c9d0d8'; c.lineWidth = Math.max(1.2, L * 0.04); c.beginPath(); c.moveTo(0, 0); c.lineTo(0, L * 0.2); c.stroke();
+  c.strokeStyle = Pal.paper; c.lineWidth = Math.max(1.2, L * 0.04); c.beginPath(); c.moveTo(0, 0); c.lineTo(0, L * 0.2); c.stroke();
   c.strokeStyle = ink; c.lineWidth = Math.max(1.6, L * 0.055); c.beginPath(); c.moveTo(0, L * 0.5); c.lineTo(0, L * 0.8); c.stroke();   // the shaft
   barrel();
-  const gr = c.createLinearGradient(-bw / 2, 0, bw / 2, 0); gr.addColorStop(0, '#8b949f'); gr.addColorStop(0.4, '#eef1f5'); gr.addColorStop(1, '#727b86');
-  c.fillStyle = gr; c.fill(); c.lineWidth = lw; c.strokeStyle = ink; c.stroke();
-  if (L > 34) { c.lineWidth = Math.max(1, lw * 0.7); c.strokeStyle = 'rgba(0,0,0,.45)'; for (const y of [0.29, 0.35, 0.41]) { c.beginPath(); c.moveTo(-bw * 0.42, L * y); c.lineTo(bw * 0.42, L * y); c.stroke(); } }   // the grip, near
+  c.fillStyle = Pal.stone; c.fill(); c.lineWidth = lw; c.strokeStyle = ink; c.stroke();   // (flat: no metal shading)
+  if (L > 34) { c.lineWidth = Math.max(1, lw * 0.6); c.strokeStyle = ink; for (const y of [0.29, 0.35, 0.41]) { c.beginPath(); c.moveTo(-bw * 0.42, L * y); c.lineTo(bw * 0.42, L * y); c.stroke(); } }   // the grip, near
   flights(); c.fillStyle = col; c.fill(); c.lineWidth = lw; c.strokeStyle = ink; c.stroke();
-  c.fillStyle = 'rgba(255,255,255,.28)'; c.beginPath(); c.moveTo(0, L * 0.62); c.lineTo(-L * 0.17, L * 0.8); c.lineTo(-L * 0.145, L * 0.97); c.lineTo(0, L * 0.9); c.closePath(); c.fill();   // the flights' lit side
   c.lineWidth = Math.max(1, lw * 0.8); c.strokeStyle = ink; c.beginPath(); c.moveTo(0, L * 0.62); c.lineTo(0, L * 0.92); c.stroke();
   c.restore();
 }
 // The wall, the floor under it and the board with its three rings (cfg: their radii).
 function drawScene(c, G, cfg, Pal, glow) {
   const X = x => G.ox + x * G.k, Y = y => G.oy + y * G.k, k = G.k, fy = Y(BULLS.wall);
-  const wall = c.createLinearGradient(0, 0, 0, fy); wall.addColorStop(0, '#4b7d8a'); wall.addColorStop(1, '#386270');
-  c.fillStyle = wall; c.fillRect(0, 0, G.W, fy);
-  const lamp = c.createRadialGradient(X(AT[0]), Y(AT[1] - 6), cfg.board * k * 0.6, X(AT[0]), Y(AT[1]), cfg.board * k * 3.2);   // a lamp over the board
-  lamp.addColorStop(0, 'rgba(255,244,214,.34)'); lamp.addColorStop(1, 'rgba(255,244,214,0)');
-  c.fillStyle = lamp; c.fillRect(0, 0, G.W, fy);
-  c.fillStyle = '#7a5230'; c.fillRect(0, fy, G.W, G.H - fy);                                 // the floor: boards running away to the wall
-  c.strokeStyle = 'rgba(0,0,0,.28)'; c.lineWidth = Math.max(1, 0.35 * k);
+  c.fillStyle = Pal.wall; c.fillRect(0, 0, G.W, fy);                                       // the wall: one flat colour (the art tokens)
+  c.fillStyle = Pal.wood; c.fillRect(0, fy, G.W, G.H - fy);                                  // the floor: boards running away to the wall, drawn as lines
+  c.strokeStyle = Pal.wood2; c.lineWidth = Math.max(1.5, 0.5 * k);
   for (let i = -9; i <= 9; i++) { c.beginPath(); c.moveTo(X(50 + i * 9), fy); c.lineTo(X(50 + i * 17), G.H + 2); c.stroke(); }
-  const fl = c.createLinearGradient(0, fy, 0, G.H); fl.addColorStop(0, 'rgba(0,0,0,.32)'); fl.addColorStop(0.5, 'rgba(0,0,0,0)');
-  c.fillStyle = fl; c.fillRect(0, fy, G.W, G.H - fy);
-  c.fillStyle = '#2f2118'; c.fillRect(0, fy - 3.4 * k, G.W, 3.4 * k);                        // the skirting board
-  c.fillStyle = Pal.ink; c.fillRect(0, fy - 3.4 * k - 1, G.W, 2); c.fillRect(0, fy - 1, G.W, 2);
+  c.fillStyle = Pal.wood2; c.fillRect(0, fy - 3.4 * k, G.W, 3.4 * k);                        // the skirting board
+  c.fillStyle = Pal.ink; c.fillRect(0, fy - 3.4 * k - 1.5, G.W, 3); c.fillRect(0, fy - 1.5, G.W, 3);
   const cx = X(AT[0]), cy = Y(AT[1]), R = cfg.board * k, M = cfg.mid * k, B = cfg.bull * k, S = R * 1.08;
-  c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.arc(cx + 1.8 * k, cy + 2.8 * k, S, 0, Math.PI * 2); c.fill();   // the board's shadow on the wall
-  c.beginPath(); c.arc(cx, cy, S, 0, Math.PI * 2); c.fillStyle = '#231d1a'; c.fill(); c.lineWidth = Math.max(2, 0.7 * k); c.strokeStyle = Pal.ink; c.stroke();
+  c.fillStyle = 'rgba(22,18,16,.3)'; c.beginPath(); c.arc(cx + 1.2 * k, cy + 2.8 * k, S, 0, Math.PI * 2); c.fill();   // the board's shadow on the wall
+  c.beginPath(); c.arc(cx, cy, S, 0, Math.PI * 2); c.fillStyle = Pal.ink; c.fill(); c.lineWidth = Math.max(3, 1 * k); c.strokeStyle = Pal.ink; c.stroke();
   const wedge = (r0, r1, a0, a1) => { c.beginPath(); c.arc(cx, cy, r1, a0, a1); c.arc(cx, cy, r0, a1, a0, true); c.closePath(); };
   const W12 = Math.PI / 6, off = -Math.PI / 2 - W12 / 2;
   for (let i = 0; i < 12; i++) {
     const a0 = off + i * W12, a1 = a0 + W12;
-    wedge(M, R, a0, a1); c.fillStyle = i % 2 ? '#2d2825' : '#f1e3b8'; c.fill();                 // the outer ring: cream and charcoal
-    wedge(B, M, a0, a1); c.fillStyle = i % 2 ? '#3f9a50' : '#2f7d40'; c.fill();                 // the inner ring: two greens
+    wedge(M, R, a0, a1); c.fillStyle = i % 2 ? Pal.ink : Pal.paper; c.fill();                    // the outer ring: paper and ink
+    wedge(B, M, a0, a1); c.fillStyle = Pal.green; c.fill();                                      // the inner ring: green
   }
   c.beginPath(); c.arc(cx, cy, B, 0, Math.PI * 2); c.fillStyle = glow > 0 ? `rgb(${Math.round(229 + 26 * glow)},${Math.round(67 + 180 * glow)},${Math.round(42 + 170 * glow)})` : Pal.X; c.fill();   // the bullseye (flashing as it is hit)
-  c.strokeStyle = 'rgba(226,229,235,.92)'; c.lineWidth = Math.max(1, 0.32 * k);             // the wires
+  c.strokeStyle = Pal.ink; c.lineWidth = Math.max(1.5, 0.45 * k);                          // the wires: ink
   for (let i = 0; i < 12; i++) { const a = off + i * W12; c.beginPath(); c.moveTo(cx + Math.cos(a) * B, cy + Math.sin(a) * B); c.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); c.stroke(); }
   for (const r of [B, M, R]) { c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke(); }
-  const sh = c.createRadialGradient(cx - R * 0.45, cy - R * 0.55, R * 0.1, cx, cy, S);       // the board's roundness: lit from the top left
-  sh.addColorStop(0, 'rgba(255,255,255,.2)'); sh.addColorStop(0.55, 'rgba(255,255,255,0)'); sh.addColorStop(1, 'rgba(0,0,0,.26)');
-  c.beginPath(); c.arc(cx, cy, S, 0, Math.PI * 2); c.fillStyle = sh; c.fill();
 }
 // Where the dart hit: a ring bursting out of it (u: 0 to 1); a bullseye's is gold, with rays.
 function drawBurst(c, G, g, u, Pal) {
   const X = G.ox + g.x * G.k, Y = G.oy + g.y * G.k, k = G.k, bull = g.zone === 'bull', e = 1 - Math.pow(1 - u, 2);
   c.save(); c.globalAlpha = 1 - u;
-  c.lineWidth = Math.max(1.5, (bull ? 1.1 : 0.7) * k * (1 - u * 0.6)); c.strokeStyle = bull ? '#ffd54a' : g.pts ? '#fff' : 'rgba(30,24,20,.7)';
+  c.lineWidth = Math.max(1.5, (bull ? 1.1 : 0.7) * k * (1 - u * 0.6)); c.strokeStyle = bull ? Pal.gold : g.pts ? '#fff' : 'rgba(30,24,20,.7)';
   c.beginPath(); c.arc(X, Y, (bull ? 5 + 24 * e : 2.5 + (g.pts ? 11 : 6) * e) * k, 0, Math.PI * 2); c.stroke();
   if (bull) {
     c.lineCap = 'round'; c.lineWidth = Math.max(2, 0.9 * k);
