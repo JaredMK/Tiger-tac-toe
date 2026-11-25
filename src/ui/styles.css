@@ -7117,7 +7117,7 @@ button.jgcell { cursor: pointer; touch-action: none; }
 .hpline { margin: 0; height: 28px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 400 21px/28px var(--font-display); letter-spacing: .02em; }
 .g-hp .hpgo { height: 56px; }
 /* the miniature */
-.tart.thpw { gap: 2cqw; width: 96cqw; } .tart.thpw .tpic { width: 64cqw; } .tart.thpw .tpip { width: auto; flex: 1; display: grid; place-items: center; }
+.tart.thpw { gap: 1.5cqw; width: 96cqw; } .tart.thpw .tpic { width: 58cqw; } .tart.thpw .tpip { width: auto; flex: 1; display: grid; place-items: center; }
 .thp { width: 100%; height: auto; display: block; overflow: visible; }
 .thp .hpball { stroke-width: 2; } .thp .hpspark path { animation: none; }
 .hptk { transform-box: fill-box; transform-origin: 50% 70%; animation: hptick .52s cubic-bezier(.4, 0, .2, 1) both; }
@@ -7125,7 +7125,7 @@ button.jgcell { cursor: pointer; touch-action: none; }
 .hptk.bm { animation: hptick .52s cubic-bezier(.4, 0, .2, 1) both, hpgone .2s .52s ease-in both; }
 @keyframes hpgone { to { transform: scale(1.5); opacity: 0; } }
 .hpmboom { animation: hpburst .76s cubic-bezier(.3, 1.4, .5, 1) both; transform-box: fill-box; transform-origin: center; }
-.hppct { font: 400 var(--mt, 16px)/1 var(--font-display); color: var(--ink); padding: .12em .3em 0; border: max(2px, .9cqw) solid var(--ink); border-radius: 2.4cqw; background: var(--paper); white-space: nowrap; }
+.hppct { font: 400 var(--mt, 16px)/1 var(--font-display); color: var(--ink); padding: .12em .18em 0; border: max(2px, .9cqw) solid var(--ink); border-radius: 2.4cqw; background: var(--paper); white-space: nowrap; }
 .hppct.boom { background: var(--gold); }
 @media (prefers-reduced-motion: reduce) { .hpwhere.fly, .hpwhere.fly .hpbomb, .hptk, .hpmboom, .hpboom svg, .hpspark path { animation: none; } }
 /* [/hot-potato] */
