@@ -27,12 +27,12 @@ test('Continue match: a local match left by a reload is offered on the menu, and
   Object.assign(state, E.newMatch(E.makeRng('cm'), { games: ['ttt', 'c4', 'coins', 'hilo', 'pig', 'bs', 'hangman', 'snakes', 'wordle'] }));
   state.online = null; state.practice = null; state.winner = null; state.screen = 'menu';
   state.stats = { id: 'abc', mode: 'cpu', sent: false };
-  assert.doesNotMatch(renderMenu(), /data-act="continue"/);
+  assert.match(renderMenu(), /data-act="continue"/, 'a match under way with the menu over it: offered whichever way it was left');
   T.quitOnBoot('reload');
   assert.match(renderMenu(), /data-act="continue"[\s\S]*Continue match/);
-  assert.ok(T.continueHeld());
+  assert.ok(T.continueHeld()); state.screen = 'board';   // (continued: on its board)
   assert.doesNotMatch(renderMenu(), /data-act="continue"/);
-  T.quitOnBoot('reload'); state.winner = 'X';
+  state.screen = 'menu'; T.quitOnBoot('reload'); state.winner = 'X';
   assert.doesNotMatch(renderMenu(), /data-act="continue"/, 'a match that has ended: nothing to continue');
 });
 
