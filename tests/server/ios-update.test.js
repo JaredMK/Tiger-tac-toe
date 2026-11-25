@@ -48,23 +48,6 @@ test('iCloud\'s conflict copies never go into the app', t => {
   dropConflictCopies(dir);
   assert.deepEqual(fs.readdirSync(dir), ['core']); assert.deepEqual(fs.readdirSync(path.join(dir, 'core')), ['client.js']);
 });
-// iCloud put an old build back into ios/App/App/public (scripts/ios-web.js): the project takes the copy iCloud never syncs.
-test('the Xcode project takes the game from a folder iCloud leaves alone, placed there by every cap copy', t => {
-  const root = path.join(__dirname, '..', '..'), { OUT, PUBLIC, place } = require('../../scripts/ios-web.js');
-  const pbx = fs.readFileSync(path.join(root, 'ios', 'App', 'App.xcodeproj', 'project.pbxproj'), 'utf8');
-  const ref = pbx.match(/\/\* public \*\/ = \{isa = PBXFileReference; lastKnownFileType = folder; name = public; path = ([^;]+);/);
-  assert.equal(path.join(root, 'ios', 'App', 'App', ref[1]), PUBLIC);
-  for (const d of [OUT, PUBLIC]) assert.match(d, /\.nosync(\/|$)/);
-  assert.equal(path.join(root, JSON.parse(fs.readFileSync(path.join(root, 'capacitor.config.json'), 'utf8')).webDir), OUT);
-  assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).scripts['capacitor:copy:after'], 'node scripts/ios-web.js');
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ttc-ios-')), out = path.join(dir, 'out'), pub = path.join(dir, 'web', 'public');
-  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  assert.throws(() => place(out, pub), /no build/);
-  fs.mkdirSync(out); fs.writeFileSync(path.join(out, 'index.html'), 'new');
-  fs.mkdirSync(pub, { recursive: true }); fs.writeFileSync(path.join(pub, 'old.js'), '');
-  place(out, pub);
-  assert.deepEqual(fs.readdirSync(pub).sort(), ['cordova.js', 'cordova_plugins.js', 'index.html']);
-});
 // No cache can keep an old game: no service worker on any page, nothing loaded from a site, no live-update plugin, and
 // the app's own scheme handler answers every file with no-cache.
 test('no cache and no URL between the app and its bundled files', () => {

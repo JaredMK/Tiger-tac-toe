@@ -53,7 +53,7 @@ to reach TestFlight.
     mini-game's title bar and the board's foot to 720px, centred (the end of `styles.css`). Nothing scrolls at 768x1024,
     1024x768 or 1180x820. Keep `UIRequiresFullScreen` off only if the layout is checked at Split View widths too.
 - **The app's web files** (`npm run build:app`, `scripts/build-app.js`):
-  - The site build goes into `_app.nosync/`.
+  - The site build goes into `_app/`.
   - `index.html` gets a `<meta name="ttc-env">` tag naming the Firebase project. Inside the app the page's address is
     `capacitor://localhost`, which can't name a project.
   - The Firebase SDK is copied into the app (`vendor/firebase/`), so the app runs its own copy of every script.
@@ -80,7 +80,7 @@ Run these on the Mac, or as the cloud build's steps.
    and `npm i -D @capacitor/cli`.
 2. **Write `capacitor.config.json`:**
    ```json
-   { "appId": "<bundle ID>", "appName": "Tic Tac Chaos", "webDir": "_app.nosync",
+   { "appId": "<bundle ID>", "appName": "Tic Tac Chaos", "webDir": "_app",
      "ios": { "contentInset": "never", "scheme": "Tic Tac Chaos" },
      "plugins": { "FirebaseAuthentication": { "skipNativeAuth": true, "providers": ["google.com", "apple.com"] } } }
    ```
@@ -212,7 +212,7 @@ All three are drawn from the game's own art (its fonts, colours and X and O char
 the studio's logo: `assets/brand/jarhad-labs-logo.svg`). No third-party art anywhere.
 
 - **`npm run app-icons`** (`scripts/make-app-icons.js`, Playwright's Chromium) writes `assets/app/`:
-  - `icon-1024.png`: the App Store icon, 1024×1024, no transparency (Apple masks the corners itself; everything sits
+  - `icon-1024.png`: the App Store icon (Face-off, `scripts/icon-options.js` `APP_ICON`; `npm run app-icons -- icon` redraws it alone), 1024×1024, no transparency (Apple masks the corners itself; everything sits
     inside the middle 80%).
   - `launch-2048.png`: the launch screen's picture, the title on the plain cream (`#f4e6c8`), 2048×2048.
   - `jarhad-mark-512.png`: the JarHad Labs mark on a transparent background, for an About row or the launch screen's corner.
@@ -354,7 +354,7 @@ iPhone 17 Pro Max's safe areas (62 top, 34 bottom), every outside request blocke
 
 | Item | Before | Now |
 |---|---|---|
-| Wrapper, bundling | Capacitor 8.6, the game bundled in `_app.nosync/` with its own Firebase SDK; no server URL | Unchanged: starts offline, a full match against the computer to the result screen with no page error |
+| Wrapper, bundling | Capacitor 8.6, the game bundled in `_app/` with its own Firebase SDK; no server URL | Unchanged: starts offline, a full match against the computer to the result screen with no page error |
 | Sign in with Apple | Built and wired, hidden everywhere (`src/env.js` `apple: false`) | Shown in the iOS app always (`ui/screens/account.js` `appleOn`); the web keeps its switch. **Needs the Firebase Apple provider on (below)** |
 | Account deletion | In the app (Settings, My Stats); no Apple token revocation | An Apple-ID account's token is revoked first (`net/auth.js` `appleRevoke`: Apple's sheet once more, Firebase `revokeAccessToken`); a closed sheet deletes nothing |
 | Admin / debug | No admin page; Test play and the owner link in the code, unreachable | Both refuse to run in the app (`sandboxParams`, `ownerLink`) |

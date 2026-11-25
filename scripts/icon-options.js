@@ -166,4 +166,122 @@ const PATCHWORK = [
   { id: 'pw-house', name: 'House colours', draw: () => quilt({ tiles: HOUSE, marks: [[4, 'X', PW.T, 110], [5, 'O', PW.CR, 82], [7, 'O', PW.M, 82]] }), why: 'Only the game\'s own colours (tomato, mustard, sky, green, cream): it matches the app the moment it opens.' },
   { id: 'pw-quilt', name: 'Quilt', draw: () => quilt({ rot: -5, gap: 34, radius: 44, bg: INK, marks: PW_MARKS2 }), why: 'Nine separate rounded tiles like a set of stickers: a softer, toy-like take that still reads as a board.' },
 ];
-module.exports = { OPTIONS, PATCHWORK, INK };
+// Round 3 (November 2026): the icon in the game's own Comic Chaos look (src/ui/comic.css, art.js toonG, fx.js burstSvg):
+// the X and O characters as the game draws them (the same strokes and faces, the eyes a little bigger to read at 60 px),
+// its red, yellow, ink and paper, the sunburst, the halftone and the comic burst. Everything that matters inside the
+// middle 80% (iOS rounds the corners). Still plain SVG: no fonts, gradients or filters.
+const CC = { X: '#e5432a', O: '#f6c21b', PAPER: '#fff8e8', SOFT: '#fbe39a' };
+// The sunburst: n wedges about (cx, cy), every other one filled.
+const sunburst = (cx, cy, n, col, op, rot = 0) => Array.from({ length: n }, (_, k) => {
+  const a0 = rot + k * 2 * Math.PI / n, a1 = a0 + Math.PI / n, R = 1600;
+  return `<polygon points="${cx},${cy} ${f(cx + R * Math.cos(a0))},${f(cy + R * Math.sin(a0))} ${f(cx + R * Math.cos(a1))},${f(cy + R * Math.sin(a1))}" fill="${col}" fill-opacity="${op}"/>`;
+}).join('');
+// Halftone: dots on a diagonal grid, big at (px, py) and shrinking to nothing `reach` away.
+function halftone(px, py, reach, col, op, step = 38, maxR = 14) {
+  let out = '';
+  for (let j = -2; j * step / 2 < S + step; j++) for (let i = -2; i * step < S + step; i++) {
+    const x = i * step + (j % 2 ? step / 2 : 0), y = j * step / 2, d = Math.hypot(x - px, y - py), r = maxR * (1 - d / reach);
+    if (r > 1.6) out += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r)}"/>`;
+  }
+  return `<g fill="${col}" fill-opacity="${op}">${out}</g>`;
+}
+// The comic burst (fx.js burstSvg's shape): 2n points round an ellipse, long and short in turn.
+function ccPts(cx, cy, rx, ry, n, seed, rot = 0, deep = 0.6) {
+  let sd = seed * 7919 + 13; const r = () => { sd = (sd * 16807) % 2147483647; return (sd - 1) / 2147483646; };
+  const pts = [];
+  for (let k = 0; k < n * 2; k++) { const a = k * Math.PI / n - Math.PI / 2 + rot, q = k % 2 === 0 ? 0.88 + r() * 0.12 : deep + r() * 0.08; pts.push(f(cx + Math.cos(a) * rx * q) + ',' + f(cy + Math.sin(a) * ry * q)); }
+  return pts.join(' ');
+}
+const ccBurst = (cx, cy, rx, ry, n, seed, fill, sw, rot = 0) => `<polygon points="${ccPts(cx, cy, rx, ry, n, seed, rot)}" fill="${fill}" stroke="${INK}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+// The game's character (art.js toonG, in its own 100-unit box) at (cx, cy), `size` across its box, turned `rot` degrees.
+// o: look [x, y] (where the pupils sit), brows (set for a fight), mouth 'smile' | 'grin' | 'open', eyes (their size, 1 = the game's),
+// shadow (a hard ink drop shadow, the panels' own).
+function mascot(t, cx, cy, size, rot, o = {}) {
+  const es = o.eyes || 1.25, [lx, ly] = o.look || [1.5, 2], ey = t === 'X' ? 44 : 46, mx = (t === 'X' ? 8 : 7.4) * es * 0.96;
+  const shape = (col, w) => t === 'X' ? `<path d="M22 20L78 80M78 20L22 80" stroke="${col}" stroke-width="${w}" stroke-linecap="round" fill="none"/>` : `<circle cx="50" cy="50" r="32" stroke="${col}" stroke-width="${w}" fill="none"/>`;
+  const eyeAt = x => `<ellipse cx="${f(x)}" cy="${ey}" rx="${f(6.5 * es)}" ry="${f(9 * es)}" fill="#fff" stroke="${INK}" stroke-width="3"/><ellipse cx="${f(x + lx * es)}" cy="${f(ey + ly * es)}" rx="${f(3.4 * es)}" ry="${f(5.6 * es)}" fill="${INK}"/>`;
+  const brow = (x, d) => `<path d="M${f(x + d * 7.5 * es)} ${f(ey - 13.5 * es)}L${f(x - d * 5.5 * es)} ${f(ey - 7.5 * es)}" stroke="${INK}" stroke-width="${f(4.2 * es)}" stroke-linecap="round"/>`;
+  const my = t === 'X' ? 60 : 59, m0 = my + (es - 1) * 9;
+  const mouth = o.mouth === 'open' ? `<path d="M${f(50 - 9 * es)} ${f(m0 - 1)}Q50 ${f(m0 + 17 * es)} ${f(50 + 9 * es)} ${f(m0 - 1)}Z" fill="${INK}" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/><path d="M${f(50 - 4.5 * es)} ${f(m0 + 5.5 * es)}Q50 ${f(m0 + 2.5 * es)} ${f(50 + 4.5 * es)} ${f(m0 + 5.5 * es)}Q50 ${f(m0 + 9.5 * es)} ${f(50 - 4.5 * es)} ${f(m0 + 5.5 * es)}Z" fill="${CC.X}"/>`
+    : o.mouth === 'grin' ? `<path d="M${f(50 - 9 * es)} ${f(m0 - 1)}Q50 ${f(m0 + 10 * es)} ${f(50 + 9 * es)} ${f(m0 - 1)}Z" fill="#fff" stroke="${INK}" stroke-width="3.2" stroke-linejoin="round"/>`
+      : `<path d="M${f(50 - 8 * es)} ${f(m0)}Q50 ${f(m0 + 7 * es)} ${f(50 + 8 * es)} ${f(m0)}" stroke="${INK}" stroke-width="3.5" stroke-linecap="round" fill="none"/>`;
+  const body = (o.shadow ? `<g transform="translate(${o.shadow} ${o.shadow * 1.15})">${shape(INK, t === 'X' ? 26 : 25)}</g>` : '')
+    + shape(INK, t === 'X' ? 26 : 25) + (t === 'O' ? `<circle cx="50" cy="50" r="27" fill="${o.fill || CC.PAPER}"/>` : '') + shape(t === 'X' ? CC.X : CC.O, 15)
+    + eyeAt(50 - mx) + eyeAt(50 + mx) + (o.brows ? brow(50 - mx, -1) + brow(50 + mx, 1) : '') + mouth;
+  return `<g transform="translate(${cx} ${cy}) rotate(${rot}) scale(${f(size / 100 * 1000) / 1000}) translate(-50 -50)">${body}</g>`;
+}
+// 1. Face-off: X and O head to head across the page's own red and yellow, a clash burst where they meet. One drawing
+// for it and its variations (FACEOFF, round 4). o: x / o ([cx, cy, size, turn] of each character), eyes (their size),
+// friendly (smiles, no brows), burst (the clash burst's radius), grid (the board's # behind them), bg ('blue': one
+// sea-blue sunburst in place of the red and yellow halves), noLine (no ink line between the halves).
+function faceoff(o = {}) {
+  const X = o.x || [348, 648, 504, -8], O = o.o || [688, 360, 484, 9], es = o.eyes || 1;
+  const mood = o.friendly ? { mouth: 'grin' } : { brows: 1, mouth: 'grin' };
+  const blue = o.bg === 'blue';
+  const back = blue ? sunburst(512, 512, 14, '#58a8cf', 0.85, 0.13) + halftone(0, 0, 520, INK, 0.2) + halftone(1024, 1024, 520, INK, 0.2)
+    : `<polygon points="102,0 1024,0 1024,1024 922,1024" fill="${CC.X}"/>` + sunburst(512, 512, 12, '#fff', 0.17, 0.13)
+      + halftone(0, 0, 520, INK, 0.22) + halftone(1024, 1024, 520, INK, 0.26) + (o.noLine ? '' : line(102, -20, 922, 1044, INK, 16));
+  const grid = o.grid ? g('rotate(-5 512 512)', [[300, -160, 300, 1184], [724, -160, 724, 1184], [-160, 300, 1184, 300], [-160, 724, 1184, 724]].map(p => line(...p, INK, 44)).join('')) : '';
+  const br = o.burst || 205;
+  return wrap(blue ? '#3f8fbf' : CC.O, back + grid
+    + ccBurst(512, 512, br, br, o.burstN || 11, 4, '#fff', 16, 0.2)
+    + mascot('O', O[0], O[1], O[2], O[3], { look: o.friendly ? [-1.6, 1.6] : [-2.2, 2.4], shadow: 2.6, eyes: 1.12 * es, ...mood })
+    + mascot('X', X[0], X[1], X[2], X[3], { look: o.friendly ? [1.8, 0.4] : [2.3, -0.6], shadow: 2.6, eyes: 1.25 * es, ...mood }));
+}
+function ccFaceoff() { return faceoff(); }
+// Face-off side by side: X on yellow at the left, O on red at the right, a white lightning bolt down the join.
+function foBolt() {
+  const bolt = '628,56 424,528 552,528 396,972 640,438 512,438 736,56';
+  return wrap(CC.O, `<polygon points="700,-20 1044,-20 1044,1044 372,1044 596,483 468,483" fill="${CC.X}"/>`
+    + sunburst(512, 500, 12, '#fff', 0.17, 0.13)
+    + halftone(0, 1024, 500, INK, 0.22) + halftone(1024, 0, 500, INK, 0.26)
+    + `<polygon points="${bolt}" fill="#fff" stroke="${INK}" stroke-width="18" stroke-linejoin="round"/>`
+    + mascot('O', 742, 470, 452, 9, { look: [-2.4, 1], brows: 1, mouth: 'grin', shadow: 2.6, eyes: 1.12 })
+    + mascot('X', 280, 560, 452, -9, { look: [2.4, -0.4], brows: 1, mouth: 'grin', shadow: 2.6 }));
+}
+// 2. Stamp: the board's # running off the icon, and the X stamped into its middle square on a white burst.
+function ccStamp() {
+  const a = 332, b = 692;
+  return wrap(CC.O, sunburst(512, 512, 14, CC.SOFT, 0.8, 0.11)
+    + halftone(0, 1024, 470, INK, 0.2) + halftone(1024, 0, 470, INK, 0.2)
+    + g('rotate(-5 512 512)', [[a, -140, a, 1164], [b, -140, b, 1164], [-140, a, 1164, a], [-140, b, 1164, b]].map(p => line(...p, INK, 50)).join('')
+      + ccBurst(512, 512, 318, 318, 12, 2, '#fff', 20))
+    + mascot('X', 512, 508, 570, 7, { look: [1.2, 2], mouth: 'grin', shadow: 2.6, eyes: 1.3 }));
+}
+// 3. Pop-out: the O grown too big for its square and bursting out of it, the # round it snapped at every side.
+function ccPopout() {
+  const a = 212, b = 812, cut = 236;                 // the square's lines; a line is hidden from 512 - cut to 512 + cut (the O is there)
+  const stub = (x1, y1, x2, y2, px, py, turn) => g(`rotate(${turn} ${px} ${py})`, line(x1, y1, x2, y2, INK, 48));
+  const stubs = [a, b].map((v, k) => {
+    const t = k ? 1 : -1;                              // each end swung a little outwards about its corner, as if snapped
+    return stub(v, -160, v, 512 - cut, v, a, 5 * t) + stub(v, 512 + cut, v, 1184, v, b, -5 * t) + stub(-160, v, 512 - cut, v, a, v, -5 * t) + stub(512 + cut, v, 1184, v, b, v, 5 * t);
+  }).join('');
+  const bits = [[330, 150, 24, 54], [704, 136, -20, 50], [884, 338, 66, 50], [896, 694, -62, 54], [690, 892, 18, 52], [318, 880, -24, 50], [136, 690, 64, 52], [130, 330, -60, 50]]
+    .map(([x, y, r, l]) => g(`rotate(${r} ${x} ${y})`, `<rect x="${x - l / 2}" y="${y - 17}" width="${l}" height="34" rx="8" fill="${CC.PAPER}" stroke="${INK}" stroke-width="12" stroke-linejoin="round"/>`)).join('');
+  return wrap(CC.X, sunburst(512, 512, 14, '#fff', 0.15, 0.2)
+    + halftone(0, 0, 400, INK, 0.26) + halftone(1024, 0, 400, INK, 0.26) + halftone(0, 1024, 400, INK, 0.26) + halftone(1024, 1024, 400, INK, 0.26)
+    + g('rotate(-5 512 512)', stubs + bits)
+    + mascot('O', 512, 512, 790, -7, { look: [0.6, -1.8], mouth: 'open', shadow: 1.9, eyes: 1.3 }));
+}
+const COMIC = [
+  { id: 'cc-faceoff', name: 'Face-off', draw: ccFaceoff, why: 'X and O head to head across the game\'s own red and yellow, a clash burst where they meet: the rivalry, and both characters.' },
+  { id: 'cc-stamp', name: 'Stamp', draw: ccStamp, why: 'The board\'s # with the X stamped into its middle square on a comic burst: tic-tac-toe at a glance, with a punch.' },
+  { id: 'cc-popout', name: 'Pop-out', draw: ccPopout, why: 'The O grown too big for its square and bursting out of it, the # snapped round it: one big face, the boldest at 60 px.' },
+];
+// Face-off's variations (round 4, November 2026): the same two characters head to head, one change each.
+const FACEOFF = [
+  { id: 'fo-original', name: 'Original', draw: ccFaceoff, why: 'Round 3\'s Face-off as it was, the reference.' },
+  { id: 'fo-closeup', name: 'Close-up', draw: () => faceoff({ x: [338, 664, 640, -8], o: [694, 352, 600, 9], eyes: 1.1, burst: 250 }), why: 'Zoomed in: both characters a quarter bigger, their arms running towards the edges, so the two faces carry the icon at 40 px.' },
+  { id: 'fo-bolt', name: 'Bolt', draw: foBolt, why: 'Side by side instead of corner to corner, a white lightning bolt down the join: the classic versus card.' },
+  { id: 'fo-board', name: 'On the board', draw: () => faceoff({ grid: 1, noLine: 1, burst: 215 }), why: 'The board\'s # behind them: the one thing the original lacks, a tic-tac-toe cue.' },
+  { id: 'fo-burst', name: 'Big burst', draw: () => faceoff({ burst: 420, burstN: 14, noLine: 1 }), why: 'A big white comic burst behind both: each character on white, so red and yellow pop the same and the clash is the picture.' },
+  { id: 'fo-blue', name: 'Blue corner', draw: () => faceoff({ bg: 'blue' }), why: 'One sea-blue sunburst in place of the red and yellow halves: both characters stand out fully, and it is the only blue among the red and yellow game icons.' },
+  { id: 'fo-pals', name: 'Pals', draw: () => faceoff({ friendly: 1 }), why: 'The same meeting with open smiles and no frowns: friendlier, for a game played with friends.' },
+];
+// The icon in use (picked November 2026: Face-off, as round 3 drew it): the app's (scripts/make-app-icons.js) and the web's
+// (scripts/make-share-images.js). Both draw it at each size from this, never scaled down from a picture.
+const APP_ICON = ccFaceoff;
+// The same at a browser tab's 16 and 32 px, where two faces are a blur: the two marks on the two halves, no faces, rays or dots.
+const APP_ICON_SMALL = () => wrap(CC.O, `<polygon points="102,0 1024,0 1024,1024 922,1024" fill="${CC.X}"/>`
+  + oMark(706, 318, 176, CC.O, 108, 108) + xMark(316, 704, 176, CC.X, 124, 108));
+module.exports = { OPTIONS, PATCHWORK, COMIC, FACEOFF, APP_ICON, APP_ICON_SMALL, INK };

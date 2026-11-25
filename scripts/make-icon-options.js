@@ -3,14 +3,16 @@
 // <id>.png (1024x1024, opaque) with the Chromium that Playwright carries, and the comparison page icons.html (served
 // on staging only, scripts/build-site.js): every option on an iPhone home screen among plain stand-in icons, on a
 // light and a dark wallpaper, in an App Store search result, at 60 and 180 px, with its rationale.
-//   node scripts/make-icon-options.js        (npm run icon-options)
+//   node scripts/make-icon-options.js [concepts|patchwork|comic|faceoff]        (npm run icon-options; a round's name: that round alone)
 const fs = require('node:fs');
 const path = require('node:path');
-const { OPTIONS, PATCHWORK } = require('./icon-options.js');
+const { OPTIONS, PATCHWORK, COMIC, FACEOFF } = require('./icon-options.js');
 // The pages: round 1 (six concepts) and round 2 (Patchwork's variations), each linking to the other.
 const ROUNDS = [
-  { file: 'icons.html', set: OPTIONS, title: 'App icon options', intro: 'Six concepts for the Tic Tac Chaos icon. Each is a full-bleed 1024 px square with no transparency; iOS rounds the corners itself, as shown here. The current icon stays until one is picked.', other: ['icons-patchwork.html', 'Round 2: Patchwork variations →'] },
-  { file: 'icons-patchwork.html', set: PATCHWORK, title: 'Patchwork variations', intro: 'Round 2: Patchwork, picked from round 1, in seven takes, each changing one thing. Same rules: full-bleed 1024 px, no transparency, iOS rounds the corners.', other: ['icons.html', '← Round 1: all six concepts'] },
+  { key: 'faceoff', file: 'icons-faceoff.html', set: FACEOFF, full: true, title: 'Face-off variations', intro: 'Round 4: Face-off, the favourite of round 3, in seven takes, each changing one thing. Same rules: full-bleed 1024 px, no transparency, no words, nothing that matters in the outer tenth; iOS rounds the corners itself, as shown here. Picked: the original.', other: ['icons-comic.html', '← Round 3: the three Comic Chaos icons'] },
+  { key: 'comic', file: 'icons-comic.html', set: COMIC, full: true, title: 'Comic Chaos icon options', intro: 'Round 3: three icons in the game\'s own Comic Chaos look: its X and O characters, red, yellow and ink, the sunburst, the halftone and the comic burst. Same rules: full-bleed 1024 px, no transparency, no words, nothing that matters in the outer tenth; iOS rounds the corners itself, as shown here. Nothing is installed until one is picked.', other: ['icons.html', '← Round 1: the first six concepts'] },
+  { key: 'concepts', file: 'icons.html', set: OPTIONS, title: 'App icon options', intro: 'Six concepts for the Tic Tac Chaos icon. Each is a full-bleed 1024 px square with no transparency; iOS rounds the corners itself, as shown here. The current icon stays until one is picked.', other: ['icons-patchwork.html', 'Round 2: Patchwork variations →'] },
+  { key: 'patchwork', file: 'icons-patchwork.html', set: PATCHWORK, title: 'Patchwork variations', intro: 'Round 2: Patchwork, picked from round 1, in seven takes, each changing one thing. Same rules: full-bleed 1024 px, no transparency, iOS rounds the corners.', other: ['icons.html', '← Round 1: all six concepts'] },
 ];
 const ROOT = path.join(__dirname, '..'), OUT = path.join(ROOT, 'assets', 'icon-options');
 
@@ -25,7 +27,7 @@ const mine = id => `<span class="ic"><img src="assets/icon-options/${id}.png" al
 function phone(id, dark) {
   const cells = [];
   for (let k = 0; k < 16; k++) cells.push(k === 5 ? app(mine(id), 'Tic Tac Chaos', 'me') : app(stand(k % 12), LABELS[k % 12]));
-  return `<div class="phone ${dark ? 'dark' : 'light'}"><div class="notch"></div><div class="home">${cells.join('')}</div><div class="dock">${[0, 3, 6, 9].map(k => `<span class="ic">${stand(k).slice(16, -7)}</span>`).join('')}</div></div>`;
+  return `<div class="phone ${dark ? 'dark' : 'light'}"><div class="notch"></div><div class="home">${cells.join('')}</div><div class="dock">${[0, 3, 6, 9].map(k => `<span class="ic">${stand(k).slice(17, -7)}</span>`).join('')}</div></div>`;
 }
 const row = (src, name, sub, rate) => `<div class="srow"><span class="ic big">${src}</span><div class="sinfo"><b>${name}</b><small>${sub}</small><i>${'★'.repeat(rate)}${'☆'.repeat(5 - rate)}</i></div><span class="get">GET</span></div>`;
 function pageHtml(R) {
@@ -37,8 +39,9 @@ function pageHtml(R) {
     <figure><span class="ic s60"><img src="assets/icon-options/${o.id}.png" alt="${o.name} at 60 px"></span><figcaption>60 px</figcaption></figure>
     <figure><span class="ic s40"><img src="assets/icon-options/${o.id}.png" alt="${o.name} at 40 px"></span><figcaption>40 px</figcaption></figure>
     <figure class="raw"><img src="assets/icon-options/${o.id}.png" alt="${o.name}, full square"><figcaption>the square as made (iOS rounds it)</figcaption></figure></div>
+  ${R.full ? `<figure class="full"><img src="assets/icon-options/${o.id}.png" width="1024" height="1024" alt="${o.name} at 1024 px"><figcaption>1024 px, the square as made (iOS rounds it)</figcaption></figure>` : ''}
   <div class="phones">${phone(o.id, false)}${phone(o.id, true)}</div>
-  <div class="store"><div class="sbar">Search: <b>tic tac</b></div>${row(stand(1).slice(16, -7), 'Grid Party', 'Puzzle', 4)}${row(`<img src="assets/icon-options/${o.id}.png" alt="">`, 'Tic Tac Chaos', 'Every square is a mini-game', 5)}${row(stand(8).slice(16, -7), 'Noughts Classic', 'Board', 4)}</div>
+  <div class="store"><div class="sbar">Search: <b>tic tac</b></div>${row(stand(1).slice(17, -7), 'Grid Party', 'Puzzle', 4)}${row(`<img src="assets/icon-options/${o.id}.png" alt="">`, 'Tic Tac Chaos', 'Every square is a mini-game', 5)}${row(stand(8).slice(17, -7), 'Noughts Classic', 'Board', 4)}</div>
   <p class="files"><a href="assets/icon-options/${o.id}.svg">SVG</a> · <a href="assets/icon-options/${o.id}.png">PNG 1024</a></p>
 </section>`).join('\n');
   return `<!doctype html>
@@ -67,6 +70,7 @@ nav a img { width: 40px; height: 40px; border-radius: 22.37%; display: block; }
 .sizes figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .sizes figcaption { font-size: 15px; }
 .s180 { width: 180px; height: 180px; box-shadow: 0 6px 18px rgba(0,0,0,.18); } .s60 { width: 60px; height: 60px; } .s40 { width: 40px; height: 40px; }
+.full { margin: 0 0 18px; } .full img { display: block; width: 100%; max-width: 1024px; height: auto; border: 1px dashed var(--ink); } .full figcaption { font-size: 15px; margin-top: 6px; }
 .raw img { width: 140px; height: 140px; display: block; border: 1px dashed var(--ink); }
 .phones { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 18px; }
 .phone { position: relative; width: 300px; max-width: 100%; aspect-ratio: 390 / 844; border-radius: 42px; border: 9px solid #111; padding: 46px 14px 0; overflow: hidden; }
@@ -108,8 +112,11 @@ ${cards}
 async function main() {
   fs.mkdirSync(OUT, { recursive: true });
   const { chromium } = require('playwright');
+  const only = process.argv[2], rounds = only ? ROUNDS.filter(R => R.key === only) : ROUNDS;
+  if (!rounds.length) throw new Error(`unknown round "${only}" (${ROUNDS.map(R => R.key).join(', ')})`);
+  const all = rounds.flatMap(R => R.set);
   const b = await chromium.launch();
-  for (const o of OPTIONS.concat(PATCHWORK)) {
+  for (const o of all) {
     const svg = o.draw();
     fs.writeFileSync(path.join(OUT, o.id + '.svg'), svg);
     const p = await b.newPage({ viewport: { width: 1024, height: 1024 }, deviceScaleFactor: 1 });
@@ -118,8 +125,8 @@ async function main() {
     await p.close();
   }
   await b.close();
-  for (const R of ROUNDS) fs.writeFileSync(path.join(ROOT, R.file), pageHtml(R));
-  console.log('Wrote', OPTIONS.concat(PATCHWORK).map(o => o.id).join(', '), 'and', ROUNDS.map(R => R.file).join(', '));
+  for (const R of rounds) fs.writeFileSync(path.join(ROOT, R.file), pageHtml(R));
+  console.log('Wrote', all.map(o => o.id).join(', '), 'and', rounds.map(R => R.file).join(', '));
 }
 if (require.main === module) main().catch(e => { console.error(e); process.exit(1); });
 module.exports = { pageHtml, ROUNDS };

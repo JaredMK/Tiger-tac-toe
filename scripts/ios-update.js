@@ -19,7 +19,9 @@ const crypto = require('node:crypto');
 const { execSync, execFileSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 const BRANCH = { staging: 'staging', production: 'main' };
-const { OUT, PUBLIC, CAP_FILES } = require('./ios-web.js');
+// What cap sync adds beside the build's own files.
+const CAP_FILES = ['cordova.js', 'cordova_plugins.js'];
+const OUT = path.join(ROOT, '_app'), PUBLIC = path.join(ROOT, 'ios', 'App', 'App', 'public');
 
 function parseArgs(args) {
   const known = ['staging', 'production', 'open', 'here'], got = args.map(a => a.replace(/^--/, ''));
