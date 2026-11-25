@@ -15,7 +15,7 @@ const rlPt = (r, deg) => { const t = (deg - 90) * Math.PI / 180; return `${(r * 
 const rlWedge = (a0, a1, r0 = 58, r1 = 92) => `M${rlPt(r0, a0)}L${rlPt(r1, a0)}A${r1} ${r1} 0 0 1 ${rlPt(r1, a1)}L${rlPt(r0, a1)}A${r0} ${r0} 0 0 0 ${rlPt(r0, a0)}Z`;
 const RL_FACE = RL.wheel.map((n, i) => {
   const a0 = i * RL_STEP - RL_STEP / 2, a1 = a0 + RL_STEP, cls = n === 0 ? 'g' : rlRed(n) ? 'r' : 'b';
-  return `<path class="${cls}" d="${rlWedge(a0, a1)}"/><text transform="rotate(${(i * RL_STEP).toFixed(1)}) translate(0 -81)">${n}</text>`;
+  return `<path class="${cls}" d="${rlWedge(a0, a1)}"/><text class="${cls}" transform="rotate(${(i * RL_STEP).toFixed(1)}) translate(0 -81)">${n}</text>`;
 }).join('');
 // The spin (the stylesheet's rlwheel, rlball and rldrop play these same figures: tests/ui/wheel-spin.test.mjs): the
 // wheel winds back a touch, then turns on from the pocket it rested on to the new one under the pointer (a turn and
@@ -52,7 +52,7 @@ function rlWheel(n, spin, picks, full) {
   const tEnd = RLT.spin + RLT.settle;
   const glow = spin && spin.hit ? `<path class="rlhit ${spin.hit} appear" style="--t:${tEnd}ms" d="${rlWedge(-RL_STEP / 2, RL_STEP / 2, 57, 93)}"/>` : '';   // the pocket that came up, under the pointer: ringed in the colour of whoever it is a hit for, as the ball settles
   const style = t ? `--w0:${t.w0.toFixed(1)}deg;--w:${w.toFixed(1)}deg;--sp:${RLT.spin}ms;--st:${tEnd}ms` : `--w:${w.toFixed(1)}deg`;
-  return `<svg class="rlwheel${spin ? ' spin' : ''}${spin && spin.from == null ? ' fresh' : ''}" style="${style}" viewBox="-100 -104 200 208" role="img" aria-label="${n == null ? 'The wheel' : `The wheel: ${n}${n === 0 ? ', green' : rlRed(n) ? ', red' : ', black'}`}">
+  return `<svg class="rlwheel${spin ? ' spin' : ''}${spin && spin.from == null ? ' fresh' : ''}" style="${style}" viewBox="-100 -104 200 208" role="img" aria-label="${n == null ? 'The wheel' : `The wheel: ${n}${n === 0 ? ', green' : rlRed(n) ? ', light' : ', dark'}`}">
     <circle class="shd" cy="4.5" r="99"/><circle class="rim" r="99"/><g class="rlw">${RL_FACE}${marks}<circle class="rin" r="92"/><circle class="hub" r="56"/><circle class="cone" r="38"/><path class="spoke" d="M0 -40V40M-40 0H40"/><circle class="cap" r="12"/><circle class="caph" cx="-3.5" cy="-3.5" r="3"/></g>${glow}
     ${n == null ? '' : `<g class="rlb"><circle r="99" fill="none"/><g class="ball"><circle class="bsh" cx="1.5" cy="-65" r="6"/><circle class="bb" cy="-67" r="6"/><circle class="bhl" cx="1.9" cy="-65.1" r="2.3"/></g></g>`}<path class="ptr" d="M-8 -104H8L0 -92Z"/></svg>`;
 }
@@ -97,7 +97,7 @@ function rlTable(mini, a, o) {
   const dolly = k => (spin && spin.n === k ? `<i class="dolly fly" style="--t:${tEnd}ms" aria-hidden="true"></i>` : !spin && n === k && n != null && !pend ? '<i class="dolly" aria-hidden="true"></i>' : '');
   const grid = ['g1', 'g2', 'g3'].map(g => {
     const [lo, hi] = RL.groups[g], cells = [];
-    for (let k = lo; k <= hi; k++) { const c = marks ? mk(k) : on(k) ? ' on' : ''; cells.push(`<button class="rln ${rlRed(k) ? 'r' : 'b'}${c}${n === k && !spin ? ' last' : ''}${land(k)}${c ? popOf(k) : ''}"${landT(k)}${c ? popFx(k) : ''} data-act="rlnum" data-n="${k}" aria-pressed="${!!c}" aria-label="${k}, ${rlRed(k) ? 'red' : 'black'}"${dis}>${k}${dolly(k)}</button>`); }
+    for (let k = lo; k <= hi; k++) { const c = marks ? mk(k) : on(k) ? ' on' : ''; cells.push(`<button class="rln ${rlRed(k) ? 'r' : 'b'}${c}${n === k && !spin ? ' last' : ''}${land(k)}${c ? popOf(k) : ''}"${landT(k)}${c ? popFx(k) : ''} data-act="rlnum" data-n="${k}" aria-pressed="${!!c}" aria-label="${k}, ${rlRed(k) ? 'light' : 'dark'}"${dis}>${k}${dolly(k)}</button>`); }
     return `<div class="rlrow">${cells.join('')}<button class="rlg${gOn(g)}${gOn(g) ? popOf(g) : ''}"${gOn(g) ? popFx(g) : ''} data-act="rlgrp" data-g="${g}" aria-pressed="${!!gOn(g)}" aria-label="Group ${lo} to ${hi}"${dis}>${lo}–${hi}</button></div>`;
   }).join('');
   const bet = dr.bet || (dr.nums.length === RL.pick ? dr.nums : null);
@@ -127,7 +127,7 @@ function rlTable(mini, a, o) {
   const full = !!picks && ['X', 'O'].some(p => whole(picks[p]));
   const wheel = rlWheel(n, spin ? { n: spin.n, from: spin.from, hit: hitter } : null, picks, full);
   const pc = spin && !spin.shared ? a.by : pend ? pend.by : turn;   // whose picks the board shows (a shared spin: each number in its picker's own, .mX / .mO)
-  return `<div class="g-rl pc-${pc === 'O' ? 'O' : 'X'}${full || o.locked ? ' dim' : ''}"><div class="rltop"><div class="ctals col">${hits('X')}${hits('O')}${res}${hist}</div><div class="rlside"><div class="rlwrap">${wheel}</div><div class="rlbigslot">${big}</div></div></div>${board}</div>`;
+  return `<div class="g-rl pc-${pc === 'O' ? 'O' : 'X'}${full || o.locked ? ' dim' : ''}"><div class="ctals">${hits('X')}${hits('O')}</div><div class="rltop"><div class="rlinfo">${res}${hist}</div><div class="rlside"><div class="rlwrap">${wheel}</div><div class="rlbigslot">${big}</div></div></div>${board}</div>`;
 }
 // The marker's move from the wheel to its number as the ball lands (anchored to the move by its [data-fx]).
 export function rlMarker() {
@@ -149,8 +149,8 @@ export function rlMarker() {
 // the pointer and, once a spin has been made, the ball lying in the pocket under it.
 function rlMiniWheel(ball) {
   const n = 12, seg = Array.from({ length: n }, (_, k) => { const a0 = (k - 0.5) / n * Math.PI * 2 - Math.PI / 2, a1 = (k + 0.5) / n * Math.PI * 2 - Math.PI / 2, f = a => `${(50 + 43 * Math.cos(a)).toFixed(1)} ${(50 + 43 * Math.sin(a)).toFixed(1)}`;
-    return `<path d="M50 50 L${f(a0)} A43 43 0 0 1 ${f(a1)}Z" fill="${k === 0 ? '#2f8a3c' : k % 2 ? '#d6301e' : '#2b2b2b'}"/>`; }).join('');
-  return `<svg class="tmwheel" viewBox="0 -6 100 108" aria-hidden="true"><circle cx="50" cy="50" r="47" fill="#7a4a2a" stroke="var(--ink)" stroke-width="5"/>${seg}<circle cx="50" cy="50" r="20" fill="#a8703f" stroke="var(--ink)" stroke-width="4"/><circle cx="50" cy="50" r="6" fill="#f0e2bd" stroke="var(--ink)" stroke-width="2.5"/>${ball ? '<circle cx="50" cy="18" r="6.5" fill="#fff" stroke="var(--ink)" stroke-width="3"/>' : ''}<path d="M41 -5h18l-9 13z" fill="#f0e2bd" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/></svg>`;
+    return `<path d="M50 50 L${f(a0)} A43 43 0 0 1 ${f(a1)}Z" fill="${k === 0 ? 'var(--green)' : k % 2 ? 'var(--paper)' : 'var(--ink)'}" stroke="var(--ink)" stroke-width="1.5"/>`; }).join('');
+  return `<svg class="tmwheel" viewBox="0 -6 100 108" aria-hidden="true"><circle cx="50" cy="50" r="47" fill="var(--stone)" stroke="var(--ink)" stroke-width="5"/>${seg}<circle cx="50" cy="50" r="20" fill="var(--stone)" stroke="var(--ink)" stroke-width="4"/><circle cx="50" cy="50" r="6" fill="var(--paper)" stroke="var(--ink)" stroke-width="2.5"/>${ball ? '<circle cx="50" cy="18" r="6.5" fill="#fff" stroke="var(--ink)" stroke-width="3"/>' : ''}<path d="M41 -5h18l-9 13z" fill="var(--paper)" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/></svg>`;
 }
 export function miniature(mini, final) {   // the wheel, each player's hits so far beside it, and the last three spins (their numbers as large as the board's other text): a hit in the spinner's colour, a miss plain
   const spins = (mini.spins || []).map(x => (typeof x === 'number' ? { n: x, hit: false } : x)).filter(x => x && Number.isInteger(x.n)).slice(-3);
@@ -162,7 +162,7 @@ export function screen(sq, f, d, mini, view, locked, a, anim, won, wk, fresh, tu
 }
 export function moveText(f, who) {
   if (f.rl && f.rl.pending) return `${who} picked ${rlBetText(f.rl.bet)}`;
-  if (f.rl && f.rl.shared) return `${f.rl.n}${f.rl.n === 0 ? ' green' : rlRed(f.rl.n) ? ' red' : ' black'} · ${['X', 'O'].filter(p => f.rl.bets[p]).map(p => `${N(p)} ${f.rl.hit[p] ? 'hit' : 'missed'}`).join(', ')}`;
+  if (f.rl && f.rl.shared) return `${f.rl.n}${f.rl.n === 0 ? ' green' : rlRed(f.rl.n) ? ' light' : ' dark'} · ${['X', 'O'].filter(p => f.rl.bets[p]).map(p => `${N(p)} ${f.rl.hit[p] ? 'hit' : 'missed'}`).join(', ')}`;
   return f.rl ? (f.rl.hit ? 'Hit' : 'Miss') : `${who} spun`;
 }
 export function sounds(f, add, won, mini, last) {

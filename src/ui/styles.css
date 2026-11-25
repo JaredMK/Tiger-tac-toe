@@ -20,6 +20,18 @@
   --cy: #f6c21b;
   --cg: #4e9d3a;
   --cb: #58a8cf;
+  --felt-green: #5fa86d;             /* a green table (the art audit, November 2026: tables, rooms and machines take these, flat) */
+  --felt-blue: #4a63ad;              /* a blue card table */
+  --felt-pink: #f58aa8;              /* Pig's table */
+  --wood: #b98250;                   /* a rail, a rim, a floor, a post */
+  --wood-2: #8f5f36;                 /* the darker wood beside it */
+  --wall: #4f8794;                   /* a room's wall */
+  --cabinet: #5b6fb5;                /* an arcade machine's case */
+  --glass: #d9eef7;                  /* a machine's window, a pale board */
+  --clue: #f08a2c;                   /* a clue's "close" colour: never a player's */
+  --txt-min: 14px;                   /* the smallest text a player has to read */
+  --font-display: 'Luckiest Guy', 'Arial Black', sans-serif;   /* big words inside a game */
+  --font-text: 'Comic Neue', 'Patrick Hand', sans-serif;        /* small print set in a plain face */
   --gold: #f2b01e;                   /* a top value's highlight (Risky Spins' 10): never a dark shade */
   --hdr: 64px;
   --foot: 52px;
@@ -3257,24 +3269,24 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .rlwrap { position: relative; width: clamp(84px, min(calc(var(--gh) - 296px), calc(var(--gw) * .62)), 250px); aspect-ratio: 200 / 208; }
 .rlside { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .rlspins { display: grid; height: 26px; width: 100%; justify-items: center; } .rlspins > span { grid-area: 1 / 1; display: flex; gap: 4px; align-items: center; }   /* the last spins, under the wheel: the row before a spin and the one after it, in one place */
-.rlspins small { color: var(--muted); font-size: 12px; font-weight: 700; }
+.rlspins small { color: var(--muted); font-size: var(--txt-min); font-weight: 700; }
 .rlspins i.sp { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 2.5px solid var(--ink); display: grid; place-items: center; font: 400 12px 'Luckiest Guy', sans-serif; font-style: normal; padding-top: 2px; background: var(--paper); }
-.rlspins i.sp.r { color: #d6301e; } .rlspins i.sp.b { color: var(--ink); } .rlspins i.sp.g { color: #2f8a3c; }
+.rlspins i.sp.r { color: var(--ink); } .rlspins i.sp.b { background: var(--ink); color: #fff; } .rlspins i.sp.g { background: var(--green); color: #fff; }   /* (a light pocket, a dark one, the green 0: never a player's red) */
 .rlspins i.sp.hit.X { background: var(--x); color: #fff; box-shadow: 0 0 6px 2px var(--x); } .rlspins i.sp.hit.O { background: var(--o); color: var(--ink); box-shadow: 0 0 6px 2px var(--o); }
 .rlbig { position: absolute; left: 50%; top: 52%; translate: -50% -50%; padding: 6px 14px 2px; border: 3.5px solid var(--ink); border-radius: 16px 12px 18px 10px; box-shadow: 0 4px 0 var(--ink); font: 400 clamp(20px, 7vw, 30px)/1.1 'Luckiest Guy', sans-serif; white-space: nowrap; }
 .rlbig.hit { background: var(--o); color: var(--ink); }
-.rlbig.zero { background: #2f8a3c; color: #fff; }
+.rlbig.zero { background: var(--green); color: #fff; }
 .rlbig.miss { background: var(--paper); color: var(--muted); }
 .rlwheel { width: 100%; height: 100%; overflow: visible; }
-.rlwheel .rim { fill: #7a4a2a; stroke: var(--ink); stroke-width: 3; }
-.rlwheel path.r { fill: #d6301e; } .rlwheel path.b { fill: var(--ink); } .rlwheel path.g { fill: #2f8a3c; }
-.rlwheel path.r, .rlwheel path.b, .rlwheel path.g { stroke: #e9d7b0; stroke-width: 1; }
-.rlwheel text { fill: #fff; font: 400 11px 'Luckiest Guy', sans-serif; text-anchor: middle; dominant-baseline: central; }
-.rlwheel .hub { fill: #a8703f; stroke: var(--ink); stroke-width: 2.5; }
-.rlwheel .spoke { stroke: #e9d7b0; stroke-width: 5; stroke-linecap: round; }
+.rlwheel .rim { fill: var(--stone); stroke: var(--ink); stroke-width: 3; }
+.rlwheel path.r { fill: var(--paper); } .rlwheel path.b { fill: var(--ink); } .rlwheel path.g { fill: var(--green); }
+.rlwheel path.r, .rlwheel path.b, .rlwheel path.g { stroke: var(--ink); stroke-width: 1.2; }
+.rlwheel text { fill: #fff; font: 400 13.5px var(--font-display); text-anchor: middle; dominant-baseline: central; } .rlwheel text.r { fill: var(--ink); }
+.rlwheel .hub { fill: var(--stone); stroke: var(--ink); stroke-width: 2.5; }
+.rlwheel .spoke { stroke: var(--ink); stroke-width: 4; stroke-linecap: round; }
 .rlwheel .cap { fill: var(--o); stroke: var(--ink); stroke-width: 2.5; }
-.rlwheel .ball .bb { fill: #fff; stroke: var(--ink); stroke-width: 2; } .rlwheel .ball .bsh { fill: rgba(22, 18, 16, .32); } .rlwheel .ball .bhl { fill: #e2dacb; }
-.rlwheel .shd { fill: rgba(22, 18, 16, .2); } .rlwheel .rin { fill: none; stroke: var(--ink); stroke-width: 1.6; } .rlwheel .cone { fill: #b98250; stroke: rgba(22, 18, 16, .3); stroke-width: 1.2; } .rlwheel .caph { fill: rgba(255, 255, 255, .55); }
+.rlwheel .ball .bb { fill: #fff; stroke: var(--ink); stroke-width: 2; } .rlwheel .ball .bsh { fill: rgba(22, 18, 16, .32); } .rlwheel .ball .bhl { fill: none; }
+.rlwheel .shd { fill: rgba(22, 18, 16, .2); } .rlwheel .rin { fill: none; stroke: var(--ink); stroke-width: 1.6; } .rlwheel .cone { fill: var(--paper); stroke: var(--ink); stroke-width: 2.2; } .rlwheel .caph { fill: none; }
 /* the picks on the wheel: each picked pocket's stretch of the rim in its picker's colour; with a whole pick, the pockets nobody picked washed out; the pocket that came up ringed if it is a hit */
 .rlwheel .rlpk { fill: none; stroke-width: 5.6; } .rlwheel .rlpk.X { stroke: var(--x); } .rlwheel .rlpk.O { stroke: var(--o); }
 .rlwheel .rloff { fill: rgba(244, 230, 200, .62); }
@@ -3294,21 +3306,21 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 @keyframes rlball { from { transform: rotate(1080deg); } to { transform: rotate(0); } }
 @keyframes rldrop { 0% { transform: none; animation-timing-function: cubic-bezier(.3, 0, .2, 1); } 5% { transform: translateY(-21px); } 78% { transform: translateY(-21px); animation-timing-function: cubic-bezier(.5, 0, .9, .6); } 88% { transform: translateY(1.5px); animation-timing-function: cubic-bezier(.2, .6, .4, 1); } 94% { transform: translateY(-6px); animation-timing-function: cubic-bezier(.6, 0, .9, .6); } 100% { transform: none; } }
 @keyframes rldrop0 { 0% { transform: translateY(-21px); opacity: 0; } 3% { opacity: 1; } 78% { transform: translateY(-21px); animation-timing-function: cubic-bezier(.5, 0, .9, .6); } 88% { transform: translateY(1.5px); animation-timing-function: cubic-bezier(.2, .6, .4, 1); } 94% { transform: translateY(-6px); animation-timing-function: cubic-bezier(.6, 0, .9, .6); } 100% { transform: none; } }
-.rlres { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--muted); height: 36px; flex: none; }
+.rlres { margin: 0; display: flex; align-items: center; gap: 8px; font-size: var(--txt-min); font-weight: 700; color: var(--muted); height: 36px; flex: none; }
 .rlres b { color: var(--ink); }
 .rlres > span:not(.rlnum) { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 16px; }   /* the spin's bets: two lines at most, inside the tallies' column (never under the wheel) */
 .rlnum { flex: none; width: 34px; height: 34px; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 400 16px 'Luckiest Guy', sans-serif; padding-top: 3px; border: 3px solid var(--ink); }
-.rlnum.r { background: #d6301e; } .rlnum.b { background: var(--ink); } .rlnum.g { background: #2f8a3c; }
+.rlnum.r { background: var(--paper); color: var(--ink); } .rlnum.b { background: var(--ink); } .rlnum.g { background: var(--green); }
 .rlboard { flex: none; display: flex; flex-direction: column; gap: 4px; }
 .rlrow { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)) 1.7fr; gap: 3px; }
 .rln, .rlg, .rlz { height: 32px; border: 2.5px solid var(--ink); border-radius: 8px; font: 400 15px 'Luckiest Guy', sans-serif; padding: 3px 0 0; color: #fff; min-width: 0; }
-.rln.r { background: #d6301e; } .rln.b { background: var(--ink); }
+.rln.r { background: var(--paper); color: var(--ink); } .rln.b { background: var(--ink); }
 .rln.on { box-shadow: inset 0 0 0 3px var(--o), 0 0 0 2px var(--o); }
 .rln.last { outline: 3px dashed var(--sky); outline-offset: -1px; }
 .rlg { background: var(--paper); color: var(--ink); font-size: 13px; }
 .rlg.on, .rlz.on { box-shadow: 0 0 0 3px var(--o); }
 .rlg.on { background: var(--o); }
-.rlz { background: #2f8a3c; }
+.rlz { background: var(--green); }
 .rln, .rlz { position: relative; }
 /* the marker on the number that came up: it moves there from the wheel as the ball lands, then stays */
 .dolly { position: absolute; left: 50%; top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; border: 3px solid var(--ink); background: radial-gradient(circle, #ffd166 0 38%, #fff 40%); box-shadow: 0 2px 0 var(--ink); pointer-events: none; z-index: 3; }
@@ -3329,18 +3341,18 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .rlsay { margin: 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--muted); flex: none; }
 /* Little Wheel, the polish pass (November 2026). --pc: the picker's colour (the mover's; a shared spin's cells carry their own,
    .mX / .mO). --rc: a cell's height, from the room (30px on the shortest phones to 38px); the wheel takes what the board leaves. */
-.g-rl { --pc: var(--x); --pct: #fff; --rlw: min(calc(min(var(--gw), 440px) - 160px), 250px); --rc: clamp(30px, calc((var(--gh) - 150px - var(--rlw) * 1.04) / 4), 40px); } .g-rl.pc-O { --pc: var(--o); --pct: var(--ink); }
+.g-rl { --pc: var(--x); --pct: #fff; --rlw: min(calc(min(var(--gw), 440px) - 128px), 250px); --rc: clamp(30px, calc((var(--gh) - 196px - var(--rlw) * 1.04) / 4), 40px); } .g-rl.pc-O { --pc: var(--o); --pct: var(--ink); }
 .g-rl .mX { --pc: var(--x); --pct: #fff; } .g-rl .mO { --pc: var(--o); --pct: var(--ink); }
-.g-rl .rlwrap { width: clamp(84px, min(calc((var(--gh) - 150px - 4 * var(--rc)) / 1.04), var(--rlw)), 250px); }   /* (--rlw: the width less 160px, so a name and its hits keep their room beside the wheel) */
-.g-rl .rlwheel .ptr { fill: var(--pc); } .g-rl .rlwheel .cap { fill: #f0e2bd; }   /* the pointer in the mover's colour; the cap plain (never a player's colour) */
-.g-rl .ctals.col { row-gap: 6px; }
+.g-rl .rlwrap { width: clamp(84px, min(calc((var(--gh) - 196px - 4 * var(--rc)) / 1.04), var(--rlw)), 250px); }   /* (--rlw: the width less 160px, so a name and its hits keep their room beside the wheel) */
+.g-rl .rlwheel .ptr { fill: var(--pc); } .g-rl .rlwheel .cap { fill: var(--paper); }   /* the pointer in the mover's colour; the cap plain (never a player's colour) */
+.g-rl .rlinfo { display: flex; flex-direction: column; justify-content: center; gap: 6px; min-width: 0; }   /* beside the wheel: the result and the last spins (the tallies are the row across the top, as in every game) */
 .g-rl .rlspins { justify-items: start; padding-left: 2px; }
 .g-rl .rln, .g-rl .rlg, .g-rl .rlz { height: var(--rc); font-size: clamp(14px, calc(var(--rc) * .48), 18px); }
 .g-rl .rlg { font-size: 13px; }
 /* a picked number: a white chip ringed in the picker's colour, its number in its pocket's colour, lifted off the board;
    a picked group: the picker's colour; the one just tapped pops (its own moment: view.js rlDraft.pop) */
 .g-rl .rln.on, .g-rl .rlz.on { background: #fff; border-color: var(--pc); box-shadow: 0 0 0 2px var(--pc), 0 3.5px 0 2px var(--ink); transform: translateY(-2px); z-index: 1; }
-.g-rl .rln.r.on { color: #d6301e; } .g-rl .rln.b.on { color: var(--ink); } .g-rl .rlz.on { color: #2f8a3c; }
+.g-rl .rln.r.on { color: var(--ink); } .g-rl .rln.b.on { color: var(--ink); } .g-rl .rlz.on { color: var(--green); }
 .g-rl .rlg.on { background: var(--pc); color: var(--pct); box-shadow: 0 0 0 2.5px var(--pc); }
 .g-rl .rln.mX.mO { border-color: var(--x); box-shadow: 0 0 0 3px var(--o), 0 3.5px 0 3px var(--ink); }
 .g-rl .rln.pop, .g-rl .rlz.pop { animation: rlpick .26s cubic-bezier(.4, 0, .2, 1) both; } .g-rl .rlg.pop { animation: rlpickg .26s cubic-bezier(.4, 0, .2, 1) both; }
@@ -3361,7 +3373,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .g-rl .rlbig.hit, .g-rl .rlbig.zero { box-shadow: 0 4px 0 var(--ink); }   /* (never the names' highlighter: b.X / b.O) */
 .g-rl .rlbig.hit { background: var(--pc); color: var(--pct); } .g-rl .rlbig.hit.X { background: var(--x); color: #fff; } .g-rl .rlbig.hit.O { background: var(--o); color: var(--ink); }
 .g-rl .rlbig.hit::after, .g-rl .rlbig.zero::after { content: ''; position: absolute; inset: -5px; border-radius: inherit; border: 3.5px solid var(--pc); opacity: 0; pointer-events: none; animation: rlring .55s calc(var(--t, 0ms) + 80ms) cubic-bezier(.4, 0, .2, 1) both; }
-.g-rl .rlbig.zero::after { border-color: #2f8a3c; }
+.g-rl .rlbig.zero::after { border-color: var(--green); }
 .g-rl .rlbig.miss { box-shadow: 0 2px 0 var(--muted); border-color: var(--muted); animation: rlmiss .3s var(--t, 0ms) cubic-bezier(.4, 0, .2, 1) both; }
 @keyframes rlhitpop { 0% { opacity: 0; transform: scale(.3) rotate(-8deg); } 45% { opacity: 1; transform: scale(1.28) rotate(3deg); } 70% { transform: scale(.94) rotate(-1deg); } 100% { opacity: 1; transform: none; } }
 @keyframes rlring { 0% { opacity: .9; transform: scale(.8); } 100% { opacity: 0; transform: scale(1.7, 2.1); } }
@@ -3392,7 +3404,7 @@ div.popp { border-bottom-color: transparent; }   /* (no one there yet: a blank r
 .tdice .tmd8 { align-self: center; width: 22cqw; height: 22cqw; } .tdice .tmd8 svg { width: 100%; height: 100%; display: block; }   /* Risky Rolls' d8, above the trackers */
 .tspins { display: flex; gap: 2cqw; justify-content: center; }
 .tpip .tspins i.sp { width: 12cqw; height: 12cqw; border-radius: 50%; border: 1.2cqw solid var(--ink); display: grid; place-items: center; font: 400 6.4cqw 'Luckiest Guy', sans-serif; padding-top: .8cqw; background: var(--paper); }
-.tpip .tspins i.sp.r { color: #d6301e; } .tpip .tspins i.sp.b { color: var(--ink); } .tpip .tspins i.sp.g { color: #2f8a3c; }   /* a miss: plain, the number in its pocket's colour */
+.tpip .tspins i.sp.r { color: var(--ink); } .tpip .tspins i.sp.b { background: var(--ink); color: #fff; } .tpip .tspins i.sp.g { background: var(--green); color: #fff; }   /* a miss: plain, the number in its pocket's colour */
 .tpip .tspins i.sp.hit { color: #fff; border-color: var(--ink); box-shadow: 0 0 0 1.4cqw var(--paper), 0 0 0 2.8cqw currentColor; }
 .tpip .tspins i.sp.hit.X { background: var(--x); color: #fff; box-shadow: 0 0 2.5cqw 1cqw var(--x); } .tpip .tspins i.sp.hit.O { background: var(--o); color: var(--ink); box-shadow: 0 0 2.5cqw 1cqw var(--o); }   /* a hit: in the spinner's colour, glowing */
 .tbull { display: flex; align-items: center; gap: 4cqw; width: 88cqw; }
