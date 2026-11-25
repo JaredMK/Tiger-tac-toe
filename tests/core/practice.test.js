@@ -44,7 +44,7 @@ test('the templates rules (database.rules.json) take a games map of exactly the 
   const rules = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'database.rules.json'), 'utf8')).rules.templates.$uid;
   assert.equal(rules['.read'], 'auth != null && auth.uid === $uid'); assert.equal(rules['.write'], 'auth != null && auth.uid === $uid');
   const v = rules.$id.games.$type['.validate'];
-  const listed = [...v.matchAll(/\$type === '(\w+)'/g)].map(m => m[1]).sort();
+  const listed = [...v.matchAll(/\$type === '([\w-]+)'/g)].map(m => m[1]).sort();
   assert.deepEqual(listed, TYPES.slice().sort(), 'every mini-game, no other');
   assert.match(rules.$id.name['.validate'], /length <= 24/);
   assert.equal(rules.$id.$other['.validate'], false);

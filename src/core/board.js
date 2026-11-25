@@ -72,11 +72,38 @@ export function timeoutClose(mini, p) {
 }
 // The turn passes with no move made (a timeout): to the other player, unless they have no move anywhere.
 function passTurn(state, p, rng) {
+  tickBombs(state, rng);                                          // (a turn missed is a turn on the board: every live bomb ticks)
+  if (state.winner) { state.lock = null; state.lockBy = null; state.screen = 'win'; state.zoom = null; return; }
   let next = other(p);
   if (!anyMove(state, next) && anyMove(state, p)) next = p;
   state.turn = next; state.lock = null; state.lockBy = null; state.pick = null; state.pickSq = null; state.draft = ''; state.sel = [];
   state.screen = 'board'; state.zoom = null;
   markCoins(state, next, rng);
+}
+// After every turn on the main board (a move whose turn passes, a turn passed or missed): each bomb on the board ticks
+// and rolls (a game's rules.js boardTick: Hot Potato), with the turn's rng (the server's online). An explosion gives
+// that square to the winner it names (the holder loses it), which can decide the match. None once the match is won.
+// Returns what happened, square by square: [{ i, n, pct, holder, boom, winner }] (a move's flash carries it: `bombs`).
+export function tickBombs(state, rng, at) {
+  const out = [];
+  if (state.winner || state.sc) return out;
+  state.squares.forEach((sq, i) => {
+    if (state.winner || sq.owner || !sq.mini) return;
+    const tick = rulesOf(sq.mini.type).boardTick;
+    if (typeof tick !== 'function') return;
+    const w = tick(sq.mini, rng);
+    const t = sq.mini.tick;
+    if (!t) return;
+    out.push({ i, n: t.n, pct: t.pct, holder: t.holder, boom: !!w, winner: w || null });
+    if (!w) return;
+    sq.owner = w;
+    if (!Array.isArray(state.sqlog)) state.sqlog = [];
+    state.sqlog.push(sqEntry(sq, sq.mini, 'won', w, i, at, state));
+    const mr = state.practice ? { winner: w, line: null, reason: 'practice', counts: null } : mainResult(state.squares);
+    if (mr) { state.winner = mr.winner; state.winLine = mr.line; state.winReason = mr.reason; state.counts = mr.counts || null; }
+    if (!state.practice) notePoint(state, w);
+  });
+  return out;
 }
 export function lineOpen(squares, p) { return LINES.some(line => line.every(k => squares[k].owner !== other(p))); }
 export function mainResult(squares) {
@@ -218,6 +245,8 @@ export function playMove(state, i, m, rng, opts) {
     state.lock = i;
   } else {
     state.lock = null;
+    const bombs = tickBombs(state, rng, opts.at);                // the turn is over: every live bomb ticks (Hot Potato)
+    if (bombs.length) flash.bombs = bombs;                        // (a bomb that decides the match: state.winner, and the results follow as after any match point: ui/turns.js)
     let next = other(p);
     if (!state.winner && !anyMove(state, next) && anyMove(state, p)) { flash.pass = next; next = p; }
     flash.next = next;                           // who takes over once the phone goes back to the board
@@ -259,12 +288,14 @@ export function leaveSquare(state, stay) {
     state.stamp = null; state.drawStamp = null; state.draft = ''; state.pick = null; state.sel = []; state.notice = null;
     return true;
   }
-  state.stamp = null; state.drawStamp = null;
+  state.stamp = null; state.drawStamp = null; state.boomSq = null;
   if (d && state.sc) state.done = null;                         // Super Chaos: the move is in; nothing passes until the round ends
   else if (d) {
     state.turn = d.next;
-    state.stamp = d.kind === 'claim' ? d.square : null;
-    state.stampId = d.kind === 'claim' ? `${state.id || 'm'}:${state.moves}` : null;  // this claim's stamp: it plays once, whatever re-renders follow
+    const boom = (d.bombs || []).find(b => b.boom);               // a bomb gone off as the turn ended: that square stamps in too (with the claim, or alone)
+    state.stamp = d.kind === 'claim' ? d.square : boom ? boom.i : null;
+    state.stampId = d.kind === 'claim' || boom ? `${state.id || 'm'}:${state.moves}` : null;  // this claim's stamp: it plays once, whatever re-renders follow
+    state.boomSq = boom && d.kind === 'claim' ? boom.i : null;
     state.drawStamp = d.kind === 'draw' ? d.square : null;       // a square drawn and reset: its Draw stamp, then the shuffle into the new game (ui/board.js), once
     state.drawId = d.kind === 'draw' ? `${state.id || 'm'}:${state.moves}:d` : null;
     state.done = null;

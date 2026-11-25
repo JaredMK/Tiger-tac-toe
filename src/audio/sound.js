@@ -670,6 +670,13 @@ def('ddLand', 0.22, (c, d, t) => { sfxTone(c, d, t, 120, .2, { to: 60, vol: .7 }
 def('ddRise', 0.44, (c, d, t) => { [392, 523, 659, 784, 1047].forEach((f, i) => sfxTone(c, d, t + i * .055, f, i === 4 ? .2 : .09, { type: 'triangle', vol: .34, att: .003 })); sfxTone(c, d, t + .22, 2093, .2, { vol: .12, att: .004 }); }, { level: .44 });
 def('ddHop', 0.16, (c, d, t) => { sfxTone(c, d, t, 430, .12, { to: 960, type: 'triangle', vol: .4, att: .006 }); sfxTone(c, d, t + .01, 860, .08, { to: 1700, vol: .1, att: .006 }); }, { level: .34, vary: true });
 // [/doors]
+// [hot-potato] Hot Potato: its sounds (names start `hp`)
+// The toss: a whoosh over and a soft catch. Each tick on the board: a clock's tick and the fuse's fizz. The explosion:
+// a deep boom (a falling thud under a burst of noise) and a rattle of debris after it.
+def('hpToss', 0.4, (c, d, t) => { sfxNoise(c, d, t, .26, { f: 900, to: 2600, q: 1.1, vol: .26, att: .04 }); sfxTone(c, d, t + .3, 220, .08, { to: 150, type: 'triangle', vol: .32, att: .002 }); }, { level: .36 });
+def('hpTick', 0.28, (c, d, t) => { sfxTone(c, d, t, 1900, .03, { type: 'square', vol: .18, att: .001 }); sfxTone(c, d, t + .13, 1500, .03, { type: 'square', vol: .16, att: .001 }); sfxNoise(c, d, t, .26, { f: 5200, q: 2.2, vol: .08, att: .02 }); }, { level: .3 });
+def('hpBoom', 0.9, (c, d, t) => { sfxNoise(c, d, t, .7, { f: 900, to: 120, filter: 'lowpass', vol: .9, att: .003 }); sfxTone(c, d, t, 110, .6, { to: 38, vol: .8, att: .004 }); sfxNoise(c, d, t + .18, .5, { f: 2600, to: 900, q: .9, vol: .18, att: .02 }); }, { level: .62 });
+// [/hot-potato]
 //
 // [rally] Road Race: its sounds (names start `rr`)
 def('rrSqueal', 0.3, (c, d, t) => { sfxNoise(c, d, t, .26, { f: 2300, to: 1700, q: 9, vol: .5, att: .02 }); sfxTone(c, d, t, 1480, .24, { to: 1260, type: 'sawtooth', vol: .1, att: .03 }); }, { level: .3 });   // tyres at a hard lock: a narrow band of noise sliding down, a thin whine under it

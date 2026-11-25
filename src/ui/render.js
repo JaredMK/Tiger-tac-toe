@@ -34,7 +34,7 @@ import { matchEnded, menuShown } from '../net/statscache.js';
 import { matchDone } from './onboard.js';
 import { askMatchDone, endKey } from './acctask.js';
 import { devAct } from '../net/tracking.js';
-import { VIEWS } from '../games/index.js';
+import { GAMES, VIEWS } from '../games/index.js';
 import { seriesRecord } from './series.js';
 import { playFlash } from './turns.js';
 
@@ -67,6 +67,7 @@ function renderNow() {
   // match): it closes when the screen leaves them (the results screen has no menu card to close it, so a
   // menu left open would refuse every tap there). After the match, View board's Menu opens it as ever.
   if (menuOpen && (matchStale() || !['board', 'mini', 'review', 'review-mini'].includes(state.screen) || (state.winner && (state.screen === 'board' || state.screen === 'mini')))) setMenuOpen(false);
+  for (const t in GAMES) { const v = GAMES[t].view; if (v && typeof v.boardWatch === 'function') { try { v.boardWatch(); } catch (e) { /* (a nicety: never what breaks a render) */ } } }   // a game that acts on the board's turns notes what it shows now (Hot Potato's ticks), before the draw
   const view = state.screen + ':' + state.zoom, prev = lastView;
   setEntering(view !== lastView); setLastView(view);
   if (entering) { startFx('enter', view); fx.enter.from = prev; }   // a new screen: the event for its own entry (the zoom into a square; from which: the board's zoom-out from a square)

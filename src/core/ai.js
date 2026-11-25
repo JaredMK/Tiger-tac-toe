@@ -190,6 +190,33 @@ function localKey(state, i, me, st) {
 // opts: level ('easy' | 'normal' | 'hard'; else the match's state.cpuLevel, else normal), clock (a function
 // giving ms, for the time budget), budget (ms), pre ({ square: local } tactics worked out by the caller, e.g.
 // the physics games' outside the worker), noFing (leave a finger game's attempt to the caller: fingPlay).
+// Hot Potato on the main board (its rules: a bomb the holder tosses back, ticking after every turn): the square where
+// `me` holds a live bomb and may toss it now, or null.
+function bombHeld(state, me, open) {
+  for (const i of open) { const m = state.squares[i].mini; if (m && m.type === 'hot-potato' && m.holder === me && !m.boom) return i; }
+  return null;
+}
+// A move that wins the match outright this turn: a square that completes one of `me`'s lines, won by one move for sure
+// (the move worked out on copies of the square under eight draws of chance: won under every one). Null when none.
+function outrightWin(state, me, open, rng) {
+  const SEEDS = 8;
+  for (const i of open) {
+    const sq = state.squares[i];
+    if (!sq.mini || sq.mini.type === 'hot-potato') continue;
+    if (!LINES.some(l => l.includes(i) && l.every(k => k === i || state.squares[k].owner === me))) continue;
+    let b = null;
+    try { b = localBest(publicMini(sq.mini, me), me, makeRng(`hp-win:${i}`), Object.assign({}, STYLE0), { value: 1, behind: 0, level: 'hard', until: null }); } catch (e) { b = null; }
+    const m = b && b.move;
+    if (m == null) continue;
+    let sure = true;
+    for (let k = 0; k < SEEDS && sure; k++) {
+      const copy = JSON.parse(JSON.stringify(sq.mini)), r = applyMove(copy, me, m, makeRng(`hp-win:${i}:${k}`));
+      sure = !!(r && r.ok && r.outcome === 'win' && (r.winner || me) === me);
+    }
+    if (sure) return { square: i, move: m, score: Infinity, value: 1, gain: 1, bomb: false };
+  }
+  return null;
+}
 export function cpuMove(state, rng, style, opts) {
   rng = needRng(rng); opts = opts || {};
   const level = levelOf(opts.level || state.cpuLevel), w = aiWeights(), L = levelCfg(level, w), search = L.search > 0;
@@ -198,6 +225,8 @@ export function cpuMove(state, rng, style, opts) {
   const open = state.lock != null ? [state.lock] : (state.only != null || state.practice) ? [state.only != null ? state.only : PRACTICE_SQ].filter(i => !state.squares[i].owner && canMove(state.squares[i].mini, me))   // (the admin's test play: its one square; a practice match: the centre)
     : state.squares.map((s, i) => (s.owner || !canMove(s.mini, me) ? -1 : i)).filter(i => i >= 0);   // not a square where it is stuck
   if (!open.length) return null;
+  const hot = bombHeld(state, me, open);                          // holding a bomb (Hot Potato): toss it at once, unless the match can be won outright this turn
+  if (hot != null) { const win = outrightWin(state, me, open, rng); return win || { square: hot, move: 'toss', score: 0, value: 0, gain: 0, bomb: true }; }
   if (st.mistake > 0 && open.length && rng() < st.mistake) {      // a careless move: anything legal, anywhere open
     const i = open[randInt(rng, open.length)], m = randomLegalMove(state.squares[i].mini, me, rng);
     if (m != null) return { square: i, move: m, score: 0, value: 0, gain: 0, careless: true };

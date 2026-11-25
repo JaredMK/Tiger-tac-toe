@@ -328,6 +328,12 @@ Play: Hook a duck from the shared pond. It scores 1 to 5, or a boot scores nothi
 Win: First to {target} points.
 Lineup card: Hook a duck from the pond: each scores 1 to 5, or a boot scores nothing. Reach the target first.
 
+## Hot Potato [hot-potato]
+Category: More luck
+Play: Play here to toss the bomb to the other player. Only the player holding it can play here. After every turn on the board, the bomb may go off.
+Win: If it goes off while the other player holds it, the square is yours.
+Lineup card: Toss the bomb to your rival. It ticks after every turn on the board. Be the one not holding it when it blows.
+
 ## Key Drop [keydrop]
 Category: More skill
 Play: Each player has their own machine. Hold the button: the key slides right. Let go and it stops. Hold again: it slides up. Let go, and the key pushes forward. In a keyhole, it knocks that prize into your prize box. You get one hold each way.{rampText}

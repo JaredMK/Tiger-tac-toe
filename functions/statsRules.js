@@ -101,7 +101,7 @@ function checkQuit(q) {
   if (count(q.n, 9999) !== null) out.n = q.n;
   if (q.mp === 1) out.mp = 1;
   if (Number.isInteger(q.i) && q.i >= -1 && q.i <= 8) out.i = q.i;
-  if (typeof q.g === 'string' && /^[a-z0-9]{2,16}$/.test(q.g) && (!QUIT_TYPES.size || QUIT_TYPES.has(q.g)) && out.i >= 0) out.g = q.g;
+  if (typeof q.g === 'string' && /^[a-z0-9-]{2,16}$/.test(q.g) && (!QUIT_TYPES.size || QUIT_TYPES.has(q.g)) && out.i >= 0) out.g = q.g;
   if (Array.isArray(q.st) && q.st.length === 2 && q.st.every(v => Number.isFinite(v) && v >= 0 && v <= 99)) out.st = q.st.map(v => Math.round(v * 10) / 10);
   if (Number.isFinite(q.idle) && q.idle >= 0 && q.idle <= 86400000) out.idle = Math.round(q.idle);
   return out;

@@ -54,6 +54,7 @@ function predictable(mini) {
 function predictMove(i, m, rep) {
   const sq = state.squares && state.squares[i];
   if (!sq || !state.online || !predictable(sq.mini)) return null;
+  if (state.squares.some(s => !s.owner && s.mini && typeof (rulesOf(s.mini.type) || {}).boardTick === 'function' && s.mini.holder)) return null;   // a live bomb on the board (Hot Potato) ticks by chance as every turn ends: the server's roll is the one shown
   const rec = parseMatch(room && room.match);
   if (!rec) return null;
   let r = null, r2 = null;

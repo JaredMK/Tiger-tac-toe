@@ -104,7 +104,7 @@ export function renderBoard(review) {
   const stampAt = !review && state.stamp != null && state.squares[state.stamp] && state.squares[state.stamp].owner ? fxAt('stamp', state.stampId) : null;
   const el = stampAt == null ? Infinity : (performance.now() - stampAt) * durRate('ui');   // (in the stylesheet's base time: the stamp plays at the game's pace)
   const stampOn = el < STAMP_MS;
-  const stamped = i => state.stamp === i || (!!state.sc && Array.isArray(state.stamps) && state.stamps.includes(i));   // (Super Chaos: both players may claim a square in the same round)
+  const stamped = i => state.stamp === i || state.boomSq === i || (!!state.sc && Array.isArray(state.stamps) && state.stamps.includes(i));   // (boomSq: a bomb that went off as a claiming turn ended stamps in with it: Hot Potato)   // (Super Chaos: both players may claim a square in the same round)
   const drawAt = !review && state.drawStamp != null && state.drawId != null && state.squares[state.drawStamp] && !state.squares[state.drawStamp].owner ? fxAt('draw', state.drawId) : null;
   const drawI = drawAt != null && (performance.now() - drawAt) * durRate('ui') < DRAW_MS ? state.drawStamp : null;   // (after it, the new game simply sits there: nothing replays it)
   const lastP = review ? null : scLastPlayed();                       // Super Chaos: the square each player played last, a badge in their colour on it

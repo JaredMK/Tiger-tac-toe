@@ -243,9 +243,11 @@ export function dismissFlash() {
   const hold = f.type === 'memory' && f.kind === 'move' && !state.winner;   // let the two cards turn back over first
   const from = { turn: state.turn, mini: state.screen === 'mini' }, quiet = !!(fx.move && fx.move.key === f && fx.move.quiet);
   endFlash(state, hold);
-  const ended = f.kind === 'match' && !!state.winner && state.screen === 'win' && !state.sc && state.squares[f.square] && state.squares[f.square].owner;
+  const boomEnd = !state.sc && (f.bombs || []).find(b => b.boom && state.squares[b.i] && state.squares[b.i].owner);   // (a bomb gone off as the turn ended: Hot Potato)
+  const endSq = f.kind === 'match' && state.squares[f.square] && state.squares[f.square].owner ? f.square : boomEnd ? boomEnd.i : null;
+  const ended = (f.kind === 'match' || !!boomEnd) && !!state.winner && state.screen === 'win' && !state.sc && endSq != null;
   if (ended && !state.practice) {                    // the square that ended the match: back to the main board first, where it stamps in; then the match's end (toWin)
-    state.screen = 'board'; state.zoom = null; state.stamp = f.square; state.stampId = `${state.id || 'm'}:${state.moves}`;
+    state.screen = 'board'; state.zoom = null; state.stamp = endSq; state.stampId = `${state.id || 'm'}:${state.moves}`;
     clearTimeout(winTimer); winTimer = setTimeout(toWin, zoomLeft() + (speedMode() ? dur(STAMP_MS * 0.6 + WIN_AFTER) : dur(STAMP_MS + WIN_AFTER)));   // (after the zoom-out has landed and the stamp played; Speed: the end screen comes in as the stamp settles)
   }
   if (hold && state.done) { startFx('back', state.done); if (!quiet) SND.play('flipDown'); }   // the two cards turning back over

@@ -404,7 +404,7 @@ export function presentEntry(st, e, rest) {
   state.squares[e.square] = clone(e.after); mergeMySides();
   state.turn = e.by; state.lock = e.kind === 'again' ? e.square : null;
   state.moves = e.moves; state.lastSquare = e.square; state.lastBy = e.by;
-  const over = e.kind === 'match';
+  const over = e.kind === 'match' || (!!st.winner && (e.bombs || []).some(b => b.boom));   // (or a bomb gone off as the turn ended decided it: Hot Potato)
   state.winner = over ? st.winner || e.winner : null;           // (the match's result: a square won can also leave a draw)
   if (!over) { state.winLine = null; state.winReason = null; state.counts = null; }
   const f = Object.assign({}, e); delete f.after; delete f.seq; delete f.moves; delete f.before;

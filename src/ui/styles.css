@@ -7079,3 +7079,53 @@ button.jgcell { cursor: pointer; touch-action: none; }
 .tbrb { fill: #c27b3c; stroke: var(--ink); stroke-width: 1.8; } .tbrb.g { fill: #2fb38a; } .tbrh { stroke: #3b3f4a; stroke-width: 1.6; }
 .tbrt { stroke: var(--ink); stroke-width: 1.8; } .tbrt.X { fill: var(--x); } .tbrt.O { fill: var(--o); }
 /* [/barrel] */
+/* [hot-potato] Hot Potato (src/games/hot-potato/view.js; its moments are rules.js HPT: toss 620, tick 520, boom 760).
+   The square: a table split in two, each half a player's (token, name), the bomb on the holder's half (the middle before
+   the first toss); a toss arcs it over; the tick count and the next tick's chance; the reserved line; Toss. The board's
+   miniature: the bomb over the holder's mark (a tick shakes it and flares the fuse; an explosion bursts) and the chance. */
+.g-hp { width: min(var(--gw), 440px); height: min(var(--gh), 560px); display: flex; flex-direction: column; gap: 10px; }
+.g-hp > * { flex: none; }
+.hptable { position: relative; flex: 1 1 0; min-height: 150px; display: grid; grid-template-columns: 1fr 1fr; border: 3.5px solid var(--ink); border-radius: 14px; box-shadow: 0 4px 0 var(--ink); background: var(--felt-green); overflow: hidden; container-type: size; }
+.hpside { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; padding: 10px 6px 12px; min-width: 0; --tk: 34px; }
+.hpside + .hpside { border-left: 3px dashed color-mix(in srgb, var(--ink) 45%, transparent); }
+.hpside.hold { background: color-mix(in srgb, var(--paper) 16%, transparent); }
+.hpside.lost { filter: grayscale(.6); }
+.hpnm { max-width: 100%; padding: 2px 8px 0; border: 2.5px solid var(--ink); border-radius: 9px; background: var(--paper); font: 400 var(--txt-min)/1.3 var(--font-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hpwhere { position: absolute; top: 14%; width: min(42cqw, 62cqh); left: 50%; translate: -50% 0; transition: none; }
+.hpwhere.atX { left: 25%; } .hpwhere.atO { left: 75%; }
+.hpbomb { display: block; width: 100%; height: auto; overflow: visible; }
+.hpball { fill: var(--ink); stroke: var(--ink); stroke-width: 2.5; }
+.hpshine { fill: none; stroke: var(--paper); stroke-width: 3; stroke-linecap: round; opacity: .75; }
+.hpcap { fill: var(--stone); stroke: var(--ink); stroke-width: 2.2; }
+.hpfuse { fill: none; stroke: var(--wood); stroke-width: 2.6; stroke-linecap: round; }
+.hpspark path { fill: var(--gold); stroke: var(--ink); stroke-width: 1.2; stroke-linejoin: round; transform-box: fill-box; transform-origin: center; animation: hpspark .5s ease-in-out infinite alternate; }   /* (a loop: real time) */
+@keyframes hpspark { from { transform: scale(.75) rotate(0deg); } to { transform: scale(1.15) rotate(20deg); } }
+.hpwhere.fly { animation: hpfly .62s cubic-bezier(.4, 0, .2, 1) both; }
+.hpwhere.fromX.toO { --hx0: 25%; --hx1: 75%; } .hpwhere.fromO.toX { --hx0: 75%; --hx1: 25%; }
+@keyframes hpfly { 0% { left: var(--hx0); translate: -50% 0; rotate: 0deg; } 50% { translate: -50% -38%; rotate: 200deg; } 100% { left: var(--hx1); translate: -50% 0; rotate: 360deg; } }
+.hpwhere.fly .hpbomb { animation: hpland .38s .62s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes hpland { 0% { transform: scale(1.12, .86); } 100% { transform: none; } }
+.hpboom { position: absolute; inset: 8% 14%; display: grid; place-items: center; }
+.hpboom svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; animation: hpburst .76s cubic-bezier(.3, 1.4, .5, 1) both; }
+.hpboom b { position: relative; font: 400 clamp(28px, 16cqw, 54px)/1 var(--font-display); color: var(--x); -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; letter-spacing: .03em; }
+.hpburst { fill: var(--gold); stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; }
+@keyframes hpburst { from { transform: scale(.2) rotate(-20deg); opacity: 0; } 60% { transform: scale(1.12) rotate(4deg); opacity: 1; } to { transform: none; } }
+.hpinfo { display: flex; justify-content: center; gap: 10px; }
+.hpchip { padding: 4px 12px 2px; border: 2.5px solid var(--ink); border-radius: 10px; background: var(--paper); box-shadow: 0 2px 0 var(--ink); font: 700 var(--txt-min)/1.3 var(--font-text); }
+.hpchip b { font: 400 18px/1 var(--font-display); }
+.hpchip.off { opacity: .5; }
+.hpline { margin: 0; height: 28px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 400 21px/28px var(--font-display); letter-spacing: .02em; }
+.g-hp .hpgo { height: 56px; }
+/* the miniature */
+.tart.thpw { gap: 2cqw; width: 94cqw; } .tart.thpw .tpic { width: 52cqw; } .tart.thpw .tpip { width: auto; flex: 1; display: grid; place-items: center; }
+.thp { width: 100%; height: auto; display: block; overflow: visible; }
+.thp .hpball { stroke-width: 2; } .thp .hpspark path { animation: none; }
+.hptk { transform-box: fill-box; transform-origin: 50% 70%; animation: hptick .52s cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes hptick { 0%, 100% { transform: none; } 20% { transform: rotate(-12deg) scale(1.08); } 45% { transform: rotate(10deg) scale(1.12); } 70% { transform: rotate(-6deg) scale(1.05); } }
+.hptk.bm { animation: hptick .52s cubic-bezier(.4, 0, .2, 1) both, hpgone .2s .52s ease-in both; }
+@keyframes hpgone { to { transform: scale(1.5); opacity: 0; } }
+.hpmboom { animation: hpburst .76s cubic-bezier(.3, 1.4, .5, 1) both; transform-box: fill-box; transform-origin: center; }
+.hppct { font: 400 var(--mt, 16px)/1 var(--font-display); color: var(--ink); padding: .12em .3em 0; border: max(2px, .9cqw) solid var(--ink); border-radius: 2.4cqw; background: var(--paper); white-space: nowrap; }
+.hppct.boom { background: var(--gold); }
+@media (prefers-reduced-motion: reduce) { .hpwhere.fly, .hpwhere.fly .hpbomb, .hptk, .hpmboom, .hpboom svg, .hpspark path { animation: none; } }
+/* [/hot-potato] */

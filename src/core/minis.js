@@ -17,7 +17,7 @@ import { tuneSnap, tuneVersion } from './tune.js';
 
 // Does p have a legal move in this mini-game? Only Hexapawn can leave a player stuck; every other game
 // always offers a move. A stuck player simply plays in another square.
-export function canMove(mini, p) { return mini.type === 'hexapawn' ? hpMoves(mini.cells, p).length > 0 : mini.type === 'trivia' ? !!(mini.ask && (mini.ask.q || mini.ask.down)) : mini.type === 'patterns' ? !!mini.puz : mini.type === 'golf' ? !mini.holed[p] : true; }   // (Trivia: only with its question dealt)
+export function canMove(mini, p) { const own = rulesOf(mini.type).canMove; if (typeof own === 'function') return own(mini, p); return mini.type === 'hexapawn' ? hpMoves(mini.cells, p).length > 0 : mini.type === 'trivia' ? !!(mini.ask && (mini.ask.q || mini.ask.down)) : mini.type === 'patterns' ? !!mini.puz : mini.type === 'golf' ? !mini.holed[p] : true; }   // (Trivia: only with its question dealt)
 // Saved games and rooms from before Four in a Row grew to 7 columns: the old 5-wide board gets an empty
 // column on each side, so every piece keeps its place (and its support) in the middle five.
 export function upgradeMini(mini) {

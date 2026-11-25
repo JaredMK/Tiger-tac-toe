@@ -26,6 +26,10 @@ function duel(type, lx, lo, N, tuneSet, opts) {
           else { const w = r.winner || p; out.decided++; if (w === 'X') out.first++; each.push((n.X + n.O) / 2); winner.push(n[w]); }
           break;
         }
+        if (!r.again && typeof (E.rulesOf(type) || {}).boardTick === 'function') {   // a turn over: a game that ticks with the board's turns (Hot Potato's bomb) ticks
+          const w = E.rulesOf(type).boardTick(m, rng);
+          if (w) { done = true; out.decided++; if (w === 'X') out.first++; each.push((n.X + n.O) / 2); winner.push(n[w]); break; }
+        }
         fresh = !r.again; if (!r.again) p = p === 'X' ? 'O' : 'X';
       }
       if (!done) out.open++;

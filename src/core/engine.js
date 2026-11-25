@@ -5,7 +5,7 @@
 // same modules, so a move is checked the same way on a phone and on the server.
 
 export { cpuEcho, STYLE0, AI_CLOCK, localForget, AI, needsOf, winChance, localBest, localPlain, aiSlip, squareValue, moveGain, cpuMove, catchUp, CATCH, CLOSE, closeTo, raceChance, RACE_K, SAFE, safeLead } from './ai.js';
-export { lineOpen, majorityResult, LINES, timeoutMove, mainResult, playMove, endFlash, leaveSquare, sqEntry, SQ_GAP_MS } from './board.js';
+export { lineOpen, majorityResult, LINES, timeoutMove, mainResult, playMove, endFlash, leaveSquare, sqEntry, SQ_GAP_MS, tickBombs } from './board.js';
 export { SC, scTypes, isChaos, scHuman, scSquareMini, startChaos, scBegin, scCpu, chaosPlay, chaosTimeout, chaosResolve, chaosNext, scPool, scMainResult, SC_ONLINE, startChaosOnline, scMoveOf, chaosResolveOnline, scRoundStart, scRecapOrder } from './chaos.js';
 export { cfgKit, lohi, SUPER_CHAOS_ENABLED } from './config.js';
 export { isReleased, releasedTypes, allowedTypes, restrictGames, FIND_MATCH_HOLD, findMatchTypes, inRotation, retireDate, retiredOn, retireList, depriOn, gameStatus, leavingOn, leavingDate } from './games.js';

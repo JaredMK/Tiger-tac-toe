@@ -32,6 +32,7 @@ for (const n of ['hvNo']) BAD_SOUNDS.add(n);   // [hive] bad
 //
 for (const n of ['ddLand']) RESULT_SOUNDS.add(n);   // [doors] results
 for (const n of ['ddBonk']) BAD_SOUNDS.add(n);   // [doors] bad
+for (const n of ['hpBoom']) RESULT_SOUNDS.add(n);   // [hot-potato] results
 //
 for (const n of []) RESULT_SOUNDS.add(n);   // [rally] results
 for (const n of []) BAD_SOUNDS.add(n);   // [rally] bad
