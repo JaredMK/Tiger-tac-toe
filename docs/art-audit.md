@@ -121,3 +121,24 @@ Pinball, Point Roll, Poker Hands, Pool, Puzzle Build, Rhythm Tap, Ride the Bus, 
 Lite, Scoop Stack, Scratch & Match, Seating, Shape Split, Shell Game, Shelves, Ship Captain & Crew, Shuffleboard, Shut
 the Box, Sky Hop, Snake, Snapshot, Sniff, Split It, Standoff Grid, Star Swarm, Tank Duel, Target Practice, Thirty-One,
 Trail Race, Treasure Hunt, Trivia, Twist Four, Wall Race, Word Tiles.
+
+## 6. Fixed (25 November 2026)
+
+The fix list was worked through in its order; the same states were shot again into `docs/art-audit/after/` (`<id>-<win|lose>-<setup|mid|opp|square>.jpg`).
+
+| # | Done |
+|---|---|
+| 1 | Little Wheel: flat wheel on tokens (paper and ink pockets, green 0), larger numbers, tallies across the top; its labels say light and dark. |
+| 2 | Bullseye: flat wall and floor on tokens, an ink-outlined board, flat darts, an ink-framed panel. |
+| 3 | Table tokens (`--felt-green`, `--felt-blue`, `--felt-pink`, `--felt-teal`, `--wood`): 25 hardcoded felt gradients and the wood rails replaced, in the listed games and the other card and dice tables. |
+| 4 | Four in a Row and Takeover draw their marks with the shared `markSvgG` (Coin Flip already did). |
+| 5 | Five Letters' and Higher/Lower's guesses left are `arcTally` boxes across the top; Peg Drop's tally keeps the name whole (`.ctals.two`). Risky Rolls' score cards are left: they are already ink-framed, and their bank and bust animation is tested as it is. |
+| 6 | `--txt-min` (14px) on the text that measured under it: Little Wheel's groups, line and chips, Takeover's bar, the tallies' "/ goal", Higher/Lower's captions, Sea Battle's caption, War's labels. Left: the track's START/FINISH pills (they cannot hold larger letters), the Enter key, pin flags. |
+| 7 | Five Letters' wrong-spot colour is `--clue` blue; the explainers say Blue. |
+| 8 | Claw Machine: cabinet, glass, floor and prizes on tokens, no gloss or shaded sides, a bolder claw and cable, Drop greyed on the computer's turn. |
+| 9 | Peg Drop: its board was already a mix of tokens; the frame, bonus text and gold fills now are too. |
+| 10 | Nunito replaced by `--font-text` everywhere (stylesheet and canvases). |
+| 11 | Takeover's grid fills its page (Tank Duel's `.g-tk` rules had held it to the top). Codebreaker's rows are left at their size (the uniform rows of December 2026). |
+| 12 | Codebreaker's code bar is an ink-framed panel and its feedback pegs are larger; Coin Flip's unflipped coin is flat paper. Left: Hangman's blanks (the line carries the finder's colour), Snakes and Ladders (its numbers are already drawn over the ladders), Bump's pink (already a token). |
+| 13 | `--font-display` (Luckiest Guy) is the one display face inside the games; the frame keeps Bangers. |
+| 14 | Both frames were timing: Tic-Tac-Toe's line and Codebreaker's reveal play about a second after the shot was taken. |
