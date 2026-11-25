@@ -262,7 +262,7 @@ export function init() {
     } else if (act === 'first-go') {             // a first visit's one big Play (ui/onboard.js): the starter board, at once
       guardNew(() => playStarter(true));
     } else if (act === 'cpu-go') {               // the main menu: Play Computer, its setup (You vs Computer, your side, mini-games, level), then Start
-      state.setup.mode = 'two'; state.setup.vs = 'cpu'; normSetup(state.setup); normCpu(state.setup); state.screen = 'setup'; setAdvOpen(false); commit();
+      guardNew(() => { state.setup.mode = 'two'; state.setup.vs = 'cpu'; normSetup(state.setup); normCpu(state.setup); state.screen = 'setup'; setAdvOpen(false); commit(); });   // (a saved match: asked right here, as the player taps to play a new game)
     } else if (act === 'same-go') {              // Play a Friend: Same phone, two people on this phone (its setup: names, sides, mini-games)
       state.setup.mode = 'two'; state.setup.vs = 'same'; normSetup(state.setup); normLocal(state.setup).p2 = scPicked() ? 'cpu' : 'human'; state.screen = 'setup'; setAdvOpen(false); commit();
     } else if (act === 'cside') {                // Play Computer: your side, X, O or Random (drawn at every start)
@@ -314,8 +314,7 @@ export function init() {
     } else if (act === 'rematch-cancel') {        // the rematch asked for, taken back
       rematchCancel();
     } else if (act === 'friend-go') {             // the main menu: Play a Friend (Host, Join, or Same phone)
-      state.screen = 'friend'; setNet('idle', ''); commit();
-      connectQuiet();
+      guardNew(() => { state.screen = 'friend'; setNet('idle', ''); commit(); connectQuiet(); });
     } else if (act === 'find-go') {               // the main menu: Find Match (or back to the match in progress)
       if (activeElsewhere()) openFind(); else guardNew(openFind);
     } else if (act === 'search-bot') {           // the search screen's offer, about 20 s alone: the computer (net/matchmaking.js searchBot)

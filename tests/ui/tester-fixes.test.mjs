@@ -55,6 +55,7 @@ test('Start a new game?: every new-match path goes through guardNew; the dialog 
   const src = readFileSync(new URL('../../src/ui/input.js', import.meta.url), 'utf8');
   for (const path of ["guardNew(() => playStarter(true))", "guardNew(() => playComputer())", "guardNew(() => practiceStart(", "guardNew(openFind)", "guardNew(() => hostRoom(null, false))", "guardNew(() => joinRoom(joinCode, joinName, false))"]) assert.ok(src.includes(path), path);
   assert.match(src, /guardNew\(\(\) => \{\s*seatLocal/, 'Same phone\'s Start');
+  assert.match(src, /act === 'cpu-go'[^\n]*\n\s*guardNew\(/, 'Play Computer: asked right at the tap on the main menu'); assert.match(src, /act === 'friend-go'[^\n]*\n\s*guardNew\(/, 'Play a Friend: likewise');
   const main = readFileSync(new URL('../../src/main.js', import.meta.url), 'utf8');
   assert.equal((main.match(/guardNew\(/g) || []).length, 5, 'the links: Find Match and a room, at the start and while it runs');
   const { renderNewAsk } = await import('../../src/ui/screens/online.js');

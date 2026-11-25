@@ -166,7 +166,15 @@ export function quitOnBoot(navType) {
   heldLocal = { reason, at, id: s.id, sq: state.screen === 'mini' && Number.isInteger(state.zoom) ? state.zoom : -1 };
   return null;
 }
-export const holdingLocal = () => !!(heldLocal && liveLocal() && state.stats.id === heldLocal.id);
+// A local match under way that the main menu is showing over (held from the last visit, or left on the menu any other way):
+// held for Continue match all the same.
+export function holdingLocal() {
+  if (!liveLocal()) return false;
+  if (heldLocal && state.stats.id === heldLocal.id) return true;
+  if (state.screen !== 'menu') return false;
+  heldLocal = { reason: 'closed', at: Number(state.lastAt) || Date.now(), id: state.stats.id, sq: -1 };
+  return true;
+}
 export function continueHeld() {
   if (!holdingLocal()) { heldLocal = null; return false; }
   heldLocal = null;
