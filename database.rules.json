@@ -72,19 +72,19 @@
       "soon": {
         "$type": {
           ".write": "auth != null && auth.token.admin === true",
-          ".validate": "$type.matches(/^[a-z0-9]{2,16}$/) && (newData.val() === true || (newData.isString() && newData.val().matches(/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/)))"
+          ".validate": "$type.matches(/^[a-z0-9-]{2,16}$/) && (newData.val() === true || (newData.isString() && newData.val().matches(/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/)))"
         }
       },
       "depri": {
         "$type": {
           ".write": "auth != null && auth.token.admin === true",
-          ".validate": "$type.matches(/^[a-z0-9]{2,16}$/) && newData.val() === true"
+          ".validate": "$type.matches(/^[a-z0-9-]{2,16}$/) && newData.val() === true"
         }
       },
       "leaving": {
         "$type": {
           ".write": "auth != null && auth.token.admin === true",
-          ".validate": "$type.matches(/^[a-z0-9]{2,16}$/) && (newData.val() === true || (newData.isString() && newData.val().matches(/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/)))"
+          ".validate": "$type.matches(/^[a-z0-9-]{2,16}$/) && (newData.val() === true || (newData.isString() && newData.val().matches(/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/)))"
         }
       },
       "retire": {
@@ -92,7 +92,7 @@
           ".validate": "$p.matches(/^(all|web|ios)$/)",
           "$type": {
             ".write": "auth != null && auth.token.admin === true",
-            ".validate": "$type.matches(/^[a-z0-9]{2,16}$/) && newData.isString() && newData.val().matches(/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/)"
+            ".validate": "$type.matches(/^[a-z0-9-]{2,16}$/) && newData.isString() && newData.val().matches(/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/)"
           }
         }
       },
@@ -101,13 +101,13 @@
           ".validate": "$p.matches(/^(web|ios)$/)",
           "$type": {
             ".write": "auth != null && auth.token.admin === true",
-            ".validate": "$type.matches(/^[a-z0-9]{2,16}$/) && newData.isBoolean()"
+            ".validate": "$type.matches(/^[a-z0-9-]{2,16}$/) && newData.isBoolean()"
           }
         }
       },
       "$type": {
         ".write": "auth != null && auth.token.admin === true",
-        ".validate": "$type.matches(/^[a-z0-9]{2,16}$/) && newData.isBoolean()"
+        ".validate": "$type.matches(/^[a-z0-9-]{2,16}$/) && newData.isBoolean()"
       }
     },
     "presence": {
@@ -441,7 +441,7 @@
       "lineup": {
         "$type": {
           ".write": "auth != null && auth.token.admin === true",
-          ".validate": "$type.matches(/^[a-z0-9]{2,16}$/) && newData.hasChildren()",
+          ".validate": "$type.matches(/^[a-z0-9-]{2,16}$/) && newData.hasChildren()",
           "blurb": {
             ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 120"
           },
@@ -724,7 +724,7 @@
       "tune": {
         ".write": "auth != null && auth.token.admin === true",
         "$type": {
-          ".validate": "$type.matches(/^[a-z0-9]{2,16}$/)",
+          ".validate": "$type.matches(/^[a-z0-9-]{2,16}$/)",
           "$k": {
             ".validate": "$k.matches(/^[A-Za-z0-9_]{1,24}$/) && (newData.isNumber() || (newData.isString() && newData.val().length <= 24))"
           }
