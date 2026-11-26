@@ -357,6 +357,9 @@
       ".read": "auth != null && auth.token.admin === true"
     },
     "admin": {
+      "envLog": {
+        ".read": "auth != null && auth.token.admin === true"
+      },
       "config": {
         ".read": "auth != null && auth.token.admin === true",
         ".write": "auth != null && auth.token.admin === true"

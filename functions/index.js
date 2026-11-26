@@ -93,6 +93,7 @@ const S = require('./statsRules.js');
 S.quitTypes(E.TYPES.concat(E.OLD_TYPES));   // (the mini-games a match's quit facts may name)
 const B = require('./bots.js');
 const ML = require('./matchLogRules.js');
+const ENV = require('./envRules.js');
 
 setGlobalOptions({ region: 'us-central1', maxInstances: 10, memory: '256MiB' });
 const cfg = JSON.parse(process.env.FIREBASE_CONFIG || '{}');
@@ -1145,6 +1146,67 @@ async function opsAlert(key, subject, text, o) {
   return res;
 }
 // The dashboard's "Send a test alert": the channels as set (or as asked), whatever the limits.
+// ---------- Compare environments (November 2026: the admin page's #envs, src/admin/envs.js; functions/envRules.js) ----------
+// The admin's settings on this project and the other one (staging and production), read and copied here, on the server, as
+// this project's own service account: never a key in the page. Reading the other project needs that account to hold
+// "Firebase Realtime Database Admin" on it (a one-time grant by the owner, per direction: the page says the exact account
+// when it is missing). Every copy is one setting, confirmed on the page against the values it showed (refused when either
+// side changed since), and logged on both projects (admin/envLog: who, when, the path, the old and new value).
+let peerApp = null;
+function peerOf() {
+  const emu = process.env.FUNCTIONS_EMULATOR === 'true';
+  const peer = emu ? `${projectId}-peer` : ENV.peerOf(projectId);   // (the emulator: a second database of its own, for the tests)
+  if (!peer) throw new HttpsError('failed-precondition', 'This project has no other environment.');
+  if (!peerApp) peerApp = admin.initializeApp({ databaseURL: `https://${peer}-default-rtdb.firebaseio.com` }, 'peer');
+  return { db: peerApp.database(), project: peer };
+}
+async function runAs() {                                           // (this function's own service account, for the page's setup note)
+  try { const r = await fetch('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email', { headers: { 'Metadata-Flavor': 'Google' } }); return r.ok ? (await r.text()).trim() : null; } catch (e) { return null; }
+}
+const noPeer = async (e, peer) => {
+  if (e instanceof HttpsError) throw e;
+  logger.warn('envs: the other project cannot be read', { peer, err: String(e && e.message || e) });
+  throw new HttpsError('failed-precondition', 'The other environment cannot be read from here.', { setup: true, peer, account: await runAs(), role: 'roles/firebasedatabase.admin' });
+};
+const readRoots = async d => Object.fromEntries(await Promise.all(ENV.ROOTS.map(async r => [r, (await d.ref(r).get()).val()])));
+async function lastTimes(d) {                                      // a setting's last change where it is kept: a game's settings saves (config/versionLog), the copies made here (admin/envLog)
+  const [vl, log] = await Promise.all([d.ref('config/versionLog').get(), d.ref('admin/envLog').orderByKey().limitToLast(300).get()]);
+  const tune = {};
+  for (const [t, vs] of Object.entries(vl.val() || {})) for (const v of Object.values(vs || {})) if (v && Number.isFinite(v.at) && !(tune[t] >= v.at)) tune[t] = v.at;
+  return { tune, log: Object.values(log.val() || {}) };
+}
+exports.envCompare = onCall(CALL, async req => {
+  needAdmin(req);
+  const peer = peerOf();
+  const [here, there] = await Promise.all([readRoots(db), readRoots(peer.db).catch(e => noPeer(e, peer.project))]);
+  const [th, tp] = await Promise.all([lastTimes(db), lastTimes(peer.db).catch(() => ({ tune: {}, log: [] }))]);
+  return { here: { project: projectId, env: ENV.envOf(projectId), values: here, times: th }, peer: { project: peer.project, env: ENV.envOf(peer.project), values: there, times: tp }, roots: ENV.ROOTS };
+});
+// One setting copied: d { path, to: 'here' | 'peer', from, was } (from: the source's value the page showed, was: the
+// target's). The value written is the source's as read now, never one sent by the page.
+exports.envCopy = onCall(CALL, async req => {
+  const uid = needAdmin(req), d = req.data || {};
+  if (!ENV.allowed(d.path)) throw new HttpsError('invalid-argument', 'Not a setting this page may copy.');
+  if (d.to !== 'here' && d.to !== 'peer') throw new HttpsError('invalid-argument', 'Copy to where?');
+  const peer = peerOf();
+  const src = d.to === 'here' ? peer : { db, project: projectId }, dst = d.to === 'here' ? { db, project: projectId } : peer;
+  let from, was;
+  try { [from, was] = await Promise.all([src.db.ref(d.path).get(), dst.db.ref(d.path).get()]).then(r => r.map(x => x.val())); } catch (e) { await noPeer(e, peer.project); }
+  if (!ENV.same(from, d.from) || !ENV.same(was, d.was)) return { ok: false, changed: true, from, was };   // (either side changed since the page read it: look again)
+  if (ENV.same(from, was)) return { ok: true, same: true };
+  const email = (req.auth.token && req.auth.token.email) || null, at = now();
+  await dst.db.ref(d.path).set(from === undefined ? null : from);
+  const game = ENV.tuneGame(d.path);
+  if (game) {                                                       // a game's settings changed there: a new settings version there, as the admin's Save makes (core/tune.js)
+    const r = await dst.db.ref(`config/versions/${game}`).transaction(cur => (Number.isInteger(cur) && cur >= 1 ? cur : 1) + 1);
+    const key = d.path.slice(`config/tune/${game}/`.length) || '(all)';
+    await dst.db.ref(`config/versionLog/${game}/v${r.snapshot.val()}`).set({ at, by: email || uid, ch: { [key]: { from: was == null ? 'default' : was, to: from == null ? 'default' : from } }, note: `copied from ${ENV.envOf(src.project)}` });
+  }
+  const entry = { at, uid, email, path: d.path, from: ENV.envOf(src.project), to: ENV.envOf(dst.project), old: was == null ? null : JSON.stringify(was), new: from == null ? null : JSON.stringify(from) };
+  await Promise.all([db.ref('admin/envLog').push(entry), peer.db.ref('admin/envLog').push(entry).catch(() => {})]);
+  logger.info('envs: a setting copied', entry);
+  return { ok: true, at };
+});
 exports.testAlert = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async req => {
   needAdmin(req);
   const ac = B.alertConfig(await adminConfig()), d = req.data || {};

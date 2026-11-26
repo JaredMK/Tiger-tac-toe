@@ -222,6 +222,17 @@ a { color: inherit; }
   .funnel { grid-template-columns: minmax(0, 40%) 1fr max-content; font-size: 14px; }
   .top .who { display: none; }
 }
+/* Compare environments (#envs, src/admin/envs.js) */
+.relmark { display: inline-block; padding: 1px 5px; border-radius: 4px; background: var(--x); color: #fff; font-size: 11px; letter-spacing: .04em; vertical-align: middle; }
+.relwarn { color: var(--x); }
+tr.envrel.envdiff td { background: color-mix(in srgb, var(--x) 9%, #fff); }
+tr.envdiff td code { font-weight: 700; }
+.btn.warn { border-color: var(--x); color: var(--x); }
+.btn.go.warn { background: var(--x); color: #fff; }
+.envask { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; z-index: 50; padding: 16px; }
+.envask .card { max-width: 560px; width: 100%; }
+.envba { width: 100%; border-collapse: collapse; margin: 8px 0 12px; } .envba th { text-align: left; padding: 6px 8px 6px 0; white-space: nowrap; vertical-align: top; } .envba td { padding: 6px 0; word-break: break-all; }
+.chkl { display: inline-flex; gap: 6px; align-items: center; margin-right: 12px; }
 </style>
 </head>
 <body>

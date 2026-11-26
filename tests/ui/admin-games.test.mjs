@@ -132,7 +132,7 @@ test('one bar of sections on every page: Overview, Players, Matches, Games, Grow
   for (const h of ['', '#overview', '#players', '#matches', '#games', '#games/ttt', '#growth', '#health', '#settings']) {
     const html = draw(h);
     assert.deepEqual([...html.matchAll(/<nav class="nav"[\s\S]*?<\/nav>/g)].length, 1, h);
-    assert.deepEqual([...html.match(/<nav class="nav"[\s\S]*?<\/nav>/)[0].matchAll(/href="#(\w+)"/g)].map(m => m[1]), ['overview', 'players', 'matches', 'games', 'growth', 'health', 'settings'], h);
+    assert.deepEqual([...html.match(/<nav class="nav"[\s\S]*?<\/nav>/)[0].matchAll(/href="#(\w+)"/g)].map(m => m[1]), ['overview', 'players', 'matches', 'games', 'growth', 'health', 'settings', 'envs'], h);
   }
   assert.match(draw(''), /href="#overview" aria-current="page"/, 'no hash: the Overview');
   assert.match(draw('#games/ttt'), /href="#games" aria-current="page"/);

@@ -71,6 +71,7 @@ function draw() {
     growth: () => P.growth(ctx),
     health: () => P.health(ctx),
     settings: () => settingsPage(),
+    envs: () => envsView(),
     drill: () => P.drill(ctx, location.hash.replace(/^#\/?drill\//, '')),
   };
   const title = game ? `${gameIcon(sub)}${esc(GAMES[sub])}` : where === 'players' && sub ? 'Player' : where === 'matches' && sub ? 'Match' : where === 'drill' ? 'The rows behind a number' : (NAV.find(x => x[0] === where) || NAV[0])[1];
@@ -82,7 +83,7 @@ function draw() {
 }
 // ---------- the sections (December 2026): one bar on every page; a game's page is #games/<type>, a person #players/<id>,
 // a match #matches/<id>, the rows behind a number #drill/<metric> ----------
-const NAV = [['overview', 'Overview'], ['players', 'Players'], ['matches', 'Matches'], ['games', 'Games'], ['growth', 'Growth'], ['health', 'Health'], ['settings', 'Settings']];
+const NAV = [['overview', 'Overview'], ['players', 'Players'], ['matches', 'Matches'], ['games', 'Games'], ['growth', 'Growth'], ['health', 'Health'], ['settings', 'Settings'], ['envs', 'Compare environments']];
 // The pages from before (bookmarks): each opens where its content went.
 const ALIAS = { playtest: 'players', devices: 'settings', stats: 'games', balance: 'games', bots: 'settings', access: 'settings', releases: 'games' };
 function route() {
@@ -94,6 +95,39 @@ function route() {
   if (to) { parts.length = 0; parts.push(...to); const h = '#' + to.join('/'); try { history.replaceState(null, '', h); } catch (e) { /* (drawn as the new page anyway) */ } }
   if (!NAV.some(x => x[0] === parts[0]) && parts[0] !== 'drill') parts[0] = 'overview';
   return parts;
+}
+// ---------- Compare environments (November 2026): staging's and production's admin settings, one copied at a time ----------
+// (src/admin/envs.js draws it; the server reads both projects and copies, functions/index.js envCompare and envCopy)
+let ENVS = null;
+const env = { data: null, err: null, all: false, ask: null, msg: '', busy: false, at: 0 };
+function envsView() {
+  if (!ENVS) { import('./src/admin/envs.js').then(m => { ENVS = m; render(); }); return '<div class="card"><p>Loading…</p></div>'; }
+  if (!env.data && !env.err && !env.busy) envLoad();
+  const label = (t, k) => { const f = tuneList(t).find(x => x.k === k); return f ? `${f.label} (${k})` : null; };
+  return ENVS.envsPage({ data: env.data, err: env.err, all: env.all, ask: env.ask, msg: env.msg, busy: env.busy, names: GAMES, gameIcon, label });
+}
+async function envLoad() {
+  env.busy = true; env.err = null; render();
+  try { env.data = (await fb.fnM.httpsCallable(fb.fns, 'envCompare')({})).data; env.at = Date.now(); }
+  catch (e) { env.err = { message: e.message, details: e.details || null }; env.data = null; }
+  env.busy = false; render();
+}
+function envAsk(b) {
+  const r = ENVS.envRows(env.data, GAMES).find(x => x.path === b.dataset.path);
+  if (!r) return;
+  const to = b.dataset.envcopy, toProd = to === 'production';
+  env.ask = { path: r.path, to, release: !!r.release, from: toProd ? r.stage : r.prod, was: toProd ? r.prod : r.stage }; env.msg = ''; render();
+}
+async function envCopy() {
+  const a = env.ask;
+  if (!a || a.busy) return;
+  a.busy = true; render();
+  try {
+    const r = (await fb.fnM.httpsCallable(fb.fns, 'envCopy')({ path: a.path, to: env.data.here.env === a.to ? 'here' : 'peer', from: a.from === undefined ? null : a.from, was: a.was === undefined ? null : a.was })).data;
+    env.msg = r.changed ? `Not copied: ${a.path} changed on one side since the page read it. Read again and check it.` : r.same ? `${a.path}: already the same.` : `Copied ${a.path} to ${a.to}.`;
+  } catch (e) { env.msg = `Not copied: ${e.message}`; }
+  env.ask = null;
+  await envLoad();
 }
 // Settings: everything that is not one game's (moved here from the Games list and the old Bot Settings, Staging Access and
 // Devices pages): the pace, Super Chaos and the platforms' minimum versions, the timer, Find Match and its bots, the
@@ -1263,6 +1297,10 @@ app.addEventListener('click', e => {
   if (b.dataset.mlexport) { mlExport(b.dataset.mlexport); return; }
   if (b.dataset.retclear) { saveRetire(b, true); return; }
   if (b.dataset.abexport) { abExport(); return; }
+  if (b.dataset.envcopy) { envAsk(b); return; }
+  if (b.dataset.envyes !== undefined) { envCopy(); return; }
+  if (b.dataset.envno !== undefined) { env.ask = null; render(); return; }
+  if (b.dataset.envload !== undefined) { env.msg = ''; envLoad(); return; }
   if (b.dataset.act === 'google') signIn('google');
   else if (b.dataset.act === 'email') signIn('email');
   else if (b.dataset.act === 'signout') fb.authM.signOut(fb.auth);
@@ -1299,6 +1337,7 @@ app.addEventListener('change', e => {
   const d = e.target.dataset || {};
   if (d.gf) { setFilter(d.gf, e.target.type === 'checkbox' ? e.target.checked : e.target.value); return; }   // the page's filters: every page's, kept in this browser
   if (d.tq || d.tf) return;
+  if (d.envall !== undefined) { env.all = e.target.checked; render(); return; }
   if (d.devex) { devExclude(d.devex, e.target.checked, e.target); return; }
   if (['tmKind', 'tmMins', 'tmInc', 'tmSecs'].includes(e.target.id)) saveTimer();
   else if (d.cfg) saveCfg(e.target);

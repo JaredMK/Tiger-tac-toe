@@ -2394,3 +2394,44 @@ test('the admin\'s numbers: built from the rows the server wrote; each headline 
   assert.ok(X.metric(out, 'active').v >= 1 && X.metric(all, 'active').v >= X.metric(out, 'active').v, 'people who opened the game; never fewer with the owner\'s devices in');
   assert.ok(M.matches.every(m => m.who.every(w => w.bot || w.pid || !(users || {})[w.u])), 'every player with an account is a person the Players page knows (a guest is, by their device, once it has opened the game)');
 });
+
+// ---------- Compare environments (November 2026: functions/index.js envCompare, envCopy; the admin page's #envs) ----------
+// On the emulator the other environment is a second database of its own (<project>-peer). The admin reads both and copies
+// one setting at a time; a player is refused; a copy refused when either side changed since the page read it; a path
+// outside the settings refused; each copy logged on both; a game's settings copied make a new settings version there.
+test('Compare environments: the admin reads both, copies one setting either way (checked against what was shown), logged on both; nobody else', async () => {
+  const PEER = `${PROJECT}-peer`;
+  const peer = async (method, path, body) => { const r = await fetch(`http://${DB_HOST}/${path}.json?ns=${PEER}-default-rtdb`, { method, headers: { Authorization: 'Bearer owner' }, body: body === undefined ? undefined : JSON.stringify(body) }); if (!r.ok) throw new Error(`${method} ${path}: ${r.status}`); return r.json(); };
+  await put('releases/war', true); await peer('PUT', 'releases/war', false);
+  await put('config/tune/rps/goal', 4); await peer('PUT', 'config/tune/rps', null);
+  await peer('PUT', 'admin/staging/allow/x', { email: 'x@example.com' });
+  const boss = await player('EnvBoss'); await runScript('make-admin.js', 'EnvBoss', 'grant'); await boss.auth.currentUser.getIdToken(true);
+  const plain = await player('EnvPlain');
+  await assert.rejects(plain.call('envCompare', {}), e => /permission/i.test(String(e.code || e.message)), 'a player reading the environments');
+  await assert.rejects(plain.call('envCopy', { path: 'releases/war', to: 'peer', from: true, was: false }), e => /permission/i.test(String(e.code || e.message)), 'a player copying');
+  const c = await boss.call('envCompare', {});
+  assert.equal(c.here.project, PROJECT); assert.equal(c.peer.project, PEER);
+  assert.equal(c.here.values.releases.war, true); assert.equal(c.peer.values.releases.war, false);
+  assert.ok(!('staging' in (c.peer.values['admin/config'] || {})) && !c.roots.includes('admin/staging'), 'the allowlist is not among the settings');
+  await assert.rejects(boss.call('envCopy', { path: 'admin/staging/allow/x', to: 'here', from: null, was: null }), /invalid|not a setting/i, 'outside the settings: refused');
+  await assert.rejects(boss.call('envCopy', { path: 'users/abc', to: 'peer', from: null, was: null }), /invalid|not a setting/i);
+  const stale = await boss.call('envCopy', { path: 'releases/war', to: 'peer', from: true, was: true });
+  assert.equal(stale.changed, true, 'the target is not what the page showed: not copied');
+  assert.equal(await peer('GET', 'releases/war'), false);
+  assert.equal((await boss.call('envCopy', { path: 'releases/war', to: 'peer', from: true, was: false })).ok, true);
+  assert.equal(await peer('GET', 'releases/war'), true, 'copied to the other environment');
+  assert.equal((await boss.call('envCopy', { path: 'config/tune/rps/goal', to: 'peer', from: 4, was: null })).ok, true);
+  assert.equal(await peer('GET', 'config/tune/rps/goal'), 4);
+  assert.equal(await peer('GET', 'config/versions/rps'), 2, 'a game\'s settings copied: a new settings version there');
+  await peer('PUT', 'config/timer/spec', 'm3+5');
+  const timerWas = await get('config/timer/spec');
+  assert.equal((await boss.call('envCopy', { path: 'config/timer/spec', to: 'here', from: 'm3+5', was: timerWas })).ok, true);
+  assert.equal(await get('config/timer/spec'), 'm3+5', 'copied here from the other environment');
+  await put('config/timer/spec', timerWas);   // (the suite's own timer back for the tests after)
+  const logH = Object.values(await get('admin/envLog') || {}), logP = Object.values(await peer('GET', 'admin/envLog') || {});
+  assert.equal(logH.length, 3); assert.equal(logP.length, 3, 'each copy logged on both');
+  const e = logH.find(x => x.path === 'releases/war');
+  assert.equal(e.uid, boss.uid); assert.equal(e.old, 'false'); assert.equal(e.new, 'true'); assert.ok(e.at > 0 && e.email);
+  await denied(plain.read('admin/envLog'), 'a player reading the copy log');
+  assert.ok(await boss.read('admin/envLog'), 'the admin reads it');
+});
