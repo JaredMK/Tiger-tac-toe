@@ -1161,13 +1161,17 @@ function peerOf() {
   return { db: peerApp.database(), project: peer };
 }
 async function runAs() {                                           // (this function's own service account, for the page's setup note)
-  try { const r = await fetch('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email', { headers: { 'Metadata-Flavor': 'Google' } }); return r.ok ? (await r.text()).trim() : null; } catch (e) { return null; }
+  try { const r = await fetch('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email', { headers: { 'Metadata-Flavor': 'Google' }, signal: AbortSignal.timeout(2000) }); return r.ok ? (await r.text()).trim() : null; } catch (e) { return null; }
 }
 const noPeer = async (e, peer) => {
   if (e instanceof HttpsError) throw e;
   logger.warn('envs: the other project cannot be read', { peer, err: String(e && e.message || e) });
   throw new HttpsError('failed-precondition', 'The other environment cannot be read from here.', { setup: true, peer, account: await runAs(), role: 'roles/firebasedatabase.admin' });
 };
+// A read of the other project that never answers (without the grant, its SDK keeps retrying the sign-in and a read waits
+// for good: the call ran to its timeout and the page saw "internal") is given up after PEER_MS, as not readable.
+const PEER_MS = 12000;
+const inTime = (p, ms = PEER_MS) => new Promise((ok, no) => { const t = setTimeout(() => no(new Error(`no answer in ${ms / 1000} s`)), ms); p.then(v => { clearTimeout(t); ok(v); }, e => { clearTimeout(t); no(e); }); });
 const readRoots = async d => Object.fromEntries(await Promise.all(ENV.ROOTS.map(async r => [r, (await d.ref(r).get()).val()])));
 async function lastTimes(d) {                                      // a setting's last change where it is kept: a game's settings saves (config/versionLog), the copies made here (admin/envLog)
   const [vl, log] = await Promise.all([d.ref('config/versionLog').get(), d.ref('admin/envLog').orderByKey().limitToLast(300).get()]);
@@ -1175,12 +1179,16 @@ async function lastTimes(d) {                                      // a setting'
   for (const [t, vs] of Object.entries(vl.val() || {})) for (const v of Object.values(vs || {})) if (v && Number.isFinite(v.at) && !(tune[t] >= v.at)) tune[t] = v.at;
   return { tune, log: Object.values(log.val() || {}) };
 }
-exports.envCompare = onCall(CALL, async req => {
+// Anything else that goes wrong: said in words on the page (never a bare "internal"), and logged in full.
+const envFail = (what, e) => { if (e instanceof HttpsError) throw e; logger.error(`envs: ${what} failed`, { err: String(e && e.stack || e) }); throw new HttpsError('unavailable', `${what} failed: ${String(e && e.message || e).slice(0, 200)}`); };
+exports.envCompare = onCall(Object.assign({ timeoutSeconds: 60 }, CALL), async req => {
   needAdmin(req);
+  try {
   const peer = peerOf();
-  const [here, there] = await Promise.all([readRoots(db), readRoots(peer.db).catch(e => noPeer(e, peer.project))]);
-  const [th, tp] = await Promise.all([lastTimes(db), lastTimes(peer.db).catch(() => ({ tune: {}, log: [] }))]);
+  const [here, there] = await Promise.all([readRoots(db), inTime(readRoots(peer.db)).catch(e => noPeer(e, peer.project))]);
+  const [th, tp] = await Promise.all([lastTimes(db), inTime(lastTimes(peer.db)).catch(() => ({ tune: {}, log: [] }))]);
   return { here: { project: projectId, env: ENV.envOf(projectId), values: here, times: th }, peer: { project: peer.project, env: ENV.envOf(peer.project), values: there, times: tp }, roots: ENV.ROOTS };
+  } catch (e) { envFail('Reading the environments', e); }
 });
 // One setting copied: d { path, to: 'here' | 'peer', from, was } (from: the source's value the page showed, was: the
 // target's). The value written is the source's as read now, never one sent by the page.
@@ -1191,11 +1199,12 @@ exports.envCopy = onCall(CALL, async req => {
   const peer = peerOf();
   const src = d.to === 'here' ? peer : { db, project: projectId }, dst = d.to === 'here' ? { db, project: projectId } : peer;
   let from, was;
-  try { [from, was] = await Promise.all([src.db.ref(d.path).get(), dst.db.ref(d.path).get()]).then(r => r.map(x => x.val())); } catch (e) { await noPeer(e, peer.project); }
+  try { [from, was] = await inTime(Promise.all([src.db.ref(d.path).get(), dst.db.ref(d.path).get()])).then(r => r.map(x => x.val())); } catch (e) { await noPeer(e, peer.project); }
+  try {
   if (!ENV.same(from, d.from) || !ENV.same(was, d.was)) return { ok: false, changed: true, from, was };   // (either side changed since the page read it: look again)
   if (ENV.same(from, was)) return { ok: true, same: true };
   const email = (req.auth.token && req.auth.token.email) || null, at = now();
-  await dst.db.ref(d.path).set(from === undefined ? null : from);
+  await inTime(dst.db.ref(d.path).set(from === undefined ? null : from));
   const game = ENV.tuneGame(d.path);
   if (game) {                                                       // a game's settings changed there: a new settings version there, as the admin's Save makes (core/tune.js)
     const r = await dst.db.ref(`config/versions/${game}`).transaction(cur => (Number.isInteger(cur) && cur >= 1 ? cur : 1) + 1);
@@ -1203,9 +1212,10 @@ exports.envCopy = onCall(CALL, async req => {
     await dst.db.ref(`config/versionLog/${game}/v${r.snapshot.val()}`).set({ at, by: email || uid, ch: { [key]: { from: was == null ? 'default' : was, to: from == null ? 'default' : from } }, note: `copied from ${ENV.envOf(src.project)}` });
   }
   const entry = { at, uid, email, path: d.path, from: ENV.envOf(src.project), to: ENV.envOf(dst.project), old: was == null ? null : JSON.stringify(was), new: from == null ? null : JSON.stringify(from) };
-  await Promise.all([db.ref('admin/envLog').push(entry), peer.db.ref('admin/envLog').push(entry).catch(() => {})]);
+  await Promise.all([db.ref('admin/envLog').push(entry), inTime(peer.db.ref('admin/envLog').push(entry)).catch(() => {})]);
   logger.info('envs: a setting copied', entry);
   return { ok: true, at };
+  } catch (e) { envFail('The copy', e); }
 });
 exports.testAlert = onCall(Object.assign({ secrets: BOUND_SECRETS }, CALL), async req => {
   needAdmin(req);
